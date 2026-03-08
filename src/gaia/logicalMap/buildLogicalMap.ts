@@ -17,13 +17,11 @@ import {
   EXPANSION_SCOUT,
 } from "../sectorTiles_lostfleet";
 
-import {
-  SLOT_CENTERS_3P_LOSTFLEET,
-  MIDDLE_SLOT_OFFSET_BY_ROT_SEED,
-} from "../templates/3p_lostfleet_slotCenters";
+// 3p/4p の slotCenters / offset の export 名が揺れても吸収できるように namespace import
+import * as SlotCenters3p from "../templates/3p_lostfleet_slotCenters";
+import * as SlotCenters4p from "../templates/4p_lostfleet_slotCenters";
 
 import { makeSearchPlacementFromSeed } from "../ssot/searchPlacementConfig";
-
 import { computePlacementHash } from "../ssot/placementHash";
 
 export type Axial = { q: number; r: number };
@@ -55,8 +53,22 @@ export type CollisionRecord = {
   key: string; // "q,r"
   pos: Axial;
 
-  a: { slotId: string; sectorId: string; rot: number; rotSeed: number; localKey: string; slotCenter: Axial };
-  b: { slotId: string; sectorId: string; rot: number; rotSeed: number; localKey: string; slotCenter: Axial };
+  a: {
+    slotId: string;
+    sectorId: string;
+    rot: number;
+    rotSeed: number;
+    localKey: string;
+    slotCenter: Axial;
+  };
+  b: {
+    slotId: string;
+    sectorId: string;
+    rot: number;
+    rotSeed: number;
+    localKey: string;
+    slotCenter: Axial;
+  };
 };
 
 export type LogicalMap = {
@@ -125,8 +137,14 @@ function cubeRound(c: { x: number; y: number; z: number }): Cube {
 }
 function meanCubes(cs: Cube[]): Cube {
   const n = cs.length || 1;
-  let sx = 0, sy = 0, sz = 0;
-  for (const c of cs) { sx += c.x; sy += c.y; sz += c.z; }
+  let sx = 0,
+    sy = 0,
+    sz = 0;
+  for (const c of cs) {
+    sx += c.x;
+    sy += c.y;
+    sz += c.z;
+  }
   return { x: sx / n, y: sy / n, z: sz / n };
 }
 
@@ -152,7 +170,11 @@ function rotate60(ax: Axial, stepsCW: number): Axial {
   return { q, r };
 }
 
-function normalizeRawCell(raw: any): { kind: "planet" | "space" | "special"; planetType?: string; tags: string[] } {
+function normalizeRawCell(raw: any): {
+  kind: "planet" | "space" | "special";
+  planetType?: string;
+  tags: string[];
+} {
   const tags = Array.isArray(raw?.tags) ? raw.tags : [];
   if (raw?.kind === "planet") {
     const pt = (raw?.planetType ?? raw?.planet) as string | undefined;
@@ -163,10 +185,14 @@ function normalizeRawCell(raw: any): { kind: "planet" | "space" | "special"; pla
 }
 
 /** Extract local cells from a sector definition (object-map only) */
-function extractLocalCells(sectorDef: any): Array<{ local: Axial; rawCell: any; localKey: string }> {
+function extractLocalCells(
+  sectorDef: any
+): Array<{ local: Axial; rawCell: any; localKey: string }> {
   const out: Array<{ local: Axial; rawCell: any; localKey: string }> = [];
   if (sectorDef?.cells && !Array.isArray(sectorDef.cells)) {
-    for (const [k, rawCell] of Object.entries(sectorDef.cells as Record<string, any>)) {
+    for (const [k, rawCell] of Object.entries(
+      sectorDef.cells as Record<string, any>
+    )) {
       out.push({ local: parseKey(k), rawCell, localKey: k });
     }
   }
@@ -215,12 +241,18 @@ function connectedComponents(points: Axial[]): Axial[][] {
  * - centroid of those centroids is origin shift
  * - subtract shift from all locals
  */
-function normalizeLostFleetLocalCoords(locals: Axial[]): { normalized: Axial[]; originShift: Axial; compCount: number } {
+function normalizeLostFleetLocalCoords(locals: Axial[]): {
+  normalized: Axial[];
+  originShift: Axial;
+  compCount: number;
+} {
   const comps = connectedComponents(locals);
 
   if (comps.length !== 3) {
     if (!(ALLOW_LF_SINGLE_COMPONENT && comps.length === 1)) {
-      throw new Error(`LostFleet tile: expected 3 connected components, got ${comps.length}`);
+      throw new Error(
+        `LostFleet tile: expected 3 connected components, got ${comps.length}`
+      );
     }
   }
 
@@ -229,7 +261,9 @@ function normalizeLostFleetLocalCoords(locals: Axial[]): { normalized: Axial[]; 
     return cubeToAxial(cubeRound(mean));
   });
 
-  const originShift = cubeToAxial(cubeRound(meanCubes(compCenters.map(axialToCube))));
+  const originShift = cubeToAxial(
+    cubeRound(meanCubes(compCenters.map(axialToCube)))
+  );
   const normalized = locals.map((p) => axialSub(p, originShift));
   return { normalized, originShift, compCount: comps.length };
 }
@@ -280,9 +314,63 @@ function toNonMiddleRotLogical(rotSeed: number): number {
   return (5 - rotSeed + 6) % 6;
 }
 
+type SlotCenters = Record<string, { q: number; r: number }>;
+
+function normalizeTemplateIdForLogicalMap(templateId: string): "3p" | "4p" {
+  // 表記揺れを吸収（必要に応じて増やしてください）
+  if (
+    templateId === "4p_lostFleet" ||
+    templateId === "4p_lostfleet" ||
+    templateId === "4p_lostFleet_lostfleet" ||
+    templateId === "4p_lostFleet_lf"
+  ) {
+    return "4p";
+  }
+  return "3p";
+}
+
+function resolveSlotCenters(templateId: string): {
+  slotCenters: SlotCenters;
+  middleOffsetByRotSeed: Record<number, Axial>;
+} {
+  const kind = normalizeTemplateIdForLogicalMap(templateId);
+
+  const slotCenters3p =
+    (SlotCenters3p as any).SLOT_CENTERS_3P_LOSTFLEET as SlotCenters | undefined;
+
+  const slotCenters4p =
+    ((SlotCenters4p as any).SLOT_CENTERS_4P_LOSTFLEET as SlotCenters | undefined) ??
+    // 4p 側の最低限修正がまだで export 名が残っていても動くようにフォールバック
+    ((SlotCenters4p as any).SLOT_CENTERS_3P_LOSTFLEET as SlotCenters | undefined);
+
+  const middleOffset3p =
+    ((SlotCenters3p as any).MIDDLE_SLOT_OFFSET_BY_ROT_SEED as Record<number, Axial> | undefined) ??
+    {};
+  const middleOffset4p =
+    ((SlotCenters4p as any).MIDDLE_SLOT_OFFSET_BY_ROT_SEED as Record<number, Axial> | undefined) ??
+    middleOffset3p;
+
+  if (!slotCenters3p) {
+    throw new Error(`resolveSlotCenters: SLOT_CENTERS_3P_LOSTFLEET not found (3p template file)`);
+  }
+  if (kind === "4p" && !slotCenters4p) {
+    throw new Error(
+      `resolveSlotCenters: 4p slot centers not found (expected SLOT_CENTERS_4P_LOSTFLEET or fallback name in 4p template file)`
+    );
+  }
+
+  return {
+    slotCenters: kind === "4p" ? (slotCenters4p as SlotCenters) : slotCenters3p,
+    middleOffsetByRotSeed: kind === "4p" ? middleOffset4p : middleOffset3p,
+  };
+}
+
 /** Middle slotCenter offset by rotSeed (calibrated in templates file) */
-function getMiddleSlotCenterOffset(rotSeed: number): Axial {
-  return MIDDLE_SLOT_OFFSET_BY_ROT_SEED[rotSeed] ?? { q: 0, r: 0 };
+function getMiddleSlotCenterOffset(
+  rotSeed: number,
+  middleOffsetByRotSeed: Record<number, Axial>
+): Axial {
+  return middleOffsetByRotSeed[rotSeed] ?? { q: 0, r: 0 };
 }
 
 /**
@@ -299,26 +387,26 @@ export function buildLogicalMapFromPlacement(args: {
 
   const placementHash = computePlacementHash(placement);
 
-  if (templateId !== "3p_lostFleet") {
-    throw new Error(`buildLogicalMapFromPlacement: currently supports only templateId="3p_lostFleet"`);
-  }
-
   // Build logical cells (collisions collected)
   const sectorById = buildSectorById();
-  const slotCenters = SLOT_CENTERS_3P_LOSTFLEET;
+  const { slotCenters, middleOffsetByRotSeed } = resolveSlotCenters(templateId);
 
   const cellsByKey = new Map<string, LogicalCell>();
   const collisions: CollisionRecord[] = [];
   const collisionsBySlot: Record<string, number> = {};
 
-  let minQ = Infinity, maxQ = -Infinity, minR = Infinity, maxR = -Infinity;
+  let minQ = Infinity,
+    maxQ = -Infinity,
+    minR = Infinity,
+    maxR = -Infinity;
 
   for (const p of placement) {
     const slotId = String((p as any).slotId);
     const sectorId = String((p as any).sectorId);
 
     const slotCenterBase = slotCenters[slotId];
-    if (!slotCenterBase) throw new Error(`slot center not found: slotId=${slotId}`);
+    if (!slotCenterBase)
+      throw new Error(`slot center not found: templateId=${templateId} slotId=${slotId}`);
 
     const sec = sectorById.get(sectorId);
     if (!sec) throw new Error(`sector not found: sectorId=${sectorId}`);
@@ -339,18 +427,23 @@ export function buildLogicalMapFromPlacement(args: {
     const isMiddleSlot = slotId[0] === "M";
 
     // rot mapping: Middle only
-    const rotLogical = isMiddleSlot ? toMiddleRotLogical(rotSeed) : toNonMiddleRotLogical(rotSeed);
+    const rotLogical = isMiddleSlot
+      ? toMiddleRotLogical(rotSeed)
+      : toNonMiddleRotLogical(rotSeed);
 
     // slotCenter offset: Middle only (by rotSeed)
     const slotCenter = isMiddleSlot
-      ? axialAdd(slotCenterBase, getMiddleSlotCenterOffset(rotSeed))
+      ? axialAdd(
+          slotCenterBase,
+          getMiddleSlotCenterOffset(rotSeed, middleOffsetByRotSeed)
+        )
       : slotCenterBase;
 
     for (const lc of locals) {
       const norm = normalizeRawCell(lc.rawCell);
 
       const localForRot = sec.isLostFleet
-        ? (lfLocalNormalized?.get(lc.localKey) ?? lc.local)
+        ? lfLocalNormalized?.get(lc.localKey) ?? lc.local
         : lc.local;
 
       const rotated = rotate60(localForRot, rotLogical);
@@ -383,7 +476,10 @@ export function buildLogicalMapFromPlacement(args: {
         const existingSlotCenterBase = slotCenters[existing.slotId];
         const existingIsMiddle = existing.slotId[0] === "M";
         const existingSlotCenter = existingIsMiddle
-          ? axialAdd(existingSlotCenterBase, getMiddleSlotCenterOffset(existing.rotSeed))
+          ? axialAdd(
+              existingSlotCenterBase,
+              getMiddleSlotCenterOffset(existing.rotSeed, middleOffsetByRotSeed)
+            )
           : existingSlotCenterBase;
 
         collisions.push({

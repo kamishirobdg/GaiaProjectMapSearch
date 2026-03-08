@@ -13,7 +13,7 @@ import { getTemplateOuterTouchSets } from "../templates/templateSets";
 import { computePlacementHash } from "../ssot/placementHash";
 
 export type AxialKey = `${number},${number}`;
-export type CenterMode = "CENTER_7_9" | "CENTER_8" | "NONE";
+export type CenterMode = "CENTER_7_9" | "CENTER_8" | "CENTER_7_8" | "NONE";
 
 export type HardParams = {
   minSameColorDist: number;
@@ -110,11 +110,18 @@ function toAxialKey(q: number, r: number): AxialKey {
 
 function buildCentralSlotIds(mode: CenterMode): Set<string> {
   const s = new Set<string>();
+
   if (mode === "CENTER_7_9") {
-    s.add("L7"); s.add("L8"); s.add("L9");
+    s.add("L7");
+    s.add("L8");
+    s.add("L9");
   } else if (mode === "CENTER_8") {
     s.add("L8");
+  } else if (mode === "CENTER_7_8") {
+    s.add("L7");
+    s.add("L8");
   }
+
   return s;
 }
 
@@ -263,10 +270,8 @@ export function extractForEval(logicalMap: LogicalMap, hardParams: HardParams): 
 
   return {
     templateId,
-    seed: logicalMap.seed ?? 0,
-
+    seed: logicalMap.seed,
     placementHash,
-
     cells,
     planetCells,
     normalPlanetCells,
@@ -278,9 +283,7 @@ export function extractForEval(logicalMap: LogicalMap, hardParams: HardParams): 
     audit: {
       outerNormalCount,
       touchNormalCount,
-
       placementHash,
-
       tagCountsAll,
       tagCountsPlanet,
       specialCellsSample,

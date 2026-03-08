@@ -34,12 +34,29 @@ export type SoftParams = {
   wScout: number;
   scoutRadius: number;
 
+  // Per-scout override (by scout cell key; e.g. twilight/eclipse/rebellion/tfmars (or legacy S1..S4)). If provided, the value REPLACES wScout for that scout.
+  wScoutByScoutKey?: Record<string, number>;
+
   // ScoutCore weight (default=0 if omitted)
   wScoutCore?: number;
 
+  // Per-scout override for ScoutCore (by scout cell key; e.g. twilight/eclipse/rebellion/tfmars (or legacy S1..S4)). If provided, the value REPLACES wScoutCore for that scout.
+  wScoutCoreByScoutKey?: Record<string, number>;
+
+  // How to attribute Scout planets to each Scout for ScoutCore input:
+  // - "all"  : a planet can belong to multiple scouts (default; mode A)
+  // - "best" : a planet belongs to the single scout with the largest scout contribution (mode B)
+  scoutCoreAttributionMode?: "all" | "best";
+
   wImbalance: number;
   imbalanceMetric?: "std" | "range";
+
+  // Color preference (optional): maximize/minimize planetTypeTotals by type
+  // score += wColorPref * Σ(prefByType[type] * planetTypeTotals[type])
+  wColorPref?: number;
+  colorPrefByType?: Partial<Record<PlanetType, number>>;
 };
+
 
 export type SoftBreakdown = {
   axesByType: {
@@ -54,6 +71,14 @@ export type SoftBreakdown = {
   imbalance: {
     metric: "std" | "range";
     value: number;
+    score: number;
+  };
+
+  colorPreference?: {
+    wColorPref: number;
+    prefByType: AxisByType;
+    valueByType: AxisByType;
+    scoreByType: AxisByType;
     score: number;
   };
 
@@ -79,71 +104,67 @@ export type SoftBreakdown = {
     }>;
 
     // SSOT: breakdown.audit.scout は必ず出す
-    scout: {
-      radius: number;
+scout: {
+  radius: number;
 
-      // scoutAxisと同義
-      byType: AxisByType;
+  // ★追加（optionalで安全）
+  attributionModeForScoutCore?: "all" | "best";
+  scoutWeightByScoutKey?: Record<string, number> | null;
+  scoutPlanetsByScoutKey?: Record<string, number>;
 
-      // Scoutセルごとの内訳
-      perScout: Array<{
-        scoutKey: string;
-        byType: AxisByType;
-        total: number;
-      }>;
+  byType: AxisByType;
 
-      // 距離別ヒット件数（d=1..radius）
-      distanceHistogram: Record<number, number>;
+  perScout: Array<{
+    scoutKey: string;
+    byType: AxisByType;
+    total: number;
+  }>;
 
-      // Scoutでヒットした惑星集合数（ScoutCore入力）
-      scoutPlanetCount: number;
+  distanceHistogram: Record<number, number>;
+  scoutPlanetCount: number;
 
-      // PROTO/ASTEROID 等（表示・監査用）
-      extraByKind: Record<string, number>;
+  extraByKind: Record<string, number>;
+  excludedPlanetCounts?: Record<string, number>;
 
-      // best-effort
-      excludedPlanetCounts?: Record<string, number>;
-
-      scoutHits: Array<{
-        scoutKey: string;
-        planetKey: string;
-        planetType: string; // BASIC7色 or PROTO/ASTEROID
-        distance: number;
-        value: number;
-        planet: { kind: any; planetKind?: any; slotId: string; sectorId: string; tags: string[] };
-        scout: { kind: any; slotId: string; sectorId: string; tags: string[] };
-      }>;
-    };
+  scoutHits: Array<{
+    scoutKey: string;
+    planetKey: string;
+    planetType: string;
+    distance: number;
+    value: number;
+    planet: { kind: any; planetKind?: any; slotId: string; sectorId: string; tags: string[] };
+    scout: { kind: any; slotId: string; sectorId: string; tags: string[] };
+  }>;
+};
 
     // SSOT: breakdown.audit.scoutCore は必ず出す
-    scoutCore: {
-      radius: 2;
+scoutCore: {
+  radius: 2;
 
-      // scoutCoreAxisと同義
-      byType: AxisByType;
+  // ★追加（optionalで安全）
+  attributionMode?: "all" | "best";
+  scoutCoreWeightByScoutKey?: Record<string, number> | null;
 
-      // Scout惑星ごとの内訳
-      perScoutPlanet: Array<{
-        scoutPlanetKey: string;
-        byType: AxisByType;
-        total: number;
-        extraByKind: Record<string, number>;
-      }>;
+  byType: AxisByType;
 
-      // 距離別ヒット件数（d=1..2）
-      distanceHistogram: Record<number, number>;
+  perScoutPlanet: Array<{
+    scoutPlanetKey: string;
+    byType: AxisByType;
+    total: number;
+    extraByKind: Record<string, number>;
+  }>;
 
-      // PROTO/ASTEROID 等（表示・監査用）
-      extraByKind: Record<string, number>;
+  distanceHistogram: Record<number, number>;
+  extraByKind: Record<string, number>;
 
-      coreHits: Array<{
-        scoutPlanetKey: string;
-        corePlanetKey: string;
-        corePlanetType: string; // BASIC7色 or PROTO/ASTEROID
-        distance: 1 | 2;
-        value: number;
-      }>;
-    };
+  coreHits: Array<{
+    scoutPlanetKey: string;
+    corePlanetKey: string;
+    corePlanetType: string;
+    distance: 1 | 2;
+    value: number;
+  }>;
+};
   };
 
   debug?: any;
@@ -243,7 +264,13 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
   const wTouch = num(params.wTouch, 0);
   const wScout = num(params.wScout, 0);
   const wScoutCore = num(params.wScoutCore, 0);
+  const wScoutByScoutKey = (params as any).wScoutByScoutKey as Record<string, number> | undefined;
+  const wScoutCoreByScoutKey = (params as any).wScoutCoreByScoutKey as Record<string, number> | undefined;
+  const scoutCoreAttributionMode = ((params as any).scoutCoreAttributionMode as ("all" | "best") | undefined) ?? "all";
   const wImbalance = num(params.wImbalance, 0);
+
+  const wColorPref = num((params as any).wColorPref, 0);
+  const colorPrefByTypeRaw = ((params as any).colorPrefByType ?? (params as any).colorBiasByType ?? null) as any;
 
   const metric: "std" | "range" =
     params.imbalanceMetric === "range" || params.imbalanceMetric === "std" ? params.imbalanceMetric : "std";
@@ -302,61 +329,106 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
   const scoutDistanceHistogram: Record<number, number> = {};
 
   // Scout惑星集合（ScoutCore入力）
-  const scoutPlanetKeySet = new Set<string>();
-  const scoutPlanetByKey = new Map<string, any>();
+// - union: 互換性/監査用の全体集合（従来と同じ意味）
+// - byScoutKey: ScoutCore入力用（A=all / B=best）
+const scoutPlanetKeySet = new Set<string>();
+const scoutPlanetByKey = new Map<string, any>();
 
-  for (const s of extracted.scoutCells) {
-    const byType = zeroAxis();
-    let total = 0;
+const scoutPlanetKeySetByScoutKeyAll = new Map<string, Set<string>>();
+const bestScoutByPlanetKey = new Map<string, { scoutKey: string; value: number; distance: number }>();
 
-    for (const p of extracted.planetCells) {
-      const kindU = String((p as any).planetKind ?? "").toUpperCase();
-      const t = toPlanetType((p as any).planetKind as any, (p as any).colorKey);
+const getOrCreatePlanetSet = (m: Map<string, Set<string>>, k: string) => {
+  const cur = m.get(k);
+  if (cur) return cur;
+  const s = new Set<string>();
+  m.set(k, s);
+  return s;
+};
 
-      const d = axialDistance(s.q, s.r, p.q, p.r);
-      const contrib = scoutValue(d, wScout, scoutRadius);
-      if (contrib <= 0) continue;
+for (const s of extracted.scoutCells) {
+  const byType = zeroAxis();
+  let total = 0;
 
-      // Scout惑星（ScoutCore起点）
-      scoutPlanetKeySet.add(p.key);
-      if (!scoutPlanetByKey.has(p.key)) scoutPlanetByKey.set(p.key, p);
+  const wScoutEff = num(wScoutByScoutKey?.[s.key], wScout);
 
-      if (t) {
-        byType[t] += contrib;
-        scoutAxis[t] += contrib;
-      } else {
-        // PROTO/ASTEROID等は別枠
-        const k = kindU || "UNKNOWN";
-        scoutExtraByKind[k] = (scoutExtraByKind[k] ?? 0) + contrib;
+  for (const p of extracted.planetCells) {
+    const kindU = String((p as any).planetKind ?? "").toUpperCase();
+    const t = toPlanetType((p as any).planetKind as any, (p as any).colorKey);
+
+    const d = axialDistance(s.q, s.r, p.q, p.r);
+    const contrib = scoutValue(d, wScoutEff, scoutRadius);
+    if (contrib <= 0) continue;
+
+    // Scout惑星（ScoutCore起点）
+    scoutPlanetKeySet.add(p.key);
+    if (!scoutPlanetByKey.has(p.key)) scoutPlanetByKey.set(p.key, p);
+
+    // Mode A (all): keep membership by scout
+    getOrCreatePlanetSet(scoutPlanetKeySetByScoutKeyAll, s.key).add(p.key);
+
+    // Mode B (best): track best contributing scout for each planet
+    {
+      const prev = bestScoutByPlanetKey.get(p.key);
+      if (
+        !prev ||
+        contrib > prev.value ||
+        (contrib === prev.value && d < prev.distance) ||
+        (contrib === prev.value && d === prev.distance && String(s.key).localeCompare(String(prev.scoutKey)) < 0)
+      ) {
+        bestScoutByPlanetKey.set(p.key, { scoutKey: s.key, value: contrib, distance: d });
       }
-
-      total += contrib;
-      incNumRecord(scoutDistanceHistogram, d, 1);
-
-      scoutHits.push({
-        scoutKey: s.key,
-        planetKey: p.key,
-        planetType: t ?? kindU ?? "UNKNOWN",
-        distance: d,
-        value: contrib,
-        planet: {
-          kind: (p as any).kind,
-          planetKind: (p as any).planetKind,
-          slotId: (p as any).slotId,
-          sectorId: (p as any).sectorId,
-          tags: (p as any).tags ?? [],
-        },
-        scout: {
-          kind: (s as any).kind,
-          slotId: (s as any).slotId,
-          sectorId: (s as any).sectorId,
-          tags: (s as any).tags ?? [],
-        },
-      });
     }
 
-    perScout.push({ scoutKey: s.key, byType, total });
+    if (t) {
+      byType[t] += contrib;
+      scoutAxis[t] += contrib;
+    } else {
+      // PROTO/ASTEROID等は別枠
+      const k = kindU || "UNKNOWN";
+      scoutExtraByKind[k] = (scoutExtraByKind[k] ?? 0) + contrib;
+    }
+
+    total += contrib;
+    incNumRecord(scoutDistanceHistogram, d, 1);
+
+    scoutHits.push({
+      scoutKey: s.key,
+      scoutWeight: wScoutEff,
+      planetKey: p.key,
+      planetType: t ?? kindU ?? "UNKNOWN",
+      distance: d,
+      value: contrib,
+      planet: {
+        kind: (p as any).kind,
+        planetKind: (p as any).planetKind,
+        slotId: (p as any).slotId,
+        sectorId: (p as any).sectorId,
+        tags: (p as any).tags ?? [],
+      },
+      scout: {
+        kind: (s as any).kind,
+        slotId: (s as any).slotId,
+        sectorId: (s as any).sectorId,
+        tags: (s as any).tags ?? [],
+      },
+    });
   }
+
+  perScout.push({ scoutKey: s.key, byType, total });
+}
+
+// Decide ScoutCore input membership by mode
+const scoutPlanetKeySetByScoutKey = new Map<string, Set<string>>();
+if (scoutCoreAttributionMode === "best") {
+  for (const [planetKey, best] of bestScoutByPlanetKey.entries()) {
+    if (best.value <= 0) continue;
+    getOrCreatePlanetSet(scoutPlanetKeySetByScoutKey, best.scoutKey).add(planetKey);
+  }
+} else {
+  for (const [k, set] of scoutPlanetKeySetByScoutKeyAll.entries()) {
+    scoutPlanetKeySetByScoutKey.set(k, new Set(set));
+  }
+}
 
   // ===== scoutCore (Scout惑星集合 -> 距離1/2) =====
   const scoutCoreAxis: AxisByType = zeroAxis();
@@ -366,10 +438,17 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
   const scoutCoreExtraByKind: Record<string, number> = {};
   const scoutCoreDistanceHistogram: Record<number, number> = {};
 
-  if (wScoutCore > 0 && scoutPlanetKeySet.size > 0) {
-    const scoutPlanets = Array.from(scoutPlanetByKey.values());
+  // ScoutCore uses per-scout assigned Scout planets (mode A/B)
+if (scoutPlanetKeySetByScoutKey.size > 0) {
+  for (const [scoutKey, scoutPlanetKeys] of scoutPlanetKeySetByScoutKey.entries()) {
+    const wScoutCoreEff = num(wScoutCoreByScoutKey?.[scoutKey], wScoutCore);
+    if (wScoutCoreEff <= 0) continue;
+    if (!scoutPlanetKeys || scoutPlanetKeys.size === 0) continue;
 
-    for (const sp of scoutPlanets) {
+    for (const spKey of scoutPlanetKeys) {
+      const sp = scoutPlanetByKey.get(spKey);
+      if (!sp) continue;
+
       const byType = zeroAxis();
       const extraByKind: Record<string, number> = {};
       let total = 0;
@@ -380,7 +459,7 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
         const d0 = axialDistance(sp.q, sp.r, p.q, p.r);
         if (d0 !== 1 && d0 !== 2) continue;
 
-        const contrib = scoutCoreValue(d0, wScoutCore);
+        const contrib = scoutCoreValue(d0, wScoutCoreEff);
         if (contrib <= 0) continue;
 
         const kindU = String((p as any).planetKind ?? "").toUpperCase();
@@ -411,13 +490,19 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
           corePlanetKey: p.key,
           corePlanetType: t ?? kindU ?? "UNKNOWN",
           distance: d0 as 1 | 2,
-          value: contrib,
+          value: wScoutCoreEff,
         });
       }
 
-      perScoutPlanet.push({ scoutPlanetKey: sp.key, byType, total, extraByKind });
+      perScoutPlanet.push({
+        scoutPlanetKey: sp.key,
+        byType,
+        total,
+        extraByKind,
+      });
     }
   }
+}
 
   // deterministic ordering for debugging
   outerHits.sort((a: any, b: any) => String(a.cellKey).localeCompare(String(b.cellKey)));
@@ -428,6 +513,8 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
     return String(a.planetKey).localeCompare(String(b.planetKey));
   });
   scoutCoreHits.sort((a: any, b: any) => {
+    const k0 = String(a.scoutKey ?? "").localeCompare(String(b.scoutKey ?? ""));
+    if (k0 !== 0) return k0;
     const k = String(a.scoutPlanetKey).localeCompare(String(b.scoutPlanetKey));
     if (k !== 0) return k;
     return String(a.corePlanetKey).localeCompare(String(b.corePlanetKey));
@@ -438,16 +525,36 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
 
   const values = axisValues(planetTypeTotals);
   const imbalanceValue = metric === "range" ? range(values) : std(values);
-  const imbalanceScore = -wImbalance * imbalanceValue;
+    const imbalanceScore = -wImbalance * imbalanceValue;
+
+  // ===== color preference (optional) =====
+  const prefByType: AxisByType = zeroAxis();
+  for (const t of PLANET_TYPES) {
+    prefByType[t] = num(colorPrefByTypeRaw?.[t], 0);
+  }
+  const colorPrefScoreByType: AxisByType = zeroAxis();
+  let colorPrefScore = 0;
+  if (wColorPref !== 0) {
+    for (const t of PLANET_TYPES) {
+      const v = wColorPref * prefByType[t] * (planetTypeTotals[t] ?? 0);
+      colorPrefScoreByType[t] = v;
+      colorPrefScore += v;
+    }
+  }
+  const totalScore = imbalanceScore + colorPrefScore;
 
   const excludedPlanetCounts = collectExcludedPlanetCountsBestEffort(extracted);
 
   return {
-    score: imbalanceScore,
+    score: totalScore,
     breakdown: {
       axesByType: { outer: outerAxis, touch: touchAxis, scout: scoutAxis, scoutCore: scoutCoreAxis },
       planetTypeTotals,
       imbalance: { metric, value: imbalanceValue, score: imbalanceScore },
+      colorPreference:
+        wColorPref !== 0 || PLANET_TYPES.some((t) => prefByType[t] !== 0)
+          ? { wColorPref, prefByType, valueByType: planetTypeTotals, scoreByType: colorPrefScoreByType, score: colorPrefScore }
+          : undefined,
       audit: {
         outerCountByType,
         touchCountByType,
@@ -455,6 +562,9 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
         touchHits,
         scout: {
           radius: scoutRadius,
+          attributionModeForScoutCore: scoutCoreAttributionMode,
+          scoutWeightByScoutKey: wScoutByScoutKey ?? null,
+          scoutPlanetsByScoutKey: Object.fromEntries(Array.from(scoutPlanetKeySetByScoutKey.entries()).map(([k,v])=>[k, v.size])),
           perScout,
           byType: scoutAxis,
           distanceHistogram: scoutDistanceHistogram,
@@ -465,6 +575,8 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
         },
         scoutCore: {
           radius: 2,
+          attributionMode: scoutCoreAttributionMode,
+          scoutCoreWeightByScoutKey: wScoutCoreByScoutKey ?? null,
           byType: scoutCoreAxis,
           perScoutPlanet,
           distanceHistogram: scoutCoreDistanceHistogram,

@@ -13,7 +13,30 @@ import { buildSectorLookup } from "@/gaia/board/previewBoard";
 import { runSearch as runLogicalSearch } from "@/gaia/search";
 
 import { makeSearchPlacementFromSeed, getSearchPlacementConfig } from "@/gaia/ssot/searchPlacementConfig";
-import { computePlacementHash } from "@/gaia/ssot/placementHash";
+import { computePlacementHash, encodePlacementToken, decodePlacementToken } from "@/gaia/ssot/placementHash";
+
+
+// Clipboard helper (safe fallback)
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    // Fallback for older browsers / non-secure contexts
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    ta.style.top = "-9999px";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try {
+      document.execCommand("copy");
+    } finally {
+      document.body.removeChild(ta);
+    }
+  }
+}
 
 type RankedResult = {
   seed: string;
@@ -42,6 +65,14 @@ const UI_TEXT = {
     runSearch: "Run Search (LogicalMap)",
     searching: "Searching...",
 
+    continuous: "Continuous",
+    stopSearch: "Stop",
+    hash: "Hash",
+    apply: "Apply",
+    copy: "Copy",
+    copyUrl: "Copy URL",
+    hashNotFound: "Hash not found in current results.",
+
     progress: "progress",
     best: "best",
     selectedSeed: "selected seed",
@@ -69,6 +100,9 @@ const UI_TEXT = {
 
     trials: "Trials",
     topK: "Top-K",
+    totalSearched: "totalSearched",
+    speed: "speed",
+    eta: "eta",
 
     resultsMode: "Results",
     resultsModeActive: "Top-K (Active)",
@@ -138,6 +172,19 @@ const UI_TEXT = {
     wTouch: "wTouch",
     wScout: "wScout",
     wScoutCore: "wScoutCore",
+wScoutS1: "wScout (twilight)",
+wScoutS2: "wScout (eclipse)",
+wScoutS3: "wScout (rebellion)",
+wScoutS4: "wScout (tfmars)",
+wScoutCoreS1: "wScoutCore (twilight)",
+wScoutCoreS2: "wScoutCore (eclipse)",
+wScoutCoreS3: "wScoutCore (rebellion)",
+wScoutCoreS4: "wScoutCore (tfmars)",
+scoutCoreAttribBest: "ScoutCore attribution: best",
+
+    colorPreference: "Color preference",
+    wColorPref: "ColorPref weight",
+
     scoutCoreRadius: "scoutCore radius",
     scoutCoreTotal: "scoutCore total",
     scoutRadius: "scout radius",
@@ -146,7 +193,6 @@ const UI_TEXT = {
     breakdown: "breakdown (Logical)",
 
     topKLogical: "Top-K (Logical)",
-    hash: "hash",
 
     hardFailCounts: "Hard fail counts",
 
@@ -157,7 +203,6 @@ const UI_TEXT = {
     evalVersion: "Eval version",
     oldDataAvailable: "Old saved data found for this condition (different version)",
     copyFrom: "Copy from",
-    copy: "Copy",
     confirmCopy: "Copy candidates from an older version into the current version? (Scores are not re-evaluated)",
     extra: "extra",
 
@@ -179,21 +224,29 @@ const UI_TEXT = {
     runSearch: "検索実行",
     searching: "検索中...",
 
+    continuous: "連続検索",
+    stopSearch: "停止",
+    hash: "Hash",
+    apply: "適用",
+    copy: "コピー",
+    copyUrl: "URL取得",
+    hashNotFound: "指定Hashが現在の結果に見つかりません。",
+
     progress: "進捗",
     best: "ベスト",
     selectedSeed: "選択中seed",
 
-    searchSsot: "検索SSOT",
+    searchSsot: "固定タイル",
     noSearchConfig: `templateIdに対応する検索設定がありません。src/gaia/ssot/searchPlacementConfig.ts に追加してください。`,
 
-    currentPlacementHash: "現在のplacementHash",
+    currentPlacementHash: "現在のHash",
     fixedLarge: "固定基本タイル",
     littlePool: "拡張小枠候補",
     scoutCount: "船枠数",
 
-    logicalResults: "検索結果（LogicalMap / SSOT）",
-    currentLogicalSummary: "現在表示中（Logical評価サマリ）",
-    noCurrentResult: "現在の結果がありません（検索実行またはTop-K選択）。",
+    logicalResults: "検索結果",
+    currentLogicalSummary: "表示Map詳細",
+    noCurrentResult: "現在の結果がありません（検索実行またはランク選択）。",
 
     placementHashResult: "HASH（評価）",
     placementHashView: "HASH（表示）",
@@ -204,13 +257,16 @@ const UI_TEXT = {
     outerCnt: "最外周惑星数",
     touchCnt: "外周惑星数",
 
-    trials: "試行回数",
-    topK: "出力件数",
+    trials: "検索件数",
+    topK: "表示件数",
+    totalSearched: "総検索数",
+    speed: "速度",
+    eta: "残り時間",
 
     resultsMode: "表示",
     resultsModeActive: "TopK（未使用）",
     resultsModeUsed: "使用済み",
-    markUsed: "使用済みにする",
+    markUsed: "使用済み",
     restore: "未使用に戻す",
     delete: "完全削除",
     saved: "保存済み",
@@ -264,7 +320,7 @@ const UI_TEXT = {
 
 
     hard: "制約条件",
-    outerSameColorMax: "外周同色上限",
+    outerSameColorMax: "最外周同色上限",
     centerMode: "中央タイル制約",
 
     soft: "評価指数",
@@ -274,17 +330,27 @@ const UI_TEXT = {
     wOuter: "最外周評価",
     wTouch: "外周評価",
     wScout: "船接触",
-    wScoutCore: "船傍星半径",
+    wScoutCore: "船星系",
+    wScoutS1: "船接触(リベリオン)",
+    wScoutS2: "船接触(トワイライト)",
+    wScoutS3: "船接触(エクリプス)",
+    wScoutS4: "船接触(TFマーズ)",
+    wScoutCoreS1: "船星系(リベリオン)",
+    wScoutCoreS2: "船星系(トワイライト)",
+    wScoutCoreS3: "船星系(エクリプス)",
+    wScoutCoreS4: "船星系(TFマーズ)",
+    scoutCoreAttribBest: "船星系: 最大寄与に帰属",
+    colorPreference: "色優遇/冷遇",
+    wColorPref: "色優遇/冷遇の強さ",
     scoutRadius: "船接触半径",
     scoutTotal: "船接触点合計",
-    scoutCoreRadius: "船傍星半径",
-    scoutCoreTotal: "船傍星惑星数",
-    extra: "船傍星惑星数（中心拡張）",
+    scoutCoreRadius: "船星系半径",
+    scoutCoreTotal: "船星系惑星数",
+    extra: "船星系惑星数（中心拡張）",
 
-    breakdown: "内訳（Logical）",
+    breakdown: "詳細",
 
-    topKLogical: "上位K（Logical）",
-    hash: "ハッシュ",
+    topKLogical: "ランク",
 
     hardFailCounts: "ハード失敗回数",
 
@@ -295,7 +361,6 @@ const UI_TEXT = {
     evalVersion: "評価version",
     oldDataAvailable: "旧バージョンの保存データがあります（同一条件・別バージョン）",
     copyFrom: "コピー元",
-    copy: "コピー",
     confirmCopy: "旧バージョンの候補を現バージョンにコピーしますか？（スコア再計算はしません）",
 
   },
@@ -383,102 +448,79 @@ const LAST_APPLIED_SEARCHKEY = "gaia_last_applied_searchKey_v1";
 
 let _dbPromise: Promise<IDBDatabase> | null = null;
 
+
 function openDb(): Promise<IDBDatabase> {
   if (_dbPromise) return _dbPromise;
+
   _dbPromise = new Promise((resolve, reject) => {
     const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+
     req.onupgradeneeded = () => {
       const db = req.result;
-      const tx = (req.transaction as IDBTransaction) || db.transaction(STORE_CANDIDATES, "readwrite");
+      const tx = req.transaction as IDBTransaction;
 
-      // v1 -> created store with [searchKey, used(boolean), rankValue].
-      // IndexedDB keys do NOT support boolean, so from v2 we migrate to usedKey: 0/1.
-      let store: IDBObjectStore;
-      if (!db.objectStoreNames.contains(STORE_CANDIDATES)) {
-        store = db.createObjectStore(STORE_CANDIDATES, { keyPath: "id" });
-      } else {
-        store = tx.objectStore(STORE_CANDIDATES);
+      // ----- candidates -----
+      const candidates =
+        db.objectStoreNames.contains(STORE_CANDIDATES)
+          ? tx.objectStore(STORE_CANDIDATES)
+          : db.createObjectStore(STORE_CANDIDATES, { keyPath: "id" });
+
+      if (!candidates.indexNames.contains("bySearchKey")) {
+        candidates.createIndex("bySearchKey", "searchKey", { unique: false });
       }
 
-      if (!store.indexNames.contains("bySearchKey")) {
-        store.createIndex("bySearchKey", "searchKey", { unique: false });
-      }
-
-      // Drop old boolean-based index if present
-      if (store.indexNames.contains("bySearchKeyUsedKeyRank")) {
+      // v2+ uses usedKey(0/1) instead of boolean used in compound index.
+      if (candidates.indexNames.contains("bySearchKeyUsedKeyRank")) {
         try {
-          store.deleteIndex("bySearchKeyUsedKeyRank");
+          candidates.deleteIndex("bySearchKeyUsedKeyRank");
         } catch {}
       }
-      // New: compound index uses usedKey (number 0/1) instead of boolean
-      store.createIndex("bySearchKeyUsedKeyRank", ["searchKey", "usedKey", "rankValue"], { unique: false });
+      candidates.createIndex("bySearchKeyUsedKeyRank", ["searchKey", "usedKey", "rankValue"], { unique: false });
 
-      if (!store.indexNames.contains("bySearchKeyHash")) {
-        store.createIndex("bySearchKeyHash", ["searchKey", "placementHash"], { unique: true });
+      if (!candidates.indexNames.contains("bySearchKeyHash")) {
+        candidates.createIndex("bySearchKeyHash", ["searchKey", "placementHash"], { unique: true });
       }
 
-async function loadProfiles(): Promise<PersistedProfile[]> {
-  const db = await openDb();
-  const rows = await idbGetAll<PersistedProfile>(db, STORE_PROFILES);
-  return (rows ?? []).sort((a, b) => (Number(b.updatedAt ?? 0) || 0) - (Number(a.updatedAt ?? 0) || 0));
-}
-// Profiles store (per condition key)
-let profilesStore: IDBObjectStore | null = null;
-if (!db.objectStoreNames.contains(STORE_PROFILES)) {
-  profilesStore = db.createObjectStore(STORE_PROFILES, { keyPath: "searchKey" });
-  profilesStore.createIndex("byUpdatedAt", "updatedAt", { unique: false });
-  profilesStore.createIndex("byBaseKeyRaw", "baseKeyRaw", { unique: false });
-} else {
-  try {
-    profilesStore = tx.objectStore(STORE_PROFILES);
-  } catch {
-    profilesStore = null;
-  }
-  if (profilesStore && !profilesStore.indexNames.contains("byUpdatedAt")) {
-    profilesStore.createIndex("byUpdatedAt", "updatedAt", { unique: false });
-  }
-  if (profilesStore && !profilesStore.indexNames.contains("byBaseKeyRaw")) {
-    profilesStore.createIndex("byBaseKeyRaw", "baseKeyRaw", { unique: false });
-  }
-}
+      // ----- profiles -----
+      const profiles =
+        db.objectStoreNames.contains(STORE_PROFILES)
+          ? tx.objectStore(STORE_PROFILES)
+          : db.createObjectStore(STORE_PROFILES, { keyPath: "searchKey" });
 
-// Legacy backfill: build counts per searchKey from candidates (params cannot be reconstructed)
-const agg = new Map<string, { active: number; used: number; createdAt: number; updatedAt: number }>();
-// Migrate existing rows to include usedKey + backfill profile counts
-const curReq = store.openCursor();
-curReq.onsuccess = () => {
-  const cur = curReq.result;
-  if (!cur) {
-    if (profilesStore) {
-      agg.forEach((v, k) => {
-        const row: PersistedProfile = {
-          searchKey: k,
-          baseKeyRaw: null,
-          algoVersion: null,
-          evalVersion: null,
-          templateId: null,
-          name: null,
-          paramsRaw: null,
-          params: null,
-          activeCount: v.active,
-          usedCount: v.used,
-          lastTopK: null,
-          createdAt: v.createdAt,
-          updatedAt: v.updatedAt,
-        };
-        try {
-          profilesStore.put(row as any);
-        } catch {}
-      });
-    }
-    // v4: backfill baseKeyRaw / versions for profiles when paramsRaw is available.
-    if (profilesStore) {
+      if (!profiles.indexNames.contains("byUpdatedAt")) {
+        profiles.createIndex("byUpdatedAt", "updatedAt", { unique: false });
+      }
+      if (!profiles.indexNames.contains("byBaseKeyRaw")) {
+        profiles.createIndex("byBaseKeyRaw", "baseKeyRaw", { unique: false });
+      }
+
+      // ----- migrations / backfills -----
+      // Backfill usedKey from legacy boolean used.
       try {
-        const pcurReq = profilesStore.openCursor();
+        const curReq = candidates.openCursor();
+        curReq.onsuccess = () => {
+          const cur = curReq.result;
+          if (!cur) return;
+          const v: any = cur.value ?? {};
+          const used = Boolean(v.used);
+          const usedKey: 0 | 1 = used ? 1 : 0;
+          if (v.usedKey !== usedKey) {
+            v.usedKey = usedKey;
+            try {
+              cur.update(v);
+            } catch {}
+          }
+          cur.continue();
+        };
+      } catch {}
+
+      // v4: backfill baseKeyRaw / versions for profiles when paramsRaw is available.
+      try {
+        const pcurReq = profiles.openCursor();
         pcurReq.onsuccess = () => {
           const pcur = pcurReq.result;
           if (!pcur) return;
-          const row: any = pcur.value;
+          const row: any = pcur.value ?? {};
           if (!row.baseKeyRaw && row.paramsRaw) {
             try {
               const obj = JSON.parse(String(row.paramsRaw));
@@ -488,8 +530,8 @@ curReq.onsuccess = () => {
               if (evalV != null && row.evalVersion == null) row.evalVersion = String(evalV);
               if (obj && typeof obj === "object") {
                 try {
-                  delete (obj as any).algoVersion;
-                  delete (obj as any).evalVersion;
+                  delete obj.algoVersion;
+                  delete obj.evalVersion;
                 } catch {}
                 row.baseKeyRaw = stableStringify(obj);
               }
@@ -499,47 +541,13 @@ curReq.onsuccess = () => {
           pcur.continue();
         };
       } catch {}
-    }
-
-    return;
-  }
-
-  const v: any = cur.value;
-  const used = !!v.used;
-  const usedKey: 0 | 1 = used ? 1 : 0;
-
-  if (v.usedKey !== usedKey) {
-    v.usedKey = usedKey;
-    try {
-      cur.update(v);
-    } catch {}
-  }
-
-  const sk = String(v.searchKey ?? "");
-  if (sk) {
-    const prev =
-      agg.get(sk) ??
-      { active: 0, used: 0, createdAt: Number(v.createdAt ?? 0) || Date.now(), updatedAt: Number(v.updatedAt ?? 0) || Date.now() };
-    if (usedKey === 1) prev.used += 1;
-    else prev.active += 1;
-    prev.createdAt = Math.min(prev.createdAt, Number(v.createdAt ?? prev.createdAt) || prev.createdAt);
-    prev.updatedAt = Math.max(prev.updatedAt, Number(v.updatedAt ?? prev.updatedAt) || prev.updatedAt);
-    agg.set(sk, prev);
-  }
-
-  cur.continue();
-};
     };
+
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
+
   return _dbPromise;
-}
-// Load all persisted profiles (sorted by updatedAt desc).
-async function loadProfiles(): Promise<PersistedProfile[]> {
-  const db = await openDb();
-  const rows = await idbGetAll<PersistedProfile>(db, STORE_PROFILES);
-  return (rows ?? []).sort((a, b) => (Number(b.updatedAt ?? 0) || 0) - (Number(a.updatedAt ?? 0) || 0));
 }
 
 
@@ -658,11 +666,26 @@ function stableStringify(x: any): string {
 }
 
 async function sha256Hex(s: string): Promise<string> {
-  const enc = new TextEncoder();
-  const buf = enc.encode(s);
-  const digest = await crypto.subtle.digest("SHA-256", buf);
-  const bytes = Array.from(new Uint8Array(digest));
-  return bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
+  // Prefer WebCrypto SHA-256 when available (requires secure context for subtle in many browsers).
+  try {
+    const c: any = (globalThis as any).crypto;
+    const subtle = c?.subtle;
+    if (subtle && typeof subtle.digest === "function") {
+      const enc = new TextEncoder();
+      const buf = enc.encode(s);
+      const digest = await subtle.digest("SHA-256", buf);
+      const bytes = Array.from(new Uint8Array(digest));
+      return bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
+    }
+  } catch {}
+  // Fallback: FNV-1a 32-bit (not cryptographic, but stable for cache keys).
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  // Unsigned 32-bit hex
+  return (h >>> 0).toString(16).padStart(8, "0");
 }
 
 function seedTieKey(seed: string): number {
@@ -1029,7 +1052,7 @@ export default function BoardPage() {
   // language toggle (persist)
   // language toggle (persist)
 // IMPORTANT: avoid hydration mismatch by not reading localStorage in the initial render.
-const [lang, setLang] = React.useState<Lang>("en");
+const [lang, setLang] = React.useState<Lang>("ja");
 
 // load persisted language on mount (client only)
 React.useEffect(() => {
@@ -1046,6 +1069,31 @@ React.useEffect(() => {
   } catch {}
 }, [lang]);
 
+const isNarrow = useIsNarrow(1180);
+
+// Mobile UX: prioritize vertical page scrolling.
+// The map viewer tends to capture touch/pointer drags, so we gate map interaction behind an explicit toggle on mobile.
+const [mobileMapInteract, setMobileMapInteract] = React.useState(true);
+
+const prevIsNarrowRef = React.useRef<boolean | null>(null);
+
+// Auto-disable map interaction after a short window on mobile (prevents "stuck" non-scroll feeling).
+React.useEffect(() => {
+  const prev = prevIsNarrowRef.current;
+  prevIsNarrowRef.current = isNarrow;
+
+  if (!isNarrow) {
+    // Desktop: always allow interaction.
+    setMobileMapInteract(true);
+    return;
+  }
+  // When entering mobile layout, default to scroll-first.
+  if (prev === null || prev === false) setMobileMapInteract(false);
+  if (!mobileMapInteract) return;
+  const id = window.setTimeout(() => setMobileMapInteract(false), 8000);
+  return () => window.clearTimeout(id);
+}, [isNarrow, mobileMapInteract]);
+
 // Prevent tiny page scrollbars caused by global margins/viewport rounding.
 React.useEffect(() => {
   const docEl = document.documentElement;
@@ -1060,10 +1108,20 @@ React.useEffect(() => {
     bodyPadding: body.style.padding,
   };
 
-  docEl.style.height = "100%";
-  docEl.style.overflow = "hidden";
-  body.style.height = "100%";
-  body.style.overflow = "hidden";
+  // Desktop: lock the viewport and rely on internal scroll panes (original behavior).
+  // Mobile: allow normal page scrolling (avoid nested scroll areas).
+  if (isNarrow) {
+    docEl.style.height = "auto";
+    docEl.style.overflow = "auto";
+    body.style.height = "auto";
+    body.style.overflow = "auto";
+  } else {
+    docEl.style.height = "100%";
+    docEl.style.overflow = "hidden";
+    body.style.height = "100%";
+    body.style.overflow = "hidden";
+  }
+
   body.style.margin = "0";
   body.style.padding = "0";
 
@@ -1075,7 +1133,7 @@ React.useEffect(() => {
     body.style.margin = prev.bodyMargin;
     body.style.padding = prev.bodyPadding;
   };
-}, []);
+}, [isNarrow]);
 
 
   const t = React.useCallback((k: UiKey) => UI_TEXT[lang][k], [lang]);
@@ -1083,6 +1141,21 @@ React.useEffect(() => {
   const [which, setWhich] = React.useState<"3p" | "4p">("3p");
   const template = React.useMemo(() => (which === "3p" ? TEMPLATE_3P_LOSTFLEET : TEMPLATE_4P_LOSTFLEET), [which]);
 
+  const centerModeOptions = React.useMemo(() => {
+    if (which === "4p") {
+      return [
+        { value: "NONE", label: "None" },
+        { value: "CENTER_7_8", label: "CENTER-2" },
+      ] as const;
+    }
+
+    return [
+      { value: "NONE", label: "None" },
+      { value: "CENTER_7_9", label: "CENTER-3" },
+      { value: "CENTER_8", label: "CENTER-1" },
+    ] as const;
+  }, [which]);
+  
   const [seed, setSeed] = React.useState("0");
 
   type SeedMode = "random" | "fixed";
@@ -1564,7 +1637,7 @@ React.useEffect(() => {
                   setUsedPersisted(loaded.used);
                 } catch {}
                 try {
-                  const ps = await loadProfiles();
+                  const ps = await loadProfilesFromDb(200);
                   setSavedProfiles(ps);
                 } catch {}
 
@@ -1667,7 +1740,17 @@ return (savedProfiles ?? []).filter((p) => {
         `centerMode=${String(hard?.centerMode ?? "")} ` +
         `wOuter=${String(soft?.wOuter ?? "")} wTouch=${String(soft?.wTouch ?? "")} ` +
         `wScout=${String(soft?.wScout ?? "")} wScoutCore=${String(soft?.wScoutCore ?? "")} ` +
+        `wScoutByKey{twilight=${String(soft?.wScoutByScoutKey?.twilight ?? soft?.wScoutByScoutKey?.S1 ?? "")},` +
+        `eclipse=${String(soft?.wScoutByScoutKey?.eclipse ?? soft?.wScoutByScoutKey?.S2 ?? "")},` +
+        `rebellion=${String(soft?.wScoutByScoutKey?.rebellion ?? soft?.wScoutByScoutKey?.S3 ?? "")},` +
+        `tfmars=${String(soft?.wScoutByScoutKey?.tfmars ?? soft?.wScoutByScoutKey?.S4 ?? "")}} ` +
+        `wScoutCoreByKey{twilight=${String(soft?.wScoutCoreByScoutKey?.twilight ?? soft?.wScoutCoreByScoutKey?.S1 ?? "")},` +
+        `eclipse=${String(soft?.wScoutCoreByScoutKey?.eclipse ?? soft?.wScoutCoreByScoutKey?.S2 ?? "")},` +
+        `rebellion=${String(soft?.wScoutCoreByScoutKey?.rebellion ?? soft?.wScoutCoreByScoutKey?.S3 ?? "")},` +
+        `tfmars=${String(soft?.wScoutCoreByScoutKey?.tfmars ?? soft?.wScoutCoreByScoutKey?.S4 ?? "")}} ` +
+        `scoutCoreAttrib=${String(soft?.scoutCoreAttributionMode ?? "")} ` +
         `scoutRadius=${String(soft?.scoutRadius ?? "")} imbalanceMetric=${String(soft?.imbalanceMetric ?? "")} ` +
+        `wColorPref=${String(soft?.wColorPref ?? "")} colorPref{black=${String(soft?.colorPrefByType?.BLACK ?? "")},blue=${String(soft?.colorPrefByType?.BLUE ?? "")},brown=${String(soft?.colorPrefByType?.BROWN ?? "")},orange=${String(soft?.colorPrefByType?.ORANGE ?? "")},red=${String(soft?.colorPrefByType?.RED ?? "")},white=${String(soft?.colorPrefByType?.WHITE ?? "")},yellow=${String(soft?.colorPrefByType?.YELLOW ?? "")}} ` +
         `algoVersion=${String(params?.algoVersion ?? p.algoVersion ?? "")} evalVersion=${String(params?.evalVersion ?? p.evalVersion ?? "")} ` +
         `${p.searchKey}`
       ).toLowerCase();
@@ -1692,26 +1775,152 @@ return (savedProfiles ?? []).filter((p) => {
 
   // Hard params
   const [outerSameColorMax, setOuterSameColorMax] = React.useState(1);
-  const [centerMode, setCenterMode] = React.useState<"NONE" | "CENTER_7_9" | "CENTER_8">("NONE");
-
+  const [centerMode, setCenterMode] = React.useState<"NONE" | "CENTER_7_9" | "CENTER_8" | "CENTER_7_8">("NONE");
+  
+    React.useEffect(() => {
+    const allowed = new Set(centerModeOptions.map((x) => x.value));
+    if (!allowed.has(centerMode)) {
+      setCenterMode("NONE");
+    }
+  }, [centerMode, centerModeOptions]);
+  
   // Soft params
-  const [wOuter, setWOuter] = React.useState(2);
+  const [wOuter, setWOuter] = React.useState(3);
   const [wTouch, setWTouch] = React.useState(1);
   const [wScout, setWScout] = React.useState(6);
   const [wScoutCore, setWScoutCore] = React.useState(4);
+
+  const [wScoutS1, setWScoutS1] = React.useState(6);
+  const [wScoutS2, setWScoutS2] = React.useState(6);
+  const [wScoutS3, setWScoutS3] = React.useState(6);
+  const [wScoutS4, setWScoutS4] = React.useState(6);
+
+  const [wScoutCoreS1, setWScoutCoreS1] = React.useState(3);
+  const [wScoutCoreS2, setWScoutCoreS2] = React.useState(3);
+  const [wScoutCoreS3, setWScoutCoreS3] = React.useState(3);
+  const [wScoutCoreS4, setWScoutCoreS4] = React.useState(3);
+
+  const [scoutCoreAttribBest, setScoutCoreAttribBest] = React.useState(false);
+
   const [scoutRadius, setScoutRadius] = React.useState(3);
   const wImbalance = 100;
   const [imbalanceMetric, setImbalanceMetric] = React.useState<"std" | "range">("std");
 
-  const [trials, setTrials] = React.useState(10000);
+  // Color preference (by planetTypeTotals)
+  const [wColorPref, setWColorPref] = React.useState(3);
+  const [prefBLACK, setPrefBLACK] = React.useState(0);
+  const [prefBLUE, setPrefBLUE] = React.useState(0);
+  const [prefBROWN, setPrefBROWN] = React.useState(0);
+  const [prefORANGE, setPrefORANGE] = React.useState(0);
+  const [prefRED, setPrefRED] = React.useState(0);
+  const [prefWHITE, setPrefWHITE] = React.useState(0);
+  const [prefYELLOW, setPrefYELLOW] = React.useState(0);
+
+  const [trials, setTrials] = React.useState(30000);
   const [keepTop, setKeepTop] = React.useState(20);
 
   const [busy, setBusy] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
 
-  const [activeResults, setActiveResults] = React.useState<RankedResult[]>([]);
+  // --- Continuous search (repeat until stopped) ---
+  const [continuousMode, setContinuousMode] = React.useState(false);
+  const stopContinuousRef = React.useRef(false);
+  React.useEffect(() => () => {
+    stopContinuousRef.current = true;
+  }, []);
+
+
+  // --- Hash IO / shareable URL (?h=...) ---
+  const [hashIo, setHashIo] = React.useState<string>("");
+  const hashInputRef = React.useRef<HTMLInputElement | null>(null);
+  const prevTokenRef = React.useRef<string>("");
+  // If URL has ?h=..., apply it once results exist.
+  const pendingHashRef = React.useRef<string | null>(null);
+  const hashAppliedRef = React.useRef<boolean>(false);
+
+  
+  const [placementOverride, setPlacementOverride] = React.useState<any[] | null>(null);
+const [activeResults, setActiveResults] = React.useState<RankedResult[]>([]);
   const [usedResults, setUsedResults] = React.useState<RankedResult[]>([]);
   const [resultsMode, setResultsMode] = React.useState<"active" | "used">("active");
+
+  const setUrlHash = React.useCallback((hash: string) => {
+    try {
+      const url = new URL(window.location.href);
+      if (hash && hash.trim()) url.searchParams.set("h", hash.trim());
+      else url.searchParams.delete("h");
+      window.history.replaceState(null, "", url.toString());
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const applyHashToSelection = React.useCallback(
+    (hashOrToken: string) => {
+      const h = (hashOrToken ?? "").trim();
+      if (!h) return;
+
+      // 1) Prefer decoding placement directly from token (hash-only restore).
+      const decoded = decodePlacementToken(h as any);
+      if (decoded && Array.isArray(decoded)) {
+        setPlacementOverride(decoded as any);
+        setErrorMsg(null);
+        return;
+      }
+
+      // 2) Fallback: select from existing results by placementHash (legacy 8-hex hash).
+      //    This is kept for backward compatibility with old shared links.
+      const all = [...activeResults, ...usedResults];
+      const found = all.find((x: any) => String(x?.placementHash ?? "") === h);
+      if (found) {
+        // Clear override so normal selection drives the viewer
+        setPlacementOverride(null);
+setSelectedSeedLabel(String(found.seed ?? ""));
+        return;
+      }
+
+      // If neither decode nor found, keep the input but show a lightweight message.
+      setErrorMsg(`Hash/Token not found: ${h}`);
+    },
+    [activeResults, usedResults, setErrorMsg, setSelectedSeedLabel]
+  );
+
+  // Read hash from URL once
+  React.useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      const h = url.searchParams.get("h");
+      if (h && h.trim()) {
+        setHashIo(h.trim());
+        pendingHashRef.current = h.trim();
+        hashAppliedRef.current = false;
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // If URL hash/token is present, try to restore placement directly.
+// If decoding fails (legacy 8-hex hash), fallback to selecting from existing results when available.
+  React.useEffect(() => {
+    if (hashAppliedRef.current) return;
+    const h = pendingHashRef.current;
+    if (!h) return;
+
+    // Try decode immediately (works without any search results).
+    const decoded = decodePlacementToken(h as any);
+    if (decoded && Array.isArray(decoded)) {
+      setPlacementOverride(decoded as any);
+      hashAppliedRef.current = true;
+      setErrorMsg(null);
+      return;
+    }
+
+    // Legacy: wait until results exist then select by placementHash
+    if (activeResults.length === 0 && usedResults.length === 0) return;
+    applyHashToSelection(h);
+    hashAppliedRef.current = true;
+  }, [activeResults.length, usedResults.length, applyHashToSelection, setErrorMsg]);
 
   const [searchKey, setSearchKey] = React.useState<string | null>(null);
   const [searchKeyRaw, setSearchKeyRaw] = React.useState<string | null>(null);
@@ -1719,6 +1928,15 @@ return (savedProfiles ?? []).filter((p) => {
   const [oldVersionProfiles, setOldVersionProfiles] = React.useState<PersistedProfile[]>([]);
   const [activePersisted, setActivePersisted] = React.useState<PersistedCandidate[]>([]);
   const [usedPersisted, setUsedPersisted] = React.useState<PersistedCandidate[]>([]);
+
+  const activePersistedRef = React.useRef<PersistedCandidate[]>([]);
+  const usedPersistedRef = React.useRef<PersistedCandidate[]>([]);
+  React.useEffect(() => {
+    activePersistedRef.current = activePersisted;
+  }, [activePersisted]);
+  React.useEffect(() => {
+    usedPersistedRef.current = usedPersisted;
+  }, [usedPersisted]);
   const [progressCurrent, setProgressCurrent] = React.useState(0);
   const [progressBest, setProgressBest] = React.useState<number | null>(null);
   const [hardFailBy, setHardFailBy] = React.useState<Record<string, number>>({});
@@ -1754,7 +1972,47 @@ return (savedProfiles ?? []).filter((p) => {
         if (params?.soft?.wScout != null) setWScout(Number(params.soft.wScout));
         if (params?.soft?.wScoutCore != null) setWScoutCore(Number(params.soft.wScoutCore));
         if (params?.soft?.scoutRadius != null) setScoutRadius(Number(params.soft.scoutRadius));
+try {
+  const sw = (params as any)?.soft?.wScoutByScoutKey;
+  if (sw) {
+    if ((sw as any).twilight != null) setWScoutS1(Number((sw as any).twilight));
+    else if (sw.S1 != null) setWScoutS1(Number(sw.S1));
+    if ((sw as any).eclipse != null) setWScoutS2(Number((sw as any).eclipse));
+    else if (sw.S2 != null) setWScoutS2(Number(sw.S2));
+    if ((sw as any).rebellion != null) setWScoutS3(Number((sw as any).rebellion));
+    else if (sw.S3 != null) setWScoutS3(Number(sw.S3));
+    if ((sw as any).tfmars != null) setWScoutS4(Number((sw as any).tfmars));
+    else if (sw.S4 != null) setWScoutS4(Number(sw.S4));
+  }
+  const scw = (params as any)?.soft?.wScoutCoreByScoutKey;
+  if (scw) {
+    if ((scw as any).twilight != null) setWScoutCoreS1(Number((scw as any).twilight));
+    else if (scw.S1 != null) setWScoutCoreS1(Number(scw.S1));
+    if ((scw as any).eclipse != null) setWScoutCoreS2(Number((scw as any).eclipse));
+    else if (scw.S2 != null) setWScoutCoreS2(Number(scw.S2));
+    if ((scw as any).rebellion != null) setWScoutCoreS3(Number((scw as any).rebellion));
+    else if (scw.S3 != null) setWScoutCoreS3(Number(scw.S3));
+    if ((scw as any).tfmars != null) setWScoutCoreS4(Number((scw as any).tfmars));
+    else if (scw.S4 != null) setWScoutCoreS4(Number(scw.S4));
+  }
+  const mode = String((params as any)?.soft?.scoutCoreAttributionMode ?? "all");
+  setScoutCoreAttribBest(mode === "best");
+} catch {}
+
         if (params?.soft?.imbalanceMetric != null) setImbalanceMetric(String(params.soft.imbalanceMetric) as any);
+        if ((params as any)?.soft?.wColorPref != null) setWColorPref(Number((params as any).soft.wColorPref) || 0);
+        try {
+          const cp = (params as any)?.soft?.colorPrefByType ?? (params as any)?.soft?.colorBiasByType ?? null;
+          if (cp) {
+            if (cp.BLACK != null) setPrefBLACK(Number(cp.BLACK) || 0);
+            if (cp.BLUE != null) setPrefBLUE(Number(cp.BLUE) || 0);
+            if (cp.BROWN != null) setPrefBROWN(Number(cp.BROWN) || 0);
+            if (cp.ORANGE != null) setPrefORANGE(Number(cp.ORANGE) || 0);
+            if (cp.RED != null) setPrefRED(Number(cp.RED) || 0);
+            if (cp.WHITE != null) setPrefWHITE(Number(cp.WHITE) || 0);
+            if (cp.YELLOW != null) setPrefYELLOW(Number(cp.YELLOW) || 0);
+          }
+        } catch {}
       } catch {}
 
       if (typeof p.lastTopK === "number" && Number.isFinite(p.lastTopK) && p.lastTopK > 0) {
@@ -1767,7 +2025,7 @@ return (savedProfiles ?? []).filter((p) => {
 
       if (closePanel) setShowSavedConditions(false);
     },
-    [setWhich, setOuterSameColorMax, setCenterMode, setWOuter, setWTouch, setWScout, setWScoutCore, setScoutRadius, setImbalanceMetric, setKeepTop, setShowSavedConditions]
+    [setWhich, setOuterSameColorMax, setCenterMode, setWOuter, setWTouch, setWScout, setWScoutCore, setScoutRadius, setImbalanceMetric, setWColorPref, setPrefBLACK, setPrefBLUE, setPrefBROWN, setPrefORANGE, setPrefRED, setPrefWHITE, setPrefYELLOW, setKeepTop, setShowSavedConditions]
   );
 
 
@@ -1787,18 +2045,45 @@ return (savedProfiles ?? []).filter((p) => {
       algoVersion: SEARCH_ALGO_VERSION,
       evalVersion: EVAL_VERSION,
       hard: { minSameColorDist: 3, outerSameColorMax, centerMode },
-      soft: { wOuter, wTouch, wScout, wScoutCore, scoutRadius, wImbalance, imbalanceMetric },
+      soft: {
+  wOuter,
+  wTouch,
+  wScout,
+  wScoutCore,
+  scoutRadius,
+  wImbalance,
+  imbalanceMetric,
+  wScoutByScoutKey: { twilight: wScoutS1, eclipse: wScoutS2, rebellion: wScoutS3, tfmars: wScoutS4 },
+  wScoutCoreByScoutKey: { twilight: wScoutCoreS1, eclipse: wScoutCoreS2, rebellion: wScoutCoreS3, tfmars: wScoutCoreS4 },
+  scoutCoreAttributionMode: scoutCoreAttribBest ? "best" : "all",
+  wColorPref,
+  colorPrefByType: { BLACK: prefBLACK, BLUE: prefBLUE, BROWN: prefBROWN, ORANGE: prefORANGE, RED: prefRED, WHITE: prefWHITE, YELLOW: prefYELLOW },
+},
+
       // Note: trials/TopK/seedStart are execution settings, not part of the condition key.
     };
-  }, [templateId, outerSameColorMax, centerMode, wOuter, wTouch, wScout, wScoutCore, scoutRadius, wImbalance, imbalanceMetric]);
+  }, [templateId, outerSameColorMax, centerMode, wOuter, wTouch, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wColorPref, prefBLACK, prefBLUE, prefBROWN, prefORANGE, prefRED, prefWHITE, prefYELLOW]);
   const baseKeyParams = React.useMemo(() => {
     // Same condition identity excluding version fields. TopK is intentionally excluded per spec.
     return {
       templateId,
       hard: { minSameColorDist: 3, outerSameColorMax, centerMode },
-      soft: { wOuter, wTouch, wScout, wScoutCore, scoutRadius, wImbalance, imbalanceMetric },
+      soft: {
+        wOuter,
+        wTouch,
+        wScout,
+        wScoutCore,
+        scoutRadius,
+        wImbalance,
+        imbalanceMetric,
+        wScoutByScoutKey: { twilight: wScoutS1, eclipse: wScoutS2, rebellion: wScoutS3, tfmars: wScoutS4 },
+        wScoutCoreByScoutKey: { twilight: wScoutCoreS1, eclipse: wScoutCoreS2, rebellion: wScoutCoreS3, tfmars: wScoutCoreS4 },
+        scoutCoreAttributionMode: scoutCoreAttribBest ? "best" : "all",
+        wColorPref,
+        colorPrefByType: { BLACK: prefBLACK, BLUE: prefBLUE, BROWN: prefBROWN, ORANGE: prefORANGE, RED: prefRED, WHITE: prefWHITE, YELLOW: prefYELLOW },
+      },
     };
-  }, [templateId, outerSameColorMax, centerMode, wOuter, wTouch, wScout, wScoutCore, scoutRadius, wImbalance, imbalanceMetric]);
+  }, [templateId, outerSameColorMax, centerMode, wOuter, wTouch, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wColorPref, prefBLACK, prefBLUE, prefBROWN, prefORANGE, prefRED, prefWHITE, prefYELLOW]);
 
 
 
@@ -1963,7 +2248,7 @@ refreshProfiles();
     else setErrorMsg(null);
   }, [placementBaseResult]);
 
-  const placementBase = React.useMemo(() => (placementBaseResult.ok ? placementBaseResult.placement : []), [placementBaseResult]);
+  const placementBase = React.useMemo(() => (placementOverride ?? (placementBaseResult.ok ? placementBaseResult.placement : [])), [placementBaseResult, placementOverride]);
 
   const currentHash = React.useMemo(() => {
     try {
@@ -1972,6 +2257,36 @@ refreshProfiles();
       return "-";
     }
   }, [placementBase]);
+
+  const currentToken = React.useMemo(() => {
+    try {
+      return encodePlacementToken(placementBase as any);
+    } catch {
+      return currentHash;
+    }
+  }, [placementBase, currentHash]);
+
+  React.useEffect(() => {
+    if (currentToken && String(currentToken).trim()) setUrlHash(String(currentToken));
+  }, [currentToken, setUrlHash]);
+
+  // Keep Hash input in sync with the currently displayed placement token,
+  // unless the user is actively editing the field.
+  React.useEffect(() => {
+    const token = String(currentToken ?? "").trim();
+    if (!token) return;
+
+    const prev = prevTokenRef.current;
+    const isEditing = document.activeElement === hashInputRef.current;
+
+    // If the user hasn't typed anything yet, or the field was previously showing the prior token,
+    // sync it to the new token.
+    if (!isEditing && (hashIo.trim() === "" || hashIo.trim() === prev)) {
+      setHashIo(token);
+    }
+
+    prevTokenRef.current = token;
+  }, [currentToken, hashIo]);
 
   const placementForViewer = React.useMemo(
     () => placementBase.map((p) => ({ ...p })) as any as ViewerPlacementItem[],
@@ -1997,6 +2312,8 @@ refreshProfiles();
       S6: { dx: 18, dy: -60 },
       S7: { dx: 18, dy: -60 },
       S8: { dx: 18, dy: -60 },
+      S9: { dx: 18, dy: -60 },
+      S10: { dx: 18, dy: -60 },
     } as const;
   }, []);
 
@@ -2141,7 +2458,7 @@ const currentResult = React.useMemo(() => {
   const COL_LABEL: Record<string, { ja: string; en: string }> = {
     total: { ja: "評価", en: "total" },
     scout: { ja: "船接触", en: "scout" },
-    scoutCore: { ja: "船傍星", en: "scoutCore" },
+    scoutCore: { ja: "船星系", en: "scoutCore" },
     outer: { ja: "最外周", en: "outer" },
     touch: { ja: "辺境", en: "touch" },
     cntOuter: { ja: "外周数", en: "outerCnt" },
@@ -2342,6 +2659,30 @@ const colorFor = (maxKeys: Set<string>, minKeys: Set<string>, k: string): string
   );
 }
 
+
+async function handleToggleContinuous() {
+  if (continuousMode) {
+    // Stop after the current search finishes (runLogicalSearch is not abortable here).
+    stopContinuousRef.current = true;
+    setContinuousMode(false);
+    return;
+  }
+
+  stopContinuousRef.current = false;
+  setContinuousMode(true);
+
+  try {
+    while (!stopContinuousRef.current) {
+      await handleGenerateRank();
+      await nextFrame();
+    }
+  } finally {
+    stopContinuousRef.current = false;
+    setContinuousMode(false);
+  }
+}
+
+
 async function handleGenerateRank() {
     if (busy) return;
 
@@ -2366,7 +2707,20 @@ async function handleGenerateRank() {
           seedStart,
           yieldEvery: 50,
           hard: { minSameColorDist: 3, outerSameColorMax, centerMode },
-          soft: { wOuter, wTouch, wScout, wScoutCore, scoutRadius, wImbalance, imbalanceMetric },
+          soft: {
+        wOuter,
+        wTouch,
+        wScout,
+        wScoutCore,
+        scoutRadius,
+        wImbalance,
+        imbalanceMetric,
+        wScoutByScoutKey: { twilight: wScoutS1, eclipse: wScoutS2, rebellion: wScoutS3, tfmars: wScoutS4 },
+        wScoutCoreByScoutKey: { twilight: wScoutCoreS1, eclipse: wScoutCoreS2, rebellion: wScoutCoreS3, tfmars: wScoutCoreS4 },
+        scoutCoreAttributionMode: scoutCoreAttribBest ? "best" : "all",
+        wColorPref,
+        colorPrefByType: { BLACK: prefBLACK, BLUE: prefBLUE, BROWN: prefBROWN, ORANGE: prefORANGE, RED: prefRED, WHITE: prefWHITE, YELLOW: prefYELLOW },
+      },
         },
         (done, bestNow) => {
           setProgressCurrent(done);
@@ -2414,7 +2768,7 @@ async function handleGenerateRank() {
     };
   });
 
-  const merged = mergeCandidates(key, activePersisted, usedPersisted, incoming, capacityActive);
+  const merged = mergeCandidates(key, activePersistedRef.current, usedPersistedRef.current, incoming, capacityActive);
   await saveMergeToDb(key, merged);
   await upsertProfileToDb(key, {
     baseKeyRaw: stableStringify(baseKeyParams),
@@ -2435,6 +2789,10 @@ async function handleGenerateRank() {
 
   setActivePersisted(merged.active);
   setUsedPersisted(merged.used);
+
+  // Keep refs in sync for continuous mode (avoid stale-closure merges).
+  activePersistedRef.current = merged.active;
+  usedPersistedRef.current = merged.used;
 
   setActiveResults(merged.active.map(toRankedResult));
   setUsedResults(merged.used.map(toRankedResult));
@@ -2525,8 +2883,6 @@ async function handleGenerateRank() {
     },
     [searchKey, capacityActive, baseKeyParams, templateId, searchKeyParams, keepTop, refreshProfiles, t]
   );
-
-const isNarrow = useIsNarrow(1180);
 
 const viewList = React.useMemo(() => {
   return resultsMode === "active" ? activeResults.slice(0, keepTop) : usedResults;
@@ -2677,8 +3033,170 @@ const handleDeleteUsed = React.useCallback(
     []
   );
 
+  // Mobile: show Top-K early; PC order remains unchanged.
+  const topKSection = (
+  <div style={{ padding: 10, border: "1px solid #ddd", borderRadius: 8, overflow: isNarrow ? "visible" : "auto", flex: isNarrow ? "0 0 auto" : 1, minHeight: isNarrow ? "auto" : 0 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
+    <div style={{ fontWeight: 700 }}>{t("topKLogical")}</div>
+  
+    <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <span style={{ fontSize: 12, opacity: 0.75 }}>
+        {t("saved")}: {savedActiveCount} / {savedUsedCount}
+      </span>
+  
+      <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
+        <input type="radio" checked={resultsMode === "active"} onChange={() => setResultsMode("active")} />
+        {t("resultsModeActive")}
+      </label>
+      <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
+        <input type="radio" checked={resultsMode === "used"} onChange={() => setResultsMode("used")} />
+        {t("resultsModeUsed")}
+      </label>
+    </div>
+  </div>
+  
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {busy ? (
+        <div style={{ fontSize: 12, opacity: 0.7 }}>{t("searching")}</div>
+      ) : (
+        viewList.map((r, idx) => {
+          const b = getBreakdown(r);
+          const hashFull = getPlacementHashForResult(r) ?? "";
+          const hash = hashFull ? String(hashFull).slice(0, 12) : "-";
+  
+          const rawScore = Number((r as any)?.score ?? 0);
+          const rankScore = 1000 + rawScore;
+  
+          const totals = b?.planetTypeTotals ?? null;
+  
+          const items = [
+            { k: "RED", label: "赤" },
+            { k: "BLACK", label: "黒" },
+            { k: "BLUE", label: "青" },
+            { k: "BROWN", label: "茶" },
+            { k: "ORANGE", label: "橙" },
+            { k: "RED", label: "赤" },
+            { k: "WHITE", label: "白" },
+            { k: "YELLOW", label: "黄" },
+          ]
+            .map((it) => ({ ...it, v: Number((totals as any)?.[it.k] ?? 0) }))
+            .sort((a, b) => b.v - a.v);
+  
+          const planetLine = items.map((it) => `${it.label}${it.v}`).join(" ");
+  
+          return (
+            <div
+              key={`${(r as any)?.seed ?? "seed"}-${idx}`}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  // Select this result
+                  setPlacementOverride(null);
+                  setErrorMsg(null);
+                  setSelectedPlacement(
+    Array.isArray((r as any)?.placement)
+      ? ((r as any).placement as any[]).map((p: any) => ({ ...p }))
+      : null
+  );
+                  const s = String((r as any)?.seed ?? "0");
+                  setSelectedSeedLabel(s);
+                  setSeed(s);
+                }
+              }}
+              onClick={() => {
+                // Select this result for both the board view and the "Current Logical Summary".
+                setPlacementOverride(null);
+                setErrorMsg(null);
+                setSelectedPlacement(
+    Array.isArray((r as any)?.placement)
+      ? ((r as any).placement as any[]).map((p: any) => ({ ...p }))
+      : null
+  );
+                const s = String((r as any)?.seed ?? "0");
+                setSelectedSeedLabel(s);
+                setSeed(s);
+              }}
+              style={{
+                textAlign: "left",
+                padding: "8px 10px",
+                border: "1px solid #e5e5e5",
+                borderRadius: 8,
+                background: "white",
+                cursor: "pointer",
+              }}
+            >
+              <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+                <span style={{ fontWeight: 800, fontSize: 12 }}>{idx + 1}.</span>
+                <span style={{ fontSize: 12 }}>
+                  <span style={{ opacity: 0.7 }}>{t("rankScore")}:</span> {fmt0(rankScore)}
+                </span>
+                <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12 }}>
+                  {hash}
+                </span>
+  
+                <span style={{ marginLeft: "auto" }} />
+  
+                {resultsMode === "active" ? (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMarkUsed(String(hashFull));
+                    }}
+                    style={{ padding: "2px 8px", fontSize: 12, border: "1px solid #ccc", borderRadius: 6, background: "white" }}
+                  >
+                    {t("markUsed")}
+                  </button>
+                ) : (
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRestore(String(hashFull));
+                      }}
+                      style={{ padding: "2px 8px", fontSize: 12, border: "1px solid #ccc", borderRadius: 6, background: "white" }}
+                    >
+                      {t("restore")}
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteUsed(String(hashFull));
+                      }}
+                      style={{ padding: "2px 8px", fontSize: 12, border: "1px solid #f0b", borderRadius: 6, background: "white" }}
+                    >
+                      {t("delete")}
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div style={{ fontSize: 12, marginTop: 2, opacity: 0.9 }}>{planetLine}</div>
+            </div>
+          );
+        })
+      )}              </div>
+  </div>
+  );
+
   return (
-    <div style={{ width: "100%", height: "100dvh", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
+    <>
+    <style jsx global>{`
+      /* PC: hide scrollbars but keep scroll (mouse wheel / trackpad) */
+      @media (hover: hover) and (pointer: fine) {
+        .pc-hide-scrollbar {
+          scrollbar-width: none; /* Firefox */
+          -ms-overflow-style: none; /* IE/Edge Legacy */
+        }
+        .pc-hide-scrollbar::-webkit-scrollbar {
+          width: 0;
+          height: 0;
+          display: none; /* Chrome/Safari */
+        }
+      }
+    `}</style>
+
+    <div style={{ width: "100%", height: isNarrow ? "auto" : "100dvh", display: "flex", flexDirection: "column", overflow: isNarrow ? "visible" : "hidden", minHeight: isNarrow ? "100dvh" : 0 }}>
       {/* --- header --- */}
       <div style={{ padding: 12, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <div style={{ fontWeight: 700 }}>{t("title")}</div>
@@ -2715,59 +3233,89 @@ const handleDeleteUsed = React.useCallback(
           </select>
         </label>
 
-        <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          <span>{t("seed")}</span>
-          <input
-            value={seed}
-            onChange={(e) => {
-              setSelectedPlacement(null);
-              setSelectedSeedLabel(null);
-              setSeed(e.target.value);
-            }}
-            style={{ width: 160 }}
-          />
-        </label>
-
-
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <span style={{ fontSize: 12, opacity: 0.85 }}>{t("seedMode")}</span>
-          <label style={{ display: "flex", gap: 4, alignItems: "center", fontSize: 12 }}>
-            <input
-              type="radio"
-              name="seedMode"
-              value="random"
-              checked={seedMode === "random"}
-              onChange={() => setSeedMode("random")}
-            />
-            {t("seedModeRandom")}
-          </label>
-          <label style={{ display: "flex", gap: 4, alignItems: "center", fontSize: 12 }}>
-            <input
-              type="radio"
-              name="seedMode"
-              value="fixed"
-              checked={seedMode === "fixed"}
-              onChange={() => setSeedMode("fixed")}
-            />
-            {t("seedModeFixed")}
-          </label>
-        </div>
 
         <button onClick={handleGenerateRank} disabled={busy} style={{ padding: "6px 10px", fontWeight: 700 }}>
           {busy ? t("searching") : t("runSearch")}
         </button>
 
+        <button
+          onClick={handleToggleContinuous}
+          disabled={busy && !continuousMode}
+          style={{ padding: "6px 10px", fontWeight: 700 }}
+        >
+          {continuousMode ? t("stopSearch") : t("continuous")}
+        </button>
+
+          <button
+            onClick={() => {
+              try {
+                const url = new URL(window.location.href);
+                copyText(url.toString());
+              } catch {
+                // ignore
+              }
+            }}
+            style={{ padding: "6px 10px", fontWeight: 700 }}
+          >
+            {t("copyUrl")}
+          </button>
+
+{/*
         <div style={{ fontSize: 12, opacity: 0.8 }}>
           templateId=<span style={{ fontFamily: "monospace" }}>{templateId}</span> / {t("progress")}: {progressCurrent}/{trials} (
           {Math.round(progressPct * 100)}%) / {t("best")}={progressBest ?? "-"}
           {selectedSeedLabel ? <span style={{ marginLeft: 10 }}>({t("selectedSeed")}={selectedSeedLabel})</span> : null}
         </div>
+*/}
       </div>
 
       {/* --- ssot line --- */}
+{/*
       <div style={{ padding: "0 12px 10px", fontSize: 12, opacity: 0.9, display: "flex", gap: 14, flexWrap: "wrap" }}>
         <div>
-          {t("currentPlacementHash")}=<span style={{ fontFamily: "monospace", marginLeft: 6 }}>{currentHash}</span>
+          {t("currentPlacementHash")}=<span style={{ fontFamily: "monospace", marginLeft: 6 }}>{currentHash}</span></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <span>{t("hash")}:</span>
+          <input
+            ref={hashInputRef}
+            value={hashIo}
+            onChange={(e) => setHashIo(e.target.value)}
+            placeholder={currentToken}
+            style={{ width: 260, fontFamily: "monospace", fontSize: 12, padding: "2px 6px" }}
+          />
+          <button
+            onClick={() => {
+              const h = (hashIo ?? "").trim();
+              if (!h) return;
+              setUrlHash(h);
+              applyHashToSelection(h);
+            }}
+            style={{ padding: "2px 8px", fontSize: 12, fontWeight: 700 }}
+          >
+            {t("apply")}
+          </button>
+          <button
+            onClick={() => {
+              setHashIo(String(currentToken));
+              copyText(String(currentToken));
+            }}
+            style={{ padding: "2px 8px", fontSize: 12, fontWeight: 700 }}
+          >
+            {t("copy")}
+          </button>
+          <button
+            onClick={() => {
+              try {
+                const url = new URL(window.location.href);
+                copyText(url.toString());
+              } catch {
+                // ignore
+              }
+            }}
+            style={{ padding: "2px 8px", fontSize: 12, fontWeight: 700 }}
+          >
+            {t("copyUrl")}
+          </button>
         </div>
         <div>
           {t("searchSsot")}:
@@ -2783,11 +3331,11 @@ const handleDeleteUsed = React.useCallback(
           )}
         </div>
       </div>
-
+*/}
 
       {/* 表示設定（表示のみ。検索/評価には影響しない） */}
-      <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", padding: "6px 0" }}>
-        <div style={{ fontSize: 12, fontWeight: 800, opacity: 0.85 }}>表示設定</div>
+      <div style={{ display: "flex", gap: 11, alignItems: "center", flexWrap: "wrap", padding: "0px 0" }}>
+        <div style={{ fontSize: 12, fontWeight: 800, opacity: 0.85 }}>　表示設定</div>
 
         <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
           <input type="checkbox" checked={showImportExport} onChange={(e) => setShowImportExport(e.target.checked)} />
@@ -2799,15 +3347,6 @@ const handleDeleteUsed = React.useCallback(
   <span>{t("savedConditions")}</span>
 </label>
 
-        <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
-          <input type="checkbox" checked={showMapToolbar} onChange={(e) => setShowMapToolbar(e.target.checked)} />
-          <span>Mapツールバー</span>
-        </label>
-
-        <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
-          <input type="checkbox" checked={showGlossary} onChange={(e) => setShowGlossary(e.target.checked)} />
-          <span>用語集</span>
-        </label>
       </div>
 
       {/* Export / Import */}
@@ -2869,7 +3408,7 @@ const handleDeleteUsed = React.useCallback(
                 const softSummary = hasParams
                   ? `${t("soft")}: ${t("wOuter")}=${String(params?.soft?.wOuter ?? "-")}, ${t("wTouch")}=${String(params?.soft?.wTouch ?? "-")}, ${t(
                       "wScout"
-                    )}=${String(params?.soft?.wScout ?? "-")}, ${t("wScoutCore")}=${String(params?.soft?.wScoutCore ?? "-")}, ${t(
+                    )}=${String(params?.soft?.wScout ?? "-")}, ${t("wScoutCore")}=${String(params?.soft?.wScoutCore ?? "-")}, wScoutByKey{twilight=${String(params?.soft?.wScoutByScoutKey?.twilight ?? params?.soft?.wScoutByScoutKey?.S1 ?? "-")},eclipse=${String(params?.soft?.wScoutByScoutKey?.eclipse ?? params?.soft?.wScoutByScoutKey?.S2 ?? "-")},rebellion=${String(params?.soft?.wScoutByScoutKey?.rebellion ?? params?.soft?.wScoutByScoutKey?.S3 ?? "-")},tfmars=${String(params?.soft?.wScoutByScoutKey?.tfmars ?? params?.soft?.wScoutByScoutKey?.S4 ?? "-")}}, wScoutCoreByKey{twilight=${String(params?.soft?.wScoutCoreByScoutKey?.twilight ?? params?.soft?.wScoutCoreByScoutKey?.S1 ?? "-")},eclipse=${String(params?.soft?.wScoutCoreByScoutKey?.eclipse ?? params?.soft?.wScoutCoreByScoutKey?.S2 ?? "-")},rebellion=${String(params?.soft?.wScoutCoreByScoutKey?.rebellion ?? params?.soft?.wScoutCoreByScoutKey?.S3 ?? "-")},tfmars=${String(params?.soft?.wScoutCoreByScoutKey?.tfmars ?? params?.soft?.wScoutCoreByScoutKey?.S4 ?? "-")}}, scoutCoreAttrib=${String(params?.soft?.scoutCoreAttributionMode ?? "-")}, ${t(
                       "scoutRadiusLabel"
                     )}=${String(params?.soft?.scoutRadius ?? "-")}, ${t("metric")}=${String(params?.soft?.imbalanceMetric ?? "-")}`
                   : null;
@@ -3019,10 +3558,86 @@ const handleDeleteUsed = React.useCallback(
         </div>
       ) : null}
 
-      <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden" }}>
+{/*
+        Main split view
+        - Left (map): allow overflow/scroll so the board image is never clipped on small screens.
+        - Right (results): make the whole panel scrollable so ranked maps are always reachable.
+        Layout-only changes; no logic changes.
+      */}
+      <div style={{ display: "flex", flex: isNarrow ? "0 0 auto" : 1, minHeight: isNarrow ? "auto" : 0, overflow: isNarrow ? "visible" : "hidden", flexDirection: isNarrow ? "column" : "row-reverse", gap: isNarrow ? 12 : 0 }}>
         {/* Left: Map */}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+        <div
+          className={!isNarrow ? "noScrollbar" : undefined}
+          style={{
+            position: "relative",
+            flexGrow: isNarrow ? 0 : 1,
+            flexShrink: 0,
+            flexBasis: isNarrow ? "auto" : 0,
+            minWidth: 0,
+            display: "flex",
+            flexDirection: "column",
+            // Mobile: do not make the map itself a scroll container; let the page scroll instead.
+            overflow: isNarrow ? "hidden" : "auto",
+            WebkitOverflowScrolling: isNarrow ? undefined : "touch",
+            // Mobile: allow the browser to handle vertical pan gestures for page scrolling.
+            touchAction: isNarrow ? "pan-y" : undefined,
+            height: isNarrow ? "60dvh" : "auto",
+            minHeight: isNarrow ? 320 : 0,
+          }}
+        >
+          {/* Mobile: keep scrolling natural by disabling map drag by default.
+              Tap the overlay to temporarily enable map interaction. */}
+          {isNarrow && !mobileMapInteract ? (
+            <div
+              onClick={() => setMobileMapInteract(true)}
+              style={{
+                position: "absolute",
+                inset: 0,
+                zIndex: 5,
+                // Fully transparent overlay that still allows native scrolling.
+                background: "transparent",
+                touchAction: "pan-y",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  left: 10,
+                  top: 10,
+                  padding: "6px 10px",
+                  borderRadius: 999,
+                  border: "1px solid #ddd",
+                  background: "rgba(255,255,255,0.9)",
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}
+              >
+                {lang === "ja" ? "スクロール優先（タップでマップ操作）" : "Scroll first (tap to interact with map)"}
+              </div>
+            </div>
+          ) : null}
+
+          {isNarrow && mobileMapInteract ? (
+            <button
+              onClick={() => setMobileMapInteract(false)}
+              style={{
+                position: "absolute",
+                right: 10,
+                top: 10,
+                zIndex: 6,
+                padding: "6px 10px",
+                borderRadius: 999,
+                border: "1px solid #ddd",
+                background: "rgba(255,255,255,0.92)",
+                fontSize: 12,
+                fontWeight: 800,
+              }}
+            >
+              {lang === "ja" ? "スクロールに戻す" : "Back to scroll"}
+            </button>
+          ) : null}
+
+          <div style={{ flex: 1, minHeight: 0, overflow: "visible" }}>
             <MapBoardViewer
               template={template as any}
               placement={placementForViewer}
@@ -3030,10 +3645,13 @@ const handleDeleteUsed = React.useCallback(
               sectorImgById={sectorImgById}
               imgOffsetBySlotId={imgOffsetBySlotId as any}
               rotOffsetsBySlotId={rotOffsetsBySlotId as any}
-              scaleByAccepts={{ LARGE: 1.0, MIDDLE: 0.9, SMALL: 1.0 }}
-              boundsPad={65}
-              zoom={1.0}
+              scaleByAccepts={{ LARGE: 1.02, MIDDLE: 0.93, SMALL: 1.1 }}
+              boundsPad={isNarrow ? 40 : 65}
+              zoom={isNarrow ? 0.85 : 1.0}
               showToolbar={showMapToolbar}
+              // Mobile: disable drag/pan by default so vertical page scrolling is not hijacked.
+              // Desktop: keep original behavior.
+              disablePan={isNarrow ? !mobileMapInteract : false}
             />
           </div>
 
@@ -3041,9 +3659,36 @@ const handleDeleteUsed = React.useCallback(
         </div>
 
         {/* Right: Results */}
-        <div style={{ width: isNarrow ? 360 : 1080, flexShrink: 0, borderLeft: "1px solid #ddd", overflow: "hidden" }}>
-          <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10, height: "100%" }}>
+        <div
+          style={{
+            width: isNarrow ? "100%" : 1080,
+            flexGrow: isNarrow ? 1 : 0,
+            flexShrink: 0,
+            flexBasis: isNarrow ? "auto" : 1080,
+            minHeight: 0,
+            borderRight: isNarrow ? "none" : "1px solid #ddd",
+            borderTop: isNarrow ? "1px solid #ddd" : "none",
+            // Desktop: outer hidden, inner scroll. Mobile: let the page scroll (no nested scroll).
+            overflow: isNarrow ? "visible" : "hidden",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <div
+            style={{
+              padding: 12,
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+              flex: isNarrow ? "0 0 auto" : 1,
+              minHeight: isNarrow ? "auto" : 0,
+              overflowY: isNarrow ? "visible" : "auto",
+              WebkitOverflowScrolling: isNarrow ? undefined : "touch",
+            }}
+          >
             <div style={{ fontWeight: 700 }}>{t("logicalResults")}</div>
+
+            {isNarrow ? topKSection : null}
 
             {/* Current logical summary */}
             <div style={{ padding: 10, border: "1px solid #ddd", borderRadius: 8 }}>
@@ -3088,7 +3733,7 @@ const handleDeleteUsed = React.useCallback(
                       {[
                         ["total", "評価"],
                         ["scout", "船接触"],
-                        ["scoutCore", "船傍星"],
+                        ["scoutCore", "船星系"],
                         ["outer", "最外周"],
                         ["touch", "辺境"],
                       ].map(([k, label]) => (
@@ -3197,15 +3842,28 @@ const handleDeleteUsed = React.useCallback(
 
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 <span>{t("centerMode")}</span>
-                <select value={centerMode} onChange={(e) => setCenterMode(e.target.value as any)}>
-                  <option value="NONE">NONE</option>
-                  <option value="CENTER_7_9">CENTER_7_9</option>
-                  <option value="CENTER_8">CENTER_8</option>
+                <select
+                  value={centerMode}
+                  onChange={(e) =>
+                    setCenterMode(
+                      e.target.value as "NONE" | "CENTER_7_9" | "CENTER_8" | "CENTER_7_8"
+                    )
+                  }
+                >
+                  {centerModeOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
                 </select>
               </label>
             </div>
 
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <details style={{ marginTop: 10 }}>
+              <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.9 }}>
+                {t("soft")}
+              </summary>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <div style={{ fontWeight: 700, fontSize: 12 }}>{t("soft")}</div>
 
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -3219,24 +3877,6 @@ const handleDeleteUsed = React.useCallback(
               </label>
 
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <span>{t("wScout")}</span>
-                <input type="number" value={wScout} min={0} max={10} onChange={(e) => setWScout(Number(e.target.value) || 0)} style={{ width: 60 }} />
-              </label>
-
-              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <span>{t("wScoutCore")}</span>
-                <input
-                  type="number"
-                  value={wScoutCore}
-                  min={0}
-                  max={10}
-                  onChange={(e) => setWScoutCore(Number(e.target.value) || 0)}
-                  style={{ width: 80 }}
-                />
-              </label>
-
-
-              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 <span>{t("radius")}</span>
                 <input
                   type="number"
@@ -3246,6 +3886,49 @@ const handleDeleteUsed = React.useCallback(
                   onChange={(e) => setScoutRadius(Math.max(1, Math.min(12, Number(e.target.value) || 1)))}
                   style={{ width: 60 }}
                 />
+
+<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10, alignItems: "start" }}>
+  <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+    <span>{t("wScoutS1")}</span>
+    <input type="number" value={wScoutS1} min={0} max={20} onChange={(e) => setWScoutS1(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+  </label>
+  <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+    <span>{t("wScoutS2")}</span>
+    <input type="number" value={wScoutS2} min={0} max={20} onChange={(e) => setWScoutS2(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+  </label>
+  <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+    <span>{t("wScoutS3")}</span>
+    <input type="number" value={wScoutS3} min={0} max={20} onChange={(e) => setWScoutS3(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+  </label>
+  <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+    <span>{t("wScoutS4")}</span>
+    <input type="number" value={wScoutS4} min={0} max={20} onChange={(e) => setWScoutS4(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+  </label>
+
+  <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+    <span>{t("wScoutCoreS1")}</span>
+    <input type="number" value={wScoutCoreS1} min={0} max={20} onChange={(e) => setWScoutCoreS1(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+  </label>
+  <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+    <span>{t("wScoutCoreS2")}</span>
+    <input type="number" value={wScoutCoreS2} min={0} max={20} onChange={(e) => setWScoutCoreS2(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+  </label>
+  <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+    <span>{t("wScoutCoreS3")}</span>
+    <input type="number" value={wScoutCoreS3} min={0} max={20} onChange={(e) => setWScoutCoreS3(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+  </label>
+  <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+    <span>{t("wScoutCoreS4")}</span>
+    <input type="number" value={wScoutCoreS4} min={0} max={20} onChange={(e) => setWScoutCoreS4(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+  </label>
+
+  <label style={{ display: "flex", gap: 8, alignItems: "center", gridColumn: "1 / -1", flexWrap: "wrap" }}>
+    <input type="checkbox" checked={scoutCoreAttribBest} onChange={(e) => setScoutCoreAttribBest(e.target.checked)} />
+    <span>{t("scoutCoreAttribBest")}</span>
+  </label>
+</div>
+
+
               </label>
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 <span>{t("metric")}</span>
@@ -3254,150 +3937,71 @@ const handleDeleteUsed = React.useCallback(
                   <option value="range">{lang === "ja" ? "range（最大−最小）" : "range"}</option>
                 </select>
               </label>
-            </div>
 
-            {/* Top-K List */}
-            <div style={{ padding: 10, border: "1px solid #ddd", borderRadius: 8, overflow: "auto", flex: 1, minHeight: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
-  <div style={{ fontWeight: 700 }}>{t("topKLogical")}</div>
+              <div style={{ width: "100%", borderTop: "1px dashed #ddd", marginTop: 8, paddingTop: 8 }}>
+                <div style={{ fontWeight: 700, fontSize: 12 }}>{t("colorPreference")}</div>
 
-  <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-    <span style={{ fontSize: 12, opacity: 0.75 }}>
-      {t("saved")}: {savedActiveCount} / {savedUsedCount}
-    </span>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 6 }}>
+                  <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <span>{t("wColorPref")}</span>
+                    <input
+                      type="number"
+                      value={wColorPref}
+                      min={0}
+                      max={20}
+                      onChange={(e) => setWColorPref(Math.max(0, Math.min(20, Number(e.target.value) || 0)))}
+                      style={{ width: 60 }}
+                    />
+                  </label>
 
-    <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
-      <input type="radio" checked={resultsMode === "active"} onChange={() => setResultsMode("active")} />
-      {t("resultsModeActive")}
-    </label>
-    <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
-      <input type="radio" checked={resultsMode === "used"} onChange={() => setResultsMode("used")} />
-      {t("resultsModeUsed")}
-    </label>
-  </div>
-</div>
+                  <span style={{ fontSize: 12, opacity: 0.75 }}>
+                    {lang === "ja"
+                      ? "prefは「惑星種別合計（planetTypeTotals）」を高く/低くする嗜好（+優遇 / -冷遇）"
+                      : "pref: + favors higher planetTypeTotals, - favors lower"}
+                  </span>
+                </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {busy ? (
-                  <div style={{ fontSize: 12, opacity: 0.7 }}>{t("searching")}</div>
-                ) : (
-                  viewList.map((r, idx) => {
-                    const b = getBreakdown(r);
-                    const hashFull = getPlacementHashForResult(r) ?? "";
-                    const hash = hashFull ? String(hashFull).slice(0, 12) : "-";
-
-                    const rawScore = Number((r as any)?.score ?? 0);
-                    const rankScore = 1000 + rawScore;
-
-                    const totals = b?.planetTypeTotals ?? null;
-
-                    const items = [
-                      { k: "RED", label: "赤" },
-                      { k: "BLACK", label: "黒" },
-                      { k: "BLUE", label: "青" },
-                      { k: "BROWN", label: "茶" },
-                      { k: "ORANGE", label: "橙" },
-                      { k: "RED", label: "赤" },
-                      { k: "WHITE", label: "白" },
-                      { k: "YELLOW", label: "黄" },
-                    ]
-                      .map((it) => ({ ...it, v: Number((totals as any)?.[it.k] ?? 0) }))
-                      .sort((a, b) => b.v - a.v);
-
-                    const planetLine = items.map((it) => `${it.label}${it.v}`).join(" ");
-
-                    return (
-                      <div
-                        key={`${(r as any)?.seed ?? "seed"}-${idx}`}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            // Select this result
-                            setSelectedPlacement((r as any)?.placement ?? null);
-                            const s = String((r as any)?.seed ?? "0");
-                            setSelectedSeedLabel(s);
-                            setSeed(s);
-                          }
-                        }}
-                        onClick={() => {
-                          // Select this result for both the board view and the "Current Logical Summary".
-                          setSelectedPlacement((r as any)?.placement ?? null);
-                          const s = String((r as any)?.seed ?? "0");
-                          setSelectedSeedLabel(s);
-                          setSeed(s);
-                        }}
-                        style={{
-                          textAlign: "left",
-                          padding: "8px 10px",
-                          border: "1px solid #e5e5e5",
-                          borderRadius: 8,
-                          background: "white",
-                          cursor: "pointer",
-                        }}
-                      >
-                        <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
-                          <span style={{ fontWeight: 800, fontSize: 12 }}>{idx + 1}.</span>
-                          <span style={{ fontSize: 12 }}>
-                            <span style={{ opacity: 0.7 }}>{t("rankScore")}:</span> {fmt0(rankScore)}
-                          </span>
-                          <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12 }}>
-                            {hash}
-                          </span>
-
-                          <span style={{ marginLeft: "auto" }} />
-
-                          {resultsMode === "active" ? (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleMarkUsed(String(hashFull));
-                              }}
-                              style={{ padding: "2px 8px", fontSize: 12, border: "1px solid #ccc", borderRadius: 6, background: "white" }}
-                            >
-                              {t("markUsed")}
-                            </button>
-                          ) : (
-                            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRestore(String(hashFull));
-                                }}
-                                style={{ padding: "2px 8px", fontSize: 12, border: "1px solid #ccc", borderRadius: 6, background: "white" }}
-                              >
-                                {t("restore")}
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteUsed(String(hashFull));
-                                }}
-                                style={{ padding: "2px 8px", fontSize: 12, border: "1px solid #f0b", borderRadius: 6, background: "white" }}
-                              >
-                                {t("delete")}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                        <div style={{ fontSize: 12, marginTop: 2, opacity: 0.9 }}>{planetLine}</div>
-                      </div>
-                    );
-                  })
-                )}              </div>
-            </div>
-
-            {Object.keys(hardFailBy).length > 0 ? (
-              <div style={{ padding: 10, border: "1px solid #ddd", borderRadius: 8 }}>
-                <div style={{ fontWeight: 700, marginBottom: 8 }}>{t("hardFailCounts")}</div>
-                <pre style={{ margin: 0, fontSize: 12, whiteSpace: "pre-wrap" }}>{stableJson(hardFailBy)}</pre>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 8, marginTop: 6 }}>
+                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }}>
+                    <span>{lang === "ja" ? "黒" : "BLACK"}</span>
+                    <input type="number" value={prefBLACK} min={-20} max={20} onChange={(e) => setPrefBLACK(Math.max(-20, Math.min(20, Number(e.target.value) || 0)))} style={{ width: 60 }} />
+                  </label>
+                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }}>
+                    <span>{lang === "ja" ? "青" : "BLUE"}</span>
+                    <input type="number" value={prefBLUE} min={-20} max={20} onChange={(e) => setPrefBLUE(Math.max(-20, Math.min(20, Number(e.target.value) || 0)))} style={{ width: 60 }} />
+                  </label>
+                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }}>
+                    <span>{lang === "ja" ? "茶" : "BROWN"}</span>
+                    <input type="number" value={prefBROWN} min={-20} max={20} onChange={(e) => setPrefBROWN(Math.max(-20, Math.min(20, Number(e.target.value) || 0)))} style={{ width: 60 }} />
+                  </label>
+                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }}>
+                    <span>{lang === "ja" ? "橙" : "ORANGE"}</span>
+                    <input type="number" value={prefORANGE} min={-20} max={20} onChange={(e) => setPrefORANGE(Math.max(-20, Math.min(20, Number(e.target.value) || 0)))} style={{ width: 60 }} />
+                  </label>
+                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }}>
+                    <span>{lang === "ja" ? "赤" : "RED"}</span>
+                    <input type="number" value={prefRED} min={-20} max={20} onChange={(e) => setPrefRED(Math.max(-20, Math.min(20, Number(e.target.value) || 0)))} style={{ width: 60 }} />
+                  </label>
+                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }}>
+                    <span>{lang === "ja" ? "白" : "WHITE"}</span>
+                    <input type="number" value={prefWHITE} min={-20} max={20} onChange={(e) => setPrefWHITE(Math.max(-20, Math.min(20, Number(e.target.value) || 0)))} style={{ width: 60 }} />
+                  </label>
+                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }}>
+                    <span>{lang === "ja" ? "黄" : "YELLOW"}</span>
+                    <input type="number" value={prefYELLOW} min={-20} max={20} onChange={(e) => setPrefYELLOW(Math.max(-20, Math.min(20, Number(e.target.value) || 0)))} style={{ width: 60 }} />
+                  </label>
+                </div>
               </div>
-            ) : null}
+            </div>
+            </details>
+
+            {isNarrow ? null : topKSection}
+
           </div>
         </div>
       </div>
     </div>
+    </>
   );
 }
 

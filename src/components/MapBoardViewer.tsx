@@ -167,7 +167,11 @@ function calcTilePixelBox(sector: any, hexSize: number, inflate: number, rotatio
 
 export function MapBoardViewer(props: {
   template: TemplateDef;
-  placement: PlacementItem[];
+  placement?: PlacementItem[];
+  placements?: PlacementItem[];
+
+  // If true, disables pointer-drag panning (viewBox move)
+  disablePan?: boolean;
 
   sectorById: Map<string, any> | Record<string, any>;
   sectorImgById: Map<string, string> | Record<string, string>;
@@ -192,6 +196,9 @@ export function MapBoardViewer(props: {
   zoom?: number;
   boundsPad?: number;
 
+  // 画像同士の微妙な“被り”を避けるための縮小率（1.0=等倍）
+  imageShrink?: number;
+
   // 固定ピクセルサイズでSVGをレンダリング（画像出力のサイズ安定化用）
   svgPixelSize?: { width: number; height: number };
 
@@ -204,6 +211,8 @@ export function MapBoardViewer(props: {
   const {
     template,
     placement,
+    placements,
+    disablePan = false,
     sectorById,
     sectorImgById,
     viewRot = 4,
@@ -229,9 +238,16 @@ export function MapBoardViewer(props: {
     svgPixelSize, 
   } = props;
 
+  // Backward/forward compatible placement list
+  const placementList = (placement ?? placements ?? []) as PlacementItem[];
+
   // fit-to-bounds zoom (existing): reduces surrounding pad, does not clip
   const zoomFit = Number.isFinite(zoomProp as number) && (zoomProp as number) > 0 ? (zoomProp as number) : 1;
   const boundsPad = Number.isFinite(boundsPadProp as number) && (boundsPadProp as number) >= 0 ? (boundsPadProp as number) : 40;
+
+  // Slightly shrink each tile image to avoid border overlap artifacts on some DPIs.
+  const imageShrinkRaw = Number.isFinite(props.imageShrink as number) ? (props.imageShrink as number) : 0.985;
+  const imageShrink = Math.max(0.9, Math.min(1.0, imageShrinkRaw));
   const effectivePad = boundsPad / zoomFit;
 
   // ===== Offset editor (existing) =====
@@ -289,7 +305,7 @@ export function MapBoardViewer(props: {
   // ===== Tile bbox cache =====
   const boxByKey = React.useMemo(() => {
     const m = new Map<string, { w: number; h: number; offsetX: number; offsetY: number }>();
-    for (const p of placement) {
+    for (const p of placementList) {
       const slot = slotById.get(p.slotId);
       const accepts0 = normalizeAccepts0(slot?.accepts?.[0]);
       const inflate = inflateByAccepts[accepts0] ?? 1.06;
@@ -313,11 +329,11 @@ export function MapBoardViewer(props: {
       m.set(key, calcTilePixelBox(sector, hexSize, inflate, bboxRotDeg));
     }
     return m;
-  }, [placement, sectorById, slotById, hexSize, inflateByAccepts, rotateOffsetDegByAccepts]);
+  }, [placementList, sectorById, slotById, hexSize, inflateByAccepts, rotateOffsetDegByAccepts]);
 
   // ===== Placement -> drawable items =====
   const tileItems = React.useMemo(() => {
-    return placement
+    return placementList
       .map((p) => {
         const slot = slotById.get(p.slotId);
         if (!slot) return null;
@@ -398,8 +414,7 @@ export function MapBoardViewer(props: {
       h: number;
       tileDeg: number;
     }>;
-  }, [
-    placement,
+  }, [placementList,
     slotById,
     viewRot,
     hexSize,
@@ -538,6 +553,7 @@ export function MapBoardViewer(props: {
 
   const onPointerDown = React.useCallback(
     (e: React.PointerEvent) => {
+      if (disablePan) return;
       if (!svgRef.current) return;
       if (e.button !== 0) return;
       const svg = svgRef.current;
@@ -555,7 +571,7 @@ export function MapBoardViewer(props: {
       };
       (e.target as Element).setPointerCapture?.(e.pointerId);
     },
-    [vbX, vbY, curW, curH]
+    [disablePan, vbX, vbY, curW, curH]
   );
 
   const onPointerMove = React.useCallback((e: React.PointerEvent) => {
@@ -674,13 +690,19 @@ export function MapBoardViewer(props: {
         >
           {/* Tiles */}
           {tileItems.map((t) => {
+            const iw = t.w * imageShrink;
+            const ih = t.h * imageShrink;
+            const ox = (t.w - iw) / 2;
+            const oy = (t.h - ih) / 2;
             return (
               <g key={t.key} transform={`translate(${fmtNum(t.imgX)},${fmtNum(t.imgY)})`}>
                 {t.img ? (
                   <image
                     href={t.img}
-                    width={fmtNum(t.w)}
-                    height={fmtNum(t.h)}
+                    x={fmtNum(ox)}
+                    y={fmtNum(oy)}
+                    width={fmtNum(iw)}
+                    height={fmtNum(ih)}
                     preserveAspectRatio="xMidYMid meet"
                     transform={`translate(${fmtNum(t.w / 2)},${fmtNum(t.h / 2)}) rotate(${fmtNum(t.tileDeg)}) translate(${fmtNum(-t.w / 2)},${fmtNum(-t.h / 2)})`}
                     style={{ opacity: 1 }}

@@ -7,7 +7,7 @@ export const TEMPLATE_4P_LOSTFLEET: TemplateDef = {
   expansion: "lostFleet",
   radius: 12,
   slots: [
-    // LARGE 9
+    // LARGE 10
     { slotId: "L1", pos: { q: 11, r: 10 }, accepts: ["LARGE"] },
     { slotId: "L2", pos: { q: 16, r:  6 }, accepts: ["LARGE"] },
     { slotId: "L3", pos: { q: 6, r: 14 }, accepts: ["LARGE"] },
@@ -29,7 +29,7 @@ export const TEMPLATE_4P_LOSTFLEET: TemplateDef = {
     { slotId: "M7", pos: { q: 14, r: 9 }, accepts: ["MIDDLE"] },
     { slotId: "M8", pos: { q: 16, r:-2 }, accepts: ["MIDDLE"] },
 
-    // SMALL 8
+    // SMALL 10
     { slotId: "S1", pos: { q: 12, r:  7 }, accepts: ["SMALL"] },
     { slotId: "S2", pos: { q: 7, r: 11 }, accepts: ["SMALL"] },
     { slotId: "S3", pos: { q: 14, r: 4 }, accepts: ["SMALL"] },

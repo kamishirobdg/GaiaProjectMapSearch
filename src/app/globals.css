@@ -3,3 +3,54 @@ html, body {
   margin: 0;
   padding: 0;
 }
+/* board layout */
+.boardLayout {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.boardSidebar {
+  width: 420px;
+  max-width: 420px;
+  flex-shrink: 0;
+}
+
+.boardMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.mapContainer {
+  width: 100%;
+  height: 100%;
+}
+
+/* ===== Mobile ===== */
+@media (max-width: 900px) {
+  .boardLayout {
+    flex-direction: column;
+  }
+
+  .boardSidebar {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .boardMain {
+    width: 100%;
+  }
+
+  .mapContainer {
+    height: 50vh;        /* ← 重要 */
+    min-height: 320px;
+  }
+}
+/* Hide scrollbars while keeping scroll functionality */
+.noScrollbar {
+  -ms-overflow-style: none; /* IE/Edge legacy */
+  scrollbar-width: none; /* Firefox */
+}
+.noScrollbar::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}

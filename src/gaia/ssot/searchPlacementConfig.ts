@@ -83,11 +83,31 @@ const CONFIG_3P_LOSTFLEET: SearchPlacementConfig = {
   scoutCount: 4,
 };
 
+const CONFIG_4P_LOSTFLEET: SearchPlacementConfig = {
+  templateId: "4p_lostFleet",
+
+  slotOrder: [
+    "L1","L2","L3","L4","L5","L6","L7","L8","L9","L10",
+    "M1","M2","M3","M4","M5","M6","M7","M8",
+    "S1","S2","S3","S4","S5","S6","S7","S8","S9","S10",
+  ],
+
+  // 4人用標準セット
+  fixedLargeIds: ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10"],
+
+  middleIds: [...EXPANSION_MIDDLE_IDS],
+  scoutIds: [...EXPANSION_SCOUT_IDS],
+  littleIds: ["19", "20", "21", "22", "23", "24"],
+  littleFixedCounts: { "19": 4, "20": 1, "21": 1 },
+  scoutCount: 4, 
+};
+
+// getSearchPlacementConfig に条件分岐を追加
 export function getSearchPlacementConfig(templateId: string): SearchPlacementConfig {
   if (templateId === "3p_lostFleet") return CONFIG_3P_LOSTFLEET;
+  if (templateId === "4p_lostFleet") return CONFIG_4P_LOSTFLEET; // 追加
 
-  // 将来拡張：ここに templateId ごとの設定を追加
-  throw new Error(`getSearchPlacementConfig: unsupported templateId="${templateId}" (add config in ssot/searchPlacementConfig.ts)`);
+  throw new Error(`getSearchPlacementConfig: unsupported templateId="${templateId}"`);
 }
 
 /**
