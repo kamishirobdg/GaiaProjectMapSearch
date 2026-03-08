@@ -270,7 +270,7 @@ export function extractForEval(logicalMap: LogicalMap, hardParams: HardParams): 
 
   return {
     templateId,
-    seed: logicalMap.seed,
+    seed: Number(logicalMap.seed ?? 0),
     placementHash,
     cells,
     planetCells,
