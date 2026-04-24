@@ -3689,34 +3689,36 @@ const handleDeleteUsed = React.useCallback(
             <div style={{ padding: 10, border: "1px solid #ddd", borderRadius: 8 }}>
               <div style={{ fontWeight: 700, marginBottom: 6 }}>{t("currentLogicalSummary")}</div>
 
-              <div style={{ fontFamily: "monospace", fontSize: 11, opacity: 0.85, marginTop: 4 }}>
-                {t("seed")}={String(selectedSeedLabel ?? seed ?? "-")}  /  {t("placementHashResult")}={curHashFromResult}  /  {t("placementHashView")}={currentHash}
-              </div>
+              <details style={{ marginTop: 4 }}>
+                <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.75 }}>System</summary>
+                <div style={{ fontFamily: "monospace", fontSize: 11, opacity: 0.85, marginTop: 4 }}>
+                  {t("seed")}={String(selectedSeedLabel ?? seed ?? "-")}  /  {t("placementHashResult")}={curHashFromResult}  /  {t("placementHashView")}={currentHash}
+                </div>
 
-              <div style={{ marginTop: 8, fontSize: 12 }}>
-                {t("score")}={currentResult ? Number(currentResult.score ?? 0 ).toFixed(3) : "-"}
-              </div>
+                <div style={{ marginTop: 8, fontSize: 12 }}>
+                  {t("score")}={currentResult ? Number(currentResult.score ?? 0 ).toFixed(3) : "-"}
+                </div>
 
-              <div style={{ marginTop: 4, fontSize: 12 }}>
-                {t("imbalance")} ({curImb.metric})={currentResult ? (Math.round(curImb.value * 1000) / 1000).toFixed(3) : "-"}
-              </div>
+                <div style={{ marginTop: 4, fontSize: 12 }}>
+                  {t("imbalance")} ({curImb.metric})={currentResult ? (Math.round(curImb.value * 1000) / 1000).toFixed(3) : "-"}
+                </div>
 
-              <div style={{ marginTop: 4, fontSize: 12, opacity: 0.9 }}>
-                {t("outerCnt")}={currentResult ? curOT.outerSum : "-"} / {t("touchCnt")}={currentResult ? curOT.touchSum : "-"}
-              </div>
+                <div style={{ marginTop: 4, fontSize: 12, opacity: 0.9 }}>
+                  {t("outerCnt")}={currentResult ? curOT.outerSum : "-"} / {t("touchCnt")}={currentResult ? curOT.touchSum : "-"}
+                </div>
 
-              <div style={{ marginTop: 4, fontSize: 12, opacity: 0.9 }}>
-                {t("scoutRadius")}={curScout.radius ?? "-"} / {t("scoutTotal")}={currentResult ? curScout.scoutTotal : "-"}
-              </div>
+                <div style={{ marginTop: 4, fontSize: 12, opacity: 0.9 }}>
+                  {t("scoutRadius")}={curScout.radius ?? "-"} / {t("scoutTotal")}={currentResult ? curScout.scoutTotal : "-"}
+                </div>
 
-              <div style={{ marginTop: 4, fontSize: 12, opacity: 0.9 }}>
-                {t("scoutCoreRadius")}={curScoutCore.radius ?? "-"} / {t("scoutCoreTotal")}={currentResult ? curScoutCore.totalCore : "-"}
-                {currentResult ? <span> / {t("extra")}={curScoutCore.totalExtra}</span> : null}
-              
-              </div>
+                <div style={{ marginTop: 4, fontSize: 12, opacity: 0.9 }}>
+                  {t("scoutCoreRadius")}={curScoutCore.radius ?? "-"} / {t("scoutCoreTotal")}={currentResult ? curScoutCore.totalCore : "-"}
+                  {currentResult ? <span> / {t("extra")}={curScoutCore.totalExtra}</span> : null}
+                </div>
+              </details>
 
               {currentResult ? (
-                <details style={{ marginTop: 10 }}>
+                <details open suppressHydrationWarning style={{ marginTop: 10 }}>
                   <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.85 }}>
                     {lang === "ja" ? "色別の内訳（outer/touch/scout/total）" : "By color (outer/touch/scout/total)"}
                   </summary>
