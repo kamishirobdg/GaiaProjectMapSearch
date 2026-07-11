@@ -24,7 +24,9 @@ import * as SlotCenters4p from "../templates/4p_lostfleet_slotCenters";
 import { makeSearchPlacementFromSeed } from "../ssot/searchPlacementConfig";
 import { computePlacementHash } from "../ssot/placementHash";
 
-export type Axial = { q: number; r: number };
+export type { Axial } from "../board/axial";
+import type { Axial } from "../board/axial";
+import { AXIAL_DIRS, keyOf, axialAdd, parseKey, rotate60 } from "../board/axial";
 
 export type LogicalCell = {
   pos: Axial;
@@ -84,29 +86,10 @@ export type LogicalMap = {
   collisionsBySlot: Record<string, number>;
 };
 
-const AXIAL_DIRS: Axial[] = [
-  { q: 1, r: 0 },
-  { q: 1, r: -1 },
-  { q: 0, r: -1 },
-  { q: -1, r: 0 },
-  { q: -1, r: 1 },
-  { q: 0, r: 1 },
-];
-
 const ALLOW_LF_SINGLE_COMPONENT = true;
 
-function keyOf(p: Axial) {
-  return `${p.q},${p.r}`;
-}
-function axialAdd(a: Axial, b: Axial): Axial {
-  return { q: a.q + b.q, r: a.r + b.r };
-}
 function axialSub(a: Axial, b: Axial): Axial {
   return { q: a.q - b.q, r: a.r - b.r };
-}
-function parseKey(k: string): Axial {
-  const [q, r] = k.split(",").map((v) => Number(v));
-  return { q, r };
 }
 
 // cube helpers
@@ -146,28 +129,6 @@ function meanCubes(cs: Cube[]): Cube {
     sz += c.z;
   }
   return { x: sx / n, y: sy / n, z: sz / n };
-}
-
-/** Rotate axial(q,r) by 60° steps (CW) */
-function rotate60(ax: Axial, stepsCW: number): Axial {
-  let q = ax.q;
-  let r = ax.r;
-  const s = ((stepsCW % 6) + 6) % 6;
-
-  for (let i = 0; i < s; i++) {
-    const x = q;
-    const z = r;
-    const y = -x - z;
-
-    // cube CW: (x,y,z) -> (-z, -x, -y)
-    const nx = -z;
-    const ny = -x;
-    const nz = -y;
-
-    q = nx;
-    r = nz;
-  }
-  return { q, r };
 }
 
 function normalizeRawCell(raw: any): {

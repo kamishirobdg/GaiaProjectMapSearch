@@ -10,7 +10,9 @@
 // - Sector local cell keys are treated as axial as-authored (NO extra shift).
 //   (Both base and lostfleet sector definitions in current repo form valid radius=2 axial layouts.)
 
-export type Axial = { q: number; r: number };
+export type { Axial } from "./axial";
+import type { Axial } from "./axial";
+import { keyOf, parseKey, axialAdd, rotate60 } from "./axial";
 
 export type SlotAccept = "LARGE" | "MIDDLE" | "SMALL";
 export type Slot = { slotId: string; pos: Axial; accepts: SlotAccept[] };
@@ -33,45 +35,14 @@ export type BoardCell = {
   localKey?: string; // raw key from sector.cells (or derived)
 };
 
-function parseKey(key: string): Axial {
-  const [q, r] = key.split(",").map((v) => Number(v));
-  return { q, r };
-}
-
-function keyOf(p: Axial) {
-  return `${p.q},${p.r}`;
-}
-
-export function axialAdd(a: Axial, b: Axial): Axial {
-  return { q: a.q + b.q, r: a.r + b.r };
-}
-
 /** Convert template slot position (col,row) to axial. */
 function slotPosToAxial(pos: Axial): Axial {
   // odd-r offset -> axial
   return { q: pos.q - Math.floor(pos.r / 2), r: pos.r };
 }
 
-/** Rotate axial(q,r) by 60° steps (CW) using cube rotation. */
-function rotate60(ax: Axial, stepsCW: number): Axial {
-  let q = ax.q;
-  let r = ax.r;
-  const s = ((stepsCW % 6) + 6) % 6;
-  for (let i = 0; i < s; i++) {
-    const x = q;
-    const z = r;
-    const y = -x - z;
-
-    // cube CW: (x,y,z) -> (-z, -x, -y)
-    const nx = -z;
-    const ny = -x;
-    const nz = -y;
-
-    q = nx;
-    r = nz;
-  }
-  return { q, r };
-}
+// re-export for external callers that previously imported axialAdd from this module
+export { axialAdd };
 
 function normalizeCell(raw: any): { kind: "planet" | "space" | "special"; planetType?: string; tags: string[] } {
   const k = raw?.kind;
