@@ -220,6 +220,6 @@ export function getTemplateOuterTouchSets(templateId: string): {
       return { outerCells: new Set(OUTER), touchCells: new Set(TOUCH) };
     }
     default:
-      return { outerCells: new Set(), touchCells: new Set() };
+      throw new Error(`getTemplateOuterTouchSets: unsupported templateId="${templateId}"`);
   }
 }
