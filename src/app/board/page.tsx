@@ -445,6 +445,10 @@ type PersistedProfile = {
   lastTopK?: number | null;
   createdAt: number;
   updatedAt: number;
+  // searchKeys of older-version profiles whose candidates have already been
+  // copied into this profile via handleCopyFromOldVersion. Used to suppress
+  // the "old data available" banner for versions already merged in.
+  copiedFromKeys?: string[] | null;
 };
 
 const IDB_NAME = "gaia_map_cache";
@@ -2152,7 +2156,15 @@ try {
         setBaseKeyRaw(baseRaw);
         try {
           const sameBase = await loadProfilesByBaseKeyRaw(baseRaw);
-          const olds = (sameBase ?? []).filter((p) => String(p.searchKey) !== String(key) && (p.algoVersion !== SEARCH_ALGO_VERSION || p.evalVersion !== EVAL_VERSION));
+          const db = await openDb();
+          const currentProfile = await idbGetByKey<PersistedProfile>(db, STORE_PROFILES, key);
+          const copiedSet = new Set((currentProfile?.copiedFromKeys ?? []).map((k) => String(k)));
+          const olds = (sameBase ?? []).filter(
+            (p) =>
+              String(p.searchKey) !== String(key) &&
+              (p.algoVersion !== SEARCH_ALGO_VERSION || p.evalVersion !== EVAL_VERSION) &&
+              !copiedSet.has(String(p.searchKey))
+          );
           if (!cancelled) setOldVersionProfiles(olds);
         } catch (e) {
           console.error(e);
@@ -2863,6 +2875,14 @@ async function handleGenerateRank() {
         const merged = mergeCandidates(key, toActive, toUsed, incoming, capacityActive);
         await saveMergeToDb(key, merged);
 
+        // Record that candidates from `fromSearchKey` have been merged into `key`,
+        // so the "old data available" banner stops offering this pair again
+        // (even after a reload) while leaving the old profile/candidates intact.
+        const prevProfile = await idbGetByKey<PersistedProfile>(db, STORE_PROFILES, key);
+        const nextCopiedFromKeys = Array.from(
+          new Set([...((prevProfile?.copiedFromKeys ?? []) as string[]).map((k) => String(k)), String(fromSearchKey)])
+        );
+
         await upsertProfileToDb(key, {
           baseKeyRaw: stableStringify(baseKeyParams),
           algoVersion: SEARCH_ALGO_VERSION,
@@ -2874,9 +2894,14 @@ async function handleGenerateRank() {
           usedCount: merged.used.length,
           lastTopK: keepTop,
           updatedAt: now,
+          copiedFromKeys: nextCopiedFromKeys,
         });
 
         refreshProfiles();
+
+        // Hide the just-copied source from the banner immediately; any other
+        // not-yet-copied old-version profiles remain visible.
+        setOldVersionProfiles((prev) => prev.filter((p) => String(p.searchKey) !== String(fromSearchKey)));
 
         setActivePersisted(merged.active);
         setUsedPersisted(merged.used);
