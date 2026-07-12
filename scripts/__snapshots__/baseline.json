@@ -196,7 +196,7 @@
           "YELLOW": 58
         },
         "scoutCoreHitsCount": 114,
-        "scoutCoreHitsValueSum": 456,
+        "scoutCoreHitsValueSum": 373,
         "scoutHitsCount": 33,
         "scoutHitsValueSum": 153,
         "touchCountByType": {
@@ -403,7 +403,7 @@
           "YELLOW": 42
         },
         "scoutCoreHitsCount": 121,
-        "scoutCoreHitsValueSum": 484,
+        "scoutCoreHitsValueSum": 393,
         "scoutHitsCount": 33,
         "scoutHitsValueSum": 157,
         "touchCountByType": {
@@ -610,7 +610,7 @@
           "YELLOW": 22
         },
         "scoutCoreHitsCount": 95,
-        "scoutCoreHitsValueSum": 380,
+        "scoutCoreHitsValueSum": 311,
         "scoutHitsCount": 33,
         "scoutHitsValueSum": 154,
         "touchCountByType": {
@@ -827,7 +827,7 @@
           "YELLOW": 47
         },
         "scoutCoreHitsCount": 104,
-        "scoutCoreHitsValueSum": 416,
+        "scoutCoreHitsValueSum": 340,
         "scoutHitsCount": 32,
         "scoutHitsValueSum": 156,
         "touchCountByType": {
@@ -1044,7 +1044,7 @@
           "YELLOW": 45
         },
         "scoutCoreHitsCount": 95,
-        "scoutCoreHitsValueSum": 380,
+        "scoutCoreHitsValueSum": 312,
         "scoutHitsCount": 28,
         "scoutHitsValueSum": 130,
         "touchCountByType": {
@@ -1266,7 +1266,7 @@
           "YELLOW": 27
         },
         "scoutCoreHitsCount": 100,
-        "scoutCoreHitsValueSum": 400,
+        "scoutCoreHitsValueSum": 324,
         "scoutHitsCount": 33,
         "scoutHitsValueSum": 153,
         "touchCountByType": {
@@ -1478,7 +1478,7 @@
           "YELLOW": 67
         },
         "scoutCoreHitsCount": 120,
-        "scoutCoreHitsValueSum": 480,
+        "scoutCoreHitsValueSum": 401,
         "scoutHitsCount": 36,
         "scoutHitsValueSum": 167,
         "touchCountByType": {
@@ -1700,7 +1700,7 @@
           "YELLOW": 21
         },
         "scoutCoreHitsCount": 84,
-        "scoutCoreHitsValueSum": 336,
+        "scoutCoreHitsValueSum": 276,
         "scoutHitsCount": 28,
         "scoutHitsValueSum": 131,
         "touchCountByType": {
@@ -1907,7 +1907,7 @@
           "YELLOW": 43
         },
         "scoutCoreHitsCount": 130,
-        "scoutCoreHitsValueSum": 520,
+        "scoutCoreHitsValueSum": 433,
         "scoutHitsCount": 36,
         "scoutHitsValueSum": 173,
         "touchCountByType": {
@@ -2124,7 +2124,7 @@
           "YELLOW": 59
         },
         "scoutCoreHitsCount": 160,
-        "scoutCoreHitsValueSum": 640,
+        "scoutCoreHitsValueSum": 539,
         "scoutHitsCount": 40,
         "scoutHitsValueSum": 180,
         "touchCountByType": {
@@ -2331,7 +2331,7 @@
           "YELLOW": 57
         },
         "scoutCoreHitsCount": 97,
-        "scoutCoreHitsValueSum": 388,
+        "scoutCoreHitsValueSum": 316,
         "scoutHitsCount": 32,
         "scoutHitsValueSum": 148,
         "touchCountByType": {
@@ -2558,7 +2558,7 @@
           "YELLOW": 36
         },
         "scoutCoreHitsCount": 95,
-        "scoutCoreHitsValueSum": 380,
+        "scoutCoreHitsValueSum": 323,
         "scoutHitsCount": 30,
         "scoutHitsValueSum": 143,
         "touchCountByType": {
@@ -2765,7 +2765,7 @@
           "YELLOW": 56
         },
         "scoutCoreHitsCount": 134,
-        "scoutCoreHitsValueSum": 536,
+        "scoutCoreHitsValueSum": 445,
         "scoutHitsCount": 34,
         "scoutHitsValueSum": 161,
         "touchCountByType": {
@@ -2977,7 +2977,7 @@
           "YELLOW": 26
         },
         "scoutCoreHitsCount": 67,
-        "scoutCoreHitsValueSum": 268,
+        "scoutCoreHitsValueSum": 224,
         "scoutHitsCount": 23,
         "scoutHitsValueSum": 108,
         "touchCountByType": {
@@ -3194,7 +3194,7 @@
           "YELLOW": 56
         },
         "scoutCoreHitsCount": 108,
-        "scoutCoreHitsValueSum": 432,
+        "scoutCoreHitsValueSum": 359,
         "scoutHitsCount": 33,
         "scoutHitsValueSum": 153,
         "touchCountByType": {
@@ -3411,7 +3411,7 @@
           "YELLOW": 19
         },
         "scoutCoreHitsCount": 101,
-        "scoutCoreHitsValueSum": 404,
+        "scoutCoreHitsValueSum": 325,
         "scoutHitsCount": 32,
         "scoutHitsValueSum": 152,
         "touchCountByType": {
@@ -3628,7 +3628,7 @@
           "YELLOW": 37
         },
         "scoutCoreHitsCount": 139,
-        "scoutCoreHitsValueSum": 556,
+        "scoutCoreHitsValueSum": 458,
         "scoutHitsCount": 34,
         "scoutHitsValueSum": 153,
         "touchCountByType": {
@@ -3855,7 +3855,7 @@
           "YELLOW": 62
         },
         "scoutCoreHitsCount": 99,
-        "scoutCoreHitsValueSum": 396,
+        "scoutCoreHitsValueSum": 324,
         "scoutHitsCount": 30,
         "scoutHitsValueSum": 142,
         "touchCountByType": {
@@ -4057,7 +4057,7 @@
           "YELLOW": 46
         },
         "scoutCoreHitsCount": 127,
-        "scoutCoreHitsValueSum": 508,
+        "scoutCoreHitsValueSum": 415,
         "scoutHitsCount": 38,
         "scoutHitsValueSum": 178,
         "touchCountByType": {
@@ -4252,7 +4252,7 @@
           "YELLOW": 44
         },
         "scoutCoreHitsCount": 113,
-        "scoutCoreHitsValueSum": 452,
+        "scoutCoreHitsValueSum": 367,
         "scoutHitsCount": 35,
         "scoutHitsValueSum": 164,
         "touchCountByType": {
@@ -4469,7 +4469,7 @@
           "YELLOW": 48
         },
         "scoutCoreHitsCount": 130,
-        "scoutCoreHitsValueSum": 520,
+        "scoutCoreHitsValueSum": 430,
         "scoutHitsCount": 37,
         "scoutHitsValueSum": 169,
         "touchCountByType": {
@@ -4686,7 +4686,7 @@
           "YELLOW": 59
         },
         "scoutCoreHitsCount": 131,
-        "scoutCoreHitsValueSum": 524,
+        "scoutCoreHitsValueSum": 444,
         "scoutHitsCount": 38,
         "scoutHitsValueSum": 173,
         "touchCountByType": {
@@ -4893,7 +4893,7 @@
           "YELLOW": 25
         },
         "scoutCoreHitsCount": 81,
-        "scoutCoreHitsValueSum": 324,
+        "scoutCoreHitsValueSum": 275,
         "scoutHitsCount": 31,
         "scoutHitsValueSum": 138,
         "touchCountByType": {
@@ -5095,7 +5095,7 @@
           "YELLOW": 23
         },
         "scoutCoreHitsCount": 95,
-        "scoutCoreHitsValueSum": 380,
+        "scoutCoreHitsValueSum": 321,
         "scoutHitsCount": 32,
         "scoutHitsValueSum": 156,
         "touchCountByType": {
@@ -5307,7 +5307,7 @@
           "YELLOW": 52
         },
         "scoutCoreHitsCount": 115,
-        "scoutCoreHitsValueSum": 460,
+        "scoutCoreHitsValueSum": 374,
         "scoutHitsCount": 37,
         "scoutHitsValueSum": 169,
         "touchCountByType": {
@@ -5529,7 +5529,7 @@
           "YELLOW": 65
         },
         "scoutCoreHitsCount": 108,
-        "scoutCoreHitsValueSum": 432,
+        "scoutCoreHitsValueSum": 350,
         "scoutHitsCount": 33,
         "scoutHitsValueSum": 153,
         "touchCountByType": {
@@ -5741,7 +5741,7 @@
           "YELLOW": 14
         },
         "scoutCoreHitsCount": 85,
-        "scoutCoreHitsValueSum": 340,
+        "scoutCoreHitsValueSum": 291,
         "scoutHitsCount": 31,
         "scoutHitsValueSum": 141,
         "touchCountByType": {
@@ -5948,7 +5948,7 @@
           "YELLOW": 36
         },
         "scoutCoreHitsCount": 89,
-        "scoutCoreHitsValueSum": 356,
+        "scoutCoreHitsValueSum": 291,
         "scoutHitsCount": 32,
         "scoutHitsValueSum": 149,
         "touchCountByType": {
@@ -6160,7 +6160,7 @@
           "YELLOW": 74
         },
         "scoutCoreHitsCount": 137,
-        "scoutCoreHitsValueSum": 548,
+        "scoutCoreHitsValueSum": 455,
         "scoutHitsCount": 39,
         "scoutHitsValueSum": 175,
         "touchCountByType": {
@@ -6377,7 +6377,7 @@
           "YELLOW": 59
         },
         "scoutCoreHitsCount": 129,
-        "scoutCoreHitsValueSum": 516,
+        "scoutCoreHitsValueSum": 434,
         "scoutHitsCount": 36,
         "scoutHitsValueSum": 172,
         "touchCountByType": {
@@ -6614,7 +6614,7 @@
           "YELLOW": 60
         },
         "scoutCoreHitsCount": 109,
-        "scoutCoreHitsValueSum": 436,
+        "scoutCoreHitsValueSum": 353,
         "scoutHitsCount": 30,
         "scoutHitsValueSum": 142,
         "touchCountByType": {
@@ -6856,7 +6856,7 @@
           "YELLOW": 52
         },
         "scoutCoreHitsCount": 108,
-        "scoutCoreHitsValueSum": 432,
+        "scoutCoreHitsValueSum": 363,
         "scoutHitsCount": 29,
         "scoutHitsValueSum": 136,
         "touchCountByType": {
@@ -7093,7 +7093,7 @@
           "YELLOW": 28
         },
         "scoutCoreHitsCount": 91,
-        "scoutCoreHitsValueSum": 364,
+        "scoutCoreHitsValueSum": 308,
         "scoutHitsCount": 26,
         "scoutHitsValueSum": 123,
         "touchCountByType": {
@@ -7325,7 +7325,7 @@
           "YELLOW": 53
         },
         "scoutCoreHitsCount": 103,
-        "scoutCoreHitsValueSum": 412,
+        "scoutCoreHitsValueSum": 341,
         "scoutHitsCount": 28,
         "scoutHitsValueSum": 128,
         "touchCountByType": {
@@ -7547,7 +7547,7 @@
           "YELLOW": 57
         },
         "scoutCoreHitsCount": 116,
-        "scoutCoreHitsValueSum": 464,
+        "scoutCoreHitsValueSum": 386,
         "scoutHitsCount": 30,
         "scoutHitsValueSum": 135,
         "touchCountByType": {
@@ -7779,7 +7779,7 @@
           "YELLOW": 46
         },
         "scoutCoreHitsCount": 92,
-        "scoutCoreHitsValueSum": 368,
+        "scoutCoreHitsValueSum": 299,
         "scoutHitsCount": 31,
         "scoutHitsValueSum": 143,
         "touchCountByType": {
@@ -8021,7 +8021,7 @@
           "YELLOW": 36
         },
         "scoutCoreHitsCount": 120,
-        "scoutCoreHitsValueSum": 480,
+        "scoutCoreHitsValueSum": 394,
         "scoutHitsCount": 28,
         "scoutHitsValueSum": 129,
         "touchCountByType": {
@@ -8248,7 +8248,7 @@
           "YELLOW": 42
         },
         "scoutCoreHitsCount": 83,
-        "scoutCoreHitsValueSum": 332,
+        "scoutCoreHitsValueSum": 277,
         "scoutHitsCount": 24,
         "scoutHitsValueSum": 111,
         "touchCountByType": {
@@ -8480,7 +8480,7 @@
           "YELLOW": 40
         },
         "scoutCoreHitsCount": 95,
-        "scoutCoreHitsValueSum": 380,
+        "scoutCoreHitsValueSum": 324,
         "scoutHitsCount": 27,
         "scoutHitsValueSum": 127,
         "touchCountByType": {
@@ -8712,7 +8712,7 @@
           "YELLOW": 58
         },
         "scoutCoreHitsCount": 114,
-        "scoutCoreHitsValueSum": 456,
+        "scoutCoreHitsValueSum": 384,
         "scoutHitsCount": 30,
         "scoutHitsValueSum": 137,
         "touchCountByType": {
@@ -8939,7 +8939,7 @@
           "YELLOW": 45
         },
         "scoutCoreHitsCount": 129,
-        "scoutCoreHitsValueSum": 516,
+        "scoutCoreHitsValueSum": 431,
         "scoutHitsCount": 36,
         "scoutHitsValueSum": 160,
         "touchCountByType": {
@@ -9156,7 +9156,7 @@
           "YELLOW": 71
         },
         "scoutCoreHitsCount": 150,
-        "scoutCoreHitsValueSum": 600,
+        "scoutCoreHitsValueSum": 491,
         "scoutHitsCount": 39,
         "scoutHitsValueSum": 186,
         "touchCountByType": {
@@ -9403,7 +9403,7 @@
           "YELLOW": 59
         },
         "scoutCoreHitsCount": 146,
-        "scoutCoreHitsValueSum": 584,
+        "scoutCoreHitsValueSum": 486,
         "scoutHitsCount": 39,
         "scoutHitsValueSum": 179,
         "touchCountByType": {
@@ -9635,7 +9635,7 @@
           "YELLOW": 27
         },
         "scoutCoreHitsCount": 78,
-        "scoutCoreHitsValueSum": 312,
+        "scoutCoreHitsValueSum": 261,
         "scoutHitsCount": 24,
         "scoutHitsValueSum": 110,
         "touchCountByType": {
@@ -9877,7 +9877,7 @@
           "YELLOW": 60
         },
         "scoutCoreHitsCount": 142,
-        "scoutCoreHitsValueSum": 568,
+        "scoutCoreHitsValueSum": 467,
         "scoutHitsCount": 38,
         "scoutHitsValueSum": 169,
         "touchCountByType": {
@@ -10109,7 +10109,7 @@
           "YELLOW": 13
         },
         "scoutCoreHitsCount": 111,
-        "scoutCoreHitsValueSum": 444,
+        "scoutCoreHitsValueSum": 366,
         "scoutHitsCount": 28,
         "scoutHitsValueSum": 131,
         "touchCountByType": {
@@ -10346,7 +10346,7 @@
           "YELLOW": 60
         },
         "scoutCoreHitsCount": 97,
-        "scoutCoreHitsValueSum": 388,
+        "scoutCoreHitsValueSum": 315,
         "scoutHitsCount": 25,
         "scoutHitsValueSum": 117,
         "touchCountByType": {
@@ -10583,7 +10583,7 @@
           "YELLOW": 30
         },
         "scoutCoreHitsCount": 85,
-        "scoutCoreHitsValueSum": 340,
+        "scoutCoreHitsValueSum": 279,
         "scoutHitsCount": 26,
         "scoutHitsValueSum": 119,
         "touchCountByType": {
@@ -10815,7 +10815,7 @@
           "YELLOW": 75
         },
         "scoutCoreHitsCount": 119,
-        "scoutCoreHitsValueSum": 476,
+        "scoutCoreHitsValueSum": 405,
         "scoutHitsCount": 28,
         "scoutHitsValueSum": 132,
         "touchCountByType": {
@@ -11042,7 +11042,7 @@
           "YELLOW": 43
         },
         "scoutCoreHitsCount": 107,
-        "scoutCoreHitsValueSum": 428,
+        "scoutCoreHitsValueSum": 343,
         "scoutHitsCount": 28,
         "scoutHitsValueSum": 133,
         "touchCountByType": {
@@ -11274,7 +11274,7 @@
           "YELLOW": 53
         },
         "scoutCoreHitsCount": 109,
-        "scoutCoreHitsValueSum": 436,
+        "scoutCoreHitsValueSum": 350,
         "scoutHitsCount": 28,
         "scoutHitsValueSum": 131,
         "touchCountByType": {
@@ -11506,7 +11506,7 @@
           "YELLOW": 37
         },
         "scoutCoreHitsCount": 99,
-        "scoutCoreHitsValueSum": 396,
+        "scoutCoreHitsValueSum": 331,
         "scoutHitsCount": 29,
         "scoutHitsValueSum": 135,
         "touchCountByType": {
@@ -11753,7 +11753,7 @@
           "YELLOW": 20
         },
         "scoutCoreHitsCount": 105,
-        "scoutCoreHitsValueSum": 420,
+        "scoutCoreHitsValueSum": 332,
         "scoutHitsCount": 35,
         "scoutHitsValueSum": 159,
         "touchCountByType": {
@@ -11980,7 +11980,7 @@
           "YELLOW": 31
         },
         "scoutCoreHitsCount": 87,
-        "scoutCoreHitsValueSum": 348,
+        "scoutCoreHitsValueSum": 286,
         "scoutHitsCount": 27,
         "scoutHitsValueSum": 123,
         "touchCountByType": {
@@ -12207,7 +12207,7 @@
           "YELLOW": 28
         },
         "scoutCoreHitsCount": 67,
-        "scoutCoreHitsValueSum": 268,
+        "scoutCoreHitsValueSum": 221,
         "scoutHitsCount": 25,
         "scoutHitsValueSum": 111,
         "touchCountByType": {
@@ -12429,7 +12429,7 @@
           "YELLOW": 40
         },
         "scoutCoreHitsCount": 91,
-        "scoutCoreHitsValueSum": 364,
+        "scoutCoreHitsValueSum": 305,
         "scoutHitsCount": 27,
         "scoutHitsValueSum": 125,
         "touchCountByType": {
@@ -12656,7 +12656,7 @@
           "YELLOW": 51
         },
         "scoutCoreHitsCount": 115,
-        "scoutCoreHitsValueSum": 460,
+        "scoutCoreHitsValueSum": 385,
         "scoutHitsCount": 28,
         "scoutHitsValueSum": 132,
         "touchCountByType": {
@@ -12883,7 +12883,7 @@
           "YELLOW": 46
         },
         "scoutCoreHitsCount": 97,
-        "scoutCoreHitsValueSum": 388,
+        "scoutCoreHitsValueSum": 326,
         "scoutHitsCount": 26,
         "scoutHitsValueSum": 117,
         "touchCountByType": {
@@ -13115,7 +13115,7 @@
           "YELLOW": 38
         },
         "scoutCoreHitsCount": 93,
-        "scoutCoreHitsValueSum": 372,
+        "scoutCoreHitsValueSum": 312,
         "scoutHitsCount": 26,
         "scoutHitsValueSum": 121,
         "touchCountByType": {
@@ -13347,7 +13347,7 @@
           "YELLOW": 37
         },
         "scoutCoreHitsCount": 96,
-        "scoutCoreHitsValueSum": 384,
+        "scoutCoreHitsValueSum": 315,
         "scoutHitsCount": 27,
         "scoutHitsValueSum": 121,
         "touchCountByType": {

@@ -490,7 +490,7 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
           corePlanetKey: p.key,
           corePlanetType: t ?? kindU ?? "UNKNOWN",
           distance: d0 as 1 | 2,
-          value: wScoutCoreEff,
+          value: contrib,
         });
       }
 
