@@ -117,6 +117,8 @@ const UI_TEXT = {
     applyCondition: "Apply",
     deleteMeta: "Delete condition only",    deleteAll: "Delete condition + maps",
 
+    mapTools: "Map tools",
+
     exportImportTitle: "Export / Import",
     exportAll: "Export all",
     exportCurrent: "Export current condition",
@@ -275,6 +277,8 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     savedConditionsHide: "非表示",
     applyCondition: "適用",
     deleteMeta: "条件のみ削除",    deleteAll: "条件＋マップ削除",
+
+    mapTools: "マップ調整",
 
     exportImportTitle: "エクスポート／インポート",
     exportAll: "全条件をエクスポート",
@@ -3340,6 +3344,11 @@ const handleDeleteUsed = React.useCallback(
 <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
   <input type="checkbox" checked={showSavedConditions} onChange={(e) => setShowSavedConditions(e.target.checked)} />
   <span>{t("savedConditions")}</span>
+</label>
+
+<label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
+  <input type="checkbox" checked={showMapToolbar} onChange={(e) => setShowMapToolbar(e.target.checked)} />
+  <span>{t("mapTools")}</span>
 </label>
 
       </div>
