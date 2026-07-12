@@ -408,7 +408,11 @@ function makeRandomSeedStart(): number {
 // -----------------------------
 
 const SEARCH_ALGO_VERSION = "search_v1";
-const EVAL_VERSION = "eval_v1";
+// eval_v2: fixed 4p_lostFleet M2/M5 slotCenters (src/gaia/templates/4p_lostfleet_slotCenters.ts),
+// which were copy-pasted from the 3p file and did not match the display-side
+// positions, causing cell collisions in the evaluated 4p board. Placement
+// generation (seed -> placement) is unaffected; only evaluation results change.
+const EVAL_VERSION = "eval_v2";
 
 type PersistedCandidate = {
   id: string; // `${searchKey}:${placementHash}`

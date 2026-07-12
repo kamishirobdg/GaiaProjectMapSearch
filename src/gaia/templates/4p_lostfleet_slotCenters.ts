@@ -1,6 +1,14 @@
 // src/gaia/templates/4p_lostfleet_slotCenters.ts
 // SSOT: slotId -> logical board center (axial q,r)
-// 初期値：現行テンプレの pos をそのまま転記（後でここだけ手修正して確定させる）
+//
+// Each value here must satisfy, against the display-side TemplateDef.pos in
+// src/gaia/data/templates/4p_lostFleet.ts:
+//   display.pos[X] == axialRotateCCW(slotCenters[X], 3) + C_group
+// where C_group is a fixed per-group constant (LARGE=(19,14), M1-M4=(17,14),
+// M5-M8=(18,14), SMALL=(18,14)) and axialRotateCCW(.,3) is a 180-degree
+// rotation, i.e. plain negation (q,r) -> (-q,-r). M2/M5 previously held
+// values copy-pasted verbatim from the 3p file (see scripts/_probe_4p_m2m5.ts
+// for the derivation and the collision evidence this was causing).
 
 export const SLOT_CENTERS_4P_LOSTFLEET: Record<string, { q: number; r: number }> = {
   // LARGE 9
@@ -17,10 +25,10 @@ export const SLOT_CENTERS_4P_LOSTFLEET: Record<string, { q: number; r: number }>
 
   // MIDDLE 8
   M1: { q: 0, r: 11 },
-  M2: { q: 15, r: 3 },
+  M2: { q: 16, r: -2 },
   M3: { q: 14, r: 9 },
   M4: { q:  9, r: 13 },
-  M5: { q: 14, r: 2 },
+  M5: { q: 18, r: 3 },
   M6: { q: 9, r: 1 },
   M7: { q:  4, r: 5 },
   M8: { q:  2, r: 16 },
