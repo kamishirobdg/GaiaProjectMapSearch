@@ -16,6 +16,11 @@
 // indentation is 2 spaces, so two runs against the same source produce a
 // byte-identical file (verified by running this script twice and diffing).
 
+// Runs (and exits the process on failure) as an import side effect: catches
+// display<->eval slotCenters drift (see scripts/check-coord-consistency.ts)
+// before generating a snapshot from potentially-inconsistent data.
+import "./check-coord-consistency";
+
 import { buildLogicalMap } from "../src/gaia/logicalMap/buildLogicalMap";
 import { extractForEval, type HardParams } from "../src/gaia/eval/extractForEval";
 import { checkHardConstraints, type HardFailReason } from "../src/gaia/constraints";
