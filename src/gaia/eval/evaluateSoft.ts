@@ -513,8 +513,6 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
     return String(a.planetKey).localeCompare(String(b.planetKey));
   });
   scoutCoreHits.sort((a: any, b: any) => {
-    const k0 = String(a.scoutKey ?? "").localeCompare(String(b.scoutKey ?? ""));
-    if (k0 !== 0) return k0;
     const k = String(a.scoutPlanetKey).localeCompare(String(b.scoutPlanetKey));
     if (k !== 0) return k;
     return String(a.corePlanetKey).localeCompare(String(b.corePlanetKey));
