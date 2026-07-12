@@ -372,11 +372,6 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
 
 type UiKey = keyof typeof UI_TEXT.en;
 
-function randomSeedString() {
-  const a = Math.floor(Math.random() * 1e9);
-  return `${a}_0`;
-}
-
 function parseSeedStart(seed: string): number {
   const n = parseInt(seed, 10);
   return Number.isFinite(n) && n > 0 ? n : 1;
@@ -563,13 +558,6 @@ function openDb(): Promise<IDBDatabase> {
 }
 
 
-function idbReq<T>(req: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
 async function idbGetAllByIndex<T>(
   db: IDBDatabase,
   storeName: string,
@@ -704,25 +692,6 @@ function seedTieKey(seed: string): number {
   // Supports "123_0" and plain numeric.
   const n = parseInt(seed.split("_")[0] ?? seed, 10);
   return Number.isFinite(n) ? n : 0;
-}
-
-function toCandidate(searchKey: string, r: RankedResult, now: number, used: boolean, usedAt?: number): PersistedCandidate {
-  const placementHash = String(r.placementHash ?? computePlacementHash(r.placement));
-  return {
-    id: `${searchKey}:${placementHash}`,
-    searchKey,
-    placementHash,
-    seed: String(r.seed),
-    score: Number(r.score ?? 0),
-    rankValue: -Number(r.score ?? 0),
-    placement: (r as any).placement ?? [],
-    evaluation: (r as any).evaluation ?? null,
-    used,
-    usedKey: used ? 1 : 0,
-    usedAt,
-    createdAt: now,
-    updatedAt: now,
-  };
 }
 
 function toRankedResult(c: PersistedCandidate): RankedResult {
