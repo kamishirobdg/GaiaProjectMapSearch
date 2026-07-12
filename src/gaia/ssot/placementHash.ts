@@ -77,15 +77,6 @@ function fnv1a32Bytes(bytes: Uint8Array): string {
 
 // ---------- base64url helpers (string) ----------
 
-function base64UrlEncode(str: string): string {
-  // UTF-8 safe base64url
-  const bytes = new TextEncoder().encode(str);
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-  const b64 = btoa(binary);
-  return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-
 function base64UrlDecode(b64url: string): string {
   const b64 = b64url.replace(/-/g, "+").replace(/_/g, "/");
   const pad = b64.length % 4 === 0 ? "" : "=".repeat(4 - (b64.length % 4));

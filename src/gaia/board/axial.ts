@@ -69,7 +69,6 @@ export function rotate60(ax: Axial, stepsCW: number): Axial {
 
     // cube CW: (x,y,z) -> (-z, -x, -y)
     const nx = -z;
-    const ny = -x;
     const nz = -y;
 
     q = nx;

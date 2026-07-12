@@ -12,7 +12,7 @@ import { EXPANSION_MIDDLE, EXPANSION_LITTLE, EXPANSION_SCOUT } from "@/gaia/sect
 import { buildSectorLookup } from "@/gaia/board/previewBoard";
 import { runSearch as runLogicalSearch } from "@/gaia/search";
 
-import { makeSearchPlacementFromSeed, getSearchPlacementConfig } from "@/gaia/ssot/searchPlacementConfig";
+import { makeSearchPlacementFromSeed } from "@/gaia/ssot/searchPlacementConfig";
 import { computePlacementHash, encodePlacementToken, decodePlacementToken } from "@/gaia/ssot/placementHash";
 
 
@@ -2195,14 +2195,6 @@ refreshProfiles();
     };
   }, [searchKey, capacityActive, templateId, searchKeyRaw, keepTop, searchKeyParams, refreshProfiles]);
 
-  const searchConfig = React.useMemo(() => {
-    try {
-      return getSearchPlacementConfig(templateId);
-    } catch {
-      return null;
-    }
-  }, [templateId]);
-
   // build sector lookup (MapBoardViewer / previewBoard use)
   const allSectors = React.useMemo<any[]>(() => {
     const base = Array.isArray(BASE_SECTORS) ? (BASE_SECTORS as any[]) : [];
@@ -2383,14 +2375,6 @@ const currentResult = React.useMemo(() => {
       scoutPlanetCount,
       extraByKind,
     };
-  }
-
-  function stableJson(obj: any) {
-    try {
-      return JSON.stringify(obj, null, 2);
-    } catch {
-      return String(obj);
-    }
   }
 
   const PLANET_ORDER = ["BLACK", "BLUE", "BROWN", "ORANGE", "RED", "WHITE", "YELLOW"] as const;
@@ -2813,8 +2797,6 @@ async function handleGenerateRank() {
     }
   }
 
-  const progressPct = trials > 0 ? Math.max(0, Math.min(1, progressCurrent / trials)) : 0;
-  
   const handleCopyFromOldVersion = React.useCallback(
     async (fromSearchKey: string) => {
       const key = searchKey;

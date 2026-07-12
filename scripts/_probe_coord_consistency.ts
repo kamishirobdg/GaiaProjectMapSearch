@@ -42,7 +42,7 @@ import { TEMPLATE_3P_LOSTFLEET } from "../src/gaia/data/templates/3p_lostFleet";
 import { TEMPLATE_4P_LOSTFLEET } from "../src/gaia/data/templates/4p_lostFleet";
 import * as SlotCenters3p from "../src/gaia/templates/3p_lostfleet_slotCenters";
 import * as SlotCenters4p from "../src/gaia/templates/4p_lostfleet_slotCenters";
-import { parseKey, axialAdd } from "../src/gaia/board/axial";
+import { parseKey } from "../src/gaia/board/axial";
 
 type Axial = { q: number; r: number };
 
@@ -290,9 +290,7 @@ function exactAffineCheck(
   template: { slots: Array<{ slotId: string; pos: Axial }> }
 ) {
   console.log(`\n=== ${label} EXACT integer check: display.pos == axialRotateCCW(slotCenters,3) + CONST ===`);
-  const byGroupConst = new Map<string, string>(); // groupKey -> "q,r" of CONST found from first member
   const results: string[] = [];
-  let allOk = true;
   for (const s of template.slots) {
     const ev = slotCenters[s.slotId];
     if (!ev) continue;
