@@ -3675,8 +3675,20 @@ const handleDeleteUsed = React.useCallback(
             position: "relative",
             flexGrow: isNarrow ? 0 : 1,
             flexShrink: 0,
-            flexBasis: isNarrow ? "auto" : 0,
-            minWidth: 0,
+            // Keep the map usable even when the viewport is between the narrow
+            // breakpoint (1180px) and ~1500px. flexBasis is set to the same
+            // value as minWidth (480, not 0): with flexBasis 0 the combined
+            // preferred size (0 + results' 1080) stays below the container
+            // width across the whole 1180-1560px range, so flexbox never
+            // enters the "shrink" resolution pass and the results pane (whose
+            // flexGrow is 0) never actually shrinks - only this minWidth clamp
+            // would fire, and the layout would overflow instead of the
+            // results pane giving up space. Using 480 as the basis makes the
+            // combined preferred size 1560, so shrinking kicks in as soon as
+            // the container drops below that, and the results pane (flexShrink: 1)
+            // absorbs the deficit down to its own 640 floor.
+            flexBasis: isNarrow ? "auto" : 480,
+            minWidth: isNarrow ? 0 : 480,
             display: "flex",
             flexDirection: "column",
             // Mobile: do not make the map itself a scroll container; let the page scroll instead.
@@ -3766,8 +3778,13 @@ const handleDeleteUsed = React.useCallback(
           style={{
             width: isNarrow ? "100%" : 1080,
             flexGrow: isNarrow ? 1 : 0,
-            flexShrink: 0,
+            // Allow this pane to shrink below its preferred 1080px once the map's
+            // 480px floor (above) needs the room; it still won't go below 640px,
+            // which keeps the results readable. 480 + 640 = 1120 <= the 1180px
+            // narrow-layout breakpoint, so wide layouts never fight for space.
+            flexShrink: isNarrow ? 0 : 1,
             flexBasis: isNarrow ? "auto" : 1080,
+            minWidth: isNarrow ? undefined : 640,
             minHeight: 0,
             borderRight: isNarrow ? "none" : "1px solid #ddd",
             borderTop: isNarrow ? "1px solid #ddd" : "none",
