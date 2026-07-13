@@ -21,6 +21,8 @@ export type HardParams = {
   centerMode: CenterMode;
   /** H5: 最大連結惑星クラスタの許容数。undefined/0=無効（チェックしない） */
   maxConnectedPlanets?: number;
+  /** H5: 連結判定に探査船(scout)セルも惑星の1種として含めるか。undefined/false=無効（従来どおり惑星のみ） */
+  h5IncludeScouts?: boolean;
 };
 
 export type PlanetKind =

@@ -29,7 +29,7 @@ export function checkHardConstraints(
   const h4 = checkH4CenterLarge14(extracted, placement, params.centerMode);
   if (!h4.pass) reasons.push(...h4.reasons);
 
-  const h5 = checkH5ConnectedCap(extracted, params.maxConnectedPlanets);
+  const h5 = checkH5ConnectedCap(extracted, params.maxConnectedPlanets, params.h5IncludeScouts);
   if (!h5.pass) reasons.push(...h5.reasons);
 
   return reasons.length ? { pass: false, reasons } : { pass: true };
@@ -109,16 +109,25 @@ export function checkH2OuterColorCap(extracted: ExtractedForEval, cap: number): 
  * 色が違っても隣接していれば同じ塊）を6方向hex隣接で連結し、最大クラスタサイズが maxCap を超えたら却下。
  * - maxCap が undefined または 0 以下なら無効（常にpass）。
  * - 最大サイズ === maxCap は許容（pass）、maxCap+1 以上は却下。
+ * - includeScouts=true のとき、探査船(scout)セル（kind==="space"だが tags に "scout:*" を持つセル。
+ *   extracted.scoutCells として既に抽出済み）も連結対象に含める（惑星の1種として扱う）。
  */
 export function checkH5ConnectedCap(
   extracted: ExtractedForEval,
-  maxCap: number | undefined
+  maxCap: number | undefined,
+  includeScouts?: boolean
 ): HardCheckResult {
   if (maxCap === undefined || maxCap <= 0) return { pass: true };
 
   const points = (extracted.cells ?? [])
     .filter((c) => c.kind === "planet")
     .map((c) => ({ q: c.q, r: c.r }));
+
+  if (includeScouts) {
+    for (const s of extracted.scoutCells ?? []) {
+      points.push({ q: s.q, r: s.r });
+    }
+  }
 
   const comps = connectedComponents(points);
 
