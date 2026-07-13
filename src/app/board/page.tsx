@@ -3156,8 +3156,8 @@ const handleDeleteUsed = React.useCallback(
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       {busy ? (
         <div style={{ fontSize: 12, opacity: 0.7 }}>{t("searching")}</div>
-      ) : (
-        viewList.map((r, idx) => {
+      ) : null}
+      {viewList.map((r, idx) => {
           const b = getBreakdown(r);
           const hashFull = getPlacementHashForResult(r) ?? "";
           const hash = hashFull ? String(hashFull).slice(0, 12) : "-";
@@ -3272,8 +3272,7 @@ const handleDeleteUsed = React.useCallback(
               <div style={{ fontSize: 12, marginTop: 2, opacity: 0.9 }}>{planetLine}</div>
             </div>
           );
-        })
-      )}              </div>
+        })}              </div>
   </div>
   );
 
