@@ -165,6 +165,7 @@ const UI_TEXT = {
     hard: "Hard",
     outerSameColorMax: "Outer same-color max",
     centerMode: "Center mode",
+    maxConnectedPlanets: "Max planet cluster",
 
     soft: "Soft",
     metric: "Metric",
@@ -326,6 +327,7 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     hard: "制約条件",
     outerSameColorMax: "最外周同色上限",
     centerMode: "中央タイル制約",
+    maxConnectedPlanets: "連結許容数",
 
     soft: "評価指数",
     metric: "指標",
@@ -1845,6 +1847,7 @@ return (savedProfiles ?? []).filter((p) => {
         `${p.name ?? ""} ${tid} ` +
         `outerSameColorMax=${String(hard?.outerSameColorMax ?? "")} ` +
         `centerMode=${String(hard?.centerMode ?? "")} ` +
+        `maxConnectedPlanets=${String(hard?.maxConnectedPlanets ?? "")} ` +
         `wOuter=${String(soft?.wOuter ?? "")} wTouch=${String(soft?.wTouch ?? "")} ` +
         `wScout=${String(soft?.wScout ?? "")} wScoutCore=${String(soft?.wScoutCore ?? "")} ` +
         `wScoutByKey{twilight=${String(soft?.wScoutByScoutKey?.twilight ?? soft?.wScoutByScoutKey?.S1 ?? "")},` +
@@ -1883,6 +1886,8 @@ return (savedProfiles ?? []).filter((p) => {
   // Hard params
   const [outerSameColorMax, setOuterSameColorMax] = React.useState(1);
   const [centerMode, setCenterMode] = React.useState<"NONE" | "CENTER_7_9" | "CENTER_8" | "CENTER_7_8">("NONE");
+  // H5: max connected planet cluster cap. 0 = disabled (default).
+  const [maxConnectedPlanets, setMaxConnectedPlanets] = React.useState(0);
   
     React.useEffect(() => {
     const allowed = new Set(centerModeOptions.map((x) => x.value));
@@ -2074,6 +2079,10 @@ setSelectedSeedLabel(String(found.seed ?? ""));
       try {
         if (params?.hard?.outerSameColorMax != null) setOuterSameColorMax(Number(params.hard.outerSameColorMax));
         if (params?.hard?.centerMode != null) setCenterMode(String(params.hard.centerMode) as any);
+        // H5: field absent (older saved profiles) => restore as 0 (disabled).
+        setMaxConnectedPlanets(
+          params?.hard?.maxConnectedPlanets != null ? Number(params.hard.maxConnectedPlanets) : 0
+        );
         if (params?.soft?.wOuter != null) setWOuter(Number(params.soft.wOuter));
         if (params?.soft?.wTouch != null) setWTouch(Number(params.soft.wTouch));
         if (params?.soft?.wScout != null) setWScout(Number(params.soft.wScout));
@@ -2132,7 +2141,7 @@ try {
 
       if (closePanel) setShowSavedConditions(false);
     },
-    [setWhich, setOuterSameColorMax, setCenterMode, setWOuter, setWTouch, setWScout, setWScoutCore, setScoutRadius, setImbalanceMetric, setWColorPref, setPrefBLACK, setPrefBLUE, setPrefBROWN, setPrefORANGE, setPrefRED, setPrefWHITE, setPrefYELLOW, setKeepTop, setShowSavedConditions]
+    [setWhich, setOuterSameColorMax, setCenterMode, setMaxConnectedPlanets, setWOuter, setWTouch, setWScout, setWScoutCore, setScoutRadius, setImbalanceMetric, setWColorPref, setPrefBLACK, setPrefBLUE, setPrefBROWN, setPrefORANGE, setPrefRED, setPrefWHITE, setPrefYELLOW, setKeepTop, setShowSavedConditions]
   );
 
 
@@ -2151,7 +2160,10 @@ try {
       templateId,
       algoVersion: SEARCH_ALGO_VERSION,
       evalVersion: EVAL_VERSION,
-      hard: { minSameColorDist: 3, outerSameColorMax, centerMode },
+      // H5: only include maxConnectedPlanets when > 0, so the default (0=disabled)
+      // produces a byte-identical stableStringify to the pre-H5 hard object
+      // (keeps existing saved-result search keys stable).
+      hard: { minSameColorDist: 3, outerSameColorMax, centerMode, ...(maxConnectedPlanets > 0 ? { maxConnectedPlanets } : {}) },
       soft: {
   wOuter,
   wTouch,
@@ -2169,12 +2181,12 @@ try {
 
       // Note: trials/TopK/seedStart are execution settings, not part of the condition key.
     };
-  }, [templateId, outerSameColorMax, centerMode, wOuter, wTouch, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wColorPref, prefBLACK, prefBLUE, prefBROWN, prefORANGE, prefRED, prefWHITE, prefYELLOW]);
+  }, [templateId, outerSameColorMax, centerMode, maxConnectedPlanets, wOuter, wTouch, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wColorPref, prefBLACK, prefBLUE, prefBROWN, prefORANGE, prefRED, prefWHITE, prefYELLOW]);
   const baseKeyParams = React.useMemo(() => {
     // Same condition identity excluding version fields. TopK is intentionally excluded per spec.
     return {
       templateId,
-      hard: { minSameColorDist: 3, outerSameColorMax, centerMode },
+      hard: { minSameColorDist: 3, outerSameColorMax, centerMode, ...(maxConnectedPlanets > 0 ? { maxConnectedPlanets } : {}) },
       soft: {
         wOuter,
         wTouch,
@@ -2190,7 +2202,7 @@ try {
         colorPrefByType: { BLACK: prefBLACK, BLUE: prefBLUE, BROWN: prefBROWN, ORANGE: prefORANGE, RED: prefRED, WHITE: prefWHITE, YELLOW: prefYELLOW },
       },
     };
-  }, [templateId, outerSameColorMax, centerMode, wOuter, wTouch, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wColorPref, prefBLACK, prefBLUE, prefBROWN, prefORANGE, prefRED, prefWHITE, prefYELLOW]);
+  }, [templateId, outerSameColorMax, centerMode, maxConnectedPlanets, wOuter, wTouch, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wColorPref, prefBLACK, prefBLUE, prefBROWN, prefORANGE, prefRED, prefWHITE, prefYELLOW]);
 
 
 
@@ -2806,7 +2818,7 @@ async function handleGenerateRank() {
       keepTop: capacityActive,
       seedStart,
       yieldEvery: 50,
-      hard: { minSameColorDist: 3, outerSameColorMax, centerMode },
+      hard: { minSameColorDist: 3, outerSameColorMax, centerMode, ...(maxConnectedPlanets > 0 ? { maxConnectedPlanets } : {}) },
       soft: {
         wOuter,
         wTouch,
@@ -3504,7 +3516,7 @@ const handleDeleteUsed = React.useCallback(
                 const hardSummary = hasParams
                   ? `${t("hard")}: ${t("outerSameColorMax")}=${String(params?.hard?.outerSameColorMax ?? "-")}, ${t("centerMode")}=${String(
                       params?.hard?.centerMode ?? "-"
-                    )}`
+                    )}, ${t("maxConnectedPlanets")}=${String(params?.hard?.maxConnectedPlanets ?? 0)}`
                   : `${t("legacyUnknown")}`;
 
                 const softSummary = hasParams
@@ -3957,6 +3969,18 @@ const handleDeleteUsed = React.useCallback(
                   min={0}
                   max={9}
                   onChange={(e) => setOuterSameColorMax(Math.max(0, Math.min(9, Number(e.target.value) || 0)))}
+                  style={{ width: 60 }}
+                />
+              </label>
+
+              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span>{t("maxConnectedPlanets")}</span>
+                <input
+                  type="number"
+                  value={maxConnectedPlanets}
+                  min={0}
+                  max={999}
+                  onChange={(e) => setMaxConnectedPlanets(Math.max(0, Math.min(999, Number(e.target.value) || 0)))}
                   style={{ width: 60 }}
                 />
               </label>
