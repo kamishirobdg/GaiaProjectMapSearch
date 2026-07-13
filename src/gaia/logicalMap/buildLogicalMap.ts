@@ -161,7 +161,7 @@ function extractLocalCells(
 }
 
 /** Connected components on axial grid */
-function connectedComponents(points: Axial[]): Axial[][] {
+export function connectedComponents(points: Axial[]): Axial[][] {
   const set = new Map<string, Axial>();
   for (const p of points) set.set(keyOf(p), p);
 

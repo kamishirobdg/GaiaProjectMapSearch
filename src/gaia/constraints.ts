@@ -1,8 +1,13 @@
 // src/gaia/constraints.ts
 import type { ExtractedForEval, HardParams } from "./eval/extractForEval";
 import { axialDistance } from "./hex";
+import { connectedComponents } from "./logicalMap/buildLogicalMap";
 
-export type HardFailReason = "H1_MIN_DIST" | "H2_OUTER_CAP" | "H4_CENTER_LARGE14";
+export type HardFailReason =
+  | "H1_MIN_DIST"
+  | "H2_OUTER_CAP"
+  | "H4_CENTER_LARGE14"
+  | "H5_CONNECTED_CAP";
 
 export type HardCheckResult =
   | { pass: true }
@@ -23,6 +28,9 @@ export function checkHardConstraints(
 
   const h4 = checkH4CenterLarge14(extracted, placement, params.centerMode);
   if (!h4.pass) reasons.push(...h4.reasons);
+
+  const h5 = checkH5ConnectedCap(extracted, params.maxConnectedPlanets);
+  if (!h5.pass) reasons.push(...h5.reasons);
 
   return reasons.length ? { pass: false, reasons } : { pass: true };
 }
@@ -94,6 +102,44 @@ export function checkH2OuterColorCap(extracted: ExtractedForEval, cap: number): 
   }
 
   return reasons.length ? { pass: false, reasons } : { pass: true };
+}
+
+/**
+ * H5: 盤面全体（絶対座標）で kind==="planet" の全セル（基本7色 + GAIA + TRANSDIM + PROTO + ASTEROID、
+ * 色が違っても隣接していれば同じ塊）を6方向hex隣接で連結し、最大クラスタサイズが maxCap を超えたら却下。
+ * - maxCap が undefined または 0 以下なら無効（常にpass）。
+ * - 最大サイズ === maxCap は許容（pass）、maxCap+1 以上は却下。
+ */
+export function checkH5ConnectedCap(
+  extracted: ExtractedForEval,
+  maxCap: number | undefined
+): HardCheckResult {
+  if (maxCap === undefined || maxCap <= 0) return { pass: true };
+
+  const points = (extracted.cells ?? [])
+    .filter((c) => c.kind === "planet")
+    .map((c) => ({ q: c.q, r: c.r }));
+
+  const comps = connectedComponents(points);
+
+  let maxSize = 0;
+  for (const comp of comps) {
+    if (comp.length > maxSize) maxSize = comp.length;
+  }
+
+  if (maxSize > maxCap) {
+    return {
+      pass: false,
+      reasons: [
+        {
+          reason: "H5_CONNECTED_CAP",
+          detail: `maxClusterSize=${maxSize} > cap=${maxCap} (components=${comps.length}, totalPlanetCells=${points.length})`,
+        },
+      ],
+    };
+  }
+
+  return { pass: true };
 }
 
 export function checkH4CenterLarge14(

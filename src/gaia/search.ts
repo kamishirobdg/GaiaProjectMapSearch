@@ -78,6 +78,7 @@ export async function runSearch(
     H1_MIN_DIST: 0,
     H2_OUTER_CAP: 0,
     H4_CENTER_LARGE14: 0,
+    H5_CONNECTED_CAP: 0,
     BUILD_LOGICAL_MAP_FAILED: 0,
     EXTRACT_FAILED: 0,
   };

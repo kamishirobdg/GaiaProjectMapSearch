@@ -19,6 +19,8 @@ export type HardParams = {
   minSameColorDist: number;
   outerSameColorMax: number;
   centerMode: CenterMode;
+  /** H5: 最大連結惑星クラスタの許容数。undefined/0=無効（チェックしない） */
+  maxConnectedPlanets?: number;
 };
 
 export type PlanetKind =
