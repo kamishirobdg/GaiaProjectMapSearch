@@ -2910,6 +2910,12 @@ async function handleGenerateRank() {
   });
   refreshProfiles();
 
+  // Running a search counts as "using" this condition: make it the profile
+  // restored on next launch (auto-apply reads LAST_APPLIED_SEARCHKEY first).
+  try {
+    localStorage.setItem(LAST_APPLIED_SEARCHKEY, String(key));
+  } catch {}
+
   setSearchKey(key);
   setSearchKeyRaw(stableStringify(searchKeyParams));
 
