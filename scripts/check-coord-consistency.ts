@@ -29,6 +29,7 @@ import { TEMPLATE_4P_LOSTFLEET } from "../src/gaia/data/templates/4p_lostFleet";
 import * as SlotCenters3p from "../src/gaia/templates/3p_lostfleet_slotCenters";
 import * as SlotCenters4p from "../src/gaia/templates/4p_lostfleet_slotCenters";
 import { rotate60 } from "../src/gaia/board/axial";
+import { isMainModule } from "./isMainModule";
 
 type Axial = { q: number; r: number };
 type SlotCentersRec = Record<string, Axial>;
@@ -121,11 +122,9 @@ export function checkAllCoordConsistency(): Mismatch[] {
 }
 
 /**
- * Runs the check and exits the process on failure. Called unconditionally at
- * module load below, so this file works both as a standalone CLI
- * (`npx tsx scripts/check-coord-consistency.ts`) and as a guard imported for
- * its side effect from another script (e.g. scripts/regression-snapshot.ts
- * imports this module before generating a snapshot).
+ * Runs the check and exits the process on failure. Callers that want the
+ * mismatches without terminating the process (the unit tests) should call
+ * checkAllCoordConsistency() instead.
  */
 export function runCheckOrExit(): void {
   const mismatches = checkAllCoordConsistency();
@@ -151,4 +150,10 @@ export function runCheckOrExit(): void {
   process.exit(1);
 }
 
-runCheckOrExit();
+// Run only as a CLI (`npx tsx scripts/check-coord-consistency.ts`). Importers
+// call runCheckOrExit() explicitly (scripts/regression-snapshot.ts) or
+// checkAllCoordConsistency() (the unit tests); an unconditional call here
+// would abort the whole Vitest process via process.exit on a failure.
+if (isMainModule(import.meta.url)) {
+  runCheckOrExit();
+}

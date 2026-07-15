@@ -16,10 +16,12 @@
 // indentation is 2 spaces, so two runs against the same source produce a
 // byte-identical file (verified by running this script twice and diffing).
 
-// Runs (and exits the process on failure) as an import side effect: catches
-// display<->eval slotCenters drift (see scripts/check-coord-consistency.ts)
-// before generating a snapshot from potentially-inconsistent data.
-import "./check-coord-consistency";
+// Catches display<->eval slotCenters drift (see scripts/check-coord-consistency.ts)
+// before generating a snapshot from potentially-inconsistent data. Called from
+// main() rather than run as an import side effect, so that importing this
+// module (scripts/regression-snapshot.test.ts) cannot exit the process.
+import { runCheckOrExit } from "./check-coord-consistency";
+import { isMainModule } from "./isMainModule";
 
 import { buildLogicalMap } from "../src/gaia/logicalMap/buildLogicalMap";
 import { extractForEval, type HardParams } from "../src/gaia/eval/extractForEval";
@@ -69,7 +71,7 @@ const SOFT_PARAMS: SoftParams = {
 // Types for the recorded snapshot entry
 // ---------------------------------------------------------------------------
 
-type SnapshotEntry = {
+export type SnapshotEntry = {
   seed: string;
   templateId: string;
 
@@ -213,10 +215,21 @@ function runOne(templateId: string, seed: string): SnapshotEntry {
 // Main
 // ---------------------------------------------------------------------------
 
-function main() {
-  const outArg = process.argv[2];
-  const outPath = resolve(process.cwd(), outArg ?? "scripts/__snapshots__/baseline.json");
+export type Snapshot = {
+  meta: {
+    templateIds: string[];
+    seedCount: number;
+    hardParams: HardParams;
+    softParams: SoftParams;
+  };
+  entries: SnapshotEntry[];
+};
 
+/** Path of the committed baseline, relative to the repo root. */
+export const BASELINE_PATH = "scripts/__snapshots__/baseline.json";
+
+/** Runs every (templateId, seed) pair through the pipeline. Pure: no I/O. */
+export function buildSnapshot(): Snapshot {
   const entries: SnapshotEntry[] = [];
   for (const templateId of TEMPLATE_IDS) {
     for (const seed of SEEDS) {
@@ -230,7 +243,7 @@ function main() {
     return a.seed < b.seed ? -1 : a.seed > b.seed ? 1 : 0;
   });
 
-  const snapshot = {
+  return {
     meta: {
       templateIds: [...TEMPLATE_IDS].sort(),
       seedCount: SEEDS.length,
@@ -239,14 +252,30 @@ function main() {
     },
     entries,
   };
-
-  const json = JSON.stringify(sortKeysDeep(snapshot), null, 2);
-
-  mkdirSync(dirname(outPath), { recursive: true });
-  writeFileSync(outPath, json + "\n", "utf8");
-
-  // eslint-disable-next-line no-console
-  console.log(`Wrote ${entries.length} entries (${TEMPLATE_IDS.length} templates x ${SEEDS.length} seeds) to ${outPath}`);
 }
 
-main();
+/** Deterministic serialization: sorted keys, 2-space indent, trailing newline. */
+export function serializeSnapshot(snapshot: Snapshot): string {
+  return JSON.stringify(sortKeysDeep(snapshot), null, 2) + "\n";
+}
+
+function main() {
+  runCheckOrExit();
+
+  const outArg = process.argv[2];
+  const outPath = resolve(process.cwd(), outArg ?? BASELINE_PATH);
+
+  const snapshot = buildSnapshot();
+
+  mkdirSync(dirname(outPath), { recursive: true });
+  writeFileSync(outPath, serializeSnapshot(snapshot), "utf8");
+
+  // eslint-disable-next-line no-console
+  console.log(
+    `Wrote ${snapshot.entries.length} entries (${TEMPLATE_IDS.length} templates x ${SEEDS.length} seeds) to ${outPath}`
+  );
+}
+
+if (isMainModule(import.meta.url)) {
+  main();
+}
