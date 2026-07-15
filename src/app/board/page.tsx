@@ -1936,6 +1936,21 @@ return (savedProfiles ?? []).filter((p) => {
   const [trials, setTrials] = React.useState(30000);
   const [keepTop, setKeepTop] = React.useState(20);
 
+  // trials is an execution setting (excluded from searchKeyParams / saved profiles),
+  // so it needs its own persistence like seedMode. Read on mount to avoid hydration mismatch.
+  React.useEffect(() => {
+    try {
+      const v = parseInt(localStorage.getItem("gaia_search_trials") ?? "", 10);
+      if (Number.isFinite(v) && v > 0) setTrials(v);
+    } catch {}
+  }, []);
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem("gaia_search_trials", String(trials));
+    } catch {}
+  }, [trials]);
+
   const [busy, setBusy] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
 
