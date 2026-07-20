@@ -71,6 +71,8 @@ const UI_TEXT = {
     apply: "Apply",
     copy: "Copy",
     copyUrl: "Copy URL",
+    shareUrl: "Share URL",
+    shareUrlCopied: "Copied to clipboard",
     hashNotFound: "Hash not found in current results.",
 
     progress: "progress",
@@ -235,6 +237,8 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     apply: "適用",
     copy: "コピー",
     copyUrl: "URL取得",
+    shareUrl: "共有URL",
+    shareUrlCopied: "クリップボードにコピーしました",
     hashNotFound: "指定Hashが現在の結果に見つかりません。",
 
     progress: "進捗",
@@ -1968,6 +1972,11 @@ return (savedProfiles ?? []).filter((p) => {
   const [hashIo, setHashIo] = React.useState<string>("");
   const hashInputRef = React.useRef<HTMLInputElement | null>(null);
   const prevTokenRef = React.useRef<string>("");
+
+  // Share URL (long, token-carrying link) is generated on demand only; normal
+  // browsing keeps the address bar clean.
+  const [shareUrl, setShareUrl] = React.useState<string>("");
+  const [shareCopied, setShareCopied] = React.useState<boolean>(false);
   // If URL has ?h=..., apply it once results exist.
   const pendingHashRef = React.useRef<string | null>(null);
   const hashAppliedRef = React.useRef<boolean>(false);
@@ -1977,17 +1986,6 @@ return (savedProfiles ?? []).filter((p) => {
 const [activeResults, setActiveResults] = React.useState<RankedResult[]>([]);
   const [usedResults, setUsedResults] = React.useState<RankedResult[]>([]);
   const [resultsMode, setResultsMode] = React.useState<"active" | "used">("active");
-
-  const setUrlHash = React.useCallback((hash: string) => {
-    try {
-      const url = new URL(window.location.href);
-      if (hash && hash.trim()) url.searchParams.set("h", hash.trim());
-      else url.searchParams.delete("h");
-      window.history.replaceState(null, "", url.toString());
-    } catch {
-      // ignore
-    }
-  }, []);
 
   const applyHashToSelection = React.useCallback(
     (hashOrToken: string) => {
@@ -2019,7 +2017,7 @@ setSelectedSeedLabel(String(found.seed ?? ""));
     [activeResults, usedResults, setErrorMsg, setSelectedSeedLabel]
   );
 
-  // Read hash from URL once
+  // Read hash from URL once (only present when arriving via a shared link).
   React.useEffect(() => {
     try {
       const url = new URL(window.location.href);
@@ -2028,6 +2026,12 @@ setSelectedSeedLabel(String(found.seed ?? ""));
         setHashIo(h.trim());
         pendingHashRef.current = h.trim();
         hashAppliedRef.current = false;
+
+        // Drop ?h= from the address bar once captured: the board is restored
+        // from pendingHashRef, and a shareable link is regenerated on demand
+        // via the Share URL button, so normal browsing stays on a clean URL.
+        url.searchParams.delete("h");
+        window.history.replaceState(null, "", url.toString());
       }
     } catch {
       // ignore
@@ -2409,9 +2413,24 @@ refreshProfiles();
     }
   }, [placementBase, currentHash]);
 
-  React.useEffect(() => {
-    if (currentToken && String(currentToken).trim()) setUrlHash(String(currentToken));
-  }, [currentToken, setUrlHash]);
+  // Build the long, shareable link on demand (attaches the placement token as
+  // ?h=), copy it to the clipboard, and reveal it so it can also be copied
+  // manually. Normal browsing never writes this token to the URL.
+  const handleShareUrl = React.useCallback(() => {
+    try {
+      const token = String(currentToken ?? "").trim();
+      const url = new URL(window.location.href);
+      if (token) url.searchParams.set("h", token);
+      else url.searchParams.delete("h");
+      const s = url.toString();
+      setShareUrl(s);
+      setShareCopied(true);
+      copyText(s);
+      window.setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      // ignore
+    }
+  }, [currentToken]);
 
   // Keep Hash input in sync with the currently displayed placement token,
   // unless the user is actively editing the field.
@@ -3381,18 +3400,25 @@ const handleDeleteUsed = React.useCallback(
         </button>
 
           <button
-            onClick={() => {
-              try {
-                const url = new URL(window.location.href);
-                copyText(url.toString());
-              } catch {
-                // ignore
-              }
-            }}
+            onClick={handleShareUrl}
             style={{ padding: "6px 10px", fontWeight: 700 }}
           >
-            {t("copyUrl")}
+            {t("shareUrl")}
           </button>
+
+          {shareUrl ? (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <input
+                readOnly
+                value={shareUrl}
+                onFocus={(e) => e.currentTarget.select()}
+                style={{ width: 260, maxWidth: "60vw", fontFamily: "monospace", fontSize: 12, padding: "4px 6px" }}
+              />
+              {shareCopied ? (
+                <span style={{ fontSize: 12, color: "#080" }}>{t("shareUrlCopied")}</span>
+              ) : null}
+            </span>
+          ) : null}
 
 {/*
         <div style={{ fontSize: 12, opacity: 0.8 }}>
