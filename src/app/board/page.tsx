@@ -12,6 +12,9 @@ import { EXPANSION_MIDDLE, EXPANSION_LITTLE, EXPANSION_SCOUT } from "@/gaia/sect
 
 import { buildSectorLookup } from "@/gaia/board/previewBoard";
 import { runSearch as runLogicalSearch } from "@/gaia/search";
+import { buildLogicalMapFromPlacement } from "@/gaia/logicalMap/buildLogicalMap";
+import { extractForEval } from "@/gaia/eval/extractForEval";
+import { evaluateSoft } from "@/gaia/eval/evaluateSoft";
 
 import { makeSearchPlacementFromSeed } from "@/gaia/ssot/searchPlacementConfig";
 import { computePlacementHash, encodePlacementToken, decodePlacementToken } from "@/gaia/ssot/placementHash";
@@ -2499,11 +2502,40 @@ const allResults = React.useMemo(() => {
 }, [activeResults, usedResults]);
 
 // current result (Logical SSOT) for shown seed
-const currentResult = React.useMemo(() => {
+const matchedResult = React.useMemo(() => {
   const target = String(selectedSeedLabel ?? seed ?? "");
   if (!target) return null;
   return allResults.find((r) => String((r as any).seed) === target) ?? null;
 }, [allResults, seed, selectedSeedLabel]);
+
+// When a board is shown without a matching evaluated result — notably a shared
+// ?h= link, which restores only the placement (the image) and has no Top-K
+// entry — evaluate the placement on the fly so the summary and the color
+// breakdown table populate too. Uses the viewer's current hard/soft params
+// (weighted axes therefore reflect the viewer's settings, not the sender's).
+const derivedResult = React.useMemo(() => {
+  if (matchedResult) return null; // an authoritative evaluated result exists
+  // Only for a board restored from a token/hash (shared ?h= link). Normal
+  // browsing keeps its "no current result until you select one" behavior.
+  if (!placementOverride) return null;
+  if (!Array.isArray(placementBase) || placementBase.length === 0) return null;
+  try {
+    const lm = buildLogicalMapFromPlacement({ templateId, placement: placementBase as any });
+    const extracted = extractForEval(lm as any, searchKeyParams.hard as any);
+    const evaluation = evaluateSoft(extracted, searchKeyParams.soft as any);
+    return {
+      seed: String(selectedSeedLabel ?? seed ?? ""),
+      score: evaluation.score,
+      placement: placementBase,
+      placementHash: currentHash,
+      evaluation: { breakdown: evaluation.breakdown },
+    } as any;
+  } catch {
+    return null;
+  }
+}, [matchedResult, placementOverride, placementBase, templateId, searchKeyParams, currentHash, selectedSeedLabel, seed]);
+
+const currentResult = matchedResult ?? derivedResult;
 
 //  function sumCounts(obj: any): number {
 //    if (!obj || typeof obj !== "object") return 0;
