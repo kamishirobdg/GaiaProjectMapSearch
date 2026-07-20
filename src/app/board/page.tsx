@@ -118,6 +118,7 @@ const UI_TEXT = {
     deleteMeta: "Delete condition only",    deleteAll: "Delete condition + maps",
 
     mapTools: "Map tools",
+    displaySettings: "Display settings",
 
     exportImportTitle: "Export / Import",
     exportAll: "Export all",
@@ -281,6 +282,7 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     deleteMeta: "条件のみ削除",    deleteAll: "条件＋マップ削除",
 
     mapTools: "マップ調整",
+    displaySettings: "表示設定",
 
     exportImportTitle: "エクスポート／インポート",
     exportAll: "全条件をエクスポート",
@@ -339,13 +341,13 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     wTouch: "外周評価",
     wScout: "船接触",
     wScoutCore: "船星系",
-    wScoutS1: "船接触(リベリオン)",
-    wScoutS2: "船接触(トワイライト)",
-    wScoutS3: "船接触(エクリプス)",
+    wScoutS1: "船接触(トワイライト)",
+    wScoutS2: "船接触(エクリプス)",
+    wScoutS3: "船接触(リベリオン)",
     wScoutS4: "船接触(TFマーズ)",
-    wScoutCoreS1: "船星系(リベリオン)",
-    wScoutCoreS2: "船星系(トワイライト)",
-    wScoutCoreS3: "船星系(エクリプス)",
+    wScoutCoreS1: "船星系(トワイライト)",
+    wScoutCoreS2: "船星系(エクリプス)",
+    wScoutCoreS3: "船星系(リベリオン)",
     wScoutCoreS4: "船星系(TFマーズ)",
     scoutCoreAttribBest: "船星系: 最大寄与に帰属",
     colorPreference: "色優遇/冷遇",
@@ -3155,18 +3157,18 @@ const handleDeleteUsed = React.useCallback(
   // 用語集（英→日＋意味）
   const glossary = React.useMemo(
     () => [
-      { term: "score", ja: "スコア", desc: "色毎の強さが近い程高くなります（惑星種別ごとの評価値が乖離していない程高くなります）" },
-      { term: "outer", ja: "最外周", desc: "マップの最も外に配置されている惑星" },
-      { term: "touch", ja: "外周", desc: "最外周の一つ内側に配置されている惑星" },
-      { term: "scout", ja: "船接触", desc: "船に近い程惑星種別の評価が高くなります" },
-      { term: "scoutCore", ja: "船星系", desc: "船に接触している惑星が近くに多い程評価が高くなります" },
-      { term: "radius", ja: "船接触半径", desc: "船に接触しているとみなす距離" },
-      { term: "std", ja: "標準偏差", desc: "惑星種別別 totals の分散（ばらつき）指標。" },
-      { term: "range", ja: "範囲", desc: "惑星種別別 totals の最大−最小（ばらつき）指標。" },
-      { term: "Top-K", ja: "上位ランク", desc: "スコア上位からK件保持するランキング結果。" },
-      { term: "Hard", ja: "制約条件", desc: "満たさない候補は即棄却する制約" },
-      { term: "Soft", ja: "評価指数", desc: "満たした候補を順位付けする評価" },
-      { term: "colorPreference", ja: "色優遇/冷遇", desc: "＋なら該当色が強い程全体スコアが上がります" },
+      { term: "score", ja: "スコア", desc: "色毎の強さが近い程高くなります（惑星種別ごとの評価値が乖離していない程高くなります）", en: "score", descEn: "Higher when planet-type totals are balanced (colors are close in strength)." },
+      { term: "outer", ja: "最外周", desc: "マップの最も外に配置されている惑星", en: "outer", descEn: "Planets on the outermost ring of the map." },
+      { term: "touch", ja: "外周", desc: "最外周の一つ内側に配置されている惑星", en: "touch", descEn: "Planets one ring inside the outermost." },
+      { term: "scout", ja: "船接触", desc: "船に近い程惑星種別の評価が高くなります", en: "scout", descEn: "The closer to a scout ship, the higher the planet type is valued." },
+      { term: "scoutCore", ja: "船星系", desc: "船に接触している惑星が近くに多い程評価が高くなります", en: "scoutCore", descEn: "Higher when more scout-touching planets are clustered nearby." },
+      { term: "radius", ja: "船接触半径", desc: "船に接触しているとみなす距離", en: "radius", descEn: "Distance within which a planet counts as touching a scout." },
+      { term: "std", ja: "標準偏差", desc: "惑星種別別 totals の分散（ばらつき）指標。", en: "std", descEn: "Spread (variance) metric across planet-type totals." },
+      { term: "range", ja: "範囲", desc: "惑星種別別 totals の最大−最小（ばらつき）指標。", en: "range", descEn: "Max − min spread across planet-type totals." },
+      { term: "Top-K", ja: "上位ランク", desc: "スコア上位からK件保持するランキング結果。", en: "Top-K", descEn: "Ranking that keeps the top K results by score." },
+      { term: "Hard", ja: "制約条件", desc: "満たさない候補は即棄却する制約", en: "Hard", descEn: "Constraints that immediately reject any board that fails them." },
+      { term: "Soft", ja: "評価指数", desc: "満たした候補を順位付けする評価", en: "Soft", descEn: "Weighted scoring that ranks the boards that passed." },
+      { term: "colorPreference", ja: "色優遇/冷遇", desc: "＋なら該当色が強い程全体スコアが上がります", en: "colorPreference", descEn: "Positive raises the overall score as that color gets stronger." },
           ],
     []
   );
@@ -3207,17 +3209,12 @@ const handleDeleteUsed = React.useCallback(
   
           const totals = b?.planetTypeTotals ?? null;
   
-          const items = [
-            { k: "RED", label: "赤" },
-            { k: "BLACK", label: "黒" },
-            { k: "BLUE", label: "青" },
-            { k: "BROWN", label: "茶" },
-            { k: "ORANGE", label: "橙" },
-            { k: "RED", label: "赤" },
-            { k: "WHITE", label: "白" },
-            { k: "YELLOW", label: "黄" },
-          ]
-            .map((it) => ({ ...it, v: Number((totals as any)?.[it.k] ?? 0) }))
+          const items = PLANET_ORDER
+            .map((k) => ({
+              k,
+              label: lang === "ja" ? PLANET_LABEL_JA[k] : k,
+              v: Number((totals as any)?.[k] ?? 0),
+            }))
             .sort((a, b) => b.v - a.v);
   
           const planetLine = items.map((it) => `${it.label}${it.v}`).join(" ");
@@ -3472,7 +3469,7 @@ const handleDeleteUsed = React.useCallback(
 
       {/* 表示設定（表示のみ。検索/評価には影響しない） */}
       <div style={{ display: "flex", gap: 11, alignItems: "center", flexWrap: "wrap", padding: "0px 0" }}>
-        <div style={{ fontSize: 12, fontWeight: 800, opacity: 0.85 }}>　表示設定</div>
+        <div style={{ fontSize: 12, fontWeight: 800, opacity: 0.85 }}>　{t("displaySettings")}</div>
 
         <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
           <input type="checkbox" checked={showImportExport} onChange={(e) => setShowImportExport(e.target.checked)} />
@@ -3893,13 +3890,13 @@ const handleDeleteUsed = React.useCallback(
                         {lang === "ja" ? "詳細表表示" : "Table columns"}
                       </span>
 
-                      {[
-                        ["total", "評価"],
-                        ["scout", "船接触"],
-                        ["scoutCore", "船星系"],
-                        ["outer", "最外周"],
-                        ["touch", "辺境"],
-                      ].map(([k, label]) => (
+                      {([
+                        ["total", "評価", "total"],
+                        ["scout", "船接触", "scout"],
+                        ["scoutCore", "船星系", "scoutCore"],
+                        ["outer", "最外周", "outer"],
+                        ["touch", "辺境", "touch"],
+                      ] as const).map(([k, ja, en]) => (
                         <label key={k} style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 12 }}>
                           <input
                             type="checkbox"
@@ -3908,7 +3905,7 @@ const handleDeleteUsed = React.useCallback(
                               setBreakdownCols((prev) => ({ ...prev, [k]: e.target.checked }))
                             }
                           />
-                          <span>{label}</span>
+                          <span>{lang === "ja" ? ja : en}</span>
                         </label>
                       ))}
                     </div>
@@ -3948,13 +3945,15 @@ const handleDeleteUsed = React.useCallback(
                   {glossary.map((g) => (
                     <div key={g.term} style={{ padding: "6px 0", borderTop: "1px dashed #eee" }}>
                       <div style={{ fontFamily: "monospace" }}>
-                        {g.term}{" "}
-                        <span style={{ opacity: 0.75 }}>
-                          {" "}
-                          / {g.ja}
-                        </span>
+                        {g.term}
+                        {lang === "ja" ? (
+                          <span style={{ opacity: 0.75 }}>
+                            {" "}
+                            / {g.ja}
+                          </span>
+                        ) : null}
                       </div>
-                      <div style={{ marginTop: 2, opacity: 0.85 }}>{g.desc}</div>
+                      <div style={{ marginTop: 2, opacity: 0.85 }}>{lang === "ja" ? g.desc : g.descEn}</div>
                     </div>
                   ))}
                 </div>
