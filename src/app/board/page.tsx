@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { MapBoardViewer, type PlacementItem as ViewerPlacementItem } from "@/components/MapBoardViewer";
+import TabNav from "@/components/TabNav";
 
 import { TEMPLATE_3P_LOSTFLEET } from "@/gaia/data/templates/3p_lostFleet";
 import { TEMPLATE_4P_LOSTFLEET } from "@/gaia/data/templates/4p_lostFleet";
@@ -3352,6 +3353,7 @@ const handleDeleteUsed = React.useCallback(
     <div style={{ width: "100%", height: isNarrow ? "auto" : "100dvh", display: "flex", flexDirection: "column", overflow: isNarrow ? "visible" : "hidden", minHeight: isNarrow ? "100dvh" : 0 }}>
       {/* --- header --- */}
       <div style={{ padding: 12, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <TabNav active="map" />
         <div style={{ fontWeight: 700 }}>{t("title")}</div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
