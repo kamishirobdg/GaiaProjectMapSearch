@@ -14,6 +14,12 @@
 // against the physical components. Fixing a label never changes randomizer
 // behavior (which keys off ids only), so corrections here are safe and local.
 //
+// Verification status:
+//   - boosters:      ✅ verified against the rulebook (2026-07-21)
+//   - standardTech:  ⚠️ DRAFT
+//   - advancedTech:  ⚠️ DRAFT
+//   - roundScoring:  ⚠️ DRAFT
+//
 // Lost Fleet expansion additions are NOT included yet — add them once the base
 // catalog is confirmed.
 
@@ -44,17 +50,95 @@ export const SETUP_CATALOG: SetupCatalog = {
   ],
 
   // --- 10 round boosters ----------------------------------------------------
+  // ✅ VERIFIED against the rulebook (2026-07-21). Ids RB01..RB10 correspond to
+  // booster numbers 1..10 in the rulebook. "フェイズI中に得る" is recorded as
+  // income (confirmed by the user). Boosters 6-10 additionally score VP when
+  // returned via the Pass action.
   boosters: [
-    { id: "RB01", label: "パワー+1／鉱石+1（収入）", labelEn: "+1 power / +1 ore" },
-    { id: "RB02", label: "知識+1／クレジット+1（収入）", labelEn: "+1 knowledge / +1 credit" },
-    { id: "RB03", label: "QIC+1／知識+2（収入）", labelEn: "+1 QIC / +2 knowledge" },
-    { id: "RB04", label: "鉱石+1／宇宙船移動+3（アクション）", labelEn: "+1 ore / +3 range action" },
-    { id: "RB05", label: "パワートークン+2／即時+2VP", labelEn: "+2 power token / +2 VP" },
-    { id: "RB06", label: "パス時：鉱山1つにつき +1VP", labelEn: "pass: +1 VP per mine" },
-    { id: "RB07", label: "パス時：交易所1つにつき +2VP", labelEn: "pass: +2 VP per trading station" },
-    { id: "RB08", label: "パス時：研究所1つにつき +3VP", labelEn: "pass: +3 VP per research lab" },
-    { id: "RB09", label: "パス時：ガイア惑星1つにつき +1VP", labelEn: "pass: +1 VP per Gaia planet" },
-    { id: "RB10", label: "パス時：要塞/学術都市1つにつき +4VP", labelEn: "pass: +4 VP per PI/academy" },
+    {
+      id: "RB01",
+      label: "収入：鉱石1・知識1",
+      labelEn: "Income: 1 ore, 1 knowledge",
+      effect: "フェイズI中に1鉱石と1知識を得る。",
+      effectEn: "During phase I, gain 1 ore and 1 knowledge.",
+    },
+    {
+      id: "RB02",
+      label: "収入：クレジット2・QIC1",
+      labelEn: "Income: 2 credits, 1 QIC",
+      effect: "フェイズI中に2クレジットとQ.I.C.駒1個を得る。",
+      effectEn: "During phase I, gain 2 credits and 1 QIC.",
+    },
+    {
+      id: "RB03",
+      label: "収入：パワートークン2・鉱石1",
+      labelEn: "Income: 2 power tokens, 1 ore",
+      effect: "フェイズI中にパワートークン2個（エリアIへ）と1鉱石を得る。",
+      effectEn: "During phase I, gain 2 power tokens (to area I) and 1 ore.",
+    },
+    {
+      id: "RB04",
+      label: "収入：クレジット2／特別：鉱山建設（改造1無料）",
+      labelEn: "Income: 2 credits / Special: build mine (1 free terraform)",
+      effect:
+        "フェイズI中に2クレジットを得る。特別アクション「鉱山の建設」（1段階の惑星改造が無料）を実行できる。追加の惑星改造のために鉱石を支払えるが、このアクションを他のアクションと組み合わせることはできない。",
+      effectEn:
+        "During phase I, gain 2 credits. Special action: build a mine with 1 free terraforming step; you may pay ore for additional steps, but this action cannot be combined with other actions.",
+    },
+    {
+      id: "RB05",
+      label: "収入：パワー2／特別：鉱山建設orガイア計画（距離+3）",
+      labelEn: "Income: charge 2 power / Special: mine or Gaia project (+3 range)",
+      effect:
+        "フェイズI中に2パワーを得る（チャージ）。特別アクション「鉱山の建設」または「ガイア計画の開始」（到達可能距離が3伸びる）を実行できる。各アクションの通常ルールが適用される。他のアクションと組み合わせることはできない。",
+      effectEn:
+        "During phase I, charge 2 power. Special action: build a mine or start a Gaia project with +3 range. Normal rules for each action apply; cannot be combined with other actions.",
+    },
+    {
+      id: "RB06",
+      label: "収入：鉱石1／パス：鉱山×1VP",
+      labelEn: "Income: 1 ore / Pass: 1 VP per mine",
+      effect:
+        "フェイズI中に1鉱石を得る。「パス」アクションでこのブースターを返却したとき、建設済みの自分の鉱山（暗黒惑星の“鉱山”も含む）1つごとに1勝利点を得る。",
+      effectEn:
+        "During phase I, gain 1 ore. When returning this booster via the Pass action, gain 1 VP per mine you have built (including the Lost Planet's \"mine\").",
+    },
+    {
+      id: "RB07",
+      label: "収入：知識1／パス：研究所×3VP",
+      labelEn: "Income: 1 knowledge / Pass: 3 VP per research lab",
+      effect:
+        "フェイズI中に1知識を得る。「パス」アクションでこのブースターを返却したとき、建設済みの自分の研究所1つごとに3勝利点を得る。",
+      effectEn:
+        "During phase I, gain 1 knowledge. When returning this booster via the Pass action, gain 3 VP per research lab you have built.",
+    },
+    {
+      id: "RB08",
+      label: "収入：鉱石1／パス：交易所×2VP",
+      labelEn: "Income: 1 ore / Pass: 2 VP per trading station",
+      effect:
+        "フェイズI中に1鉱石を得る。「パス」アクションでこのブースターを返却したとき、建設済みの自分の交易所1つごとに2勝利点を得る。",
+      effectEn:
+        "During phase I, gain 1 ore. When returning this booster via the Pass action, gain 2 VP per trading station you have built.",
+    },
+    {
+      id: "RB09",
+      label: "収入：パワー4／パス：学院・首府×4VP",
+      labelEn: "Income: charge 4 power / Pass: 4 VP per academy & PI",
+      effect:
+        "フェイズI中に4パワーを得る（チャージ）。「パス」アクションでこのブースターを返却したとき、建設済みの自分の学院と惑星首府1つごとに4勝利点を得る。",
+      effectEn:
+        "During phase I, charge 4 power. When returning this booster via the Pass action, gain 4 VP per academy and planetary institute you have built.",
+    },
+    {
+      id: "RB10",
+      label: "収入：クレジット4／パス：ガイア惑星×1VP",
+      labelEn: "Income: 4 credits / Pass: 1 VP per Gaia planet",
+      effect:
+        "フェイズI中に4クレジットを得る。「パス」アクションでこのブースターを返却したとき、自分が入植しているガイア惑星1つごとに1勝利点を得る（ガイアフォーマー駒が置かれているだけのガイア惑星は入植とみなされない）。",
+      effectEn:
+        "During phase I, gain 4 credits. When returning this booster via the Pass action, gain 1 VP per Gaia planet you have settled (a Gaia planet holding only a Gaiaformer does not count).",
+    },
   ],
 
   // --- 10 round scoring tiles -----------------------------------------------
