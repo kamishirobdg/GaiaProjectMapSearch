@@ -22,15 +22,17 @@ describe("catalog structure", () => {
     expect(STD_IDS).toHaveLength(9);
     expect(ADV_IDS).toHaveLength(15);
     expect(BOOSTER_IDS).toHaveLength(10);
-    expect(SCORING_IDS).toHaveLength(7);
+    expect(SCORING_IDS).toHaveLength(9);
     expect(FINAL_IDS).toHaveLength(6);
   });
 
-  it("round scoring types form a physical pool of 10 (4 x1 + 3 x2)", () => {
+  it("round scoring entries form a physical pool of 10 (8 x1 + 1 x2)", () => {
+    // Appendix V: trading station and gaia-mine exist as separate 3/4 VP
+    // tiles (distinct ids), so only the federation +5 VP tile is duplicated.
     const total = Object.values(SCORING_COPIES).reduce((a, b) => a + b, 0);
     expect(total).toBe(10);
-    expect(Object.values(SCORING_COPIES).filter((c) => c === 1)).toHaveLength(4);
-    expect(Object.values(SCORING_COPIES).filter((c) => c === 2)).toHaveLength(3);
+    expect(Object.values(SCORING_COPIES).filter((c) => c === 1)).toHaveLength(8);
+    expect(Object.values(SCORING_COPIES).filter((c) => c === 2)).toHaveLength(1);
   });
 
   it("uses unique ids within each component", () => {
@@ -147,6 +149,6 @@ const GOLDEN_SNAP_0001 = {
     available: ["RB07", "RB10", "RB03", "RB05", "RB09", "RB08", "RB02"],
     unused: ["RB04", "RB01", "RB06"],
   },
-  roundScoring: ["RS01", "RS03", "RS04", "RS07", "RS05", "RS02"],
+  roundScoring: ["RS01", "RS03", "RS04", "RS08", "RS05", "RS02"],
   finalScoring: ["FS05", "FS06"],
 };

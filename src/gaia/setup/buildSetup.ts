@@ -8,9 +8,9 @@
 //   - standard tech: shuffle the 9 types; first 6 go one-per-track, next 3 free.
 //   - advanced tech: shuffle the 15 tiles; first 6 go one-per-track (rest unseen).
 //   - boosters: shuffle the 10; first (players + 3) are available, rest unused.
-//   - round scoring: shuffle the physical 10-tile pool (7 types, three of them
-//     twice via `copies`); first 6 become rounds 1..6 in order, so a x2 type
-//     can score in up to two rounds.
+//   - round scoring: shuffle the physical 10-tile pool (9 entries, the
+//     federation tile twice via `copies`); first 6 become rounds 1..6 in
+//     order, so the x2 tile can score in up to two rounds.
 //   - final scoring: shuffle the 6 tiles; first 2 are used.
 //
 // Each component draws from an independent RNG stream derived from the seed, so

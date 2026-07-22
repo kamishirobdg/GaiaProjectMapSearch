@@ -8,14 +8,18 @@
 //   - standard tech:  9 types x4 copies (one TYPE per slot: 6 tracks + 3 free)
 //   - advanced tech:  15 tiles, 6 drawn (one per research track)
 //   - round boosters: 10, of which (players + 3) are used
-//   - round scoring:  7 types = 4 x1 + 3 x2 -> physical pool of 10; 6 drawn
+//   - round scoring:  9 entries = 8 x1 + 1 x2 -> physical pool of 10; 6 drawn
+//                     (the overview's "7種類" groups by icon; trading station
+//                     and gaia-mine each exist as separate 3 VP / 4 VP tiles)
 //   - final scoring:  6 tiles, 2 drawn
 //
 // Verification status of the TEXT:
 //   - boosters:      ✅ verified against the rulebook (2026-07-21)
+//   - roundScoring:  ✅ verified against rulebook appendix V (2026-07-22);
+//                    only the "federation +5 VP is the identical x2 pair"
+//                    assignment still awaits explicit confirmation
 //   - standardTech:  ⚠️ DRAFT (best-effort guesses)
 //   - advancedTech:  ⚠️ PLACEHOLDER (icon-only image; awaiting rulebook text)
-//   - roundScoring:  ⚠️ PLACEHOLDER (icon-only image; awaiting rulebook text)
 //   - finalScoring:  ⚠️ PLACEHOLDER (icon-only image; awaiting rulebook text)
 // Fixing label/effect text never changes randomizer behavior (ids only).
 //
@@ -143,19 +147,79 @@ export const SETUP_CATALOG: SetupCatalog = {
     },
   ],
 
-  // --- 7 round scoring types (physical pool of 10; 6 drawn) -----------------
-  // PLACEHOLDER: icon-only image; effect text pending. Per the rulebook
-  // caption, the 4 types in the image's top row exist once (RS01..RS04) and
-  // the 3 types in the bottom row exist twice (RS05..RS07, copies: 2), so
-  // those can score up to two rounds in one game.
+  // --- 9 round scoring entries (physical pool of 10; 6 drawn) ---------------
+  // ✅ VERIFIED against rulebook appendix V (2026-07-22). The component
+  // overview's "7種類" groups tiles by icon; two of the x2 icon-types (trading
+  // station, gaia mine) exist as DIFFERENT tiles worth 3 or 4 VP ("タイルに
+  // よります"), so the catalog models 9 distinct entries. The remaining pair —
+  // federation +5 VP as two identical copies — follows by elimination
+  // (appendix lists every other tile with a single fixed value);
+  // ⚠️ that x2 assignment still awaits the user's confirmation.
   roundScoring: [
-    { id: "RS01", label: "ラウンド得点タイル 1（内容未確認）", labelEn: "Round scoring tile 1 (unverified)" },
-    { id: "RS02", label: "ラウンド得点タイル 2（内容未確認）", labelEn: "Round scoring tile 2 (unverified)" },
-    { id: "RS03", label: "ラウンド得点タイル 3（内容未確認）", labelEn: "Round scoring tile 3 (unverified)" },
-    { id: "RS04", label: "ラウンド得点タイル 4（内容未確認）", labelEn: "Round scoring tile 4 (unverified)" },
-    { id: "RS05", label: "ラウンド得点タイル 5（内容未確認）", labelEn: "Round scoring tile 5 (unverified)", copies: 2 },
-    { id: "RS06", label: "ラウンド得点タイル 6（内容未確認）", labelEn: "Round scoring tile 6 (unverified)", copies: 2 },
-    { id: "RS07", label: "ラウンド得点タイル 7（内容未確認）", labelEn: "Round scoring tile 7 (unverified)", copies: 2 },
+    {
+      id: "RS01",
+      label: "鉱山建設 +2VP",
+      labelEn: "Mine built: +2 VP",
+      effect: "鉱山を建設したとき、追加の2勝利点を得る。",
+      effectEn: "When you build a mine, gain 2 additional VP.",
+    },
+    {
+      id: "RS02",
+      label: "交易所建設 +3VP",
+      labelEn: "Trading station built: +3 VP",
+      effect: "交易所を建設したとき、追加の3勝利点を得る。",
+      effectEn: "When you build a trading station, gain 3 additional VP.",
+    },
+    {
+      id: "RS03",
+      label: "交易所建設 +4VP",
+      labelEn: "Trading station built: +4 VP",
+      effect: "交易所を建設したとき、追加の4勝利点を得る。",
+      effectEn: "When you build a trading station, gain 4 additional VP.",
+    },
+    {
+      id: "RS04",
+      label: "学院・惑星首府建設 +5VP",
+      labelEn: "Academy/PI built: +5 VP",
+      effect: "学院か惑星首府を建設したとき、追加の5勝利点を得る。",
+      effectEn: "When you build an academy or planetary institute, gain 5 additional VP.",
+    },
+    {
+      id: "RS05",
+      label: "ガイア惑星に鉱山建設 +3VP",
+      labelEn: "Mine on Gaia planet: +3 VP",
+      effect: "ガイア惑星上に鉱山を建設したとき、追加の3勝利点を得る。",
+      effectEn: "When you build a mine on a Gaia planet, gain 3 additional VP.",
+    },
+    {
+      id: "RS06",
+      label: "ガイア惑星に鉱山建設 +4VP",
+      labelEn: "Mine on Gaia planet: +4 VP",
+      effect: "ガイア惑星上に鉱山を建設したとき、追加の4勝利点を得る。",
+      effectEn: "When you build a mine on a Gaia planet, gain 4 additional VP.",
+    },
+    {
+      id: "RS07",
+      label: "研究1レベル +2VP",
+      labelEn: "Research advance: +2 VP",
+      effect: "研究エリアでマーカーを1レベル進めたとき、追加の2勝利点を得る。",
+      effectEn: "When you advance a marker one level in a research area, gain 2 additional VP.",
+    },
+    {
+      id: "RS08",
+      label: "同盟タイル獲得 +5VP",
+      labelEn: "Federation tile gained: +5 VP",
+      effect: "同盟タイルを得たとき（入手手段は問わない）、追加の5勝利点を得る。",
+      effectEn: "When you gain a federation tile (by any means), gain 5 additional VP.",
+      copies: 2,
+    },
+    {
+      id: "RS09",
+      label: "惑星改造1段階 +2VP",
+      labelEn: "Terraforming step: +2 VP",
+      effect: "実行した惑星改造1段階ごとに（実行手段は問わない）追加の2勝利点を得る。",
+      effectEn: "For each terraforming step you perform (by any means), gain 2 additional VP.",
+    },
   ],
 
   // --- 6 final scoring tiles (2 drawn per game) -----------------------------
