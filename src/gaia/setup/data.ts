@@ -3,57 +3,75 @@
 // ⚠️ DRAFT CATALOG — pending user verification.
 //
 // The STRUCTURE (how many tiles, which slots they fill) is what the randomizer
-// in buildSetup.ts depends on. Counts verified against the rulebook component
-// overview (2026-07-21):
+// in buildSetup.ts depends on. Verified against the rulebook (内容物 p2,
+// ゲームの準備 p4-5, 2026-07-22):
 //   - standard tech:  9 types x4 copies (one TYPE per slot: 6 tracks + 3 free)
 //   - advanced tech:  15 tiles, 6 drawn (one per research track)
 //   - round boosters: 10, of which (players + 3) are used
 //   - round scoring:  9 entries = 8 x1 + 1 x2 -> physical pool of 10; 6 drawn
 //                     (the overview's "7種類" groups by icon; trading station
-//                     and gaia-mine each exist as separate 3 VP / 4 VP tiles)
+//                     and gaia-mine each exist as separate 3 VP / 4 VP tiles;
+//                     the federation +5 VP pair is confirmed by the p2 photo:
+//                     the doubles row shows TS / gaia-mine / federation)
 //   - final scoring:  6 tiles, 2 drawn
+//   - federations:    6 types x3 copies (Gleens-only tile excluded); 1 drawn
+//                     for Terraforming research level 5 (rulebook p4)
 //
 // Verification status of the TEXT:
-//   - boosters:      ✅ verified against the rulebook (2026-07-21)
-//   - roundScoring:  ✅ verified against rulebook appendix V (2026-07-22);
-//                    only the "federation +5 VP is the identical x2 pair"
-//                    assignment still awaits explicit confirmation
-//   - standardTech:  ⚠️ DRAFT (best-effort guesses)
-//   - advancedTech:  ⚠️ PLACEHOLDER (icon-only image; awaiting rulebook text)
-//   - finalScoring:  ⚠️ PLACEHOLDER (icon-only image; awaiting rulebook text)
+//   - boosters:      ✅ rulebook appendix IV (2026-07-21)
+//   - roundScoring:  ✅ rulebook appendix V + p2 photo (2026-07-22)
+//   - standardTech:  ✅ read from the p2 component photo (icons are large and
+//                    unambiguous); ids TS1..TS9 follow the photo's row order
+//   - finalScoring:  ✅ rulebook p18 (full text list)
+//   - advancedTech:  🟡 icon-read from the p2 photo using appendix VI's legend;
+//                    confident but awaiting the user's B-check (2026-07-22)
+//   - federations:   🟡 icon-read from the p2 photo; physical check pending
+//                    (user memo 2026-07-22)
 // Fixing label/effect text never changes randomizer behavior (ids only).
 //
-// Lost Fleet expansion additions are NOT included yet — add them once the base
-// catalog is confirmed.
+// Lost Fleet expansion additions are NOT included yet — see
+// docs/setup-lostfleet-spec.md for the planned model.
 
 import type { SetupCatalog } from "./types";
 
 export const SETUP_CATALOG: SetupCatalog = {
   // --- 9 standard tech tile types (x4 identical copies each) ----------------
+  // ✅ Read from the p2 component photo (2026-07-22); TS1..TS9 follow the
+  // photo's row order (top-left to bottom-right).
   standardTech: [
-    { id: "TS1", label: "鉱石収入 +1", labelEn: "+1 ore income", effect: "収入フェイズに鉱石 +1", effectEn: "+1 ore during income" },
-    { id: "TS2", label: "知識収入 +1", labelEn: "+1 knowledge income", effect: "収入フェイズに知識 +1", effectEn: "+1 knowledge during income" },
-    { id: "TS3", label: "クレジット収入 +3", labelEn: "+3 credits income", effect: "収入フェイズにクレジット +3", effectEn: "+3 credits during income" },
-    { id: "TS4", label: "パワー収入 +1", labelEn: "+1 power income", effect: "収入フェイズにパワー +1", effectEn: "+1 power during income" },
-    { id: "TS5", label: "QIC +1（アクション）", labelEn: "+1 QIC (action)", effect: "アクションで QIC +1", effectEn: "action: gain +1 QIC" },
-    { id: "TS6", label: "得点：鉱山1つにつき +1VP", labelEn: "+1 VP per mine", effect: "即時：所有する鉱山1つにつき +1VP", effectEn: "immediate: +1 VP per mine owned" },
-    { id: "TS7", label: "得点：交易所1つにつき +1VP", labelEn: "+1 VP per trading station", effect: "即時：交易所1つにつき +1VP", effectEn: "immediate: +1 VP per trading station" },
-    { id: "TS8", label: "パワー4を得る（アクション）", labelEn: "gain 4 power (action)", effect: "アクション：パワー4をチャージ", effectEn: "action: charge 4 power" },
-    { id: "TS9", label: "知識+1・クレジット+1（収入）", labelEn: "+1 knowledge, +1 credit income", effect: "収入：知識+1・クレジット+1", effectEn: "income: +1 knowledge and +1 credit" },
+    { id: "TS1", label: "即時：鉱石1＋QIC1", labelEn: "Immediate: 1 ore + 1 QIC", effect: "このタイルを取ったとき、即座に鉱石1とQ.I.C.駒1個を得る。", effectEn: "When you take this tile, immediately gain 1 ore and 1 QIC." },
+    { id: "TS2", label: "即時：惑星種類×知識1", labelEn: "Immediate: 1 knowledge per planet type", effect: "このタイルを取ったとき、即座に入植している惑星の種類1つごとに知識1を得る。", effectEn: "When you take this tile, immediately gain 1 knowledge per planet type you have settled." },
+    { id: "TS3", label: "首府・学院のパワー値4", labelEn: "PI & academies have power value 4", effect: "自分の惑星首府と学院のパワー値は4になる（上級技術タイルで覆われた場合は3に戻る）。", effectEn: "Your planetary institute and academies have power value 4 (reverts to 3 if this tile is covered by an advanced tech tile)." },
+    { id: "TS4", label: "即時：7VP", labelEn: "Immediate: 7 VP", effect: "このタイルを取ったとき、即座に7勝利点を得る。", effectEn: "When you take this tile, immediately gain 7 VP." },
+    { id: "TS5", label: "収入：鉱石1・パワー1", labelEn: "Income: 1 ore, charge 1 power", effect: "各収入フェイズ中、鉱石1を得てパワー1をチャージする。", effectEn: "During each income phase, gain 1 ore and charge 1 power." },
+    { id: "TS6", label: "収入：知識1・クレジット1", labelEn: "Income: 1 knowledge, 1 credit", effect: "各収入フェイズ中、知識1とクレジット1を得る。", effectEn: "During each income phase, gain 1 knowledge and 1 credit." },
+    { id: "TS7", label: "ガイア惑星に鉱山建設で＋3VP", labelEn: "+3 VP per mine built on Gaia planet", effect: "ガイア惑星上に鉱山を建設するたびに、追加の3勝利点を得る。", effectEn: "Each time you build a mine on a Gaia planet, gain 3 additional VP." },
+    { id: "TS8", label: "収入：クレジット4", labelEn: "Income: 4 credits", effect: "各収入フェイズ中、クレジット4を得る。", effectEn: "During each income phase, gain 4 credits." },
+    { id: "TS9", label: "アクション：パワー4", labelEn: "Action: charge 4 power", effect: "ラウンドごとに1回、アクションとしてパワー4をチャージできる。", effectEn: "Once per round, as an action, charge 4 power." },
   ],
 
   // --- 15 advanced tech tiles (6 drawn per game) ----------------------------
-  // PLACEHOLDER: the component image is icon-only, so no effect text is
-  // recorded yet. Ids AT01..AT15 will be mapped to the rulebook's tile
-  // descriptions once provided.
-  advancedTech: Array.from({ length: 15 }, (_, i) => {
-    const n = String(i + 1).padStart(2, "0");
-    return {
-      id: `AT${n}`,
-      label: `上級技術タイル ${i + 1}（内容未確認）`,
-      labelEn: `Advanced tech tile ${i + 1} (unverified)`,
-    };
-  }),
+  // 🟡 Icon-read from the p2 component photo using appendix VI's legend
+  // (red crescent = on pass, green = each time that action, white = once when
+  // taken, orange octagon = once-per-round action). AT01..AT15 follow the
+  // photo's row order. Awaiting the user's B-check.
+  advancedTech: [
+    { id: "AT01", label: "パス時：同盟タイル×3VP", labelEn: "Pass: 3 VP per federation tile", effect: "パス時、持っている同盟タイル1枚ごとに3勝利点を得る。", effectEn: "When passing, gain 3 VP per federation tile you own." },
+    { id: "AT02", label: "研究を進めるたび＋2VP", labelEn: "+2 VP per research advance", effect: "研究エリアでマーカーを進めるたびに、追加の2勝利点を得る。", effectEn: "Each time you advance in a research area, gain 2 additional VP." },
+    { id: "AT03", label: "アクション：QIC1＋クレジット5", labelEn: "Action: 1 QIC + 5 credits", effect: "ラウンドごとに1回、アクションとしてQ.I.C.駒1個と5クレジットを得る。", effectEn: "Once per round, as an action, gain 1 QIC and 5 credits." },
+    { id: "AT04", label: "取得時：鉱山×2VP", labelEn: "Immediate: 2 VP per mine", effect: "このタイルを取ったとき、即座に建設済みの鉱山1つごとに2勝利点を得る。", effectEn: "When taken, immediately gain 2 VP per mine you have built." },
+    { id: "AT05", label: "パス時：研究所×3VP", labelEn: "Pass: 3 VP per research lab", effect: "パス時、建設済みの研究所1つごとに3勝利点を得る。", effectEn: "When passing, gain 3 VP per research lab you have built." },
+    { id: "AT06", label: "取得時：宙域×鉱石1", labelEn: "Immediate: 1 ore per sector", effect: "このタイルを取ったとき、即座に自分の建造物がある宙域1つごとに鉱石1を得る。", effectEn: "When taken, immediately gain 1 ore per sector containing your structures." },
+    { id: "AT07", label: "アクション：鉱石3", labelEn: "Action: 3 ore", effect: "ラウンドごとに1回、アクションとして鉱石3を得る。", effectEn: "Once per round, as an action, gain 3 ore." },
+    { id: "AT08", label: "取得時：ガイア惑星×2VP", labelEn: "Immediate: 2 VP per Gaia planet", effect: "このタイルを取ったとき、即座に入植しているガイア惑星1つごとに2勝利点を得る。", effectEn: "When taken, immediately gain 2 VP per Gaia planet you have settled." },
+    { id: "AT09", label: "取得時：交易所×4VP", labelEn: "Immediate: 4 VP per trading station", effect: "このタイルを取ったとき、即座に建設済みの交易所1つごとに4勝利点を得る。", effectEn: "When taken, immediately gain 4 VP per trading station you have built." },
+    { id: "AT10", label: "取得時：宙域×2VP", labelEn: "Immediate: 2 VP per sector", effect: "このタイルを取ったとき、即座に自分の建造物がある宙域1つごとに2勝利点を得る。", effectEn: "When taken, immediately gain 2 VP per sector containing your structures." },
+    { id: "AT11", label: "交易所を建設するたび＋3VP", labelEn: "+3 VP per trading station built", effect: "交易所を建設するたびに、追加の3勝利点を得る。", effectEn: "Each time you build a trading station, gain 3 additional VP." },
+    { id: "AT12", label: "取得時：同盟タイル×5VP", labelEn: "Immediate: 5 VP per federation tile", effect: "このタイルを取ったとき、即座に持っている同盟タイル1枚ごとに5勝利点を得る。", effectEn: "When taken, immediately gain 5 VP per federation tile you own." },
+    { id: "AT13", label: "アクション：知識3", labelEn: "Action: 3 knowledge", effect: "ラウンドごとに1回、アクションとして知識3を得る。", effectEn: "Once per round, as an action, gain 3 knowledge." },
+    { id: "AT14", label: "鉱山を建設するたび＋3VP", labelEn: "+3 VP per mine built", effect: "鉱山を建設するたびに、追加の3勝利点を得る。", effectEn: "Each time you build a mine, gain 3 additional VP." },
+    { id: "AT15", label: "パス時：惑星種類×1VP", labelEn: "Pass: 1 VP per planet type", effect: "パス時、入植している惑星の種類1つごとに1勝利点を得る。", effectEn: "When passing, gain 1 VP per planet type you have settled." },
+  ],
 
   // --- 10 round boosters ----------------------------------------------------
   // ✅ VERIFIED against the rulebook (2026-07-21). Ids RB01..RB10 correspond to
@@ -223,13 +241,27 @@ export const SETUP_CATALOG: SetupCatalog = {
   ],
 
   // --- 6 final scoring tiles (2 drawn per game) -----------------------------
-  // PLACEHOLDER: icon-only image; effect text pending.
+  // ✅ Verified against rulebook p18 (2026-07-22). Ranking VP: 1st=18, 2nd=12,
+  // 3rd=6 (shared ranks split the sum evenly).
   finalScoring: [
-    { id: "FS01", label: "最終得点タイル 1（内容未確認）", labelEn: "Final scoring tile 1 (unverified)" },
-    { id: "FS02", label: "最終得点タイル 2（内容未確認）", labelEn: "Final scoring tile 2 (unverified)" },
-    { id: "FS03", label: "最終得点タイル 3（内容未確認）", labelEn: "Final scoring tile 3 (unverified)" },
-    { id: "FS04", label: "最終得点タイル 4（内容未確認）", labelEn: "Final scoring tile 4 (unverified)" },
-    { id: "FS05", label: "最終得点タイル 5（内容未確認）", labelEn: "Final scoring tile 5 (unverified)" },
-    { id: "FS06", label: "最終得点タイル 6（内容未確認）", labelEn: "Final scoring tile 6 (unverified)" },
+    { id: "FS01", label: "同盟内の建造物 最多", labelEn: "Most structures in federations", effect: "最も多くの建造物（暗黒惑星を含む）を同盟（複数可）に含んでいる。", effectEn: "Have the most structures (including the Lost Planet) inside your federations." },
+    { id: "FS02", label: "建造物 最多", labelEn: "Most structures built", effect: "最も多くの建造物（暗黒惑星を含む）を建設している。", effectEn: "Have built the most structures (including the Lost Planet)." },
+    { id: "FS03", label: "惑星の種類 最多", labelEn: "Most planet types settled", effect: "最も多くの種類の惑星（ガイア惑星や暗黒惑星も含む）に入植している。", effectEn: "Have settled the most different planet types (including Gaia and the Lost Planet)." },
+    { id: "FS04", label: "ガイア惑星 最多", labelEn: "Most Gaia planets settled", effect: "最も多くのガイア惑星に入植している。", effectEn: "Have settled the most Gaia planets." },
+    { id: "FS05", label: "入植宙域 最多", labelEn: "Most sectors settled", effect: "最も多くの宙域タイル上に入植している（宙域ごとに最低1個の建造物、暗黒惑星を含む）。", effectEn: "Have settled the most sectors (at least 1 structure per sector, including the Lost Planet)." },
+    { id: "FS06", label: "衛星 最多", labelEn: "Most satellites", effect: "最も多くの衛星を建設している（ダー・シュワーム人の宇宙ステーションも衛星として数える）。", effectEn: "Have built the most satellites (Ivits' space stations count as satellites)." },
+  ],
+
+  // --- 6 federation tile types (x3 copies each; 1 drawn for Terraforming Lv5)
+  // 🟡 Icon-read from the p2 component photo (2026-07-22); physical check
+  // pending (user memo). The Gleens-only tile (no VP) is excluded. The 12 VP
+  // tile is gray on both sides (cannot be flipped for advanced tech / Lv5).
+  federations: [
+    { id: "FED12", label: "同盟：12VP", labelEn: "Federation: 12 VP", effect: "即時：12勝利点（両面灰色のため、上級技術タイルの取得や研究レベル5への到達には使えない）。", effectEn: "Immediate: 12 VP (gray on both sides; cannot be spent for advanced tech or research level 5)." },
+    { id: "FED8Q", label: "同盟：8VP＋QIC1", labelEn: "Federation: 8 VP + 1 QIC", effect: "即時：8勝利点とQ.I.C.駒1個。", effectEn: "Immediate: 8 VP and 1 QIC." },
+    { id: "FED8PT", label: "同盟：8VP＋パワートークン2", labelEn: "Federation: 8 VP + 2 power tokens", effect: "即時：8勝利点とパワートークン2個。", effectEn: "Immediate: 8 VP and 2 power tokens." },
+    { id: "FED7O", label: "同盟：7VP＋鉱石2", labelEn: "Federation: 7 VP + 2 ore", effect: "即時：7勝利点と鉱石2。", effectEn: "Immediate: 7 VP and 2 ore." },
+    { id: "FED7C", label: "同盟：7VP＋クレジット6", labelEn: "Federation: 7 VP + 6 credits", effect: "即時：7勝利点とクレジット6。", effectEn: "Immediate: 7 VP and 6 credits." },
+    { id: "FED6K", label: "同盟：6VP＋知識2", labelEn: "Federation: 6 VP + 2 knowledge", effect: "即時：6勝利点と知識2。", effectEn: "Immediate: 6 VP and 2 knowledge." },
   ],
 };

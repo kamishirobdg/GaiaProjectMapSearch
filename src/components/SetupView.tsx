@@ -22,7 +22,7 @@ const UI = {
   ja: {
     title: "セットアップ（研究/ブースター/得点）",
     draftNote:
-      "※ タイルの効果テキストは暫定（要検証）。枚数とスロット構成は確定です。評価機能は未実装。",
+      "※ 上級技術と同盟タイルの効果テキストは写真からの読み取り（確認待ち）。その他はルールブック照合済み。評価機能は未実装。Lost Fleet 拡張は未対応。",
     seed: "シード",
     randomSeed: "ランダム",
     players: "人数",
@@ -36,12 +36,13 @@ const UI = {
     unused: "未使用",
     roundScoring: "ラウンド得点",
     finalScoring: "最終得点計算",
+    federationLv5: "同盟タイル（惑星改造 研究レベル5）",
     round: "R",
   },
   en: {
     title: "Setup (research / boosters / scoring)",
     draftNote:
-      "Note: tile effect text is provisional (needs verification). Counts and slots are final. Evaluation is not implemented yet.",
+      "Note: advanced tech & federation texts are icon-read (pending check); everything else is verified against the rulebook. Evaluation not implemented. Lost Fleet expansion not covered yet.",
     seed: "Seed",
     randomSeed: "Random",
     players: "Players",
@@ -55,6 +56,7 @@ const UI = {
     unused: "Unused",
     roundScoring: "Round scoring",
     finalScoring: "Final scoring",
+    federationLv5: "Federation tile (Terraforming level 5)",
     round: "R",
   },
 } as const;
@@ -67,6 +69,7 @@ for (const group of [
   SETUP_CATALOG.boosters,
   SETUP_CATALOG.roundScoring,
   SETUP_CATALOG.finalScoring,
+  SETUP_CATALOG.federations,
 ]) {
   for (const t of group) BY_ID.set(t.id, t);
 }
@@ -205,6 +208,14 @@ export default function SetupView() {
         <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.roundScoring}</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
           {result.roundScoring.map((id, i) => tileCell(id, `${t.round}${i + 1}`))}
+        </div>
+      </section>
+
+      {/* Federation for Terraforming level 5, 1 of 6 types */}
+      <section>
+        <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.federationLv5}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8, maxWidth: 320 }}>
+          {tileCell(result.federationLv5)}
         </div>
       </section>
 

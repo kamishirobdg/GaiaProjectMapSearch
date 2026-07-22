@@ -8,6 +8,7 @@ const ADV_IDS = SETUP_CATALOG.advancedTech.map((t) => t.id);
 const BOOSTER_IDS = SETUP_CATALOG.boosters.map((t) => t.id);
 const SCORING_IDS = SETUP_CATALOG.roundScoring.map((t) => t.id);
 const FINAL_IDS = SETUP_CATALOG.finalScoring.map((t) => t.id);
+const FED_IDS = SETUP_CATALOG.federations.map((t) => t.id);
 
 const SCORING_COPIES: Record<string, number> = Object.fromEntries(
   SETUP_CATALOG.roundScoring.map((t) => [t.id, Math.max(1, Math.floor(t.copies ?? 1))])
@@ -24,6 +25,7 @@ describe("catalog structure", () => {
     expect(BOOSTER_IDS).toHaveLength(10);
     expect(SCORING_IDS).toHaveLength(9);
     expect(FINAL_IDS).toHaveLength(6);
+    expect(FED_IDS).toHaveLength(6);
   });
 
   it("round scoring entries form a physical pool of 10 (8 x1 + 1 x2)", () => {
@@ -36,7 +38,7 @@ describe("catalog structure", () => {
   });
 
   it("uses unique ids within each component", () => {
-    for (const ids of [STD_IDS, ADV_IDS, BOOSTER_IDS, SCORING_IDS, FINAL_IDS]) {
+    for (const ids of [STD_IDS, ADV_IDS, BOOSTER_IDS, SCORING_IDS, FINAL_IDS, FED_IDS]) {
       expect(new Set(ids).size).toBe(ids.length);
     }
   });
@@ -114,6 +116,10 @@ describe("buildSetupFromSeed structure", () => {
     expect(new Set(r.finalScoring).size).toBe(2);
     expect(r.finalScoring.every((id) => FINAL_IDS.includes(id))).toBe(true);
   });
+
+  it("draws one federation type for Terraforming level 5", () => {
+    expect(FED_IDS).toContain(r.federationLv5);
+  });
 });
 
 describe("player count", () => {
@@ -151,4 +157,5 @@ const GOLDEN_SNAP_0001 = {
   },
   roundScoring: ["RS01", "RS03", "RS04", "RS08", "RS05", "RS02"],
   finalScoring: ["FS05", "FS06"],
+  federationLv5: "FED8PT",
 };

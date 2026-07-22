@@ -77,6 +77,12 @@ export type SetupCatalog = {
   roundScoring: RoundScoringTile[];
   /** 6 final scoring tiles: 2 are drawn per game. */
   finalScoring: SetupTile[];
+  /**
+   * 6 federation tile TYPES (x3 identical copies each; the Gleens-only tile is
+   * excluded). Setup draws 1 random tile and places it on Terraforming
+   * research level 5 — copies are equal so the draw is type-uniform.
+   */
+  federations: SetupTile[];
 };
 
 /** Output of a single deterministic setup roll. */
@@ -111,4 +117,7 @@ export type SetupResult = {
 
   /** Two final scoring tile ids (out of 6), order as drawn. */
   finalScoring: string[];
+
+  /** Federation tile type id placed on Terraforming research level 5. */
+  federationLv5: string;
 };

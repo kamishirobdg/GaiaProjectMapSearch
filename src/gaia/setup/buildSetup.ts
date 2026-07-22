@@ -12,6 +12,9 @@
 //     federation tile twice via `copies`); first 6 become rounds 1..6 in
 //     order, so the x2 tile can score in up to two rounds.
 //   - final scoring: shuffle the 6 tiles; first 2 are used.
+//   - federation Lv5: 1 random tile goes to Terraforming research level 5.
+//     All 6 types have 3 copies, so drawing a tile uniformly = drawing a type
+//     uniformly; the catalog's type list is shuffled directly.
 //
 // Each component draws from an independent RNG stream derived from the seed, so
 // adding/removing one component's logic never shifts another's output.
@@ -80,6 +83,10 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
   const finals = shuffleSeeded(idsOf(SETUP_CATALOG.finalScoring), streamFor(seed, "finalScoring"));
   const finalScoring = finals.slice(0, 2);
 
+  // 6) Federation for Terraforming research level 5: draw 1 of 6 types.
+  const feds = shuffleSeeded(idsOf(SETUP_CATALOG.federations), streamFor(seed, "federationLv5"));
+  const federationLv5 = feds[0];
+
   return {
     seed,
     playerCount,
@@ -88,6 +95,7 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
     boosters: { available, unused },
     roundScoring,
     finalScoring,
+    federationLv5,
   };
 }
 
