@@ -40,6 +40,12 @@ export type SetupTile = {
   effect?: string;
   /** Longer effect text, English (DRAFT — verify). */
   effectEn?: string;
+  /**
+   * Physical copies of this tile in the box (default 1). Matters for draws
+   * from a physical pool: round scoring has 3 types with 2 copies each, so the
+   * same type can occupy up to two rounds.
+   */
+  copies?: number;
 };
 
 /**
@@ -53,14 +59,24 @@ export type RoundScoringTile = SetupTile & {
 
 /** The full static catalog the randomizer draws from. */
 export type SetupCatalog = {
-  /** 9 standard tech tiles: 6 land under the research tracks, 3 in the free row. */
+  /**
+   * 9 standard tech tile TYPES (4 identical copies each in the box). Setup
+   * assigns one type per slot: 6 under the research tracks + 3 in the free
+   * row, so copies never matter for the draw.
+   */
   standardTech: SetupTile[];
-  /** 6 advanced tech tiles: one on top of each research track. */
+  /** 15 advanced tech tiles (1 copy each): 6 are drawn, one per research track. */
   advancedTech: SetupTile[];
   /** Round booster pool (10). A subset of (players + 3) is used each game. */
   boosters: SetupTile[];
-  /** Round scoring pool (10). Six are drawn, one per round. */
+  /**
+   * 7 round scoring TYPES forming a physical pool of 10 tiles
+   * (4 types x1 + 3 types x2, via `copies`). Six tiles are drawn, one per
+   * round, so a x2 type can occupy up to two rounds.
+   */
   roundScoring: RoundScoringTile[];
+  /** 6 final scoring tiles: 2 are drawn per game. */
+  finalScoring: SetupTile[];
 };
 
 /** Output of a single deterministic setup roll. */
@@ -76,7 +92,7 @@ export type SetupResult = {
   };
 
   advancedTech: {
-    /** One advanced tech tile id per research track. */
+    /** One advanced tech tile id per research track (6 drawn out of 15). */
     byTrack: Record<ResearchTrackId, string>;
   };
 
@@ -87,6 +103,12 @@ export type SetupResult = {
     unused: string[];
   };
 
-  /** Round scoring tile id for each round, index 0 = round 1 .. index 5 = round 6. */
+  /**
+   * Round scoring tile TYPE id for each round, index 0 = round 1 .. 5 = round 6.
+   * Drawn from the physical 10-tile pool, so a x2 type may appear twice.
+   */
   roundScoring: string[];
+
+  /** Two final scoring tile ids (out of 6), order as drawn. */
+  finalScoring: string[];
 };

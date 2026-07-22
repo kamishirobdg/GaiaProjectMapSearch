@@ -5,10 +5,13 @@
 // and shareable. Evaluation is out of scope here.
 //
 // Randomization rules (Gaia Project base):
-//   - standard tech: shuffle the 9 tiles; first 6 go one-per-track, next 3 free.
-//   - advanced tech: shuffle the 6 tiles; one per track.
+//   - standard tech: shuffle the 9 types; first 6 go one-per-track, next 3 free.
+//   - advanced tech: shuffle the 15 tiles; first 6 go one-per-track (rest unseen).
 //   - boosters: shuffle the 10; first (players + 3) are available, rest unused.
-//   - round scoring: shuffle the 10; first 6 become rounds 1..6 in order.
+//   - round scoring: shuffle the physical 10-tile pool (7 types, three of them
+//     twice via `copies`); first 6 become rounds 1..6 in order, so a x2 type
+//     can score in up to two rounds.
+//   - final scoring: shuffle the 6 tiles; first 2 are used.
 //
 // Each component draws from an independent RNG stream derived from the seed, so
 // adding/removing one component's logic never shifts another's output.
@@ -32,6 +35,16 @@ function idsOf(tiles: { id: string }[]): string[] {
   return tiles.map((t) => t.id);
 }
 
+/** Expand tile types into the physical pool (one entry per copy). */
+function physicalPoolOf(tiles: { id: string; copies?: number }[]): string[] {
+  const out: string[] = [];
+  for (const t of tiles) {
+    const n = Math.max(1, Math.floor(t.copies ?? 1));
+    for (let i = 0; i < n; i++) out.push(t.id);
+  }
+  return out;
+}
+
 function assignByTrack(ids: string[]): Record<ResearchTrackId, string> {
   const out = {} as Record<ResearchTrackId, string>;
   RESEARCH_TRACK_IDS.forEach((track, i) => {
@@ -49,7 +62,7 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
   const stdByTrack = assignByTrack(std.slice(0, RESEARCH_TRACK_IDS.length));
   const stdFree = std.slice(RESEARCH_TRACK_IDS.length, RESEARCH_TRACK_IDS.length + 3);
 
-  // 2) Advanced tech: one per track.
+  // 2) Advanced tech: draw 6 of 15, one per track (the rest stay unseen).
   const adv = shuffleSeeded(idsOf(SETUP_CATALOG.advancedTech), streamFor(seed, "advancedTech"));
   const advByTrack = assignByTrack(adv.slice(0, RESEARCH_TRACK_IDS.length));
 
@@ -59,9 +72,13 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
   const available = boosters.slice(0, availableCount);
   const unused = boosters.slice(availableCount);
 
-  // 4) Round scoring: 6 drawn, one per round.
-  const scoring = shuffleSeeded(idsOf(SETUP_CATALOG.roundScoring), streamFor(seed, "roundScoring"));
-  const roundScoring = scoring.slice(0, 6);
+  // 4) Round scoring: draw 6 from the physical 10-tile pool (duplicates via copies).
+  const scoringPool = shuffleSeeded(physicalPoolOf(SETUP_CATALOG.roundScoring), streamFor(seed, "roundScoring"));
+  const roundScoring = scoringPool.slice(0, 6);
+
+  // 5) Final scoring: draw 2 of 6.
+  const finals = shuffleSeeded(idsOf(SETUP_CATALOG.finalScoring), streamFor(seed, "finalScoring"));
+  const finalScoring = finals.slice(0, 2);
 
   return {
     seed,
@@ -70,6 +87,7 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
     advancedTech: { byTrack: advByTrack },
     boosters: { available, unused },
     roundScoring,
+    finalScoring,
   };
 }
 

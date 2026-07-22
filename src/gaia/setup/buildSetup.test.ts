@@ -7,20 +7,34 @@ const STD_IDS = SETUP_CATALOG.standardTech.map((t) => t.id);
 const ADV_IDS = SETUP_CATALOG.advancedTech.map((t) => t.id);
 const BOOSTER_IDS = SETUP_CATALOG.boosters.map((t) => t.id);
 const SCORING_IDS = SETUP_CATALOG.roundScoring.map((t) => t.id);
+const FINAL_IDS = SETUP_CATALOG.finalScoring.map((t) => t.id);
 
-// Guard the structural assumptions the randomizer relies on. If the catalog
-// counts drift, several of the slice() calls below would silently produce short
-// results instead of failing here.
+const SCORING_COPIES: Record<string, number> = Object.fromEntries(
+  SETUP_CATALOG.roundScoring.map((t) => [t.id, Math.max(1, Math.floor(t.copies ?? 1))])
+);
+
+// Guard the structural assumptions the randomizer relies on. Counts verified
+// against the rulebook component overview (2026-07-21). If the catalog counts
+// drift, several of the slice() calls in the builder would silently produce
+// short results instead of failing here.
 describe("catalog structure", () => {
   it("has the expected counts", () => {
     expect(STD_IDS).toHaveLength(9);
-    expect(ADV_IDS).toHaveLength(6);
+    expect(ADV_IDS).toHaveLength(15);
     expect(BOOSTER_IDS).toHaveLength(10);
-    expect(SCORING_IDS).toHaveLength(10);
+    expect(SCORING_IDS).toHaveLength(7);
+    expect(FINAL_IDS).toHaveLength(6);
+  });
+
+  it("round scoring types form a physical pool of 10 (4 x1 + 3 x2)", () => {
+    const total = Object.values(SCORING_COPIES).reduce((a, b) => a + b, 0);
+    expect(total).toBe(10);
+    expect(Object.values(SCORING_COPIES).filter((c) => c === 1)).toHaveLength(4);
+    expect(Object.values(SCORING_COPIES).filter((c) => c === 2)).toHaveLength(3);
   });
 
   it("uses unique ids within each component", () => {
-    for (const ids of [STD_IDS, ADV_IDS, BOOSTER_IDS, SCORING_IDS]) {
+    for (const ids of [STD_IDS, ADV_IDS, BOOSTER_IDS, SCORING_IDS, FINAL_IDS]) {
       expect(new Set(ids).size).toBe(ids.length);
     }
   });
@@ -37,36 +51,7 @@ describe("buildSetupFromSeed determinism", () => {
     // Golden values from this implementation + the current catalog ids. A diff
     // means either the RNG or the id set moved; regenerate intentionally.
     const r = buildSetupFromSeed({ seed: "snap-0001", playerCount: 4 });
-    expect(r).toEqual({
-      seed: "snap-0001",
-      playerCount: 4,
-      standardTech: {
-        byTrack: {
-          terra: "TS5",
-          nav: "TS1",
-          ai: "TS6",
-          gaia: "TS9",
-          eco: "TS7",
-          sci: "TS4",
-        },
-        free: ["TS3", "TS8", "TS2"],
-      },
-      advancedTech: {
-        byTrack: {
-          terra: "AT5",
-          nav: "AT6",
-          ai: "AT1",
-          gaia: "AT3",
-          eco: "AT2",
-          sci: "AT4",
-        },
-      },
-      boosters: {
-        available: ["RB07", "RB10", "RB03", "RB05", "RB09", "RB08", "RB02"],
-        unused: ["RB04", "RB01", "RB06"],
-      },
-      roundScoring: ["RS01", "RS03", "RS04", "RS09", "RS05", "RS02"],
-    });
+    expect(r).toEqual(GOLDEN_SNAP_0001);
   });
 
   it("gives different seeds different rolls", () => {
@@ -82,12 +67,12 @@ describe("buildSetupFromSeed structure", () => {
   it("assigns one distinct standard tech per track plus 3 free, all from the catalog", () => {
     const used = [...Object.values(r.standardTech.byTrack), ...r.standardTech.free];
     expect(used).toHaveLength(9);
-    expect(new Set(used).size).toBe(9); // no tile used twice
+    expect(new Set(used).size).toBe(9); // no type used twice
     expect(used.every((id) => STD_IDS.includes(id))).toBe(true);
     expect(Object.keys(r.standardTech.byTrack).sort()).toEqual([...RESEARCH_TRACK_IDS].sort());
   });
 
-  it("assigns one advanced tech per track, all distinct", () => {
+  it("assigns 6 distinct advanced tech (of 15), one per track", () => {
     const used = Object.values(r.advancedTech.byTrack);
     expect(used).toHaveLength(6);
     expect(new Set(used).size).toBe(6);
@@ -101,10 +86,31 @@ describe("buildSetupFromSeed structure", () => {
     expect(available.some((id) => unused.includes(id))).toBe(false);
   });
 
-  it("draws 6 distinct round scoring tiles for rounds 1..6", () => {
+  it("draws 6 round scoring tiles honoring each type's physical copies", () => {
     expect(r.roundScoring).toHaveLength(6);
-    expect(new Set(r.roundScoring).size).toBe(6);
     expect(r.roundScoring.every((id) => SCORING_IDS.includes(id))).toBe(true);
+    const cnt: Record<string, number> = {};
+    for (const id of r.roundScoring) cnt[id] = (cnt[id] ?? 0) + 1;
+    for (const [id, n] of Object.entries(cnt)) {
+      expect(n).toBeLessThanOrEqual(SCORING_COPIES[id]);
+    }
+  });
+
+  it("a x2 scoring type CAN occupy two rounds for some seed", () => {
+    // Sanity that duplicates are actually possible (the old 10-distinct-types
+    // model could never produce one). Scan a few seeds for a duplicate.
+    let found = false;
+    for (let i = 0; i < 50 && !found; i++) {
+      const roll = buildSetupFromSeed({ seed: `dup-${i}` });
+      found = new Set(roll.roundScoring).size < roll.roundScoring.length;
+    }
+    expect(found).toBe(true);
+  });
+
+  it("draws 2 distinct final scoring tiles", () => {
+    expect(r.finalScoring).toHaveLength(2);
+    expect(new Set(r.finalScoring).size).toBe(2);
+    expect(r.finalScoring.every((id) => FINAL_IDS.includes(id))).toBe(true);
   });
 });
 
@@ -122,3 +128,25 @@ describe("player count", () => {
     expect(buildSetupFromSeed({ seed: "pc" }).playerCount).toBe(4); // default
   });
 });
+
+// ---------------------------------------------------------------------------
+// Golden roll (regenerate deliberately when the RNG or catalog ids change):
+//   npx tsx -e "import('./src/gaia/setup/buildSetup').then(m => console.log(JSON.stringify(m.buildSetupFromSeed({ seed: 'snap-0001', playerCount: 4 }), null, 2)))"
+// ---------------------------------------------------------------------------
+const GOLDEN_SNAP_0001 = {
+  seed: "snap-0001",
+  playerCount: 4,
+  standardTech: {
+    byTrack: { terra: "TS5", nav: "TS1", ai: "TS6", gaia: "TS9", eco: "TS7", sci: "TS4" },
+    free: ["TS3", "TS8", "TS2"],
+  },
+  advancedTech: {
+    byTrack: { terra: "AT04", nav: "AT06", ai: "AT02", gaia: "AT09", eco: "AT12", sci: "AT03" },
+  },
+  boosters: {
+    available: ["RB07", "RB10", "RB03", "RB05", "RB09", "RB08", "RB02"],
+    unused: ["RB04", "RB01", "RB06"],
+  },
+  roundScoring: ["RS01", "RS03", "RS04", "RS07", "RS05", "RS02"],
+  finalScoring: ["FS05", "FS06"],
+};

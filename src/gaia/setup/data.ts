@@ -2,23 +2,22 @@
 //
 // ⚠️ DRAFT CATALOG — pending user verification.
 //
-// The STRUCTURE here (how many tiles, which slots they fill) is what the
-// randomizer in buildSetup.ts depends on, and is believed correct for the
-// Gaia Project base game:
-//   - 9 standard tech tiles  (6 under the research tracks + 3 free)
-//   - 6 advanced tech tiles  (one per research track)
-//   - 10 round boosters      (players + 3 used per game)
-//   - 10 round scoring tiles (6 drawn, one per round)
+// The STRUCTURE (how many tiles, which slots they fill) is what the randomizer
+// in buildSetup.ts depends on. Counts verified against the rulebook component
+// overview (2026-07-21):
+//   - standard tech:  9 types x4 copies (one TYPE per slot: 6 tracks + 3 free)
+//   - advanced tech:  15 tiles, 6 drawn (one per research track)
+//   - round boosters: 10, of which (players + 3) are used
+//   - round scoring:  7 types = 4 x1 + 3 x2 -> physical pool of 10; 6 drawn
+//   - final scoring:  6 tiles, 2 drawn
 //
-// The `label`/`effect` TEXT is a best-effort first cut and MUST be checked
-// against the physical components. Fixing a label never changes randomizer
-// behavior (which keys off ids only), so corrections here are safe and local.
-//
-// Verification status:
+// Verification status of the TEXT:
 //   - boosters:      ✅ verified against the rulebook (2026-07-21)
-//   - standardTech:  ⚠️ DRAFT
-//   - advancedTech:  ⚠️ DRAFT
-//   - roundScoring:  ⚠️ DRAFT
+//   - standardTech:  ⚠️ DRAFT (best-effort guesses)
+//   - advancedTech:  ⚠️ PLACEHOLDER (icon-only image; awaiting rulebook text)
+//   - roundScoring:  ⚠️ PLACEHOLDER (icon-only image; awaiting rulebook text)
+//   - finalScoring:  ⚠️ PLACEHOLDER (icon-only image; awaiting rulebook text)
+// Fixing label/effect text never changes randomizer behavior (ids only).
 //
 // Lost Fleet expansion additions are NOT included yet — add them once the base
 // catalog is confirmed.
@@ -26,7 +25,7 @@
 import type { SetupCatalog } from "./types";
 
 export const SETUP_CATALOG: SetupCatalog = {
-  // --- 9 standard tech tiles ------------------------------------------------
+  // --- 9 standard tech tile types (x4 identical copies each) ----------------
   standardTech: [
     { id: "TS1", label: "鉱石収入 +1", labelEn: "+1 ore income", effect: "収入フェイズに鉱石 +1", effectEn: "+1 ore during income" },
     { id: "TS2", label: "知識収入 +1", labelEn: "+1 knowledge income", effect: "収入フェイズに知識 +1", effectEn: "+1 knowledge during income" },
@@ -39,15 +38,18 @@ export const SETUP_CATALOG: SetupCatalog = {
     { id: "TS9", label: "知識+1・クレジット+1（収入）", labelEn: "+1 knowledge, +1 credit income", effect: "収入：知識+1・クレジット+1", effectEn: "income: +1 knowledge and +1 credit" },
   ],
 
-  // --- 6 advanced tech tiles ------------------------------------------------
-  advancedTech: [
-    { id: "AT1", label: "得点：セクター横断1つにつき +2VP", labelEn: "+2 VP per sector crossed", effectEn: "immediate: +2 VP per sector you occupy" },
-    { id: "AT2", label: "得点：連盟トークン1つにつき +5VP", labelEn: "+5 VP per federation", effectEn: "immediate: +5 VP per federation token" },
-    { id: "AT3", label: "鉱山建設で +3VP（パス毎）", labelEn: "+3 VP per mine built", effectEn: "pass/round: +VP for mines built" },
-    { id: "AT4", label: "研究段階を進めるたび +2VP", labelEn: "+2 VP per research step", effectEn: "+2 VP each time you advance research" },
-    { id: "AT5", label: "交易所1つにつき +3VP（アクション毎）", labelEn: "+3 VP per trading station", effectEn: "action-linked: +VP for trading stations" },
-    { id: "AT6", label: "ガイア惑星1つにつき +2VP", labelEn: "+2 VP per Gaia planet", effectEn: "immediate: +2 VP per Gaia planet" },
-  ],
+  // --- 15 advanced tech tiles (6 drawn per game) ----------------------------
+  // PLACEHOLDER: the component image is icon-only, so no effect text is
+  // recorded yet. Ids AT01..AT15 will be mapped to the rulebook's tile
+  // descriptions once provided.
+  advancedTech: Array.from({ length: 15 }, (_, i) => {
+    const n = String(i + 1).padStart(2, "0");
+    return {
+      id: `AT${n}`,
+      label: `上級技術タイル ${i + 1}（内容未確認）`,
+      labelEn: `Advanced tech tile ${i + 1} (unverified)`,
+    };
+  }),
 
   // --- 10 round boosters ----------------------------------------------------
   // ✅ VERIFIED against the rulebook (2026-07-21). Ids RB01..RB10 correspond to
@@ -141,18 +143,29 @@ export const SETUP_CATALOG: SetupCatalog = {
     },
   ],
 
-  // --- 10 round scoring tiles -----------------------------------------------
-  // forbiddenRounds are a DRAFT guess and are NOT yet enforced by the builder.
+  // --- 7 round scoring types (physical pool of 10; 6 drawn) -----------------
+  // PLACEHOLDER: icon-only image; effect text pending. Per the rulebook
+  // caption, the 4 types in the image's top row exist once (RS01..RS04) and
+  // the 3 types in the bottom row exist twice (RS05..RS07, copies: 2), so
+  // those can score up to two rounds in one game.
   roundScoring: [
-    { id: "RS01", label: "鉱山建設で +2VP", labelEn: "+2 VP for building a mine" },
-    { id: "RS02", label: "研究段階で +2VP", labelEn: "+2 VP for research step" },
-    { id: "RS03", label: "交易所建設で +3VP", labelEn: "+3 VP for trading station" },
-    { id: "RS04", label: "ガイア惑星で +3VP", labelEn: "+3 VP for Gaia planet" },
-    { id: "RS05", label: "居住惑星種で +2VP", labelEn: "+2 VP per planet type settled" },
-    { id: "RS06", label: "連盟で +5VP", labelEn: "+5 VP for federation" },
-    { id: "RS07", label: "研究所建設で +3VP", labelEn: "+3 VP for research lab" },
-    { id: "RS08", label: "要塞/学術都市で +5VP", labelEn: "+5 VP for PI/academy" },
-    { id: "RS09", label: "鉱山4つにつき +? VP", labelEn: "+VP per set of mines" },
-    { id: "RS10", label: "テラフォーミングで +2VP", labelEn: "+2 VP for terraforming step" },
+    { id: "RS01", label: "ラウンド得点タイル 1（内容未確認）", labelEn: "Round scoring tile 1 (unverified)" },
+    { id: "RS02", label: "ラウンド得点タイル 2（内容未確認）", labelEn: "Round scoring tile 2 (unverified)" },
+    { id: "RS03", label: "ラウンド得点タイル 3（内容未確認）", labelEn: "Round scoring tile 3 (unverified)" },
+    { id: "RS04", label: "ラウンド得点タイル 4（内容未確認）", labelEn: "Round scoring tile 4 (unverified)" },
+    { id: "RS05", label: "ラウンド得点タイル 5（内容未確認）", labelEn: "Round scoring tile 5 (unverified)", copies: 2 },
+    { id: "RS06", label: "ラウンド得点タイル 6（内容未確認）", labelEn: "Round scoring tile 6 (unverified)", copies: 2 },
+    { id: "RS07", label: "ラウンド得点タイル 7（内容未確認）", labelEn: "Round scoring tile 7 (unverified)", copies: 2 },
+  ],
+
+  // --- 6 final scoring tiles (2 drawn per game) -----------------------------
+  // PLACEHOLDER: icon-only image; effect text pending.
+  finalScoring: [
+    { id: "FS01", label: "最終得点タイル 1（内容未確認）", labelEn: "Final scoring tile 1 (unverified)" },
+    { id: "FS02", label: "最終得点タイル 2（内容未確認）", labelEn: "Final scoring tile 2 (unverified)" },
+    { id: "FS03", label: "最終得点タイル 3（内容未確認）", labelEn: "Final scoring tile 3 (unverified)" },
+    { id: "FS04", label: "最終得点タイル 4（内容未確認）", labelEn: "Final scoring tile 4 (unverified)" },
+    { id: "FS05", label: "最終得点タイル 5（内容未確認）", labelEn: "Final scoring tile 5 (unverified)" },
+    { id: "FS06", label: "最終得点タイル 6（内容未確認）", labelEn: "Final scoring tile 6 (unverified)" },
   ],
 };

@@ -35,6 +35,7 @@ const UI = {
     available: "使用",
     unused: "未使用",
     roundScoring: "ラウンド得点",
+    finalScoring: "最終得点計算",
     round: "R",
   },
   en: {
@@ -53,6 +54,7 @@ const UI = {
     available: "Available",
     unused: "Unused",
     roundScoring: "Round scoring",
+    finalScoring: "Final scoring",
     round: "R",
   },
 } as const;
@@ -64,6 +66,7 @@ for (const group of [
   SETUP_CATALOG.advancedTech,
   SETUP_CATALOG.boosters,
   SETUP_CATALOG.roundScoring,
+  SETUP_CATALOG.finalScoring,
 ]) {
   for (const t of group) BY_ID.set(t.id, t);
 }
@@ -202,6 +205,14 @@ export default function SetupView() {
         <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.roundScoring}</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
           {result.roundScoring.map((id, i) => tileCell(id, `${t.round}${i + 1}`))}
+        </div>
+      </section>
+
+      {/* Final scoring, 2 of 6 */}
+      <section>
+        <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.finalScoring}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
+          {result.finalScoring.map((id) => tileCell(id))}
         </div>
       </section>
 
