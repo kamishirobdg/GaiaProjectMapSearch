@@ -116,7 +116,11 @@ git diff scripts/__snapshots__/baseline.json   # 差分が意図どおりか必�
 ## ディレクトリ
 
 ```
-src/app/board/page.tsx        検索UI（条件パネル・結果一覧）
+src/app/board/page.tsx        検索UI本体（条件パネル・結果一覧）
+src/app/board/uiText.ts       UI文言辞書（ja/en）
+src/app/board/persistence.ts  検索結果・保存条件のIndexedDB層
+src/app/board/searchRunner.ts Worker検索＋メインスレッドfallback
+src/app/board/BreakdownTable.tsx 色別内訳/詳細表・惑星色定数
 src/components/MapBoardViewer.tsx  盤面描画
 src/gaia/
   search.ts                   パイプラインのオーケストレーション
