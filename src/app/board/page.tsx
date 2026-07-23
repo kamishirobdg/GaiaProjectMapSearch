@@ -122,6 +122,19 @@ function useIsNarrow(px: number) {
   return narrow;
 }
 
+/**
+ * ホバーヒント付きラベル（⑤ UI文言改善、2026-07-24）。
+ * title のネイティブツールチップ＋点線下線で「ヒントがある」ことを示す。
+ * 用語集パネルはこの各所ツールチップに置き換えた（承認済み指摘）。
+ */
+function Hint({ label, tip }: { label: React.ReactNode; tip: string }) {
+  return (
+    <span title={tip} style={{ borderBottom: "1px dotted #999", cursor: "help" }}>
+      {label}
+    </span>
+  );
+}
+
 /** sector image helper (UI only) は @/gaia/board/viewerAssets へ抽出済み（一覧タブと共用） */
 
 function getBreakdown(r: any) {
@@ -1140,7 +1153,6 @@ setSelectedSeedLabel(String(found.seed ?? ""));
   const [progressBest, setProgressBest] = React.useState<number | null>(null);
   const [hardFailBy, setHardFailBy] = React.useState<Record<string, number>>({});
 
-  const [showGlossary, setShowGlossary] = React.useState(false);
 
   const templateId = React.useMemo(() => {
     return String((template as any).templateId ?? (template as any).id ?? (which === "3p" ? "3p_lostFleet" : "4p_lostFleet"));
@@ -2084,23 +2096,7 @@ const handleDeleteUsed = React.useCallback(
   const curScoutCore = getScoutCoreSummary(currentResult);
 
   // 用語集（英→日＋意味）
-  const glossary = React.useMemo(
-    () => [
-      { term: "score", ja: "スコア", desc: "色毎の強さが近い程高くなります（惑星種別ごとの評価値が乖離していない程高くなります）", en: "score", descEn: "Higher when planet-type totals are balanced (colors are close in strength)." },
-      { term: "outer", ja: "最外周", desc: "マップの最も外に配置されている惑星", en: "outer", descEn: "Planets on the outermost ring of the map." },
-      { term: "touch", ja: "外周", desc: "最外周の一つ内側に配置されている惑星", en: "touch", descEn: "Planets one ring inside the outermost." },
-      { term: "scout", ja: "船接触", desc: "船に近い程惑星種別の評価が高くなります", en: "scout", descEn: "The closer to a scout ship, the higher the planet type is valued." },
-      { term: "scoutCore", ja: "船星系", desc: "船に接触している惑星が近くに多い程評価が高くなります", en: "scoutCore", descEn: "Higher when more scout-touching planets are clustered nearby." },
-      { term: "radius", ja: "船接触半径", desc: "船に接触しているとみなす距離", en: "radius", descEn: "Distance within which a planet counts as touching a scout." },
-      { term: "std", ja: "標準偏差", desc: "惑星種別別 totals の分散（ばらつき）指標。", en: "std", descEn: "Spread (variance) metric across planet-type totals." },
-      { term: "range", ja: "範囲", desc: "惑星種別別 totals の最大−最小（ばらつき）指標。", en: "range", descEn: "Max − min spread across planet-type totals." },
-      { term: "Top-K", ja: "上位ランク", desc: "スコア上位からK件保持するランキング結果。", en: "Top-K", descEn: "Ranking that keeps the top K results by score." },
-      { term: "Hard", ja: "制約条件", desc: "満たさない候補は即棄却する制約", en: "Hard", descEn: "Constraints that immediately reject any board that fails them." },
-      { term: "Soft", ja: "評価指数", desc: "満たした候補を順位付けする評価", en: "Soft", descEn: "Weighted scoring that ranks the boards that passed." },
-      { term: "colorPreference", ja: "色優遇/冷遇", desc: "＋なら該当色が強い程全体スコアが上がります", en: "colorPreference", descEn: "Positive raises the overall score as that color gets stronger." },
-          ],
-    []
-  );
+  // 用語集データは各ラベルの Hint ツールチップ（uiText の tip* キー）へ移行済み。
 
   // Mobile: show Top-K early; PC order remains unchanged.
   const topKSection = (
@@ -2115,11 +2111,11 @@ const handleDeleteUsed = React.useCallback(
   
       <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
         <input type="radio" checked={resultsMode === "active"} onChange={() => setResultsMode("active")} />
-        {t("resultsModeActive")}
+        <Hint label={t("resultsModeActive")} tip={t("tipResultsActive")} />
       </label>
       <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
         <input type="radio" checked={resultsMode === "used"} onChange={() => setResultsMode("used")} />
-        {t("resultsModeUsed")}
+        <Hint label={t("resultsModeUsed")} tip={t("tipResultsUsed")} />
       </label>
     </div>
   </div>
@@ -2211,6 +2207,7 @@ const handleDeleteUsed = React.useCallback(
                     e.stopPropagation();
                     handleTogglePin(String(hashFull));
                   }}
+                  title={t("tipPin")}
                   style={{ padding: "2px 8px", fontSize: 12, border: "1px solid #ccc", borderRadius: 6, background: "white" }}
                 >
                   {pinnedHashes.has(String(hashFull)) ? t("unpin") : t("pin")}
@@ -2221,6 +2218,7 @@ const handleDeleteUsed = React.useCallback(
                       e.stopPropagation();
                       handleMarkUsed(String(hashFull));
                     }}
+                    title={t("tipMarkUsed")}
                     style={{ padding: "2px 8px", fontSize: 12, border: "1px solid #ccc", borderRadius: 6, background: "white" }}
                   >
                     {t("markUsed")}
@@ -2354,6 +2352,7 @@ const handleDeleteUsed = React.useCallback(
         <button
           onClick={handleToggleContinuous}
           disabled={(busy && !continuousMode) || !mapSupported}
+          title={t("tipContinuous")}
           style={{ padding: "6px 10px", fontWeight: 700 }}
         >
           {continuousMode ? t("stopSearch") : t("continuous")}
@@ -2459,7 +2458,7 @@ const handleDeleteUsed = React.useCallback(
 
         <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
           <input type="checkbox" checked={showImportExport} onChange={(e) => setShowImportExport(e.target.checked)} />
-          <span>Export/Import</span>
+          <span>{t("exportImportTitle")}</span>
         </label>
 
 <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
@@ -2496,7 +2495,13 @@ const handleDeleteUsed = React.useCallback(
                 {Array.from(new Set((savedProfiles ?? []).map((p) => String(((p.params as any)?.templateId ?? p.templateId ?? "")).trim()).filter(Boolean))).map(
                   (tid) => (
                     <option key={tid} value={tid}>
-                      {tid}
+                      {tid === "base_34p"
+                        ? lang === "ja" ? "基本版 3-4人" : "Base 3-4p"
+                        : tid === "3p_lostFleet"
+                          ? "Lost Fleet 3p"
+                          : tid === "4p_lostFleet"
+                            ? "Lost Fleet 4p"
+                            : tid}
                     </option>
                   )
                 )}
@@ -2522,7 +2527,15 @@ const handleDeleteUsed = React.useCallback(
                 const params = (p.params ?? null) as any;
                 const hasParams = !!params;
                 const tid = String(params?.templateId ?? p.templateId ?? "");
-                const title = hasParams ? `${tid}` : `${p.templateId ?? ""}`;
+                // 内部名（templateId）をそのまま出さず表示名に変換（⑤ 2026-07-24）
+                const title =
+                  tid === "base_34p"
+                    ? lang === "ja" ? "基本版 3-4人" : "Base 3-4p"
+                    : tid === "3p_lostFleet"
+                      ? "Lost Fleet 3p"
+                      : tid === "4p_lostFleet"
+                        ? "Lost Fleet 4p"
+                        : tid || "-";
 
                 const hardSummary = hasParams
                   ? `${t("hard")}: ${t("outerSameColorMax")}=${String(params?.hard?.outerSameColorMax ?? "-")}, ${t("centerMode")}=${String(
@@ -2532,12 +2545,17 @@ const handleDeleteUsed = React.useCallback(
                     )}`
                   : `${t("legacyUnknown")}`;
 
+                const fourShips = (o: any) =>
+                  ["twilight", "eclipse", "rebellion", "tfmars"]
+                    .map((k, i) => String(o?.[k] ?? o?.[`S${i + 1}`] ?? "-"))
+                    .join("/");
+                const shipsLegend = lang === "ja" ? "トワ/エク/リベ/TF" : "tw/ec/rb/tf";
                 const softSummary = hasParams
-                  ? `${t("soft")}: ${t("wOuter")}=${String(params?.soft?.wOuter ?? "-")}, ${t("wTouch")}=${String(params?.soft?.wTouch ?? "-")}, ${t(
-                      "wScout"
-                    )}=${String(params?.soft?.wScout ?? "-")}, ${t("wScoutCore")}=${String(params?.soft?.wScoutCore ?? "-")}, wScoutByKey{twilight=${String(params?.soft?.wScoutByScoutKey?.twilight ?? params?.soft?.wScoutByScoutKey?.S1 ?? "-")},eclipse=${String(params?.soft?.wScoutByScoutKey?.eclipse ?? params?.soft?.wScoutByScoutKey?.S2 ?? "-")},rebellion=${String(params?.soft?.wScoutByScoutKey?.rebellion ?? params?.soft?.wScoutByScoutKey?.S3 ?? "-")},tfmars=${String(params?.soft?.wScoutByScoutKey?.tfmars ?? params?.soft?.wScoutByScoutKey?.S4 ?? "-")}}, wScoutCoreByKey{twilight=${String(params?.soft?.wScoutCoreByScoutKey?.twilight ?? params?.soft?.wScoutCoreByScoutKey?.S1 ?? "-")},eclipse=${String(params?.soft?.wScoutCoreByScoutKey?.eclipse ?? params?.soft?.wScoutCoreByScoutKey?.S2 ?? "-")},rebellion=${String(params?.soft?.wScoutCoreByScoutKey?.rebellion ?? params?.soft?.wScoutCoreByScoutKey?.S3 ?? "-")},tfmars=${String(params?.soft?.wScoutCoreByScoutKey?.tfmars ?? params?.soft?.wScoutCoreByScoutKey?.S4 ?? "-")}}, scoutCoreAttrib=${String(params?.soft?.scoutCoreAttributionMode ?? "-")}, ${t(
-                      "scoutRadiusLabel"
-                    )}=${String(params?.soft?.scoutRadius ?? "-")}, ${t("metric")}=${String(params?.soft?.imbalanceMetric ?? "-")}`
+                  ? `${t("soft")}: ${t("wOuter")}=${String(params?.soft?.wOuter ?? "-")}, ${t("wTouch")}=${String(params?.soft?.wTouch ?? "-")}, ` +
+                    `${t("wScout")}[${shipsLegend}]=${fourShips(params?.soft?.wScoutByScoutKey)}, ` +
+                    `${t("wScoutCore")}[${shipsLegend}]=${fourShips(params?.soft?.wScoutCoreByScoutKey)}` +
+                    `${params?.soft?.scoutCoreAttributionMode === "best" ? `, ${t("scoutCoreAttribBest")}` : ""}, ` +
+                    `${t("scoutRadiusLabel")}=${String(params?.soft?.scoutRadius ?? "-")}`
                   : null;
 
                 const isEditing = editingProfileKey === p.searchKey;
@@ -2608,9 +2626,9 @@ const handleDeleteUsed = React.useCallback(
                       <div style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>{hardSummary}</div>
                       {softSummary ? <div style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>{softSummary}</div> : null}
                       <div style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>{t("algoVersion")}={String(params?.algoVersion ?? p.algoVersion ?? "-")} / {t("evalVersion")}={String(params?.evalVersion ?? p.evalVersion ?? "-")}</div>
-                      <div style={{ fontSize: 11, opacity: 0.75, marginTop: 2, fontFamily: "monospace" }}>{p.searchKey}</div>
-                      <div style={{ fontSize: 12, opacity: 0.85, marginTop: 4 }}>
-                        active={p.activeCount} / used={p.usedCount}
+                      {/* searchKey（生テキスト）は表示せずホバーで確認（⑤ 2026-07-24） */}
+                      <div style={{ fontSize: 12, opacity: 0.85, marginTop: 4 }} title={p.searchKey}>
+                        {t("saved")}={p.activeCount} / {t("resultsModeUsed")}={p.usedCount}
                       </div>
                     </div>
 
@@ -2839,25 +2857,27 @@ const handleDeleteUsed = React.useCallback(
               <div style={{ fontWeight: 700, marginBottom: 6 }}>{t("currentLogicalSummary")}</div>
 
               <details style={{ marginTop: 4 }}>
-                <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.75 }}>System</summary>
-                <div style={{ fontFamily: "monospace", fontSize: 11, opacity: 0.85, marginTop: 4 }}>
-                  {t("seed")}={String(selectedSeedLabel ?? seed ?? "-")}  /  {t("placementHashResult")}={curHashFromResult}  /  {t("placementHashView")}={currentHash}
+                <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.75 }}>
+                  {lang === "ja" ? "詳細情報" : "System"}
+                </summary>
+                <div style={{ fontFamily: "monospace", fontSize: 11, opacity: 0.85, marginTop: 4 }} title={t("tipHashPair")}>
+                  {t("seed")}={String(selectedSeedLabel ?? seed ?? "-")}  /  <Hint label={`${t("placementHashResult")}=${curHashFromResult}`} tip={t("tipHashPair")} />  /  <Hint label={`${t("placementHashView")}=${currentHash}`} tip={t("tipHashPair")} />
                 </div>
 
                 <div style={{ marginTop: 8, fontSize: 12 }}>
-                  {t("score")}={currentResult ? Number(currentResult.score ?? 0 ).toFixed(3) : "-"}
+                  <Hint label={t("score")} tip={t("tipScore")} />={currentResult ? Number(currentResult.score ?? 0 ).toFixed(3) : "-"}
                 </div>
 
                 <div style={{ marginTop: 4, fontSize: 12 }}>
-                  {t("imbalance")} ({curImb.metric})={currentResult ? (Math.round(curImb.value * 1000) / 1000).toFixed(3) : "-"}
+                  <Hint label={`${t("imbalance")} (${curImb.metric})`} tip={t("tipScore")} />={currentResult ? (Math.round(curImb.value * 1000) / 1000).toFixed(3) : "-"}
                 </div>
 
                 <div style={{ marginTop: 4, fontSize: 12, opacity: 0.9 }}>
-                  {t("outerCnt")}={currentResult ? curOT.outerSum : "-"} / {t("touchCnt")}={currentResult ? curOT.touchSum : "-"}
+                  <Hint label={t("outerCnt")} tip={t("tipOuterCnt")} />={currentResult ? curOT.outerSum : "-"} / <Hint label={t("touchCnt")} tip={t("tipTouchCnt")} />={currentResult ? curOT.touchSum : "-"}
                 </div>
 
                 <div style={{ marginTop: 4, fontSize: 12, opacity: 0.9 }}>
-                  {t("scoutRadius")}={curScout.radius ?? "-"} / {t("scoutTotal")}={currentResult ? curScout.scoutTotal : "-"}
+                  <Hint label={t("scoutRadius")} tip={t("tipScoutRadius")} />={curScout.radius ?? "-"} / {t("scoutTotal")}={currentResult ? curScout.scoutTotal : "-"}
                 </div>
 
                 <div style={{ marginTop: 4, fontSize: 12, opacity: 0.9 }}>
@@ -2884,20 +2904,20 @@ const handleDeleteUsed = React.useCallback(
 
                       {(isBase
                         ? ([
-                            ["total", "評価", "total"],
-                            ["gaia", "ガイア近接", "gaia"],
-                            ["cluster", "星系", "cluster"],
-                            ["outer", "最外周", "outer"],
-                            ["touch", "辺境", "touch"],
+                            ["total", "評価", "total", t("tipTotalCol")],
+                            ["gaia", "ガイア近接", "gaia", t("wGaiaTip")],
+                            ["cluster", "星系", "cluster", t("wClusterTip")],
+                            ["outer", "最外周", "outer", t("tipOuterCnt")],
+                            ["touch", "外周", "touch", t("tipTouchCnt")],
                           ] as const)
                         : ([
-                            ["total", "評価", "total"],
-                            ["scout", "船接触", "scout"],
-                            ["scoutCore", "船星系", "scoutCore"],
-                            ["outer", "最外周", "outer"],
-                            ["touch", "辺境", "touch"],
+                            ["total", "評価", "total", t("tipTotalCol")],
+                            ["scout", "船接触", "scout", t("tipWScoutShip")],
+                            ["scoutCore", "船星系", "scoutCore", t("tipWScoutCoreShip")],
+                            ["outer", "最外周", "outer", t("tipOuterCnt")],
+                            ["touch", "外周", "touch", t("tipTouchCnt")],
                           ] as const)
-                      ).map(([k, ja, en]) => (
+                      ).map(([k, ja, en, tip]) => (
                         <label key={k} style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 12 }}>
                           <input
                             type="checkbox"
@@ -2906,7 +2926,7 @@ const handleDeleteUsed = React.useCallback(
                               setBreakdownCols((prev) => ({ ...prev, [k]: e.target.checked }))
                             }
                           />
-                          <span>{lang === "ja" ? ja : en}</span>
+                          <Hint label={lang === "ja" ? ja : en} tip={tip} />
                         </label>
                       ))}
                     </div>
@@ -2932,39 +2952,12 @@ const handleDeleteUsed = React.useCallback(
               )}
             </div>
 
-            {/* Glossary */}
-            <div style={{ padding: 10, border: "1px solid #ddd", borderRadius: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                <div style={{ fontWeight: 700 }}>{t("glossary")}</div>
-                <button onClick={() => setShowGlossary((v) => !v)} style={{ padding: "2px 8px", fontSize: 12 }}>
-                  {showGlossary ? t("hide") : t("show")}
-                </button>
-              </div>
-
-              {showGlossary ? (
-                <div style={{ marginTop: 8, fontSize: 12 }}>
-                  {glossary.map((g) => (
-                    <div key={g.term} style={{ padding: "6px 0", borderTop: "1px dashed #eee" }}>
-                      <div style={{ fontFamily: "monospace" }}>
-                        {g.term}
-                        {lang === "ja" ? (
-                          <span style={{ opacity: 0.75 }}>
-                            {" "}
-                            / {g.ja}
-                          </span>
-                        ) : null}
-                      </div>
-                      <div style={{ marginTop: 2, opacity: 0.85 }}>{lang === "ja" ? g.desc : g.descEn}</div>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </div>
+            {/* 用語集パネルは各ラベルのホバーヒント（Hint）へ置換済み（⑤承認済み、2026-07-24） */}
 
             {/* Controls */}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <span>{t("trials")}</span>
+                <Hint label={t("trials")} tip={t("tipTrials")} />
                 <input
                   type="number"
                   value={trials}
@@ -2976,7 +2969,7 @@ const handleDeleteUsed = React.useCallback(
               </label>
 
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <span>{t("topK")}</span>
+                <Hint label={t("topK")} tip={t("tipTopK")} />
                 <input
                   type="number"
                   value={keepTop}
@@ -2989,10 +2982,12 @@ const handleDeleteUsed = React.useCallback(
             </div>
 
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <div style={{ fontWeight: 700, fontSize: 12 }}>{t("hard")}</div>
+              <div style={{ fontWeight: 700, fontSize: 12 }}>
+                <Hint label={t("hard")} tip={t("tipHard")} />
+              </div>
 
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <span>{t("outerSameColorMax")}</span>
+                <Hint label={t("outerSameColorMax")} tip={t("tipOuterSameColorMax")} />
                 <input
                   type="number"
                   value={outerSameColorMax}
@@ -3004,7 +2999,7 @@ const handleDeleteUsed = React.useCallback(
               </label>
 
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <span>{t("maxConnectedPlanets")}</span>
+                <Hint label={t("maxConnectedPlanets")} tip={t("tipMaxConnectedPlanets")} />
                 <input
                   type="number"
                   value={maxConnectedPlanets}
@@ -3022,13 +3017,13 @@ const handleDeleteUsed = React.useCallback(
                     checked={h5IncludeScouts}
                     onChange={(e) => setH5IncludeScouts(e.target.checked)}
                   />
-                  <span>{t("h5IncludeScouts")}</span>
+                  <Hint label={t("h5IncludeScouts")} tip={t("tipH5IncludeScouts")} />
                 </label>
               ) : null}
 
               {!isBase ? (
                 <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <span>{t("centerMode")}</span>
+                  <Hint label={t("centerMode")} tip={t("tipCenterMode")} />
                   <select
                     value={centerMode}
                     onChange={(e) =>
@@ -3048,19 +3043,21 @@ const handleDeleteUsed = React.useCallback(
             </div>
 
             <details style={{ marginTop: 10 }}>
-              <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.9 }}>
+              <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.9 }} title={t("tipSoft")}>
                 {t("soft")}
               </summary>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <div style={{ fontWeight: 700, fontSize: 12 }}>{t("soft")}</div>
+              <div style={{ fontWeight: 700, fontSize: 12 }}>
+                <Hint label={t("soft")} tip={t("tipSoft")} />
+              </div>
 
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <span>{t("wOuter")}</span>
+                <Hint label={t("wOuter")} tip={t("tipWOuter")} />
                 <input type="number" value={wOuter} min={0} max={10} onChange={(e) => setWOuter(Number(e.target.value) || 0)} style={{ width: 60 }} />
               </label>
 
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <span>{t("wTouch")}</span>
+                <Hint label={t("wTouch")} tip={t("tipWTouch")} />
                 <input type="number" value={wTouch} min={0} max={10} onChange={(e) => setWTouch(Number(e.target.value) || 0)} style={{ width: 60 }} />
               </label>
 
@@ -3087,7 +3084,7 @@ const handleDeleteUsed = React.useCallback(
 
               {!isBase ? (
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <span>{t("radius")}</span>
+                <Hint label={t("radius")} tip={t("tipScoutRadius")} />
                 <input
                   type="number"
                   value={scoutRadius}
@@ -3099,42 +3096,42 @@ const handleDeleteUsed = React.useCallback(
 
 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10, alignItems: "start" }}>
   <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-    <span>{t("wScoutS1")}</span>
+    <Hint label={t("wScoutS1")} tip={t("tipWScoutShip")} />
     <input type="number" value={wScoutS1} min={0} max={20} onChange={(e) => setWScoutS1(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
   </label>
   <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-    <span>{t("wScoutS2")}</span>
+    <Hint label={t("wScoutS2")} tip={t("tipWScoutShip")} />
     <input type="number" value={wScoutS2} min={0} max={20} onChange={(e) => setWScoutS2(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
   </label>
   <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-    <span>{t("wScoutS3")}</span>
+    <Hint label={t("wScoutS3")} tip={t("tipWScoutShip")} />
     <input type="number" value={wScoutS3} min={0} max={20} onChange={(e) => setWScoutS3(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
   </label>
   <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-    <span>{t("wScoutS4")}</span>
+    <Hint label={t("wScoutS4")} tip={t("tipWScoutShip")} />
     <input type="number" value={wScoutS4} min={0} max={20} onChange={(e) => setWScoutS4(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
   </label>
 
   <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-    <span>{t("wScoutCoreS1")}</span>
+    <Hint label={t("wScoutCoreS1")} tip={t("tipWScoutCoreShip")} />
     <input type="number" value={wScoutCoreS1} min={0} max={20} onChange={(e) => setWScoutCoreS1(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
   </label>
   <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-    <span>{t("wScoutCoreS2")}</span>
+    <Hint label={t("wScoutCoreS2")} tip={t("tipWScoutCoreShip")} />
     <input type="number" value={wScoutCoreS2} min={0} max={20} onChange={(e) => setWScoutCoreS2(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
   </label>
   <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-    <span>{t("wScoutCoreS3")}</span>
+    <Hint label={t("wScoutCoreS3")} tip={t("tipWScoutCoreShip")} />
     <input type="number" value={wScoutCoreS3} min={0} max={20} onChange={(e) => setWScoutCoreS3(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
   </label>
   <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-    <span>{t("wScoutCoreS4")}</span>
+    <Hint label={t("wScoutCoreS4")} tip={t("tipWScoutCoreShip")} />
     <input type="number" value={wScoutCoreS4} min={0} max={20} onChange={(e) => setWScoutCoreS4(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
   </label>
 
   <label style={{ display: "flex", gap: 8, alignItems: "center", gridColumn: "1 / -1", flexWrap: "wrap" }}>
     <input type="checkbox" checked={scoutCoreAttribBest} onChange={(e) => setScoutCoreAttribBest(e.target.checked)} />
-    <span>{t("scoutCoreAttribBest")}</span>
+    <Hint label={t("scoutCoreAttribBest")} tip={t("tipScoutCoreAttrib")} />
   </label>
 </div>
 
@@ -3143,11 +3140,13 @@ const handleDeleteUsed = React.useCallback(
               ) : null}
 
               <div style={{ width: "100%", borderTop: "1px dashed #ddd", marginTop: 8, paddingTop: 8 }}>
-                <div style={{ fontWeight: 700, fontSize: 12 }}>{t("colorPreference")}</div>
+                <div style={{ fontWeight: 700, fontSize: 12 }}>
+                  <Hint label={t("colorPreference")} tip={t("tipColorPref")} />
+                </div>
 
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 6 }}>
                   <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <span>{t("wColorPref")}</span>
+                    <Hint label={t("wColorPref")} tip={t("tipColorPref")} />
                     <input
                       type="number"
                       value={wColorPref}

@@ -97,7 +97,8 @@ const COL_LABEL: Record<string, { ja: string; en: string }> = {
   gaia: { ja: "ガイア近接", en: "gaia" },
   cluster: { ja: "星系", en: "cluster" },
   outer: { ja: "最外周", en: "outer" },
-  touch: { ja: "辺境", en: "touch" },
+  // 「辺境」→「外周」（用語を uiText の touchCnt と統一、⑤ 2026-07-24）
+  touch: { ja: "外周", en: "touch" },
   cntOuter: { ja: "外周数", en: "outerCnt" },
   cntTouch: { ja: "隣接数", en: "touchCnt" },
 };
