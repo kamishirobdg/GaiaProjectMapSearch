@@ -42,6 +42,8 @@ const UI = {
     econFaceModeLabel: "経済調整タイル",
     econFaceRandom: "ランダム",
     avoidTitle: "配置回避（上級技術）",
+    econFaceA: "面A（Lv3:鉱1クレ2パワー3／Lv4:鉱2クレ2パワー2）",
+    econFaceB: "面B（Lv3:鉱1クレ3VP1／Lv4:鉱2クレ4VP1）",
     scoringExtension: "得点ボード拡張部",
     extensionAdv: "追加の上級技術",
     extensionFaceLabel: "面",
@@ -82,6 +84,8 @@ const UI = {
     econFaceModeLabel: "Econ adjustment tile",
     econFaceRandom: "Random",
     avoidTitle: "Placement avoidance (advanced tech)",
+    econFaceA: "Face A (L3: 1o 2c 3pw / L4: 2o 2c 2pw)",
+    econFaceB: "Face B (L3: 1o 3c 1VP / L4: 2o 4c 1VP)",
     scoringExtension: "Scoring board extension",
     extensionAdv: "Extra advanced tech",
     extensionFaceLabel: "Face",
@@ -323,8 +327,8 @@ export default function SetupView() {
               <span>{t.econFaceModeLabel}</span>
               <select value={econFaceMode} onChange={(e) => setEconFaceMode(e.target.value as EconFaceMode)}>
                 <option value="random">{t.econFaceRandom}</option>
-                <option value="A">{t.faceA}</option>
-                <option value="B">{t.faceB}</option>
+                <option value="A">{t.econFaceA}</option>
+                <option value="B">{t.econFaceB}</option>
               </select>
             </label>
           </>
@@ -407,7 +411,7 @@ export default function SetupView() {
                 {t.extensionFaceLabel}: {result.extensionFace === "vp25" ? t.faceVp25 : t.faceShuttle}
               </div>
               <div style={{ fontSize: 12, opacity: 0.8 }}>
-                {t.econFace}: {result.econTileFace === "A" ? t.faceA : t.faceB}
+                {t.econFace}: {result.econTileFace === "A" ? t.econFaceA : t.econFaceB}
               </div>
             </div>
           </section>
