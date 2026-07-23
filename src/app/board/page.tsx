@@ -77,6 +77,14 @@ const UI_TEXT = {
     method3: "Method 3 (swap all 10 tiles)",
     placementMethodTip:
       "Rulebook p.19: Method 1 keeps sectors 01-04 in their first-game positions and shuffles 05-10; Method 2 also shuffles 01-04 within the inner slots; Method 3 shuffles all 10 tiles. All tiles rotate freely in every method.",
+    wGaiaD1: "Gaia dist 1",
+    wGaiaD2: "Gaia dist 2",
+    wGaiaD3: "Gaia dist 3",
+    wGaiaTip:
+      "For each coloured planet, every gaia planet at distance 1/2/3 adds this weight to that colour (all gaia summed).",
+    wClusterSize: "Cluster size",
+    wClusterTip:
+      "For each connected planet cluster of size n>=2 (gaia/transdim join clusters), every colour in it gains +n x this weight (once per colour).",
     seed: "Seed",
     randomSeed: "Random Seed",
     seedMode: "Seed mode",
@@ -252,6 +260,14 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     method3: "方法3（全10タイル入替）",
     placementMethodTip:
       "ルールブックp19: 方法1は01-04を最初のゲームの位置に固定し05-10を入替。方法2は01-04も内側4スロット内で入替。方法3は全10タイルを入替。回転はどの方法でも全タイル自由。",
+    wGaiaD1: "ガイア距離1",
+    wGaiaD2: "ガイア距離2",
+    wGaiaD3: "ガイア距離3",
+    wGaiaTip:
+      "各色惑星から距離1/2/3にあるガイア惑星1個ごとに、この重みをその色に加点（全ガイア合算）。",
+    wClusterSize: "星系サイズ",
+    wClusterTip:
+      "サイズn≧2の連結惑星クラスタ（ガイア/次元横断も連結に含む）に含まれる各色に +n×この重み を加点（色ごとに1回）。",
     seed: "シード",
     randomSeed: "ランダムシード",
     seedMode: "シード指定",
@@ -1988,6 +2004,8 @@ return (savedProfiles ?? []).filter((p) => {
     touch: true,
     scout: true,
     scoutCore: true,
+    gaia: true,
+    cluster: true,
     total: true,
     cntOuter: false,
     cntTouch: false,
@@ -2033,6 +2051,14 @@ return (savedProfiles ?? []).filter((p) => {
   const [scoutRadius, setScoutRadius] = React.useState(3);
   const wImbalance = 100;
   const [imbalanceMetric, setImbalanceMetric] = React.useState<"std" | "range">("std");
+
+  // 基本版専用の新評価軸（2026-07-23）: ガイア近接（距離1/2/3の全ガイア合算）と
+  // 星系クラスタ（サイズn>=2の各色に+n×重み）。LFではキー・実行時とも
+  // フィールドごと省略（evaluateSoft側もフィールド不在で完全スキップ）。
+  const [wGaiaD1, setWGaiaD1] = React.useState(5);
+  const [wGaiaD2, setWGaiaD2] = React.useState(3);
+  const [wGaiaD3, setWGaiaD3] = React.useState(1);
+  const [wClusterSize, setWClusterSize] = React.useState(1);
 
   // Color preference (by planetTypeTotals)
   const [wColorPref, setWColorPref] = React.useState(3);
@@ -2274,6 +2300,11 @@ try {
 } catch {}
 
         if (params?.soft?.imbalanceMetric != null) setImbalanceMetric(String(params.soft.imbalanceMetric) as any);
+        // 基本版の新評価軸（フィールド不在の旧/LFプロファイルは既定値のまま）
+        if (params?.soft?.wGaiaDist1 != null) setWGaiaD1(Number(params.soft.wGaiaDist1) || 0);
+        if (params?.soft?.wGaiaDist2 != null) setWGaiaD2(Number(params.soft.wGaiaDist2) || 0);
+        if (params?.soft?.wGaiaDist3 != null) setWGaiaD3(Number(params.soft.wGaiaDist3) || 0);
+        if (params?.soft?.wClusterSize != null) setWClusterSize(Number(params.soft.wClusterSize) || 0);
         if ((params as any)?.soft?.wColorPref != null) setWColorPref(Number((params as any).soft.wColorPref) || 0);
         try {
           const cp = (params as any)?.soft?.colorPrefByType ?? (params as any)?.soft?.colorBiasByType ?? null;
@@ -2339,6 +2370,10 @@ try {
           wTouch,
           wImbalance,
           imbalanceMetric,
+          wGaiaDist1: wGaiaD1,
+          wGaiaDist2: wGaiaD2,
+          wGaiaDist3: wGaiaD3,
+          wClusterSize,
           wColorPref,
           colorPrefByType: { BLACK: prefBLACK, BLUE: prefBLUE, BROWN: prefBROWN, ORANGE: prefORANGE, RED: prefRED, WHITE: prefWHITE, YELLOW: prefYELLOW },
         }
@@ -2356,7 +2391,7 @@ try {
           wColorPref,
           colorPrefByType: { BLACK: prefBLACK, BLUE: prefBLUE, BROWN: prefBROWN, ORANGE: prefORANGE, RED: prefRED, WHITE: prefWHITE, YELLOW: prefYELLOW },
         };
-  }, [isBase, wOuter, wTouch, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wColorPref, prefBLACK, prefBLUE, prefBROWN, prefORANGE, prefRED, prefWHITE, prefYELLOW]);
+  }, [isBase, wOuter, wTouch, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wGaiaD1, wGaiaD2, wGaiaD3, wClusterSize, wColorPref, prefBLACK, prefBLUE, prefBROWN, prefORANGE, prefRED, prefWHITE, prefYELLOW]);
 
   const searchKeyParams = React.useMemo(() => {
     return {
@@ -2755,6 +2790,17 @@ const currentResult = matchedResult ?? derivedResult;
     YELLOW: "黄",
   };
 
+  // 色優遇/冷遇の入力欄背景（内訳テーブルの ROW_BG と同じ配色）
+  const PLANET_INPUT_BG: Record<PlanetTypeKey, string> = {
+    BLACK: "#adadad",
+    BLUE: "#cfe8ff",
+    BROWN: "#e7d3b1",
+    ORANGE: "#ffe0b2",
+    RED: "#ffd2d2",
+    WHITE: "#ffffff",
+    YELLOW: "#fff9c4",
+  };
+
   function axisGet(axis: any, k: PlanetTypeKey): number {
     const v = axis?.[k];
     const n = typeof v === "number" ? v : Number(v);
@@ -2772,6 +2818,8 @@ const currentResult = matchedResult ?? derivedResult;
   const touch = breakdown?.axesByType?.touch ?? null;
   const scout = breakdown?.axesByType?.scout ?? null;
   const scoutCore = breakdown?.axesByType?.scoutCore ?? null;
+  const gaia = breakdown?.axesByType?.gaia ?? null;
+  const cluster = breakdown?.axesByType?.cluster ?? null;
   const totals = breakdown?.planetTypeTotals ?? null;
 
   const outerCnt = breakdown?.audit?.outerCountByType ?? null;
@@ -2779,24 +2827,37 @@ const currentResult = matchedResult ?? derivedResult;
 
   const hasCounts = !!outerCnt || !!touchCnt;
 
-  const cols = opts?.cols ?? {
+  const colsIn = opts?.cols ?? {
     // NOTE: column order is controlled below. These booleans only control visibility.
     total: true,
     scout: true,
     scoutCore: true,
+    gaia: true,
+    cluster: true,
     outer: true,
     touch: true,
     cntOuter: hasCounts,
     cntTouch: hasCounts,
   };
 
-  // --- order: total -> scout -> scoutCore -> outer -> touch (counts at the end) ---
-  const COL_ORDER: Array<keyof typeof cols> = ["total", "scout", "scoutCore", "outer", "touch", "cntOuter", "cntTouch"];
+  // 出し分け: base では scout/scoutCore を出さず、新軸（gaia/cluster）は
+  // データがある場合のみ。LF では新軸を出さない（従来表示のまま）。
+  const cols = {
+    ...colsIn,
+    ...(isBase
+      ? { scout: false, scoutCore: false, gaia: !!gaia && (colsIn as any).gaia !== false, cluster: !!cluster && (colsIn as any).cluster !== false }
+      : { gaia: false, cluster: false }),
+  };
+
+  // --- order: total -> scout -> scoutCore -> gaia -> cluster -> outer -> touch (counts at the end) ---
+  const COL_ORDER: Array<keyof typeof cols> = ["total", "scout", "scoutCore", "gaia", "cluster", "outer", "touch", "cntOuter", "cntTouch"];
 
   const COL_LABEL: Record<string, { ja: string; en: string }> = {
     total: { ja: "評価", en: "total" },
     scout: { ja: "船接触", en: "scout" },
     scoutCore: { ja: "船星系", en: "scoutCore" },
+    gaia: { ja: "ガイア近接", en: "gaia" },
+    cluster: { ja: "星系", en: "cluster" },
     outer: { ja: "最外周", en: "outer" },
     touch: { ja: "辺境", en: "touch" },
     cntOuter: { ja: "外周数", en: "outerCnt" },
@@ -2873,6 +2934,8 @@ const baseKeysForExtreme = [...PLANET_ORDER]; // fixed base-7
 const exTotal = computeExtremes(baseKeysForExtreme, (k) => axisGet(totals, k as any));
 const exScout = computeExtremes(baseKeysForExtreme, (k) => axisGet(scout, k as any));
 const exScoutCore = computeExtremes(baseKeysForExtreme, (k) => axisGet(scoutCore, k as any));
+const exGaia = computeExtremes(baseKeysForExtreme, (k) => axisGet(gaia, k as any));
+const exCluster = computeExtremes(baseKeysForExtreme, (k) => axisGet(cluster, k as any));
 // outer/touch are colored by (outer + touch) combined, applied to both columns
 const exOuterTouch = computeExtremes(baseKeysForExtreme, (k) => axisGet(outer, k as any) + axisGet(touch, k as any));
 
@@ -2896,6 +2959,12 @@ const colorFor = (maxKeys: Set<string>, minKeys: Set<string>, k: string): string
     }
     if (colKey === "scoutCore") {
       return <td style={{ ...tdStyle, color: colorFor(exScoutCore.maxKeys, exScoutCore.minKeys, k) }}>{axisGet(scoutCore, k as any)}</td>;
+    }
+    if (colKey === "gaia") {
+      return <td style={{ ...tdStyle, color: colorFor(exGaia.maxKeys, exGaia.minKeys, k) }}>{axisGet(gaia, k as any)}</td>;
+    }
+    if (colKey === "cluster") {
+      return <td style={{ ...tdStyle, color: colorFor(exCluster.maxKeys, exCluster.minKeys, k) }}>{axisGet(cluster, k as any)}</td>;
     }
     if (colKey === "outer") {
       return <td style={{ ...tdStyle, color: colorFor(exOuterTouch.maxKeys, exOuterTouch.minKeys, k) }}>{axisGet(outer, k as any)}</td>;
@@ -2974,6 +3043,7 @@ const colorFor = (maxKeys: Set<string>, minKeys: Set<string>, k: string): string
                 if (colKey === "total") return <td style={{ ...tdStyle, fontWeight: 800 }}>{vTotal}</td>;
                 if (colKey === "scout") return <td style={tdStyle}>{vScout}</td>;
                 if (colKey === "scoutCore") return <td style={tdStyle}>{vCore}</td>;
+                if (colKey === "gaia" || colKey === "cluster") return <td style={tdStyle}>-</td>;
                 if (colKey === "outer") return <td style={tdStyle}>{vOuter}</td>;
                 if (colKey === "touch") return <td style={tdStyle}>{vTouch}</td>;
                 if (colKey === "cntOuter") return hasCounts ? <td style={tdStyle}>-</td> : null;
@@ -3068,6 +3138,10 @@ async function handleGenerateRank() {
         scoutCoreAttributionMode: scoutCoreAttribBest ? "best" : "all",
         wColorPref,
         colorPrefByType: { BLACK: prefBLACK, BLUE: prefBLUE, BROWN: prefBROWN, ORANGE: prefORANGE, RED: prefRED, WHITE: prefWHITE, YELLOW: prefYELLOW },
+        // 基本版専用の新評価軸（LFではフィールドごと省略=evaluateSoftが完全スキップ）
+        ...(isBase
+          ? { wGaiaDist1: wGaiaD1, wGaiaDist2: wGaiaD2, wGaiaDist3: wGaiaD3, wClusterSize }
+          : {}),
       },
     };
 
@@ -4140,20 +4214,35 @@ const handleDeleteUsed = React.useCallback(
               {currentResult ? (
                 <details open suppressHydrationWarning style={{ marginTop: 10 }}>
                   <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.85 }}>
-                    {lang === "ja" ? "色別の内訳（outer/touch/scout/total）" : "By color (outer/touch/scout/total)"}
+                    {isBase
+                      ? lang === "ja"
+                        ? "色別の内訳（outer/touch/gaia/cluster/total）"
+                        : "By color (outer/touch/gaia/cluster/total)"
+                      : lang === "ja"
+                        ? "色別の内訳（outer/touch/scout/total）"
+                        : "By color (outer/touch/scout/total)"}
                   </summary>
                   <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
                       <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.85 }}>
                         {lang === "ja" ? "詳細表表示" : "Table columns"}
                       </span>
 
-                      {([
-                        ["total", "評価", "total"],
-                        ["scout", "船接触", "scout"],
-                        ["scoutCore", "船星系", "scoutCore"],
-                        ["outer", "最外周", "outer"],
-                        ["touch", "辺境", "touch"],
-                      ] as const).map(([k, ja, en]) => (
+                      {(isBase
+                        ? ([
+                            ["total", "評価", "total"],
+                            ["gaia", "ガイア近接", "gaia"],
+                            ["cluster", "星系", "cluster"],
+                            ["outer", "最外周", "outer"],
+                            ["touch", "辺境", "touch"],
+                          ] as const)
+                        : ([
+                            ["total", "評価", "total"],
+                            ["scout", "船接触", "scout"],
+                            ["scoutCore", "船星系", "scoutCore"],
+                            ["outer", "最外周", "outer"],
+                            ["touch", "辺境", "touch"],
+                          ] as const)
+                      ).map(([k, ja, en]) => (
                         <label key={k} style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 12 }}>
                           <input
                             type="checkbox"
@@ -4320,6 +4409,27 @@ const handleDeleteUsed = React.useCallback(
                 <input type="number" value={wTouch} min={0} max={10} onChange={(e) => setWTouch(Number(e.target.value) || 0)} style={{ width: 60 }} />
               </label>
 
+              {isBase ? (
+                <>
+                  <label style={{ display: "flex", gap: 6, alignItems: "center" }} title={t("wGaiaTip")}>
+                    <span>{t("wGaiaD1")}</span>
+                    <input type="number" value={wGaiaD1} min={0} max={20} onChange={(e) => setWGaiaD1(Number(e.target.value) || 0)} style={{ width: 60 }} />
+                  </label>
+                  <label style={{ display: "flex", gap: 6, alignItems: "center" }} title={t("wGaiaTip")}>
+                    <span>{t("wGaiaD2")}</span>
+                    <input type="number" value={wGaiaD2} min={0} max={20} onChange={(e) => setWGaiaD2(Number(e.target.value) || 0)} style={{ width: 60 }} />
+                  </label>
+                  <label style={{ display: "flex", gap: 6, alignItems: "center" }} title={t("wGaiaTip")}>
+                    <span>{t("wGaiaD3")}</span>
+                    <input type="number" value={wGaiaD3} min={0} max={20} onChange={(e) => setWGaiaD3(Number(e.target.value) || 0)} style={{ width: 60 }} />
+                  </label>
+                  <label style={{ display: "flex", gap: 6, alignItems: "center" }} title={t("wClusterTip")}>
+                    <span>{t("wClusterSize")}</span>
+                    <input type="number" value={wClusterSize} min={0} max={20} onChange={(e) => setWClusterSize(Number(e.target.value) || 0)} style={{ width: 60 }} />
+                  </label>
+                </>
+              ) : null}
+
               {!isBase ? (
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 <span>{t("radius")}</span>
@@ -4407,35 +4517,42 @@ const handleDeleteUsed = React.useCallback(
                   </span>
                 </div>
 
+                {/* どの入力欄がどの色か一目で分かるよう、内訳テーブルと同じ色背景を付ける
+                    （基本/LF共通。ユーザー要望 2026-07-23） */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 8, marginTop: 6 }}>
-                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }}>
-                    <span>{lang === "ja" ? "黒" : "BLACK"}</span>
-                    <input type="number" value={prefBLACK} min={-20} max={20} onChange={(e) => setPrefBLACK(Math.max(-20, Math.min(20, Number(e.target.value) || 0)))} style={{ width: 60 }} />
-                  </label>
-                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }}>
-                    <span>{lang === "ja" ? "青" : "BLUE"}</span>
-                    <input type="number" value={prefBLUE} min={-20} max={20} onChange={(e) => setPrefBLUE(Math.max(-20, Math.min(20, Number(e.target.value) || 0)))} style={{ width: 60 }} />
-                  </label>
-                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }}>
-                    <span>{lang === "ja" ? "茶" : "BROWN"}</span>
-                    <input type="number" value={prefBROWN} min={-20} max={20} onChange={(e) => setPrefBROWN(Math.max(-20, Math.min(20, Number(e.target.value) || 0)))} style={{ width: 60 }} />
-                  </label>
-                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }}>
-                    <span>{lang === "ja" ? "橙" : "ORANGE"}</span>
-                    <input type="number" value={prefORANGE} min={-20} max={20} onChange={(e) => setPrefORANGE(Math.max(-20, Math.min(20, Number(e.target.value) || 0)))} style={{ width: 60 }} />
-                  </label>
-                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }}>
-                    <span>{lang === "ja" ? "赤" : "RED"}</span>
-                    <input type="number" value={prefRED} min={-20} max={20} onChange={(e) => setPrefRED(Math.max(-20, Math.min(20, Number(e.target.value) || 0)))} style={{ width: 60 }} />
-                  </label>
-                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }}>
-                    <span>{lang === "ja" ? "白" : "WHITE"}</span>
-                    <input type="number" value={prefWHITE} min={-20} max={20} onChange={(e) => setPrefWHITE(Math.max(-20, Math.min(20, Number(e.target.value) || 0)))} style={{ width: 60 }} />
-                  </label>
-                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }}>
-                    <span>{lang === "ja" ? "黄" : "YELLOW"}</span>
-                    <input type="number" value={prefYELLOW} min={-20} max={20} onChange={(e) => setPrefYELLOW(Math.max(-20, Math.min(20, Number(e.target.value) || 0)))} style={{ width: 60 }} />
-                  </label>
+                  {([
+                    ["BLACK", "黒", prefBLACK, setPrefBLACK],
+                    ["BLUE", "青", prefBLUE, setPrefBLUE],
+                    ["BROWN", "茶", prefBROWN, setPrefBROWN],
+                    ["ORANGE", "橙", prefORANGE, setPrefORANGE],
+                    ["RED", "赤", prefRED, setPrefRED],
+                    ["WHITE", "白", prefWHITE, setPrefWHITE],
+                    ["YELLOW", "黄", prefYELLOW, setPrefYELLOW],
+                  ] as const).map(([key, ja, value, setter]) => (
+                    <label
+                      key={key}
+                      style={{
+                        display: "flex",
+                        gap: 6,
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        background: PLANET_INPUT_BG[key],
+                        border: "1px solid rgba(0,0,0,0.15)",
+                        borderRadius: 6,
+                        padding: "3px 6px",
+                      }}
+                    >
+                      <span style={{ fontWeight: 700 }}>{lang === "ja" ? ja : key}</span>
+                      <input
+                        type="number"
+                        value={value}
+                        min={-20}
+                        max={20}
+                        onChange={(e) => setter(Math.max(-20, Math.min(20, Number(e.target.value) || 0)))}
+                        style={{ width: 60 }}
+                      />
+                    </label>
+                  ))}
                 </div>
               </div>
             </div>

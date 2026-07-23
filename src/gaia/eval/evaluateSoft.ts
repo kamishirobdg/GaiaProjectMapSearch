@@ -14,6 +14,7 @@
 //
 import type { ExtractedForEval, PlanetKind } from "./extractForEval";
 import { axialDistance } from "../hex";
+import { connectedComponents } from "../logicalMap/buildLogicalMap";
 
 export type PlanetType =
   | "BLACK"
@@ -55,6 +56,19 @@ export type SoftParams = {
   // score += wColorPref * Σ(prefByType[type] * planetTypeTotals[type])
   wColorPref?: number;
   colorPrefByType?: Partial<Record<PlanetType, number>>;
+
+  // ===== 基本版専用の新評価軸（2026-07-23、フィールド省略でLF挙動・キー不変） =====
+  // ガイア近接: 各通常惑星(基本7色)から距離1/2/3にある「全ガイア惑星」を合算加点
+  // （TRANSDIMは対象外、最近傍のみではなく合算＝ユーザー確定）。
+  // 例: 距離1にガイア2個 => その惑星の色に wGaiaDist1×2。
+  wGaiaDist1?: number;
+  wGaiaDist2?: number;
+  wGaiaDist3?: number;
+
+  // 星系(密集クラスタ): kind==="planet" の全セル（ガイア/次元横断含む=H5と同じ連結定義）を
+  // 6方向隣接で連結し、サイズn>=2の各クラスタについて「含まれる各基本色」に
+  // +n×wClusterSize を加点（同色が複数あっても色ごとに1回＝ユーザー確定）。
+  wClusterSize?: number;
 };
 
 
@@ -64,6 +78,10 @@ export type SoftBreakdown = {
     touch: AxisByType;
     scout: AxisByType;
     scoutCore: AxisByType;
+    /** 基本版のみ（wGaiaDist1..3 のいずれかが非0のときだけ存在） */
+    gaia?: AxisByType;
+    /** 基本版のみ（wClusterSize が非0のときだけ存在） */
+    cluster?: AxisByType;
   };
 
   planetTypeTotals: AxisByType;
@@ -165,6 +183,21 @@ scoutCore: {
     value: number;
   }>;
 };
+
+    /** 基本版のみ（ガイア近接軸が有効なときだけ存在） */
+    gaiaProximity?: {
+      byType: AxisByType;
+      hitCount: number;
+      gaiaCellCount: number;
+      weights: { d1: number; d2: number; d3: number };
+    };
+
+    /** 基本版のみ（星系クラスタ軸が有効なときだけ存在） */
+    cluster?: {
+      byType: AxisByType;
+      weight: number;
+      clusters: Array<{ size: number; colors: string[] }>;
+    };
   };
 
   debug?: any;
@@ -518,8 +551,65 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
     return String(a.corePlanetKey).localeCompare(String(b.corePlanetKey));
   });
 
+  // ===== gaia proximity (基本版専用; フィールド省略時は完全スキップ=LF不変) =====
+  const wGaia1 = num((params as any).wGaiaDist1, 0);
+  const wGaia2 = num((params as any).wGaiaDist2, 0);
+  const wGaia3 = num((params as any).wGaiaDist3, 0);
+  const gaiaEnabled = wGaia1 !== 0 || wGaia2 !== 0 || wGaia3 !== 0;
+
+  const gaiaAxis = zeroAxis();
+  let gaiaHitCount = 0;
+  let gaiaCellCount = 0;
+  if (gaiaEnabled) {
+    const gaiaCells = (extracted.cells ?? []).filter(
+      (c) => (c as any).isPlanet && String((c as any).planetKind ?? "").toUpperCase() === "GAIA"
+    );
+    gaiaCellCount = gaiaCells.length;
+    for (const p of extracted.normalPlanetCells) {
+      const t = toPlanetType((p as any).planetKind as any, (p as any).colorKey);
+      if (!t) continue;
+      for (const g of gaiaCells) {
+        const d = axialDistance(p.q, p.r, (g as any).q, (g as any).r);
+        const w = d === 1 ? wGaia1 : d === 2 ? wGaia2 : d === 3 ? wGaia3 : 0;
+        if (w === 0) continue;
+        gaiaAxis[t] += w;
+        gaiaHitCount += 1;
+      }
+    }
+  }
+
+  // ===== cluster / 星系 (基本版専用; フィールド省略時は完全スキップ=LF不変) =====
+  // 連結対象は kind==="planet" の全セル（ガイア/次元横断含む＝H5と同じ定義）。
+  // サイズn>=2の各クラスタについて「含まれる各基本色」に +n×wClusterSize（色ごとに1回）。
+  const wCluster = num((params as any).wClusterSize, 0);
+  const clusterEnabled = wCluster !== 0;
+
+  const clusterAxis = zeroAxis();
+  const clusterList: Array<{ size: number; colors: string[] }> = [];
+  if (clusterEnabled) {
+    const planetPts = (extracted.cells ?? []).filter((c) => (c as any).isPlanet);
+    const cellByKey = new Map(planetPts.map((c) => [`${c.q},${c.r}`, c]));
+    const comps = connectedComponents(planetPts.map((c) => ({ q: c.q, r: c.r })));
+    for (const comp of comps) {
+      if (comp.length < 2) continue;
+      const colorSet = new Set<PlanetType>();
+      for (const pos of comp) {
+        const c = cellByKey.get(`${pos.q},${pos.r}`);
+        const t = c ? toPlanetType((c as any).planetKind as any, (c as any).colorKey) : null;
+        if (t) colorSet.add(t);
+      }
+      for (const t of colorSet) clusterAxis[t] += wCluster * comp.length;
+      clusterList.push({ size: comp.length, colors: [...colorSet].sort() });
+    }
+    // deterministic ordering for audit
+    clusterList.sort((a, b) => b.size - a.size || a.colors.join(",").localeCompare(b.colors.join(",")));
+  }
+
   // totals & imbalance
-  const planetTypeTotals = addAxis(addAxis(outerAxis, touchAxis), addAxis(scoutAxis, scoutCoreAxis));
+  const planetTypeTotals = addAxis(
+    addAxis(addAxis(outerAxis, touchAxis), addAxis(scoutAxis, scoutCoreAxis)),
+    addAxis(gaiaAxis, clusterAxis)
+  );
 
   const values = axisValues(planetTypeTotals);
   const imbalanceValue = metric === "range" ? range(values) : std(values);
@@ -546,7 +636,14 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
   return {
     score: totalScore,
     breakdown: {
-      axesByType: { outer: outerAxis, touch: touchAxis, scout: scoutAxis, scoutCore: scoutCoreAxis },
+      axesByType: {
+        outer: outerAxis,
+        touch: touchAxis,
+        scout: scoutAxis,
+        scoutCore: scoutCoreAxis,
+        ...(gaiaEnabled ? { gaia: gaiaAxis } : {}),
+        ...(clusterEnabled ? { cluster: clusterAxis } : {}),
+      },
       planetTypeTotals,
       imbalance: { metric, value: imbalanceValue, score: imbalanceScore },
       colorPreference:
@@ -581,6 +678,25 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
           extraByKind: scoutCoreExtraByKind,
           coreHits: scoutCoreHits,
         },
+        ...(gaiaEnabled
+          ? {
+              gaiaProximity: {
+                byType: gaiaAxis,
+                hitCount: gaiaHitCount,
+                gaiaCellCount,
+                weights: { d1: wGaia1, d2: wGaia2, d3: wGaia3 },
+              },
+            }
+          : {}),
+        ...(clusterEnabled
+          ? {
+              cluster: {
+                byType: clusterAxis,
+                weight: wCluster,
+                clusters: clusterList,
+              },
+            }
+          : {}),
       },
       debug: (extracted as any).audit,
     },

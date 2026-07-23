@@ -160,6 +160,12 @@ function runOne(
     templateId === "base_34p"
       ? { ...HARD_PARAMS, banSameKindAdjacency: true }
       : HARD_PARAMS;
+  // base テンプレでは新評価軸（ガイア近接・星系クラスタ）をUI既定値で有効化。
+  // LF ランは SOFT_PARAMS のまま（フィールド不在= evaluateSoft が完全スキップ）。
+  const softParams: SoftParams =
+    templateId === "base_34p"
+      ? { ...SOFT_PARAMS, wGaiaDist1: 5, wGaiaDist2: 3, wGaiaDist3: 1, wClusterSize: 1 }
+      : SOFT_PARAMS;
   const methodField = placementMethod === undefined ? {} : { placementMethod };
 
   let logicalMap: ReturnType<typeof buildLogicalMap>;
@@ -199,7 +205,7 @@ function runOne(
   }
 
   const hardResult = checkHardConstraints(extracted, placement as any, hardParams);
-  const softResult = evaluateSoft(extracted, SOFT_PARAMS);
+  const softResult = evaluateSoft(extracted, softParams);
 
   const scoutHits = softResult.breakdown.audit.scout.scoutHits ?? [];
   const scoutCoreHits = softResult.breakdown.audit.scoutCore.coreHits ?? [];
