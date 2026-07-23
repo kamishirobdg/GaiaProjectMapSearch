@@ -78,7 +78,24 @@ export type BuildSetupInput = {
    * セット内タイルを回避する（指定タイル自体は出ても出なくてもよい）。
    */
   allowTileRules?: Record<string, string>;
+  /**
+   * LF: 距離タイル（TSL2「基本到達距離＋1」）をこの船の基本技術枠に
+   * 置かない（2026-07-23）。3隻すべて指定は3人以上では満たせず、
+   * 満たせない分は無視される（UI 側で警告）。
+   */
+  shipDistanceAvoid?: ShipId[];
+  /**
+   * LF: 距離タイルをこの船の基本技術枠に置く。タイルは1枚しかないため
+   * 複数指定時は TECH_SHIP_IDS 順の先頭1隻のみ充足（UI 側で警告）。
+   */
+  shipDistanceForce?: ShipId[];
+  /** LF: リベリオンの金枠同盟に FEDG2「任意の技術タイル1枚」を置く/置かない。 */
+  rebellionGoldFed?: "avoid" | "force";
 };
+
+/** LF船ルールの対象タイル（データカタログの id）。 */
+export const SHIP_DISTANCE_TECH = "TSL2"; // 基本到達距離＋1
+export const REBELLION_GOLD_TECH_FED = "FEDG2"; // 金枠同盟：任意の技術タイル1枚
 
 /**
  * Preset placement-avoidance rules for advanced tech tiles (user-curated,
@@ -231,6 +248,7 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
 
   // New standard tech types onto the ship tech spaces (leftover boxed at 2p).
   const shipTechDraw = shuffleSeeded(idsOf(SETUP_CATALOG.standardTechLF), streamFor(seed, "shipTech"));
+  applyShipDistanceRules(shipTechDraw, techShips, input);
   const shipTech: Partial<Record<ShipId, string>> = {};
   techShips.forEach((ship, i) => {
     shipTech[ship] = shipTechDraw[i];
@@ -242,6 +260,7 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
 
   // One gold federation tile per ship in play.
   const goldDraw = shuffleSeeded(idsOf(SETUP_CATALOG.federationsGold), streamFor(seed, "goldFederations"));
+  applyRebellionGoldRule(goldDraw, ships, input.rebellionGoldFed);
   const goldFederations: Partial<Record<ShipId, string>> = {};
   ships.forEach((ship, i) => {
     goldFederations[ship] = goldDraw[i];
@@ -375,6 +394,81 @@ function applyForceRules(
       }
     }
   });
+}
+
+/**
+ * 距離タイル（TSL2）の船別 回避/強制 を shipTechDraw（シャッフル済み3枚、
+ * 先頭 techShips.length 枚が配置対象、残りは2人時のスペア）に in place 適用。
+ * - 強制: TECH_SHIP_IDS 順の先頭1隻のみ（タイルは1枚）。回避と同一船の指定は
+ *   UI が防ぐ（単一プルダウン）。
+ * - 回避: 移動先はスペア優先、無ければ回避・強制指定のない他船スロット。
+ *   合法な移動先が無い場合（3人以上で全船回避など）はそのスロットを据え置く。
+ * - 指定なしは完全 no-op（出力バイト不変）。
+ */
+function applyShipDistanceRules(
+  shipTechDraw: string[],
+  techShips: ShipId[],
+  input: Pick<BuildSetupInput, "shipDistanceAvoid" | "shipDistanceForce">
+): void {
+  const avoidSet = new Set((input.shipDistanceAvoid ?? []).filter((s) => techShips.includes(s)));
+  const forceShip = TECH_SHIP_IDS.find(
+    (s) => (input.shipDistanceForce ?? []).includes(s) && techShips.includes(s)
+  );
+  if (!forceShip && avoidSet.size === 0) return;
+
+  if (forceShip) {
+    const i = techShips.indexOf(forceShip);
+    const j = shipTechDraw.indexOf(SHIP_DISTANCE_TECH);
+    if (j >= 0 && j !== i) [shipTechDraw[i], shipTechDraw[j]] = [shipTechDraw[j], shipTechDraw[i]];
+    avoidSet.delete(forceShip); // 同一船の回避は強制が優先（UI では起きない）
+  }
+
+  techShips.forEach((ship, i) => {
+    if (!avoidSet.has(ship) || shipTechDraw[i] !== SHIP_DISTANCE_TECH) return;
+    // スペア（2人時のみ存在）→ 回避・強制指定のない他船スロットの順で探す
+    for (let j = techShips.length; j < shipTechDraw.length; j++) {
+      if (shipTechDraw[j] !== SHIP_DISTANCE_TECH) {
+        [shipTechDraw[i], shipTechDraw[j]] = [shipTechDraw[j], shipTechDraw[i]];
+        return;
+      }
+    }
+    for (let j = 0; j < techShips.length; j++) {
+      const other = techShips[j];
+      if (j !== i && shipTechDraw[j] !== SHIP_DISTANCE_TECH && !avoidSet.has(other) && other !== forceShip) {
+        [shipTechDraw[i], shipTechDraw[j]] = [shipTechDraw[j], shipTechDraw[i]];
+        return;
+      }
+    }
+    // 合法な移動先なし（全船回避など）: 据え置き
+  });
+}
+
+/**
+ * リベリオンの金枠同盟の FEDG2「任意の技術タイル1枚」回避/強制を
+ * goldDraw（シャッフル済み8枚、先頭 ships.length 枚が配置対象）に適用。
+ * 回避の移動先はスペア（8枚 - 配置3〜4枚で常に存在）。指定なし・2人
+ * （リベリオン箱戻し）は no-op。
+ */
+function applyRebellionGoldRule(
+  goldDraw: string[],
+  ships: ShipId[],
+  mode: "avoid" | "force" | undefined
+): void {
+  if (!mode) return;
+  const i = ships.indexOf("rebellion");
+  if (i < 0) return; // 2人: リベリオンは箱の中
+  if (mode === "force") {
+    const j = goldDraw.indexOf(REBELLION_GOLD_TECH_FED);
+    if (j >= 0 && j !== i) [goldDraw[i], goldDraw[j]] = [goldDraw[j], goldDraw[i]];
+    return;
+  }
+  if (goldDraw[i] !== REBELLION_GOLD_TECH_FED) return;
+  for (let j = ships.length; j < goldDraw.length; j++) {
+    if (goldDraw[j] !== REBELLION_GOLD_TECH_FED) {
+      [goldDraw[i], goldDraw[j]] = [goldDraw[j], goldDraw[i]];
+      return;
+    }
+  }
 }
 
 function clampPlayers(n: number | undefined, lf: boolean): number {

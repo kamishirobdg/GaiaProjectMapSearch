@@ -2,7 +2,13 @@
 "use client";
 
 import React from "react";
-import { buildSetupFromSeed, AVOID_RULES, type BuildSetupInput } from "@/gaia/setup/buildSetup";
+import {
+  buildSetupFromSeed,
+  AVOID_RULES,
+  SHIP_DISTANCE_TECH,
+  REBELLION_GOLD_TECH_FED,
+  type BuildSetupInput,
+} from "@/gaia/setup/buildSetup";
 import {
   SETUP_HISTORY_CAP,
   deleteSavedSetup,
@@ -20,7 +26,13 @@ import {
   writeSharedPlayers,
 } from "@/lib/sharedSettings";
 import { SETUP_CATALOG } from "@/gaia/setup/data";
-import { RESEARCH_TRACK_IDS, type ResearchTrackId, type SetupMode, type ShipId } from "@/gaia/setup/types";
+import {
+  RESEARCH_TRACK_IDS,
+  TECH_SHIP_IDS,
+  type ResearchTrackId,
+  type SetupMode,
+  type ShipId,
+} from "@/gaia/setup/types";
 
 type Lang = "ja" | "en";
 
@@ -105,6 +117,8 @@ const UI = {
     avoidShort: "回避",
     forceShort: "強制",
     currentBadge: "表示中",
+    warnDistForceDup: "「基本到達距離＋1」の強制は1隻のみ適用されます（先頭の船が優先）",
+    warnDistAvoidAll: "3人以上では3隻すべての回避は満たせません（満たせない分は無視）",
   },
   en: {
     title: "Setup (research / boosters / scoring)",
@@ -169,6 +183,8 @@ const UI = {
     avoidShort: "avoid",
     forceShort: "force",
     currentBadge: "Shown",
+    warnDistForceDup: "Only one ship can force \"Base range +1\" (first ship wins)",
+    warnDistAvoidAll: "With 3+ players, avoiding it on all three ships cannot be satisfied (unmet ones are ignored)",
   },
 } as const;
 
@@ -325,7 +341,14 @@ const LS = {
   extFace: "gaia_setup_extface",
   econFace: "gaia_setup_econface",
   avoid: "gaia_setup_avoid",
+  shipRules: "gaia_setup_shiprules",
 } as const;
+
+/** LF船ルールのUI状態（off はキー省略 / gold は "" が off）。 */
+type ShipRulesState = {
+  dist: Partial<Record<ShipId, "avoid" | "force">>;
+  gold: "" | "avoid" | "force";
+};
 
 function lsGet(key: string): string | null {
   try {
@@ -352,6 +375,8 @@ export default function SetupView() {
   // ルールごとのモード（off はキー省略。値は isValidRuleMode 参照）。
   // 旧形式（回避IDの配列）は読み込み時に移行。
   const [ruleModes, setRuleModes] = React.useState<Record<string, string>>({});
+  // LF船ルール（距離タイルの船別 回避/強制＋リベリオン金枠同盟）
+  const [shipRules, setShipRules] = React.useState<ShipRulesState>({ dist: {}, gold: "" });
 
   // Restore language (shared with the map page) and remembered settings.
   React.useEffect(() => {
@@ -388,6 +413,21 @@ export default function SetupView() {
     } catch {
       // ignore
     }
+    try {
+      const raw = lsGet(LS.shipRules);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const dist: ShipRulesState["dist"] = {};
+        for (const s of TECH_SHIP_IDS) {
+          const v = parsed?.dist?.[s];
+          if (v === "avoid" || v === "force") dist[s] = v;
+        }
+        const gold = parsed?.gold === "avoid" || parsed?.gold === "force" ? parsed.gold : "";
+        setShipRules({ dist, gold });
+      }
+    } catch {
+      // ignore
+    }
   }, []);
 
   // Persisting change handlers. Settings are written ONLY on user interaction —
@@ -419,6 +459,27 @@ export default function SetupView() {
     setEconFaceMode(v);
     lsSet(LS.econFace, v);
   }, []);
+  const changeShipDist = React.useCallback((ship: ShipId, mode: string) => {
+    setShipRules((prev) => {
+      const dist = { ...prev.dist };
+      if (mode === "avoid" || mode === "force") dist[ship] = mode;
+      else delete dist[ship];
+      const next = { ...prev, dist };
+      lsSet(LS.shipRules, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+  const changeRebGold = React.useCallback((mode: string) => {
+    setShipRules((prev) => {
+      const next: ShipRulesState = {
+        ...prev,
+        gold: mode === "avoid" || mode === "force" ? mode : "",
+      };
+      lsSet(LS.shipRules, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const changeRuleMode = React.useCallback((ruleId: string, mode: string) => {
     setRuleModes((prev) => {
       const next = { ...prev };
@@ -451,6 +512,9 @@ export default function SetupView() {
         else if (m.startsWith("force:")) forceTiles[id] = m.slice("force:".length);
         else if (m.startsWith("allow:")) allowTiles[id] = m.slice("allow:".length);
       }
+      // 船ルールは TECH_SHIP_IDS 順で安定化（キーの一部になるため）
+      const distAvoid = TECH_SHIP_IDS.filter((sh) => shipRules.dist[sh] === "avoid");
+      const distForce = TECH_SHIP_IDS.filter((sh) => shipRules.dist[sh] === "force");
       return {
         seed: s,
         playerCount: players,
@@ -461,9 +525,12 @@ export default function SetupView() {
         ...(forceIds.length > 0 ? { forceRules: forceIds } : {}),
         ...(Object.keys(forceTiles).length > 0 ? { forceTileRules: forceTiles } : {}),
         ...(Object.keys(allowTiles).length > 0 ? { allowTileRules: allowTiles } : {}),
+        ...(lf && distAvoid.length > 0 ? { shipDistanceAvoid: distAvoid } : {}),
+        ...(lf && distForce.length > 0 ? { shipDistanceForce: distForce } : {}),
+        ...(lf && shipRules.gold ? { rebellionGoldFed: shipRules.gold } : {}),
       };
     },
-    [players, lf, extFaceMode, econFaceMode, ruleModes]
+    [players, lf, extFaceMode, econFaceMode, ruleModes, shipRules]
   );
 
   const result = React.useMemo(() => buildSetupFromSeed(buildInput(seed)), [seed, buildInput]);
@@ -509,12 +576,30 @@ export default function SetupView() {
       for (const [id, tid] of Object.entries(input.allowTileRules ?? {})) modes[id] = `allow:${tid}`;
       setRuleModes(modes);
       lsSet(LS.avoid, JSON.stringify(modes));
+      const dist: ShipRulesState["dist"] = {};
+      for (const sh of input.shipDistanceAvoid ?? []) dist[sh] = "avoid";
+      for (const sh of input.shipDistanceForce ?? []) dist[sh] = "force";
+      const sr: ShipRulesState = { dist, gold: input.rebellionGoldFed ?? "" };
+      setShipRules(sr);
+      lsSet(LS.shipRules, JSON.stringify(sr));
       setSeed(input.seed);
     },
     [changeMode, changePlayers, changeExtFace, changeEconFace]
   );
 
   const currentId = React.useMemo(() => setupHistoryId(buildInput(seed)), [buildInput, seed]);
+
+  // 船ルールの充足不能な組み合わせはエラーにせず警告表示（2026-07-23 要望）。
+  const shipRuleWarnings = React.useMemo(() => {
+    if (!lf) return [];
+    const warns: string[] = [];
+    const forceCount = TECH_SHIP_IDS.filter((sh) => shipRules.dist[sh] === "force").length;
+    if (forceCount > 1) warns.push(UI[lang].warnDistForceDup);
+    if (TECH_SHIP_IDS.every((sh) => shipRules.dist[sh] === "avoid") && players >= 3) {
+      warns.push(UI[lang].warnDistAvoidAll);
+    }
+    return warns;
+  }, [lf, shipRules, players, lang]);
 
   const t = UI[lang];
 
@@ -730,22 +815,66 @@ export default function SetupView() {
 
           <section>
             <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.ships}</div>
+            {shipRuleWarnings.length > 0 ? (
+              <div style={{ fontSize: 12, color: "#b3261e", marginBottom: 6 }}>
+                {shipRuleWarnings.map((w) => (
+                  <div key={w}>⚠ {w}</div>
+                ))}
+              </div>
+            ) : null}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 8 }}>
-              {result.ships!.map((ship) => (
-                <div key={ship} style={{ border: "1px solid #ddd", borderRadius: 8, padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.8 }}>
-                    {lang === "ja" ? SHIP_LABEL[ship].ja : SHIP_LABEL[ship].en}
-                  </div>
-                  {tileCell(result.goldFederations![ship]!, t.goldFed)}
-                  {result.shipTech![ship] ? tileCell(result.shipTech![ship]!, t.shipTechLabel) : null}
-                  {ship === "twilight" ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <div style={{ fontSize: 11, opacity: 0.65 }}>{t.artifactsLabel}</div>
-                      {result.artifacts!.map((id) => tileCell(id))}
+              {result.ships!.map((ship) => {
+                const techShip = (TECH_SHIP_IDS as readonly ShipId[]).includes(ship);
+                return (
+                  <div key={ship} style={{ border: "1px solid #ddd", borderRadius: 8, padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.8 }}>
+                      {lang === "ja" ? SHIP_LABEL[ship].ja : SHIP_LABEL[ship].en}
                     </div>
-                  ) : null}
-                </div>
-              ))}
+                    {tileCell(result.goldFederations![ship]!, t.goldFed)}
+                    {result.shipTech![ship] ? tileCell(result.shipTech![ship]!, t.shipTechLabel) : null}
+                    {ship === "twilight" ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div style={{ fontSize: 11, opacity: 0.65 }}>{t.artifactsLabel}</div>
+                        {result.artifacts!.map((id) => tileCell(id))}
+                      </div>
+                    ) : null}
+                    {techShip ? (
+                      <div
+                        title={effectOf(SHIP_DISTANCE_TECH, lang)}
+                        style={{ fontSize: 11, display: "flex", flexDirection: "column", gap: 2 }}
+                      >
+                        <span style={{ opacity: 0.7 }}>{labelOf(SHIP_DISTANCE_TECH, lang)}</span>
+                        <select
+                          value={shipRules.dist[ship] ?? "off"}
+                          onChange={(e) => changeShipDist(ship, e.target.value)}
+                          style={{ maxWidth: 170 }}
+                        >
+                          <option value="off">{t.ruleOff}</option>
+                          <option value="avoid">{t.ruleAvoid}</option>
+                          <option value="force">{t.ruleForce}</option>
+                        </select>
+                      </div>
+                    ) : null}
+                    {ship === "rebellion" ? (
+                      <div
+                        title={effectOf(REBELLION_GOLD_TECH_FED, lang)}
+                        style={{ fontSize: 11, display: "flex", flexDirection: "column", gap: 2 }}
+                      >
+                        <span style={{ opacity: 0.7 }}>{labelOf(REBELLION_GOLD_TECH_FED, lang)}</span>
+                        <select
+                          value={shipRules.gold || "off"}
+                          onChange={(e) => changeRebGold(e.target.value)}
+                          style={{ maxWidth: 170 }}
+                        >
+                          <option value="off">{t.ruleOff}</option>
+                          <option value="avoid">{t.ruleAvoid}</option>
+                          <option value="force">{t.ruleForce}</option>
+                        </select>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
           </section>
         </>

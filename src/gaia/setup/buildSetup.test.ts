@@ -442,6 +442,116 @@ describe("force-tile / allow-tile rules (2026-07-23)", () => {
   });
 });
 
+describe("ship rules (2026-07-23)", () => {
+  const TECH_SHIPS = ["eclipse", "rebellion", "tfmars"] as const;
+
+  it("shipDistanceForce puts TSL2 on the ship (3p/4p, all ships)", () => {
+    for (let i = 0; i < 40; i++) {
+      for (const players of [3, 4]) {
+        for (const ship of TECH_SHIPS) {
+          const r = buildSetupFromSeed({
+            seed: `sdf-${i}`,
+            playerCount: players,
+            ...LF,
+            shipDistanceForce: [ship],
+          });
+          expect(r.shipTech![ship]).toBe("TSL2");
+        }
+      }
+    }
+  });
+
+  it("shipDistanceAvoid keeps TSL2 off the ship when satisfiable", () => {
+    for (let i = 0; i < 40; i++) {
+      for (const players of [2, 3, 4]) {
+        for (const ship of TECH_SHIPS) {
+          if (players === 2 && ship === "rebellion") continue; // boxed
+          const r = buildSetupFromSeed({
+            seed: `sda-${i}`,
+            playerCount: players,
+            ...LF,
+            shipDistanceAvoid: [ship],
+          });
+          expect(r.shipTech![ship]).not.toBe("TSL2");
+        }
+      }
+    }
+  });
+
+  it("multiple force ships: only the first (TECH_SHIP_IDS order) is satisfied", () => {
+    for (let i = 0; i < 40; i++) {
+      const r = buildSetupFromSeed({
+        seed: `sdm-${i}`,
+        playerCount: 4,
+        ...LF,
+        shipDistanceForce: ["tfmars", "eclipse"], // 順不同でも eclipse が先
+      });
+      expect(r.shipTech!.eclipse).toBe("TSL2");
+    }
+  });
+
+  it("avoid on all three ships at 3+ players is unsatisfiable -> roll unchanged", () => {
+    for (let i = 0; i < 40; i++) {
+      const plain = buildSetupFromSeed({ seed: `sdall-${i}`, playerCount: 4, ...LF });
+      const ruled = buildSetupFromSeed({
+        seed: `sdall-${i}`,
+        playerCount: 4,
+        ...LF,
+        shipDistanceAvoid: ["eclipse", "rebellion", "tfmars"],
+      });
+      expect(ruled).toEqual(plain);
+    }
+  });
+
+  it("avoid on all three at 2 players is satisfiable (rebellion boxed, spare exists)", () => {
+    for (let i = 0; i < 40; i++) {
+      const r = buildSetupFromSeed({
+        seed: `sd2p-${i}`,
+        playerCount: 2,
+        ...LF,
+        shipDistanceAvoid: ["eclipse", "rebellion", "tfmars"],
+      });
+      expect(r.shipTech!.eclipse).not.toBe("TSL2");
+      expect(r.shipTech!.tfmars).not.toBe("TSL2");
+    }
+  });
+
+  it("rebellionGoldFed force/avoid controls FEDG2 on Rebellion (3p/4p)", () => {
+    for (let i = 0; i < 40; i++) {
+      for (const players of [3, 4]) {
+        const f = buildSetupFromSeed({ seed: `rg-${i}`, playerCount: players, ...LF, rebellionGoldFed: "force" });
+        expect(f.goldFederations!.rebellion).toBe("FEDG2");
+        const a = buildSetupFromSeed({ seed: `rg-${i}`, playerCount: players, ...LF, rebellionGoldFed: "avoid" });
+        expect(a.goldFederations!.rebellion).not.toBe("FEDG2");
+      }
+    }
+  });
+
+  it("rebellionGoldFed avoid moves FEDG2 to a spare, not another ship", () => {
+    for (let i = 0; i < 60; i++) {
+      const plain = buildSetupFromSeed({ seed: `rgs-${i}`, playerCount: 4, ...LF });
+      const ruled = buildSetupFromSeed({ seed: `rgs-${i}`, playerCount: 4, ...LF, rebellionGoldFed: "avoid" });
+      for (const ship of ["twilight", "eclipse", "tfmars"] as const) {
+        expect(ruled.goldFederations![ship]).toBe(plain.goldFederations![ship]);
+      }
+    }
+  });
+
+  it("no ship rules -> byte-identical output; 2p rebellion rules are no-ops", () => {
+    const plain = buildSetupFromSeed({ seed: "ship-base", playerCount: 4, ...LF });
+    expect(
+      buildSetupFromSeed({ seed: "ship-base", playerCount: 4, ...LF, shipDistanceAvoid: [], shipDistanceForce: [] })
+    ).toEqual(plain);
+    const p2 = buildSetupFromSeed({ seed: "ship-2p", playerCount: 2, ...LF });
+    expect(
+      buildSetupFromSeed({ seed: "ship-2p", playerCount: 2, ...LF, rebellionGoldFed: "force" })
+    ).toEqual(p2);
+    expect(
+      buildSetupFromSeed({ seed: "ship-2p", playerCount: 2, ...LF, shipDistanceForce: ["rebellion"] })
+    ).toEqual(p2);
+  });
+});
+
 describe("player count", () => {
   it("scales available boosters as playerCount + 3", () => {
     for (const [players, expected] of [[1, 4], [2, 5], [3, 6], [4, 7]] as const) {
