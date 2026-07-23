@@ -3,6 +3,8 @@ import { buildSetupFromSeed } from "./buildSetup";
 import { SETUP_CATALOG } from "./data";
 import { RESEARCH_TRACK_IDS } from "./types";
 
+const LF = { mode: "lostFleet" as const };
+
 const STD_IDS = SETUP_CATALOG.standardTech.map((t) => t.id);
 const ADV_IDS = SETUP_CATALOG.advancedTech.map((t) => t.id);
 const BOOSTER_IDS = SETUP_CATALOG.boosters.map((t) => t.id);
@@ -37,10 +39,19 @@ describe("catalog structure", () => {
     expect(Object.values(SCORING_COPIES).filter((c) => c === 2)).toHaveLength(1);
   });
 
-  it("uses unique ids within each component", () => {
-    for (const ids of [STD_IDS, ADV_IDS, BOOSTER_IDS, SCORING_IDS, FINAL_IDS, FED_IDS]) {
-      expect(new Set(ids).size).toBe(ids.length);
-    }
+  it("has the expected Lost Fleet counts", () => {
+    expect(SETUP_CATALOG.boostersLF).toHaveLength(4);
+    expect(SETUP_CATALOG.roundScoringLF).toHaveLength(3);
+    expect(SETUP_CATALOG.advancedTechLF).toHaveLength(6);
+    expect(SETUP_CATALOG.standardTechLF).toHaveLength(3);
+    expect(SETUP_CATALOG.finalScoringLF).toHaveLength(3);
+    expect(SETUP_CATALOG.federationsGold).toHaveLength(8);
+    expect(SETUP_CATALOG.artifacts).toHaveLength(13);
+  });
+
+  it("uses globally unique ids across every group (base + LF)", () => {
+    const all = Object.values(SETUP_CATALOG).flatMap((group) => group.map((t) => t.id));
+    expect(new Set(all).size).toBe(all.length);
   });
 });
 
@@ -122,6 +133,116 @@ describe("buildSetupFromSeed structure", () => {
   });
 });
 
+describe("Lost Fleet mode", () => {
+  const LF_STD_IDS = SETUP_CATALOG.standardTechLF.map((t) => t.id);
+  const GOLD_IDS = SETUP_CATALOG.federationsGold.map((t) => t.id);
+  const ART_IDS = SETUP_CATALOG.artifacts.map((t) => t.id);
+  const ADV_ALL = [...ADV_IDS, ...SETUP_CATALOG.advancedTechLF.map((t) => t.id)];
+  const BOOSTER_ALL = [...BOOSTER_IDS, ...SETUP_CATALOG.boostersLF.map((t) => t.id)];
+  const FINAL_ALL = [...FINAL_IDS, ...SETUP_CATALOG.finalScoringLF.map((t) => t.id)];
+
+  it("leaves base-mode output byte-identical (no LF fields, same roll)", () => {
+    // The whole compatibility contract: rolling without `mode` must not change
+    // when LF support exists. The base golden test pins the values; this pins
+    // the SHAPE and that mode:"base" is the same as omitting it.
+    const plain = buildSetupFromSeed({ seed: "snap-0001", playerCount: 4 });
+    const explicit = buildSetupFromSeed({ seed: "snap-0001", playerCount: 4, mode: "base" });
+    expect(explicit).toEqual(plain);
+    for (const key of ["mode", "ships", "shipTech", "artifacts", "goldFederations", "econTileFace", "extensionFace"]) {
+      expect(key in plain).toBe(false);
+    }
+    expect("extension" in plain.advancedTech).toBe(false);
+  });
+
+  it("pins a golden LF roll for a fixed seed", () => {
+    const r = buildSetupFromSeed({ seed: "snap-0001", playerCount: 4, ...LF });
+    expect(r).toEqual(GOLDEN_LF_SNAP_0001);
+  });
+
+  const r4 = buildSetupFromSeed({ seed: "lf-structure", playerCount: 4, ...LF });
+  const r2 = buildSetupFromSeed({ seed: "lf-structure", playerCount: 2, ...LF });
+
+  it("draws 7 distinct advanced tech (6 tracks + extension) from the merged 21", () => {
+    const used = [...Object.values(r4.advancedTech.byTrack), r4.advancedTech.extension!];
+    expect(used).toHaveLength(7);
+    expect(new Set(used).size).toBe(7);
+    expect(used.every((id) => ADV_ALL.includes(id))).toBe(true);
+  });
+
+  it("partitions the merged 14-booster pool", () => {
+    const { available, unused } = r4.boosters;
+    expect(available).toHaveLength(7);
+    expect([...available, ...unused].sort()).toEqual([...BOOSTER_ALL].sort());
+  });
+
+  it("draws round scoring from the merged 13-tile physical pool", () => {
+    expect(r4.roundScoring).toHaveLength(6);
+    const validIds = [...SCORING_IDS, ...SETUP_CATALOG.roundScoringLF.map((t) => t.id)];
+    expect(r4.roundScoring.every((id) => validIds.includes(id))).toBe(true);
+  });
+
+  it("draws 2 distinct final scoring tiles from the merged 9", () => {
+    expect(r4.finalScoring).toHaveLength(2);
+    expect(new Set(r4.finalScoring).size).toBe(2);
+    expect(r4.finalScoring.every((id) => FINAL_ALL.includes(id))).toBe(true);
+  });
+
+  it("at 4 players: 4 ships, 3 ship-tech spaces, 4 gold federations, 4 artifacts", () => {
+    expect(r4.ships).toEqual(["twilight", "eclipse", "rebellion", "tfmars"]);
+    expect(Object.keys(r4.shipTech!).sort()).toEqual(["eclipse", "rebellion", "tfmars"]);
+    const shipTechIds = Object.values(r4.shipTech!);
+    expect(new Set(shipTechIds).size).toBe(3);
+    expect(shipTechIds.every((id) => LF_STD_IDS.includes(id!))).toBe(true);
+    const golds = Object.values(r4.goldFederations!);
+    expect(Object.keys(r4.goldFederations!).sort()).toEqual([...r4.ships!].sort());
+    expect(new Set(golds).size).toBe(4);
+    expect(golds.every((id) => GOLD_IDS.includes(id!))).toBe(true);
+    expect(r4.artifacts).toHaveLength(4);
+    expect(new Set(r4.artifacts).size).toBe(4);
+    expect(r4.artifacts!.every((id) => ART_IDS.includes(id))).toBe(true);
+  });
+
+  it("at 2 players: Rebellion boxed, 2 ship-tech spaces, 3 gold federations, 2 artifacts", () => {
+    expect(r2.ships).toEqual(["twilight", "eclipse", "tfmars"]);
+    expect(Object.keys(r2.shipTech!).sort()).toEqual(["eclipse", "tfmars"]);
+    expect(new Set(Object.values(r2.shipTech!)).size).toBe(2);
+    expect(Object.keys(r2.goldFederations!).sort()).toEqual(["eclipse", "tfmars", "twilight"]);
+    expect(r2.artifacts).toHaveLength(2);
+  });
+
+  it("clamps LF player count to 2..4", () => {
+    expect(buildSetupFromSeed({ seed: "pc", playerCount: 1, ...LF }).playerCount).toBe(2);
+    expect(buildSetupFromSeed({ seed: "pc", playerCount: 9, ...LF }).playerCount).toBe(4);
+  });
+
+  it("extension face defaults by player count and can be randomized", () => {
+    expect(r2.extensionFace).toBe("vp25");
+    expect(r4.extensionFace).toBe("shuttle");
+    const rnd = buildSetupFromSeed({ seed: "lf-structure", playerCount: 4, ...LF, randomExtensionFace: true });
+    expect(["vp25", "shuttle"]).toContain(rnd.extensionFace);
+    // Deterministic for the same seed.
+    const rnd2 = buildSetupFromSeed({ seed: "lf-structure", playerCount: 4, ...LF, randomExtensionFace: true });
+    expect(rnd2.extensionFace).toBe(rnd.extensionFace);
+    // Some seed yields each face.
+    const faces = new Set(
+      Array.from({ length: 20 }, (_, i) =>
+        buildSetupFromSeed({ seed: `face-${i}`, playerCount: 4, ...LF, randomExtensionFace: true }).extensionFace
+      )
+    );
+    expect(faces).toEqual(new Set(["vp25", "shuttle"]));
+  });
+
+  it("econ tile face is deterministic and covers both faces across seeds", () => {
+    expect(["A", "B"]).toContain(r4.econTileFace);
+    const faces = new Set(
+      Array.from({ length: 20 }, (_, i) =>
+        buildSetupFromSeed({ seed: `econ-${i}`, playerCount: 4, ...LF }).econTileFace
+      )
+    );
+    expect(faces).toEqual(new Set(["A", "B"]));
+  });
+});
+
 describe("player count", () => {
   it("scales available boosters as playerCount + 3", () => {
     for (const [players, expected] of [[1, 4], [2, 5], [3, 6], [4, 7]] as const) {
@@ -158,4 +279,34 @@ const GOLDEN_SNAP_0001 = {
   roundScoring: ["RS01", "RS03", "RS04", "RS08", "RS05", "RS02"],
   finalScoring: ["FS05", "FS06"],
   federationLv5: "FED8PT",
+};
+
+// Golden LF roll for the same seed (regenerate deliberately, same command with
+// mode: "lostFleet"). The mixed pools shuffle different id lists, so LF values
+// legitimately differ from the base roll above.
+const GOLDEN_LF_SNAP_0001 = {
+  seed: "snap-0001",
+  playerCount: 4,
+  standardTech: {
+    byTrack: { terra: "TS5", nav: "TS1", ai: "TS6", gaia: "TS9", eco: "TS7", sci: "TS4" },
+    free: ["TS3", "TS8", "TS2"],
+  },
+  advancedTech: {
+    byTrack: { terra: "AT21", nav: "AT17", ai: "AT16", gaia: "AT03", eco: "AT04", sci: "AT08" },
+    extension: "AT10",
+  },
+  boosters: {
+    available: ["RB12", "RB11", "RB10", "RB09", "RB04", "RB14", "RB07"],
+    unused: ["RB13", "RB01", "RB06", "RB03", "RB05", "RB02", "RB08"],
+  },
+  roundScoring: ["RS01", "RS05", "RS06", "RS02", "RS11", "RS09"],
+  finalScoring: ["FS04", "FS06"],
+  federationLv5: "FED8PT",
+  mode: "lostFleet",
+  ships: ["twilight", "eclipse", "rebellion", "tfmars"],
+  shipTech: { eclipse: "TSL1", rebellion: "TSL3", tfmars: "TSL2" },
+  artifacts: ["ART10", "ART05", "ART03", "ART07"],
+  goldFederations: { twilight: "FEDG8", eclipse: "FEDG4", rebellion: "FEDG5", tfmars: "FEDG2" },
+  econTileFace: "B",
+  extensionFace: "shuttle",
 };

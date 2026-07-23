@@ -7,6 +7,23 @@
 // seed -> setup builder (buildSetup.ts), verified by a snapshot test. Evaluation
 // is intentionally out of scope for this first skeleton.
 
+/** Which rule set the randomizer rolls for. Omitted input = "base". */
+export type SetupMode = "base" | "lostFleet";
+
+/**
+ * The four Lost Fleet ships. Same vocabulary as the map side's scout keys.
+ * At 2 players, Rebellion is returned to the box.
+ */
+export type ShipId = "twilight" | "eclipse" | "rebellion" | "tfmars";
+
+export const SHIP_IDS: readonly ShipId[] = ["twilight", "eclipse", "rebellion", "tfmars"] as const;
+
+/**
+ * Ships carrying a standard-tech space (one each; Twilight instead holds the
+ * artifact spaces). Confirmed against the physical boards (2026-07-23).
+ */
+export const TECH_SHIP_IDS: readonly ShipId[] = ["eclipse", "rebellion", "tfmars"] as const;
+
 /** The six research tracks of Gaia Project (stable ids; labels in data.ts). */
 export type ResearchTrackId =
   | "terra" // Terraforming
@@ -83,12 +100,44 @@ export type SetupCatalog = {
    * research level 5 — copies are equal so the draw is type-uniform.
    */
   federations: SetupTile[];
+
+  // --- Lost Fleet expansion groups (only drawn in "lostFleet" mode) ---------
+
+  /** 4 new round boosters, mixed into the base pool (-> 14). */
+  boostersLF: SetupTile[];
+  /** 3 new round scoring tiles, mixed into the physical pool (-> 13). */
+  roundScoringLF: RoundScoringTile[];
+  /** 6 new advanced tech tiles, mixed into the base 15 (-> 21). */
+  advancedTechLF: SetupTile[];
+  /**
+   * 3 new standard tech TYPES (x4 copies), NOT mixed with the base 9: they are
+   * assigned to the ship tech spaces (one per ship except Twilight).
+   */
+  standardTechLF: SetupTile[];
+  /** 3 new final scoring tiles, mixed into the base 6 (-> 9). */
+  finalScoringLF: SetupTile[];
+  /** 8 gold-frame federation tiles: one per ship (4, or 3 at 2 players). */
+  federationsGold: SetupTile[];
+  /** 13 artifact tokens: playerCount of them go onto Twilight's spaces. */
+  artifacts: SetupTile[];
 };
 
-/** Output of a single deterministic setup roll. */
+/**
+ * Output of a single deterministic setup roll.
+ *
+ * Lost Fleet fields (`mode`, `ships`, `advancedTech.extension`, `shipTech`,
+ * `artifacts`, `goldFederations`, `econTileFace`, `extensionFace`) are present
+ * ONLY when rolled in "lostFleet" mode — base-mode output stays byte-identical
+ * to the pre-expansion shape (same spread-omit rule as the map search keys).
+ */
 export type SetupResult = {
   seed: string;
   playerCount: number;
+
+  /** Present (= "lostFleet") only in Lost Fleet mode. */
+  mode?: "lostFleet";
+  /** Ships in play (Rebellion is excluded at 2 players). LF mode only. */
+  ships?: ShipId[];
 
   standardTech: {
     /** One standard tech tile id per research track. */
@@ -98,8 +147,10 @@ export type SetupResult = {
   };
 
   advancedTech: {
-    /** One advanced tech tile id per research track (6 drawn out of 15). */
+    /** One advanced tech tile id per research track (6 of 15, or 6 of 21 in LF). */
     byTrack: Record<ResearchTrackId, string>;
+    /** LF mode only: the 7th draw, placed on the scoring-board extension. */
+    extension?: string;
   };
 
   boosters: {
@@ -120,4 +171,20 @@ export type SetupResult = {
 
   /** Federation tile type id placed on Terraforming research level 5. */
   federationLv5: string;
+
+  // --- Lost Fleet mode only -------------------------------------------------
+
+  /** New standard tech type per tech-carrying ship (2 entries at 2 players). */
+  shipTech?: Partial<Record<ShipId, string>>;
+  /** playerCount artifact ids, in draw order, placed on Twilight. */
+  artifacts?: string[];
+  /** One gold federation tile per ship in play. */
+  goldFederations?: Partial<Record<ShipId, string>>;
+  /** Random face of the economy-research adjustment tile. */
+  econTileFace?: "A" | "B";
+  /**
+   * Scoring-board extension face: player-count default (2p = "vp25",
+   * 3/4p = "shuttle") unless the random-face option is enabled.
+   */
+  extensionFace?: "vp25" | "shuttle";
 };

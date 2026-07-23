@@ -4,7 +4,7 @@
 import React from "react";
 import { buildSetupFromSeed } from "@/gaia/setup/buildSetup";
 import { SETUP_CATALOG } from "@/gaia/setup/data";
-import { RESEARCH_TRACK_IDS, type ResearchTrackId } from "@/gaia/setup/types";
+import { RESEARCH_TRACK_IDS, type ResearchTrackId, type SetupMode, type ShipId } from "@/gaia/setup/types";
 
 type Lang = "ja" | "en";
 
@@ -18,15 +18,37 @@ const TRACK_LABEL: Record<ResearchTrackId, { ja: string; en: string }> = {
   sci: { ja: "科学", en: "Science" },
 };
 
+const SHIP_LABEL: Record<ShipId, { ja: string; en: string }> = {
+  twilight: { ja: "トワイライト", en: "Twilight" },
+  eclipse: { ja: "エクリプス", en: "Eclipse" },
+  rebellion: { ja: "リベリオン", en: "Rebellion" },
+  tfmars: { ja: "T.F.マーズ", en: "T.F. Mars" },
+};
+
 const UI = {
   ja: {
     title: "セットアップ（研究/ブースター/得点）",
     draftNote:
-      "※ 基本版の全タイルはルールブック・実物確認済み。評価機能は未実装。Lost Fleet 拡張は未対応（仕様確定済み・実装待ち）。",
+      "※ 全タイル（基本版・Lost Fleet）はルールブック・実物確認済み。評価機能は未実装。",
     seed: "シード",
     randomSeed: "ランダム",
     players: "人数",
     roll: "生成",
+    modeBase: "基本版",
+    modeLF: "Lost Fleet",
+    randomExtFace: "拡張部の面をランダムにする（2ゲーム目以降ルール）",
+    scoringExtension: "得点ボード拡張部",
+    extensionAdv: "追加の上級技術",
+    extensionFaceLabel: "面",
+    faceVp25: "25勝利点面",
+    faceShuttle: "探査シャトル面",
+    econFace: "経済研究エリア調整タイル（ランダム面）",
+    faceA: "面A",
+    faceB: "面B",
+    ships: "失われた艦隊の宇宙船",
+    shipTechLabel: "基本技術",
+    goldFed: "金枠同盟",
+    artifactsLabel: "アーティファクト（トワイライト）",
     researchTracks: "研究トラック（上：上級 / 下：標準）",
     advanced: "上級",
     standard: "標準",
@@ -42,11 +64,26 @@ const UI = {
   en: {
     title: "Setup (research / boosters / scoring)",
     draftNote:
-      "Note: all base-game tiles verified against the rulebook and physical components. Evaluation not implemented. Lost Fleet expansion not covered yet (spec finalized, implementation pending).",
+      "Note: all tiles (base game & Lost Fleet) verified against the rulebook and physical components. Evaluation not implemented.",
     seed: "Seed",
     randomSeed: "Random",
     players: "Players",
     roll: "Roll",
+    modeBase: "Base game",
+    modeLF: "Lost Fleet",
+    randomExtFace: "Randomize extension face (2nd-game-on rule)",
+    scoringExtension: "Scoring board extension",
+    extensionAdv: "Extra advanced tech",
+    extensionFaceLabel: "Face",
+    faceVp25: "25 VP face",
+    faceShuttle: "Explorer shuttle face",
+    econFace: "Economy adjustment tile (random face)",
+    faceA: "Face A",
+    faceB: "Face B",
+    ships: "Lost Fleet ships",
+    shipTechLabel: "Standard tech",
+    goldFed: "Gold federation",
+    artifactsLabel: "Artifacts (Twilight)",
     researchTracks: "Research tracks (top: advanced / bottom: standard)",
     advanced: "Adv",
     standard: "Std",
@@ -70,6 +107,13 @@ for (const group of [
   SETUP_CATALOG.roundScoring,
   SETUP_CATALOG.finalScoring,
   SETUP_CATALOG.federations,
+  SETUP_CATALOG.boostersLF,
+  SETUP_CATALOG.roundScoringLF,
+  SETUP_CATALOG.advancedTechLF,
+  SETUP_CATALOG.standardTechLF,
+  SETUP_CATALOG.finalScoringLF,
+  SETUP_CATALOG.federationsGold,
+  SETUP_CATALOG.artifacts,
 ]) {
   for (const t of group) BY_ID.set(t.id, t);
 }
@@ -93,6 +137,8 @@ export default function SetupView() {
   const [lang, setLang] = React.useState<Lang>("ja");
   const [seed, setSeed] = React.useState<string>("1");
   const [players, setPlayers] = React.useState<number>(4);
+  const [mode, setMode] = React.useState<SetupMode>("base");
+  const [randomExtFace, setRandomExtFace] = React.useState<boolean>(false);
 
   // Match the map page's language preference.
   React.useEffect(() => {
@@ -113,9 +159,17 @@ export default function SetupView() {
     }
   }, []);
 
+  const lf = mode === "lostFleet";
+
   const result = React.useMemo(
-    () => buildSetupFromSeed({ seed, playerCount: players }),
-    [seed, players]
+    () =>
+      buildSetupFromSeed({
+        seed,
+        playerCount: players,
+        ...(lf ? { mode: "lostFleet" as const } : {}),
+        ...(lf && randomExtFace ? { randomExtensionFace: true } : {}),
+      }),
+    [seed, players, lf, randomExtFace]
   );
 
   const t = UI[lang];
@@ -160,6 +214,24 @@ export default function SetupView() {
       </div>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>
+          <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            <input type="radio" name="setupMode" checked={!lf} onChange={() => setMode("base")} />
+            <span>{t.modeBase}</span>
+          </label>
+          <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            <input
+              type="radio"
+              name="setupMode"
+              checked={lf}
+              onChange={() => {
+                setMode("lostFleet");
+                setPlayers((p) => Math.max(2, p)); // LF is 2..4 players
+              }}
+            />
+            <span>{t.modeLF}</span>
+          </label>
+        </div>
         <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <span>{t.seed}</span>
           <input value={seed} onChange={(e) => setSeed(e.target.value)} style={{ width: 140, padding: "4px 6px" }} />
@@ -170,13 +242,19 @@ export default function SetupView() {
         <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <span>{t.players}</span>
           <select value={players} onChange={(e) => setPlayers(Number(e.target.value))}>
-            {[1, 2, 3, 4].map((n) => (
+            {(lf ? [2, 3, 4] : [1, 2, 3, 4]).map((n) => (
               <option key={n} value={n}>
                 {n}
               </option>
             ))}
           </select>
         </label>
+        {lf ? (
+          <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
+            <input type="checkbox" checked={randomExtFace} onChange={(e) => setRandomExtFace(e.target.checked)} />
+            <span>{t.randomExtFace}</span>
+          </label>
+        ) : null}
       </div>
 
       {/* Research tracks: advanced (top) + standard (bottom) per track */}
@@ -226,6 +304,45 @@ export default function SetupView() {
           {result.finalScoring.map((id) => tileCell(id))}
         </div>
       </section>
+
+      {/* Lost Fleet: scoring-board extension + ships + econ tile face */}
+      {lf && result.mode === "lostFleet" ? (
+        <>
+          <section>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.scoringExtension}</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              {tileCell(result.advancedTech.extension!, t.extensionAdv)}
+              <div style={{ fontSize: 12, opacity: 0.8 }}>
+                {t.extensionFaceLabel}: {result.extensionFace === "vp25" ? t.faceVp25 : t.faceShuttle}
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.8 }}>
+                {t.econFace}: {result.econTileFace === "A" ? t.faceA : t.faceB}
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.ships}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 8 }}>
+              {result.ships!.map((ship) => (
+                <div key={ship} style={{ border: "1px solid #ddd", borderRadius: 8, padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.8 }}>
+                    {lang === "ja" ? SHIP_LABEL[ship].ja : SHIP_LABEL[ship].en}
+                  </div>
+                  {tileCell(result.goldFederations![ship]!, t.goldFed)}
+                  {result.shipTech![ship] ? tileCell(result.shipTech![ship]!, t.shipTechLabel) : null}
+                  {ship === "twilight" ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <div style={{ fontSize: 11, opacity: 0.65 }}>{t.artifactsLabel}</div>
+                      {result.artifacts!.map((id) => tileCell(id))}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </section>
+        </>
+      ) : null}
 
       {/* Boosters */}
       <section>
