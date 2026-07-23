@@ -238,12 +238,39 @@ export default function SetupView() {
     }
   }, []);
 
-  // Remember settings (not the seed). Players/expansion go to the shared keys.
-  React.useEffect(() => writeSharedExpansion(mode), [mode]);
-  React.useEffect(() => writeSharedPlayers(players), [players]);
-  React.useEffect(() => lsSet(LS.extFace, extFaceMode), [extFaceMode]);
-  React.useEffect(() => lsSet(LS.econFace, econFaceMode), [econFaceMode]);
-  React.useEffect(() => lsSet(LS.avoid, JSON.stringify(avoid)), [avoid]);
+  // Persisting change handlers. Settings are written ONLY on user interaction —
+  // a write-on-mount effect would race the restore effect above: under React
+  // Strict Mode the mount effects run twice, so the first pass's write (still
+  // holding the defaults) clobbers the stored values before the second pass
+  // re-reads them, resetting the user's remembered settings. (Seen live as the
+  // Setup tab forgetting the Map tab's players/expansion.)
+  const changePlayers = React.useCallback((n: number) => {
+    setPlayers(n);
+    writeSharedPlayers(n);
+  }, []);
+  const changeMode = React.useCallback((m: SetupMode) => {
+    setMode(m);
+    writeSharedExpansion(m);
+    if (m === "lostFleet") {
+      setPlayers((p) => {
+        const np = Math.max(2, p); // LF is 2..4 players
+        writeSharedPlayers(np);
+        return np;
+      });
+    }
+  }, []);
+  const changeExtFace = React.useCallback((v: ExtFaceMode) => {
+    setExtFaceMode(v);
+    lsSet(LS.extFace, v);
+  }, []);
+  const changeEconFace = React.useCallback((v: EconFaceMode) => {
+    setEconFaceMode(v);
+    lsSet(LS.econFace, v);
+  }, []);
+  const changeAvoid = React.useCallback((next: string[]) => {
+    setAvoid(next);
+    lsSet(LS.avoid, JSON.stringify(next));
+  }, []);
 
   const setLangPersist = React.useCallback((l: Lang) => {
     setLang(l);
@@ -316,19 +343,11 @@ export default function SetupView() {
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>
           <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
-            <input type="radio" name="setupMode" checked={!lf} onChange={() => setMode("base")} />
+            <input type="radio" name="setupMode" checked={!lf} onChange={() => changeMode("base")} />
             <span>{t.modeBase}</span>
           </label>
           <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
-            <input
-              type="radio"
-              name="setupMode"
-              checked={lf}
-              onChange={() => {
-                setMode("lostFleet");
-                setPlayers((p) => Math.max(2, p)); // LF is 2..4 players
-              }}
-            />
+            <input type="radio" name="setupMode" checked={lf} onChange={() => changeMode("lostFleet")} />
             <span>{t.modeLF}</span>
           </label>
         </div>
@@ -341,7 +360,7 @@ export default function SetupView() {
         </button>
         <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <span>{t.players}</span>
-          <select value={players} onChange={(e) => setPlayers(Number(e.target.value))}>
+          <select value={players} onChange={(e) => changePlayers(Number(e.target.value))}>
             {(lf ? [2, 3, 4] : [1, 2, 3, 4]).map((n) => (
               <option key={n} value={n}>
                 {n}
@@ -353,7 +372,7 @@ export default function SetupView() {
           <>
             <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
               <span>{t.extFaceModeLabel}</span>
-              <select value={extFaceMode} onChange={(e) => setExtFaceMode(e.target.value as ExtFaceMode)}>
+              <select value={extFaceMode} onChange={(e) => changeExtFace(e.target.value as ExtFaceMode)}>
                 <option value="auto">{t.extFaceAuto}</option>
                 <option value="random">{t.extFaceRandom}</option>
                 <option value="vp25">{t.faceVp25}</option>
@@ -362,7 +381,7 @@ export default function SetupView() {
             </label>
             <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
               <span>{t.econFaceModeLabel}</span>
-              <select value={econFaceMode} onChange={(e) => setEconFaceMode(e.target.value as EconFaceMode)}>
+              <select value={econFaceMode} onChange={(e) => changeEconFace(e.target.value as EconFaceMode)}>
                 <option value="random">{t.econFaceRandom}</option>
                 <option value="A">{t.econFaceA}</option>
                 <option value="B">{t.econFaceB}</option>
@@ -381,7 +400,7 @@ export default function SetupView() {
               type="checkbox"
               checked={avoid.includes(rule.id)}
               onChange={(e) =>
-                setAvoid((prev) => (e.target.checked ? [...prev, rule.id] : prev.filter((x) => x !== rule.id)))
+                changeAvoid(e.target.checked ? [...avoid, rule.id] : avoid.filter((x) => x !== rule.id))
               }
             />
             <span>{lang === "ja" ? rule.label : rule.labelEn}</span>
