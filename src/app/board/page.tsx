@@ -2319,31 +2319,9 @@ const handleDeleteUsed = React.useCallback(
           </label>
         </div>
 
-        {isBase ? (
-          <label
-            style={{ display: "flex", gap: 6, alignItems: "center" }}
-            title={t("placementMethodTip")}
-          >
-            <span>{t("placementMethod")}</span>
-            <select
-              value={placementMethod}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                if (v === 1 || v === 2 || v === 3) {
-                  setPlacementMethod(v);
-                  try {
-                    localStorage.setItem("gaia_search_placement_method", String(v));
-                  } catch {}
-                }
-              }}
-            >
-              <option value={1}>{t("method1")}</option>
-              <option value={2}>{t("method2")}</option>
-              <option value={3}>{t("method3")}</option>
-            </select>
-          </label>
-        ) : null}
-
+        {/* 配置方法セレクタは表示設定行へ移動（基本版/LF切替でボタン位置が
+            ズレないようにするユーザー要望 2026-07-24）。検索キーに影響する
+            設定だが、位置は表示設定行の右端に置く */}
 
         <button onClick={handleGenerateRank} disabled={busy || !mapSupported} style={{ padding: "6px 10px", fontWeight: 700 }}>
           {busy ? t("searching") : t("runSearch")}
@@ -2470,6 +2448,30 @@ const handleDeleteUsed = React.useCallback(
   <input type="checkbox" checked={showMapToolbar} onChange={(e) => setShowMapToolbar(e.target.checked)} />
   <span>{t("mapTools")}</span>
 </label>
+
+        {/* 基本版のみ: 配置方法（検索キーに影響する設定。上段からの移動は
+            基本版/LF切替でボタン位置がズレないようにするため、2026-07-24） */}
+        {isBase ? (
+          <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
+            <Hint label={t("placementMethod")} tip={t("placementMethodTip")} />
+            <select
+              value={placementMethod}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                if (v === 1 || v === 2 || v === 3) {
+                  setPlacementMethod(v);
+                  try {
+                    localStorage.setItem("gaia_search_placement_method", String(v));
+                  } catch {}
+                }
+              }}
+            >
+              <option value={1}>{t("method1")}</option>
+              <option value={2}>{t("method2")}</option>
+              <option value={3}>{t("method3")}</option>
+            </select>
+          </label>
+        ) : null}
 
       </div>
 
