@@ -60,6 +60,8 @@ const UI = {
     ruleOff: "設定なし",
     ruleAvoid: "回避",
     ruleForce: "強制",
+    ruleForceRandom: "強制：ランダム",
+    ruleAllow: "許容",
     fedTag: "同盟タイル",
     econTag: "調整タイル",
     econFaceA: "面A（Lv3:鉱1クレ2パワー3／Lv4:鉱2クレ2パワー2）",
@@ -122,6 +124,8 @@ const UI = {
     ruleOff: "Off",
     ruleAvoid: "Avoid",
     ruleForce: "Force",
+    ruleForceRandom: "Force: random",
+    ruleAllow: "Allow",
     fedTag: "Federation",
     econTag: "Econ tile",
     econFaceA: "Face A (L3: 1o 2c 3pw / L4: 2o 2c 2pw)",
@@ -301,6 +305,19 @@ function TileCellView({
 type ExtFaceMode = "auto" | "random" | "vp25" | "shuttle";
 type EconFaceMode = "random" | "A" | "B";
 
+/**
+ * 上級タイルルールのプルダウン値（"off" はキー削除で表現）:
+ *   "avoid" | "force"(＝強制：ランダム) | `force:<tileId>` | `allow:<tileId>`
+ */
+function isValidRuleMode(ruleId: string, v: unknown): v is string {
+  const rule = AVOID_RULES.find((r) => r.id === ruleId);
+  if (!rule || typeof v !== "string") return false;
+  if (v === "avoid" || v === "force") return true;
+  if (v.startsWith("force:")) return rule.tileIds.includes(v.slice("force:".length));
+  if (v.startsWith("allow:")) return (rule.allowTiles ?? []).includes(v.slice("allow:".length));
+  return false;
+}
+
 // Setup-only settings persisted across visits (the seed is deliberately NOT
 // remembered, same as the map page's fixed-seed field). Players and expansion
 // live in the shared keys (src/lib/sharedSettings.ts) used by both tabs.
@@ -332,8 +349,9 @@ export default function SetupView() {
   const [mode, setMode] = React.useState<SetupMode>("base");
   const [extFaceMode, setExtFaceMode] = React.useState<ExtFaceMode>("auto");
   const [econFaceMode, setEconFaceMode] = React.useState<EconFaceMode>("random");
-  // ルールごとの三択（off はキー省略）。旧形式（回避IDの配列）は読み込み時に移行。
-  const [ruleModes, setRuleModes] = React.useState<Record<string, "avoid" | "force">>({});
+  // ルールごとのモード（off はキー省略。値は isValidRuleMode 参照）。
+  // 旧形式（回避IDの配列）は読み込み時に移行。
+  const [ruleModes, setRuleModes] = React.useState<Record<string, string>>({});
 
   // Restore language (shared with the map page) and remembered settings.
   React.useEffect(() => {
@@ -352,16 +370,17 @@ export default function SetupView() {
       const raw = lsGet(LS.avoid);
       if (raw) {
         const parsed = JSON.parse(raw);
-        const valid = (x: unknown) => AVOID_RULES.some((r) => r.id === x);
         if (Array.isArray(parsed)) {
           // 旧形式（チェックボックス時代の回避ID配列）→ avoid として移行
-          const modes: Record<string, "avoid" | "force"> = {};
-          for (const id of parsed) if (valid(id)) modes[String(id)] = "avoid";
+          const modes: Record<string, string> = {};
+          for (const id of parsed) {
+            if (AVOID_RULES.some((r) => r.id === id)) modes[String(id)] = "avoid";
+          }
           setRuleModes(modes);
         } else if (parsed && typeof parsed === "object") {
-          const modes: Record<string, "avoid" | "force"> = {};
+          const modes: Record<string, string> = {};
           for (const [id, m] of Object.entries(parsed)) {
-            if (valid(id) && (m === "avoid" || m === "force")) modes[id] = m;
+            if (isValidRuleMode(id, m)) modes[id] = m;
           }
           setRuleModes(modes);
         }
@@ -400,7 +419,7 @@ export default function SetupView() {
     setEconFaceMode(v);
     lsSet(LS.econFace, v);
   }, []);
-  const changeRuleMode = React.useCallback((ruleId: string, mode: "off" | "avoid" | "force") => {
+  const changeRuleMode = React.useCallback((ruleId: string, mode: string) => {
     setRuleModes((prev) => {
       const next = { ...prev };
       if (mode === "off") delete next[ruleId];
@@ -421,8 +440,17 @@ export default function SetupView() {
   // 表示用 useMemo と保存リストへの記録（同じ入力を保存する）で共用する。
   const buildInput = React.useCallback(
     (s: string): BuildSetupInput => {
-      const avoidIds = Object.entries(ruleModes).filter(([, m]) => m === "avoid").map(([id]) => id);
-      const forceIds = Object.entries(ruleModes).filter(([, m]) => m === "force").map(([id]) => id);
+      const avoidIds: string[] = [];
+      const forceIds: string[] = [];
+      const forceTiles: Record<string, string> = {};
+      const allowTiles: Record<string, string> = {};
+      // 配列はキーの一部になるため id 順で安定化（オブジェクトは stableStringify が整列）
+      for (const [id, m] of Object.entries(ruleModes).sort(([a], [b]) => (a < b ? -1 : 1))) {
+        if (m === "avoid") avoidIds.push(id);
+        else if (m === "force") forceIds.push(id);
+        else if (m.startsWith("force:")) forceTiles[id] = m.slice("force:".length);
+        else if (m.startsWith("allow:")) allowTiles[id] = m.slice("allow:".length);
+      }
       return {
         seed: s,
         playerCount: players,
@@ -431,6 +459,8 @@ export default function SetupView() {
         ...(lf && econFaceMode !== "random" ? { econFaceMode } : {}),
         ...(avoidIds.length > 0 ? { avoidRules: avoidIds } : {}),
         ...(forceIds.length > 0 ? { forceRules: forceIds } : {}),
+        ...(Object.keys(forceTiles).length > 0 ? { forceTileRules: forceTiles } : {}),
+        ...(Object.keys(allowTiles).length > 0 ? { allowTileRules: allowTiles } : {}),
       };
     },
     [players, lf, extFaceMode, econFaceMode, ruleModes]
@@ -472,9 +502,11 @@ export default function SetupView() {
       changePlayers(input.playerCount ?? 4);
       changeExtFace(input.extensionFaceMode ?? "auto");
       changeEconFace(input.econFaceMode ?? "random");
-      const modes: Record<string, "avoid" | "force"> = {};
+      const modes: Record<string, string> = {};
       for (const id of input.avoidRules ?? []) modes[id] = "avoid";
       for (const id of input.forceRules ?? []) modes[id] = "force";
+      for (const [id, tid] of Object.entries(input.forceTileRules ?? {})) modes[id] = `force:${tid}`;
+      for (const [id, tid] of Object.entries(input.allowTileRules ?? {})) modes[id] = `allow:${tid}`;
       setRuleModes(modes);
       lsSet(LS.avoid, JSON.stringify(modes));
       setSeed(input.seed);
@@ -621,12 +653,28 @@ export default function SetupView() {
                     <span style={{ opacity: 0.7 }}>{lang === "ja" ? rule.shortLabel : rule.shortLabelEn}</span>
                     <select
                       value={ruleModes[rule.id] ?? "off"}
-                      onChange={(e) => changeRuleMode(rule.id, e.target.value as "off" | "avoid" | "force")}
-                      style={{ maxWidth: 150 }}
+                      onChange={(e) => changeRuleMode(rule.id, e.target.value)}
+                      style={{ maxWidth: 170 }}
                     >
                       <option value="off">{t.ruleOff}</option>
                       <option value="avoid">{t.ruleAvoid}</option>
-                      <option value="force">{t.ruleForce}</option>
+                      {rule.tileIds.length > 1 ? (
+                        <>
+                          <option value="force">{t.ruleForceRandom}</option>
+                          {rule.tileIds.map((tid) => (
+                            <option key={`f-${tid}`} value={`force:${tid}`}>
+                              {lang === "ja" ? `${t.ruleForce}：${labelOf(tid, lang)}` : `${t.ruleForce}: ${labelOf(tid, lang)}`}
+                            </option>
+                          ))}
+                          {(rule.allowTiles ?? []).map((tid) => (
+                            <option key={`a-${tid}`} value={`allow:${tid}`}>
+                              {lang === "ja" ? `${t.ruleAllow}：${labelOf(tid, lang)}` : `${t.ruleAllow}: ${labelOf(tid, lang)}`}
+                            </option>
+                          ))}
+                        </>
+                      ) : (
+                        <option value="force">{t.ruleForce}</option>
+                      )}
                     </select>
                   </div>
                 ) : null}

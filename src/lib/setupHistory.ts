@@ -23,7 +23,8 @@ import {
 } from "@/app/board/persistence";
 
 /** buildSetup 側の出力が変わったら上げる（骨組みでは表示区別に未使用、記録のみ）。 */
-export const SETUP_ALGO_VERSION = "setup_v1";
+// setup_v2: terra-no-fedPass の対象を AT01+AT12 のセットに拡張（回避の意味が変化）
+export const SETUP_ALGO_VERSION = "setup_v2";
 
 /** 未ピン・未使用の保存上限（2026-07-23 ユーザー確定: 100件）。 */
 export const SETUP_HISTORY_CAP = 100;

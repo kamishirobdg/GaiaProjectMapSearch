@@ -67,6 +67,17 @@ export type BuildSetupInput = {
    * avoidRules and forceRules (UI enforces one mode per track).
    */
   forceRules?: string[];
+  /**
+   * ruleId -> そのルールの tileIds のうち1枚。強制対象をタイル指定する
+   * （2026-07-23「強制：タイル名」）。forceRules（強制：ランダム）と同じ
+   * ルール id を両方に入れない（UI はトラックごと単一プルダウン）。
+   */
+  forceTileRules?: Record<string, string>;
+  /**
+   * ruleId -> そのルールの tileIds のうち1枚。「許容」: 指定タイル以外の
+   * セット内タイルを回避する（指定タイル自体は出ても出なくてもよい）。
+   */
+  allowTileRules?: Record<string, string>;
 };
 
 /**
@@ -84,6 +95,8 @@ export type AvoidRule = {
   /** 三択プルダウン用の短い対象名（「〜を置かない」を含まない中立表現） */
   shortLabel: string;
   shortLabelEn: string;
+  /** 「許容：タイル名」の選択肢を出すタイル（2026-07-23。省略＝許容なし） */
+  allowTiles?: string[];
 };
 
 export const AVOID_RULES: AvoidRule[] = [
@@ -97,13 +110,16 @@ export const AVOID_RULES: AvoidRule[] = [
     shortLabelEn: "2 VP per Gaia planet",
   },
   {
+    // 2026-07-23: AT12（取得時：同盟タイル×5VP）をセットに追加（要望）。
+    // 既存キー互換のため id は据え置き。回避は両タイルを対象にする。
     id: "terra-no-fedPass",
     track: "terra",
-    tileIds: ["AT01"],
-    label: "惑星改造に「パス時：同盟タイル×3VP」を置かない",
-    labelEn: "Keep \"Pass: 3 VP per federation\" off the Terraforming track",
-    shortLabel: "パス時：同盟×3VP",
-    shortLabelEn: "Pass: 3 VP per federation",
+    tileIds: ["AT01", "AT12"],
+    label: "惑星改造に「パス時：同盟タイル×3VP」「取得時：同盟タイル×5VP」を置かない",
+    labelEn: "Keep the federation VP tiles (pass x3 / immediate x5) off the Terraforming track",
+    shortLabel: "同盟VPタイル",
+    shortLabelEn: "Federation VP tiles",
+    allowTiles: ["AT01", "AT12"],
   },
   {
     id: "eco-no-resourceAction",
@@ -113,6 +129,7 @@ export const AVOID_RULES: AvoidRule[] = [
     labelEn: "Keep resource-action tiles (1 QIC+5c / 3 ore / 3 knowledge) off the Economy track",
     shortLabel: "資源獲得アクション",
     shortLabelEn: "Resource-action tiles",
+    allowTiles: ["AT13"],
   },
 ];
 
@@ -160,8 +177,9 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
   const adv = shuffleSeeded(advPool, streamFor(seed, "advancedTech"));
   // 強制→回避の順に適用（強制のクロススロット入替で押し出されたタイルが
   // 回避対象トラックに来ても、後続の回避スワップで除去されるようにする）
-  applyForceRules(adv, input.forceRules, lf);
-  applyAvoidRules(adv, input.avoidRules, lf);
+  const directives = resolveAdvDirectives(input);
+  applyForceRules(adv, directives.wantedByTrack, lf);
+  applyAvoidRules(adv, directives.bannedByTrack, lf);
   const advByTrack = assignByTrack(adv.slice(0, RESEARCH_TRACK_IDS.length));
   const advExtension = adv[RESEARCH_TRACK_IDS.length]; // used only in LF mode
 
@@ -255,6 +273,52 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
   };
 }
 
+type AdvDirectives = {
+  /** トラックごとの「このいずれかを置く」集合（強制：ランダム/タイル指定） */
+  wantedByTrack: Partial<Record<ResearchTrackId, Set<string>>>;
+  /** トラックごとの「置かない」集合（回避＝全量／許容＝指定タイル以外） */
+  bannedByTrack: Partial<Record<ResearchTrackId, Set<string>>>;
+};
+
+/**
+ * 入力の4形態（avoidRules / forceRules / forceTileRules / allowTileRules）を
+ * トラック別の wanted / banned 集合に正規化する。ルール外の id・セット外の
+ * タイル指定は無視（保存データの前方互換のため黙って落とす）。
+ */
+function resolveAdvDirectives(input: BuildSetupInput): AdvDirectives {
+  const wantedByTrack: AdvDirectives["wantedByTrack"] = {};
+  const bannedByTrack: AdvDirectives["bannedByTrack"] = {};
+  const add = (
+    map: Partial<Record<ResearchTrackId, Set<string>>>,
+    track: ResearchTrackId,
+    ids: string[]
+  ) => {
+    if (ids.length === 0) return;
+    const set = map[track] ?? new Set<string>();
+    for (const id of ids) set.add(id);
+    map[track] = set;
+  };
+  const byId = new Map(AVOID_RULES.map((r) => [r.id, r]));
+
+  for (const id of input.forceRules ?? []) {
+    const r = byId.get(id);
+    if (r) add(wantedByTrack, r.track, r.tileIds);
+  }
+  for (const [id, tile] of Object.entries(input.forceTileRules ?? {})) {
+    const r = byId.get(id);
+    if (r && r.tileIds.includes(tile)) add(wantedByTrack, r.track, [tile]);
+  }
+  for (const id of input.avoidRules ?? []) {
+    const r = byId.get(id);
+    if (r) add(bannedByTrack, r.track, r.tileIds);
+  }
+  for (const [id, tile] of Object.entries(input.allowTileRules ?? {})) {
+    const r = byId.get(id);
+    if (r) add(bannedByTrack, r.track, r.tileIds.filter((t) => t !== tile));
+  }
+  return { wantedByTrack, bannedByTrack };
+}
+
 /**
  * Enforce placement-avoidance rules on the shuffled advanced-tech array
  * (in place). Track slots are indices 0..5; in LF, index 6 is the extension
@@ -262,15 +326,15 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
  * is swapped with the first spare that is legal for that track; if none
  * exists (practically impossible: >=8 spares) the slot is left as drawn.
  */
-function applyAvoidRules(adv: string[], ruleIds: string[] | undefined, lf: boolean): void {
-  if (!ruleIds || ruleIds.length === 0) return;
-  const active = AVOID_RULES.filter((r) => ruleIds.includes(r.id));
-  if (active.length === 0) return;
-
+function applyAvoidRules(
+  adv: string[],
+  bannedByTrack: AdvDirectives["bannedByTrack"],
+  lf: boolean
+): void {
   const spareStart = RESEARCH_TRACK_IDS.length + (lf ? 1 : 0);
   RESEARCH_TRACK_IDS.forEach((track, i) => {
-    const banned = new Set(active.filter((r) => r.track === track).flatMap((r) => r.tileIds));
-    if (banned.size === 0 || !banned.has(adv[i])) return;
+    const banned = bannedByTrack[track];
+    if (!banned || banned.size === 0 || !banned.has(adv[i])) return;
     for (let j = spareStart; j < adv.length; j++) {
       if (!banned.has(adv[j])) {
         [adv[i], adv[j]] = [adv[j], adv[i]];
@@ -282,22 +346,22 @@ function applyAvoidRules(adv: string[], ruleIds: string[] | undefined, lf: boole
 
 /**
  * Enforce FORCE rules on the shuffled advanced-tech array (in place):
- * each rule's track must end up holding one of the rule's tiles.
+ * each rule's track must end up holding one of the rule's wanted tiles.
  * - まずスペア（回避と同じ範囲）から探して入替（他トラック不変）。
  * - スペアに無い場合のみ、対象タイルを持つ他スロット（トラック/LF拡張枠）と
  *   クロス入替する（対象タイルはプール全量が adv に含まれるため必ず充足する）。
  *   押し出されたタイルが回避対象トラックへ移る可能性は、この後に走る
  *   applyAvoidRules が解消する。
  */
-function applyForceRules(adv: string[], ruleIds: string[] | undefined, lf: boolean): void {
-  if (!ruleIds || ruleIds.length === 0) return;
-  const active = AVOID_RULES.filter((r) => ruleIds.includes(r.id));
-  if (active.length === 0) return;
-
+function applyForceRules(
+  adv: string[],
+  wantedByTrack: AdvDirectives["wantedByTrack"],
+  lf: boolean
+): void {
   const spareStart = RESEARCH_TRACK_IDS.length + (lf ? 1 : 0);
   RESEARCH_TRACK_IDS.forEach((track, i) => {
-    const wanted = new Set(active.filter((r) => r.track === track).flatMap((r) => r.tileIds));
-    if (wanted.size === 0 || wanted.has(adv[i])) return;
+    const wanted = wantedByTrack[track];
+    if (!wanted || wanted.size === 0 || wanted.has(adv[i])) return;
     for (let j = spareStart; j < adv.length; j++) {
       if (wanted.has(adv[j])) {
         [adv[i], adv[j]] = [adv[j], adv[i]];

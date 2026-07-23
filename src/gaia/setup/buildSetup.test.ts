@@ -370,6 +370,78 @@ describe("force rules", () => {
   });
 });
 
+describe("force-tile / allow-tile rules (2026-07-23)", () => {
+  it("forceTileRules pins the exact tile on the rule's track (base + LF)", () => {
+    for (let i = 0; i < 40; i++) {
+      for (const mode of [{}, LF] as const) {
+        for (const tile of ["AT03", "AT07", "AT13"]) {
+          const r = buildSetupFromSeed({
+            seed: `ftile-${i}`,
+            playerCount: 4,
+            ...mode,
+            forceTileRules: { "eco-no-resourceAction": tile },
+          });
+          expect(r.advancedTech.byTrack.eco).toBe(tile);
+        }
+        const r2 = buildSetupFromSeed({
+          seed: `ftile-${i}`,
+          playerCount: 4,
+          ...mode,
+          forceTileRules: { "terra-no-fedPass": "AT12" },
+        });
+        expect(r2.advancedTech.byTrack.terra).toBe("AT12");
+      }
+    }
+  });
+
+  it("allowTileRules bans the set except the allowed tile", () => {
+    for (let i = 0; i < 60; i++) {
+      for (const mode of [{}, LF] as const) {
+        const r = buildSetupFromSeed({
+          seed: `atile-${i}`,
+          playerCount: 4,
+          ...mode,
+          allowTileRules: { "eco-no-resourceAction": "AT13", "terra-no-fedPass": "AT01" },
+        });
+        // 許容タイル以外のセット内タイルは来ない（許容タイル自体は来ても良い）
+        expect(["AT03", "AT07"]).not.toContain(r.advancedTech.byTrack.eco);
+        expect(r.advancedTech.byTrack.terra).not.toBe("AT12");
+      }
+    }
+  });
+
+  it("allow: the allowed tile actually appears for some seed (not a hidden avoid-all)", () => {
+    let seen = false;
+    for (let i = 0; i < 120 && !seen; i++) {
+      const r = buildSetupFromSeed({
+        seed: `aseen-${i}`,
+        playerCount: 4,
+        allowTileRules: { "eco-no-resourceAction": "AT13" },
+      });
+      seen = r.advancedTech.byTrack.eco === "AT13";
+    }
+    expect(seen).toBe(true);
+  });
+
+  it("unknown rule ids / out-of-set tiles are silently ignored", () => {
+    const a = buildSetupFromSeed({ seed: "snap-0001", playerCount: 4 });
+    const b = buildSetupFromSeed({
+      seed: "snap-0001",
+      playerCount: 4,
+      forceTileRules: { "no-such-rule": "AT01", "eco-no-resourceAction": "AT99" },
+      allowTileRules: { "also-no-rule": "AT13" },
+    });
+    expect(b).toEqual(a);
+  });
+
+  it("terra set: avoid now bans both AT01 and AT12", () => {
+    for (let i = 0; i < 60; i++) {
+      const r = buildSetupFromSeed({ seed: `tset-${i}`, playerCount: 4, avoidRules: ["terra-no-fedPass"] });
+      expect(["AT01", "AT12"]).not.toContain(r.advancedTech.byTrack.terra);
+    }
+  });
+});
+
 describe("player count", () => {
   it("scales available boosters as playerCount + 3", () => {
     for (const [players, expected] of [[1, 4], [2, 5], [3, 6], [4, 7]] as const) {
