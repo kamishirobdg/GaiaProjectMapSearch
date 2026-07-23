@@ -174,28 +174,10 @@ React.useEffect(() => {
 
 const isNarrow = useIsNarrow(1180);
 
-// Mobile UX: prioritize vertical page scrolling.
-// The map viewer tends to capture touch/pointer drags, so we gate map interaction behind an explicit toggle on mobile.
-const [mobileMapInteract, setMobileMapInteract] = React.useState(true);
-
-const prevIsNarrowRef = React.useRef<boolean | null>(null);
-
-// Auto-disable map interaction after a short window on mobile (prevents "stuck" non-scroll feeling).
-React.useEffect(() => {
-  const prev = prevIsNarrowRef.current;
-  prevIsNarrowRef.current = isNarrow;
-
-  if (!isNarrow) {
-    // Desktop: always allow interaction.
-    setMobileMapInteract(true);
-    return;
-  }
-  // When entering mobile layout, default to scroll-first.
-  if (prev === null || prev === false) setMobileMapInteract(false);
-  if (!mobileMapInteract) return;
-  const id = window.setTimeout(() => setMobileMapInteract(false), 8000);
-  return () => window.clearTimeout(id);
-}, [isNarrow, mobileMapInteract]);
+// マップのドラッグ/パンは常時無効（誤操作のデメリットが上回るため固定表示、
+// ユーザー要望 2026-07-24）。ズームは「マップ調整」ツールバーのスライダーで
+// 引き続き調整可能。旧モバイル用の「タップで操作/スクロール優先」機構は
+// パン無効化に伴い撤去（スクロール横取り自体が起きなくなった）。
 
 // Prevent tiny page scrollbars caused by global margins/viewport rounding.
 React.useEffect(() => {
@@ -2744,58 +2726,6 @@ const handleDeleteUsed = React.useCallback(
             minHeight: isNarrow ? 320 : 0,
           }}
         >
-          {/* Mobile: keep scrolling natural by disabling map drag by default.
-              Tap the overlay to temporarily enable map interaction. */}
-          {isNarrow && !mobileMapInteract ? (
-            <div
-              onClick={() => setMobileMapInteract(true)}
-              style={{
-                position: "absolute",
-                inset: 0,
-                zIndex: 5,
-                // Fully transparent overlay that still allows native scrolling.
-                background: "transparent",
-                touchAction: "pan-y",
-              }}
-            >
-              <div
-                style={{
-                  position: "absolute",
-                  left: 10,
-                  top: 10,
-                  padding: "6px 10px",
-                  borderRadius: 999,
-                  border: "1px solid #ddd",
-                  background: "rgba(255,255,255,0.9)",
-                  fontSize: 12,
-                  fontWeight: 700,
-                }}
-              >
-                {lang === "ja" ? "スクロール優先（タップでマップ操作）" : "Scroll first (tap to interact with map)"}
-              </div>
-            </div>
-          ) : null}
-
-          {isNarrow && mobileMapInteract ? (
-            <button
-              onClick={() => setMobileMapInteract(false)}
-              style={{
-                position: "absolute",
-                right: 10,
-                top: 10,
-                zIndex: 6,
-                padding: "6px 10px",
-                borderRadius: 999,
-                border: "1px solid #ddd",
-                background: "rgba(255,255,255,0.92)",
-                fontSize: 12,
-                fontWeight: 800,
-              }}
-            >
-              {lang === "ja" ? "スクロールに戻す" : "Back to scroll"}
-            </button>
-          ) : null}
-
           <div style={{ flex: 1, minHeight: 0, overflow: "visible" }}>
             <MapBoardViewer
               template={template as any}
@@ -2808,9 +2738,9 @@ const handleDeleteUsed = React.useCallback(
               boundsPad={isNarrow ? 40 : 65}
               zoom={isNarrow ? 0.85 : 1.0}
               showToolbar={showMapToolbar}
-              // Mobile: disable drag/pan by default so vertical page scrolling is not hijacked.
-              // Desktop: keep original behavior.
-              disablePan={isNarrow ? !mobileMapInteract : false}
+              // マップは固定表示（ドラッグ/パン無効、2026-07-24 ユーザー要望）。
+              // ズームは「マップ調整」ツールバーで調整可能。
+              disablePan
             />
           </div>
 
