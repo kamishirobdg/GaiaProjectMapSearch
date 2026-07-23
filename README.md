@@ -1,6 +1,8 @@
 # GaiaProjectMapSearch
 
-ボードゲーム「ガイアプロジェクト」拡張 **Lost Fleet** のマップ生成・検索ツール。
+ボードゲーム「ガイアプロジェクト」のマップ生成・検索ツール。
+拡張 **Lost Fleet**（3人・4人）と**基本版**（3・4人共用 `base_34p`、
+ルールブックp19の配置方法1/2/3）に対応。
 
 シード値から盤面を決定論的に組み立て、ハード制約（満たさない盤面は却下）で絞り込み、
 ソフト評価（重み付きスコア）で順位付けして上位 K 件を提示する。
@@ -39,6 +41,7 @@ Worker の生成に失敗した場合はメインスレッドにフォールバ�
 
 | ID | 内容 | 無効化 |
 | --- | --- | --- |
+| H0 | 同種惑星（基本7色のみ）の直接隣接禁止。基本版ルールの合法性制約 | 基本版では常時有効（LFは対象外） |
 | H1 | 同色の通常惑星どうしが `minSameColorDist` 未満に近づかない | — |
 | H2 | 外周(outer)にある同色の通常惑星が `outerSameColorMax` 以下 | — |
 | H4 | 中央スロットには大型セクター(01〜04)のみ | `centerMode: "NONE"` |
@@ -79,12 +82,15 @@ npm run lint       # eslint
 - `src/gaia/board/axial.test.ts`, `src/gaia/hex.test.ts` — 六角座標。距離の実装が
   `hex.ts`（H1 が使用）と `board/axial.ts`（連結判定・表示側が使用）に 2 つあるので、
   両者が一致することを相互検証している。
-- `src/gaia/constraints.test.ts` — H1/H2/H4/H5 の境界。
+- `src/gaia/constraints.test.ts` — H0/H1/H2/H4/H5 の境界。
+- `src/gaia/board/basePlacementFromSeed.test.ts` — 基本版の配置生成（方法1/2/3）と、
+  実盤面での H0 総当たり照合。
 - `scripts/regression-snapshot.test.ts` — 座標整合性チェックと、後述の回帰スナップショット照合。
 
 ### 回帰スナップショット
 
-`scripts/__snapshots__/baseline.json` に、2 テンプレート × 固定 30 シードをパイプラインへ通した
+`scripts/__snapshots__/baseline.json` に、5 ラン（LF 2 テンプレート＋基本版 base_34p の
+配置方法 1/2/3）× 固定 30 シードをパイプラインへ通した
 結果（placement / placementHash / ハード判定 / ソフトスコアの内訳）を記録してある。
 `npm test` がこれと突き合わせるので、意図しない挙動変化はテストの失敗として出る。
 
@@ -117,7 +123,7 @@ src/gaia/
   logicalMap/buildLogicalMap.ts  シード -> 論理マップ
   eval/extractForEval.ts      論理マップ -> 評価入力（SSOT）
   eval/evaluateSoft.ts        ソフト評価
-  constraints.ts              ハード制約 H1/H2/H4/H5
+  constraints.ts              ハード制約 H0(基本版のみ)/H1/H2/H4/H5
   board/                      座標・乱数などの基礎
   ssot/                       placementHash・検索設定のSSOT
   templates/, data/templates/ 評価側 slotCenters / 表示側 TemplateDef
