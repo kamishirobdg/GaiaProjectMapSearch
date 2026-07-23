@@ -19,6 +19,8 @@ export type SearchOptions = {
   hard: HardParams;
   soft: SoftParams;
   yieldEvery?: number;
+  /** base_34p のみ有効（p19の方法1/2/3、省略時=1）。LFテンプレでは無視される */
+  placementMethod?: 1 | 2 | 3;
 };
 
 export type FailKey = HardFailReason | "BUILD_LOGICAL_MAP_FAILED" | "EXTRACT_FAILED";
@@ -75,6 +77,7 @@ export async function runSearch(
   const yieldEvery = options.yieldEvery ?? 25;
 
   const hardFailBy: Record<FailKey, number> = {
+    H0_SAME_KIND_ADJ: 0,
     H1_MIN_DIST: 0,
     H2_OUTER_CAP: 0,
     H4_CENTER_LARGE14: 0,
@@ -82,6 +85,12 @@ export async function runSearch(
     BUILD_LOGICAL_MAP_FAILED: 0,
     EXTRACT_FAILED: 0,
   };
+
+  // H0（合法性）: base テンプレでは常時有効（ユーザー設定・検索キー対象外）
+  const effectiveHard: HardParams =
+    templateId === "base_34p"
+      ? { ...options.hard, banSameKindAdjacency: true }
+      : options.hard;
 
   const best: RankedResult[] = [];
   let passedHard = 0;
@@ -92,7 +101,7 @@ export async function runSearch(
     // 1) LogicalMap
     let logicalMap: any;
     try {
-      logicalMap = buildLogicalMap({ seed, templateId });
+      logicalMap = buildLogicalMap({ seed, templateId, placementMethod: options.placementMethod });
     } catch {
       hardFailBy.BUILD_LOGICAL_MAP_FAILED += 1;
       if (onProgress && i % yieldEvery === 0) onProgress(i + 1, best);
@@ -122,7 +131,7 @@ export async function runSearch(
     // 2) Extract
     let extracted: any;
     try {
-      extracted = extractForEval(logicalMap, options.hard);
+      extracted = extractForEval(logicalMap, effectiveHard);
     } catch {
       hardFailBy.EXTRACT_FAILED += 1;
       if (onProgress && i % yieldEvery === 0) onProgress(i + 1, best);
@@ -157,7 +166,7 @@ export async function runSearch(
     }
 
     // 3) Hard（LogicalMap基準）
-    const hard = checkHardConstraints(extracted, placement as any, options.hard);
+    const hard = checkHardConstraints(extracted, placement as any, effectiveHard);
     if (!hard.pass) {
       for (const r of hard.reasons) {
         hardFailBy[r.reason] = (hardFailBy[r.reason] ?? 0) + 1;

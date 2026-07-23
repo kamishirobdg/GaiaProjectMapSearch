@@ -11,6 +11,14 @@
 
 import type { SlotDef, SlotPlacement } from "../board/types";
 import { placementFromSeed } from "../board/placementFromSeed";
+import {
+  basePlacementFromSeed,
+  type BasePlacementMethod,
+} from "../board/basePlacementFromSeed";
+import {
+  BASE_34P_INNER_SLOTS,
+  BASE_34P_OUTER_SLOTS,
+} from "../templates/base_34p_slotCenters";
 
 import { EXPANSION_MIDDLE_IDS, EXPANSION_SCOUT_IDS, EXPANSION_LITTLE_IDS } from "../sectorTiles_lostfleet";
 
@@ -113,12 +121,39 @@ export function getSearchPlacementConfig(templateId: string): SearchPlacementCon
 /**
  * seed -> placement (SSOT)
  * - 検索は必ずこの関数で placement を生成し、その placement を評価・返却する
+ * - base_34p は placementMethod（1/2/3、省略時=1）で分岐する専用ストリーム
+ *   （LF側のRNG消費順は不変＝既存キー・goldenに影響しない）
  */
 export function makeSearchPlacementFromSeed(args: {
   templateId: string;
   seed: number | string;
+  /** base_34p のみ有効（p19の方法1/2/3）。LFテンプレでは無視される */
+  placementMethod?: BasePlacementMethod;
 }): { slots: SlotDef[]; placement: SlotPlacement[]; config: SearchPlacementConfig } {
   const { templateId, seed } = args;
+
+  if (templateId === "base_34p") {
+    const placement = basePlacementFromSeed({
+      seed,
+      placementMethod: args.placementMethod ?? 1,
+    });
+    const slots = buildSlotsFromOrder([
+      ...BASE_34P_INNER_SLOTS,
+      ...BASE_34P_OUTER_SLOTS,
+    ]);
+    // LF用フィールドは空のダミー（base では placement 生成に使わない）
+    const config: SearchPlacementConfig = {
+      templateId: "base_34p",
+      slotOrder: [...BASE_34P_INNER_SLOTS, ...BASE_34P_OUTER_SLOTS],
+      fixedLargeIds: ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10"],
+      middleIds: [],
+      scoutIds: [],
+      littleIds: [],
+      littleFixedCounts: {},
+      scoutCount: 0,
+    };
+    return { slots, placement, config };
+  }
 
   const config = getSearchPlacementConfig(templateId);
 

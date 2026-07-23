@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   checkHardConstraints,
+  checkH0SameKindAdjacency,
   checkH1MinDist,
   checkH2OuterColorCap,
   checkH4CenterLarge14,
@@ -87,6 +88,53 @@ function reasonsOf(result: HardCheckResult): HardFailReason[] {
 }
 
 // ---------------------------------------------------------------------------
+
+describe("checkH0SameKindAdjacency", () => {
+  it("is disabled when the flag is absent or false (LF compatibility)", () => {
+    const e = extracted({
+      normalPlanetCells: [
+        cell({ q: 0, r: 0, colorKey: "RED" }),
+        cell({ q: 1, r: 0, colorKey: "RED" }),
+      ],
+    });
+    expect(checkH0SameKindAdjacency(e, undefined).pass).toBe(true);
+    expect(checkH0SameKindAdjacency(e, false).pass).toBe(true);
+  });
+
+  it("rejects two same-colour planets at distance 1", () => {
+    const e = extracted({
+      normalPlanetCells: [
+        cell({ q: 0, r: 0, colorKey: "RED" }),
+        cell({ q: 1, r: 0, colorKey: "RED" }),
+      ],
+    });
+    const r = checkH0SameKindAdjacency(e, true);
+    expect(reasonsOf(r)).toEqual(["H0_SAME_KIND_ADJ"]);
+  });
+
+  it("allows different colours adjacent and same colour at distance 2", () => {
+    const e = extracted({
+      normalPlanetCells: [
+        cell({ q: 0, r: 0, colorKey: "RED" }),
+        cell({ q: 1, r: 0, colorKey: "BLUE" }),
+        cell({ q: 2, r: 0, colorKey: "RED" }),
+      ],
+    });
+    expect(checkH0SameKindAdjacency(e, true).pass).toBe(true);
+  });
+
+  it("ignores GAIA/TRANSDIM: only normalPlanetCells (basic 7 colours) are checked", () => {
+    // GAIA/TRANSDIM cells never enter normalPlanetCells (extractForEval upstream
+    // filter), so an adjacent pair of them must not trip H0 even when present
+    // in `cells`.
+    const gaiaPair = [
+      cell({ q: 0, r: 0 }), // colorKey undefined => not a normal planet
+      cell({ q: 1, r: 0 }),
+    ];
+    const e = extracted({ cells: gaiaPair, normalPlanetCells: [] });
+    expect(checkH0SameKindAdjacency(e, true).pass).toBe(true);
+  });
+});
 
 describe("checkH1MinDist", () => {
   it("passes when same-colour planets are at least minDist apart", () => {
@@ -414,6 +462,21 @@ describe("checkHardConstraints", () => {
     expect(new Set(reasonsOf(r))).toEqual(
       new Set(["H1_MIN_DIST", "H2_OUTER_CAP", "H5_CONNECTED_CAP"])
     );
+  });
+
+  it("aggregates H0 alongside the other rules when enabled", () => {
+    const cells = [
+      cell({ q: 0, r: 0, colorKey: "RED" }),
+      cell({ q: 1, r: 0, colorKey: "RED" }),
+    ];
+    const e = extracted({ cells, normalPlanetCells: cells });
+    const r = checkHardConstraints(e, [], {
+      minSameColorDist: 0,
+      outerSameColorMax: 99,
+      centerMode: "NONE",
+      banSameKindAdjacency: true,
+    });
+    expect(reasonsOf(r)).toEqual(["H0_SAME_KIND_ADJ"]);
   });
 
   it("leaves H5 disabled when maxConnectedPlanets is absent", () => {

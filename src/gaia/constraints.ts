@@ -4,6 +4,7 @@ import { axialDistance } from "./hex";
 import { connectedComponents } from "./logicalMap/buildLogicalMap";
 
 export type HardFailReason =
+  | "H0_SAME_KIND_ADJ"
   | "H1_MIN_DIST"
   | "H2_OUTER_CAP"
   | "H4_CENTER_LARGE14"
@@ -20,6 +21,9 @@ export function checkHardConstraints(
 ): HardCheckResult {
   const reasons: Array<{ reason: HardFailReason; detail: string }> = [];
 
+  const h0 = checkH0SameKindAdjacency(extracted, params.banSameKindAdjacency);
+  if (!h0.pass) reasons.push(...h0.reasons);
+
   const h1 = checkH1MinDist(extracted, params.minSameColorDist);
   if (!h1.pass) reasons.push(...h1.reasons);
 
@@ -31,6 +35,45 @@ export function checkHardConstraints(
 
   const h5 = checkH5ConnectedCap(extracted, params.maxConnectedPlanets, params.h5IncludeScouts);
   if (!h5.pass) reasons.push(...h5.reasons);
+
+  return reasons.length ? { pass: false, reasons } : { pass: true };
+}
+
+/**
+ * H0（合法性・基本版ルールブックp19太字注意書き）:
+ * 「同じ種類の2つの惑星は、決して直接隣接してはいけません」
+ * - 対象は基本7色のみ（normalPlanetCells）。GAIA/TRANSDIM は「種類」に含まない
+ *   （ユーザー確定 2026-07-23、docs/map-base-spec.md §6-1）。
+ * - enabled が falsy なら無効（LFテンプレは従来どおりチェックなし）。
+ * - タイル内部の印刷配置は常に合法なので、実質タイル境界を跨ぐ隣接の検査。
+ */
+export function checkH0SameKindAdjacency(
+  extracted: ExtractedForEval,
+  enabled: boolean | undefined
+): HardCheckResult {
+  if (!enabled) return { pass: true };
+
+  const reasons: Array<{ reason: HardFailReason; detail: string }> = [];
+
+  const byColor: Record<string, Array<{ q: number; r: number; key?: string }>> = {};
+  for (const c of extracted.normalPlanetCells ?? []) {
+    const ck = String(c.colorKey ?? "");
+    if (!ck) continue;
+    (byColor[ck] ??= []).push({ q: c.q, r: c.r, key: c.key });
+  }
+
+  for (const [color, list] of Object.entries(byColor)) {
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        if (axialDistance(list[i].q, list[i].r, list[j].q, list[j].r) === 1) {
+          reasons.push({
+            reason: "H0_SAME_KIND_ADJ",
+            detail: `color=${color} adjacent pair ${list[i].key ?? "?"} - ${list[j].key ?? "?"}`,
+          });
+        }
+      }
+    }
+  }
 
   return reasons.length ? { pass: false, reasons } : { pass: true };
 }

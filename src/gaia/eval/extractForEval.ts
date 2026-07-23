@@ -23,6 +23,12 @@ export type HardParams = {
   maxConnectedPlanets?: number;
   /** H5: 連結判定に探査船(scout)セルも惑星の1種として含めるか。undefined/false=無効（従来どおり惑星のみ） */
   h5IncludeScouts?: boolean;
+  /**
+   * H0（合法性・基本版）: 同種惑星（基本7色のみ。GAIA/TRANSDIM対象外）の直接隣接禁止。
+   * undefined/false=無効。base_34p では runSearch が templateId から自動で有効化する
+   * （ユーザー設定ではないため検索キーには含めない）。
+   */
+  banSameKindAdjacency?: boolean;
 };
 
 export type PlanetKind =

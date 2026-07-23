@@ -493,9 +493,14 @@ export function buildLogicalMapFromPlacement(args: {
  * - 検索の正系統は search.ts 側で seed->placement を行うのが推奨だが、
  *   既存コード互換のためラッパーとして残す。
  */
-export function buildLogicalMap(args: { seed: number | string; templateId: string }): LogicalMap {
-  const { seed, templateId } = args;
+export function buildLogicalMap(args: {
+  seed: number | string;
+  templateId: string;
+  /** base_34p のみ有効（p19の方法1/2/3、省略時=1）。LFテンプレでは無視される */
+  placementMethod?: 1 | 2 | 3;
+}): LogicalMap {
+  const { seed, templateId, placementMethod } = args;
 
-  const { placement } = makeSearchPlacementFromSeed({ templateId, seed });
+  const { placement } = makeSearchPlacementFromSeed({ templateId, seed, placementMethod });
   return buildLogicalMapFromPlacement({ templateId, seed, placement });
 }
