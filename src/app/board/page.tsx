@@ -116,7 +116,7 @@ const UI_TEXT = {
     placementHashView: "placementHash(view)",
     score: "score",
     rawScore: "rawScore",
-    rankScore: "RankScore",
+    rankScore: "Score",
     imbalance: "imbalance",
     outerCnt: "outerCnt",
     touchCnt: "touchCnt",
@@ -291,7 +291,7 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     placementHashView: "HASH（表示）",
     score: "スコア",
     rawScore: "rawScore",
-    rankScore: "RankScore",
+    rankScore: "スコア",
     imbalance: "偏り",
     outerCnt: "最外周惑星数",
     touchCnt: "外周惑星数",
@@ -3416,8 +3416,9 @@ const handleDeleteUsed = React.useCallback(
           const hashFull = getPlacementHashForResult(r) ?? "";
           const hash = hashFull ? String(hashFull).slice(0, 12) : "-";
   
+          // 生スコアをそのまま表示（旧: 1000+rawScore の RankScore 表示。
+          // 表示のみの変更でソート順・保存データは不変。ユーザー確定 2026-07-23）
           const rawScore = Number((r as any)?.score ?? 0);
-          const rankScore = 1000 + rawScore;
   
           const totals = b?.planetTypeTotals ?? null;
   
@@ -3477,7 +3478,7 @@ const handleDeleteUsed = React.useCallback(
               <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
                 <span style={{ fontWeight: 800, fontSize: 12 }}>{idx + 1}.</span>
                 <span style={{ fontSize: 12 }}>
-                  <span style={{ opacity: 0.7 }}>{t("rankScore")}:</span> {fmt0(rankScore)}
+                  <span style={{ opacity: 0.7 }}>{t("rankScore")}:</span> {fmt0(rawScore)}
                 </span>
                 <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12 }}>
                   {hash}
