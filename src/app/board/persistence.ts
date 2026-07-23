@@ -66,9 +66,13 @@ export type PersistedProfile = {
 };
 
 export const IDB_NAME = "gaia_map_cache";
-export const IDB_VERSION = 4;
+// v5: setups store added (setup-side saved list; see src/lib/setupHistory.ts).
+export const IDB_VERSION = 5;
 export const STORE_CANDIDATES = "candidates";
 export const STORE_PROFILES = "profiles";
+// Setup-side saved list shares this DB (one DB per origin keeps the version
+// handling in a single place). CRUD lives in src/lib/setupHistory.ts.
+export const STORE_SETUPS = "setups";
 export const LAST_APPLIED_SEARCHKEY = "gaia_last_applied_searchKey_v1";
 
 
@@ -118,6 +122,13 @@ export function openDb(): Promise<IDBDatabase> {
       }
       if (!profiles.indexNames.contains("byBaseKeyRaw")) {
         profiles.createIndex("byBaseKeyRaw", "baseKeyRaw", { unique: false });
+      }
+
+      // ----- setups (v5) -----
+      // Small rows (~hundreds of bytes each, capped at 100 unpinned/unused);
+      // listing does a full getAll + in-JS sort, so no indexes are needed.
+      if (!db.objectStoreNames.contains(STORE_SETUPS)) {
+        db.createObjectStore(STORE_SETUPS, { keyPath: "id" });
       }
 
       // ----- migrations / backfills -----

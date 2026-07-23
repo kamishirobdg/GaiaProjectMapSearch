@@ -2,7 +2,17 @@
 "use client";
 
 import React from "react";
-import { buildSetupFromSeed, AVOID_RULES } from "@/gaia/setup/buildSetup";
+import { buildSetupFromSeed, AVOID_RULES, type BuildSetupInput } from "@/gaia/setup/buildSetup";
+import {
+  SETUP_HISTORY_CAP,
+  deleteSavedSetup,
+  listSavedSetups,
+  recordSetup,
+  setSetupPinned,
+  setSetupUsed,
+  setupHistoryId,
+  type SavedSetup,
+} from "@/lib/setupHistory";
 import {
   readSharedExpansion,
   readSharedPlayers,
@@ -77,6 +87,22 @@ const UI = {
     finalScoring: "最終得点計算",
     federationLv5: "同盟タイル（惑星改造 研究レベル5）",
     round: "R",
+    savedList: "保存リスト",
+    savedListNote: `生成ごとに自動記録。ピン留め→新しい順。未ピン・未使用は${SETUP_HISTORY_CAP}件まで`,
+    savedViewActive: "一覧",
+    savedViewUsed: "使用済み",
+    savedEmpty: "まだ記録がありません（「ランダム」を押すと自動で追加されます）",
+    savedEmptyUsed: "使用済みはありません",
+    recordCurrent: "この内容を記録",
+    pin: "ピン留め",
+    unpin: "ピン解除",
+    markUsed: "使用済み",
+    unmarkUsed: "使用済み解除",
+    deleteRow: "削除",
+    restoreHint: "クリックで表示",
+    avoidShort: "回避",
+    forceShort: "強制",
+    currentBadge: "表示中",
   },
   en: {
     title: "Setup (research / boosters / scoring)",
@@ -123,6 +149,22 @@ const UI = {
     finalScoring: "Final scoring",
     federationLv5: "Federation tile (Terraforming level 5)",
     round: "R",
+    savedList: "Saved setups",
+    savedListNote: `Auto-recorded per roll. Pinned first, then newest. Unpinned/unused capped at ${SETUP_HISTORY_CAP}`,
+    savedViewActive: "List",
+    savedViewUsed: "Used",
+    savedEmpty: "Nothing recorded yet (press Random to add)",
+    savedEmptyUsed: "No used entries",
+    recordCurrent: "Record current",
+    pin: "Pin",
+    unpin: "Unpin",
+    markUsed: "Mark used",
+    unmarkUsed: "Unmark used",
+    deleteRow: "Delete",
+    restoreHint: "Click to view",
+    avoidShort: "avoid",
+    forceShort: "force",
+    currentBadge: "Shown",
   },
 } as const;
 
@@ -363,19 +405,72 @@ export default function SetupView() {
 
   const lf = mode === "lostFleet";
 
-  const result = React.useMemo(() => {
-    const avoidIds = Object.entries(ruleModes).filter(([, m]) => m === "avoid").map(([id]) => id);
-    const forceIds = Object.entries(ruleModes).filter(([, m]) => m === "force").map(([id]) => id);
-    return buildSetupFromSeed({
-      seed,
-      playerCount: players,
-      ...(lf ? { mode: "lostFleet" as const } : {}),
-      ...(lf && extFaceMode !== "auto" ? { extensionFaceMode: extFaceMode } : {}),
-      ...(lf && econFaceMode !== "random" ? { econFaceMode } : {}),
-      ...(avoidIds.length > 0 ? { avoidRules: avoidIds } : {}),
-      ...(forceIds.length > 0 ? { forceRules: forceIds } : {}),
+  // 現在の条件からビルド入力を構築（無効時フィールド省略の鉄則）。
+  // 表示用 useMemo と保存リストへの記録（同じ入力を保存する）で共用する。
+  const buildInput = React.useCallback(
+    (s: string): BuildSetupInput => {
+      const avoidIds = Object.entries(ruleModes).filter(([, m]) => m === "avoid").map(([id]) => id);
+      const forceIds = Object.entries(ruleModes).filter(([, m]) => m === "force").map(([id]) => id);
+      return {
+        seed: s,
+        playerCount: players,
+        ...(lf ? { mode: "lostFleet" as const } : {}),
+        ...(lf && extFaceMode !== "auto" ? { extensionFaceMode: extFaceMode } : {}),
+        ...(lf && econFaceMode !== "random" ? { econFaceMode } : {}),
+        ...(avoidIds.length > 0 ? { avoidRules: avoidIds } : {}),
+        ...(forceIds.length > 0 ? { forceRules: forceIds } : {}),
+      };
+    },
+    [players, lf, extFaceMode, econFaceMode, ruleModes]
+  );
+
+  const result = React.useMemo(() => buildSetupFromSeed(buildInput(seed)), [seed, buildInput]);
+
+  // ----- 保存リスト（ランキング骨組み: ピン留め→新しい順、TODO ⑧） -----
+  const [saved, setSaved] = React.useState<SavedSetup[]>([]);
+  const [savedView, setSavedView] = React.useState<"active" | "used">("active");
+
+  // 復元は読み取りのみ（書込みはユーザー操作ハンドラのみの規律）。
+  React.useEffect(() => {
+    let alive = true;
+    void listSavedSetups().then((rows) => {
+      if (alive) setSaved(rows);
     });
-  }, [seed, players, lf, extFaceMode, econFaceMode, ruleModes]);
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // 「生成」＝ランダムシードを引く＋その入力を自動記録。
+  const handleRoll = React.useCallback(() => {
+    const s = randomSeedString();
+    setSeed(s);
+    void recordSetup(buildInput(s)).then(setSaved);
+  }, [buildInput]);
+
+  // 手入力シードなど、表示中の内容を明示的に記録する補助ボタン。
+  const handleRecordCurrent = React.useCallback(() => {
+    void recordSetup(buildInput(seed)).then(setSaved);
+  }, [buildInput, seed]);
+
+  // 行クリックで保存時の入力を丸ごと復元（build は決定論的なので完全再現）。
+  const restoreSaved = React.useCallback(
+    (input: BuildSetupInput) => {
+      changeMode(input.mode === "lostFleet" ? "lostFleet" : "base");
+      changePlayers(input.playerCount ?? 4);
+      changeExtFace(input.extensionFaceMode ?? "auto");
+      changeEconFace(input.econFaceMode ?? "random");
+      const modes: Record<string, "avoid" | "force"> = {};
+      for (const id of input.avoidRules ?? []) modes[id] = "avoid";
+      for (const id of input.forceRules ?? []) modes[id] = "force";
+      setRuleModes(modes);
+      lsSet(LS.avoid, JSON.stringify(modes));
+      setSeed(input.seed);
+    },
+    [changeMode, changePlayers, changeExtFace, changeEconFace]
+  );
+
+  const currentId = React.useMemo(() => setupHistoryId(buildInput(seed)), [buildInput, seed]);
 
   const t = UI[lang];
 
@@ -418,8 +513,11 @@ export default function SetupView() {
           <span>{t.seed}</span>
           <input value={seed} onChange={(e) => setSeed(e.target.value)} style={{ width: 140, padding: "4px 6px" }} />
         </label>
-        <button onClick={() => setSeed(randomSeedString())} style={{ padding: "4px 10px", fontWeight: 700 }}>
+        <button onClick={handleRoll} style={{ padding: "4px 10px", fontWeight: 700 }}>
           {t.randomSeed}
+        </button>
+        <button onClick={handleRecordCurrent} style={{ padding: "4px 10px", fontSize: 12 }}>
+          {t.recordCurrent}
         </button>
         <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <span>{t.players}</span>
@@ -598,6 +696,123 @@ export default function SetupView() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
           {result.boosters.available.map((id) => tileCell(id))}
         </div>
+      </section>
+
+      {/* Saved setups (ranking skeleton: pinned first -> newest; used in a separate view) */}
+      <section>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}>
+          <div style={{ fontWeight: 700 }}>{t.savedList}</div>
+          <div style={{ fontSize: 11, opacity: 0.6 }}>{t.savedListNote}</div>
+          <div style={{ marginLeft: "auto", display: "flex", gap: 6, fontSize: 12 }}>
+            {(["active", "used"] as const).map((v) => {
+              const count = saved.filter((r) => (v === "used") === r.used).length;
+              return (
+                <button
+                  key={v}
+                  onClick={() => setSavedView(v)}
+                  style={{
+                    padding: "3px 10px",
+                    fontWeight: savedView === v ? 700 : 400,
+                    background: savedView === v ? "#e8f0fe" : undefined,
+                  }}
+                >
+                  {v === "active" ? t.savedViewActive : t.savedViewUsed} ({count})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        {(() => {
+          const rows = saved.filter((r) => (savedView === "used") === r.used);
+          if (rows.length === 0) {
+            return (
+              <div style={{ fontSize: 12, opacity: 0.6 }}>
+                {savedView === "used" ? t.savedEmptyUsed : t.savedEmpty}
+              </div>
+            );
+          }
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {rows.map((r) => {
+                const isCurrent = r.id === currentId;
+                const nAvoid = r.input.avoidRules?.length ?? 0;
+                const nForce = r.input.forceRules?.length ?? 0;
+                const when = new Date(r.createdAt).toLocaleString(lang === "ja" ? "ja-JP" : "en-US", {
+                  month: "numeric",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+                return (
+                  <div
+                    key={r.id}
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      alignItems: "center",
+                      border: isCurrent ? "1px solid #7aa7e8" : "1px solid #ddd",
+                      background: isCurrent ? "#f2f7ff" : "#fafafa",
+                      borderRadius: 8,
+                      padding: "4px 8px",
+                      fontSize: 12,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <button
+                      onClick={() => restoreSaved(r.input)}
+                      title={t.restoreHint}
+                      style={{
+                        border: "none",
+                        background: "none",
+                        cursor: "pointer",
+                        display: "flex",
+                        gap: 8,
+                        alignItems: "center",
+                        padding: 0,
+                        fontSize: 12,
+                        textAlign: "left",
+                        flex: 1,
+                        minWidth: 220,
+                      }}
+                    >
+                      {r.pinned ? <span title={t.pin}>📌</span> : null}
+                      <span style={{ fontFamily: "monospace", fontWeight: 700 }}>{r.input.seed}</span>
+                      <span>{r.input.mode === "lostFleet" ? t.modeLF : t.modeBase}</span>
+                      <span>
+                        {t.players}: {r.input.playerCount ?? 4}
+                      </span>
+                      {nAvoid > 0 ? (
+                        <span style={{ opacity: 0.7 }}>
+                          {t.avoidShort}{nAvoid}
+                        </span>
+                      ) : null}
+                      {nForce > 0 ? (
+                        <span style={{ opacity: 0.7 }}>
+                          {t.forceShort}{nForce}
+                        </span>
+                      ) : null}
+                      <span style={{ opacity: 0.55 }}>{when}</span>
+                      {isCurrent ? (
+                        <span style={{ color: "#3467c4", fontWeight: 700 }}>{t.currentBadge}</span>
+                      ) : null}
+                    </button>
+                    <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
+                      <button onClick={() => void setSetupPinned(r.id, !r.pinned).then(setSaved)} style={{ fontSize: 11 }}>
+                        {r.pinned ? t.unpin : t.pin}
+                      </button>
+                      <button onClick={() => void setSetupUsed(r.id, !r.used).then(setSaved)} style={{ fontSize: 11 }}>
+                        {r.used ? t.unmarkUsed : t.markUsed}
+                      </button>
+                      <button onClick={() => void deleteSavedSetup(r.id).then(setSaved)} style={{ fontSize: 11 }}>
+                        {t.deleteRow}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </section>
     </div>
   );
