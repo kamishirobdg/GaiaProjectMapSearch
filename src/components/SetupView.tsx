@@ -76,7 +76,7 @@ const UI = {
     shipTechLabel: "基本技術",
     goldFed: "金枠同盟",
     artifactsLabel: "アーティファクト（トワイライト）",
-    researchTracks: "研究トラック（上：上級 / 下：標準）",
+    researchTracks: "研究トラック",
     advanced: "上級",
     standard: "標準",
     freeStandard: "標準タイル（フリー枠）",
@@ -138,7 +138,7 @@ const UI = {
     shipTechLabel: "Standard tech",
     goldFed: "Gold federation",
     artifactsLabel: "Artifacts (Twilight)",
-    researchTracks: "Research tracks (top: advanced / bottom: standard)",
+    researchTracks: "Research tracks",
     advanced: "Adv",
     standard: "Std",
     freeStandard: "Standard tiles (free row)",
@@ -234,17 +234,21 @@ function TileImage({ imageId, alt }: { imageId: string; alt: string }) {
  * タイル1枚のセル。説明文・IDは表示せず（ユーザー要望 2026-07-23）、
  * title 属性のネイティブツールチップでホバー時のみ「ID ラベル — 効果」を出す。
  * 画像が無い ID のみテキストにフォールバックする。
+ * 枠は fit-content で画像幅にぴったり合わせる（横幅を取りすぎない、2026-07-23）。
+ * full=true は原寸表示（ブースター・最終得点。縮小させない）。
  */
 function TileCellView({
   id,
   tag,
   lang,
   lf,
+  full,
 }: {
   id: string;
   tag?: string;
   lang: Lang;
   lf: boolean;
+  full?: boolean;
 }) {
   const [failed, setFailed] = React.useState(false);
   const label = labelOf(id, lang);
@@ -261,6 +265,7 @@ function TileCellView({
         fontSize: 12,
         background: "#fafafa",
         minWidth: 0,
+        width: "fit-content",
         display: "flex",
         flexDirection: "column",
         alignItems: "flex-start",
@@ -274,7 +279,14 @@ function TileCellView({
           src={`/setup-tiles/${imageId}.png`}
           alt={id}
           onError={() => setFailed(true)}
-          style={{ maxWidth: 110, maxHeight: 110, width: "auto", height: "auto", display: "block", borderRadius: 4, alignSelf: "flex-start" }}
+          style={{
+            ...(full ? {} : { maxWidth: 110, maxHeight: 110 }),
+            width: "auto",
+            height: "auto",
+            display: "block",
+            borderRadius: 4,
+            alignSelf: "flex-start",
+          }}
         />
       ) : (
         <div>
@@ -474,8 +486,8 @@ export default function SetupView() {
 
   const t = UI[lang];
 
-  const tileCell = (id: string, tag?: string) => (
-    <TileCellView key={id + (tag ?? "")} id={id} tag={tag} lang={lang} lf={lf} />
+  const tileCell = (id: string, tag?: string, full?: boolean) => (
+    <TileCellView key={id + (tag ?? "")} id={id} tag={tag} lang={lang} lf={lf} full={full} />
   );
 
   return (
@@ -584,6 +596,7 @@ export default function SetupView() {
                         padding: "6px 8px",
                         fontSize: 12,
                         background: "#fafafa",
+                        width: "fit-content",
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "flex-start",
@@ -626,7 +639,7 @@ export default function SetupView() {
       {/* Free-row standard tiles */}
       <section>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.freeStandard}</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start" }}>
           {result.standardTech.free.map((id) => tileCell(id))}
         </div>
       </section>
@@ -634,18 +647,18 @@ export default function SetupView() {
       {/* Round scoring, rounds 1..6 */}
       <section>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.roundScoring}</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start" }}>
           {result.roundScoring.map((id, i) => tileCell(id, `${t.round}${i + 1}`))}
         </div>
       </section>
 
       {/* Federation Lv5 は研究トラック（テラフォーミング列上部）へ移動済み */}
 
-      {/* Final scoring, 2 of 6 */}
+      {/* Final scoring, 2 of 6 (原寸表示) */}
       <section>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.finalScoring}</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
-          {result.finalScoring.map((id) => tileCell(id))}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start" }}>
+          {result.finalScoring.map((id) => tileCell(id, undefined, true))}
         </div>
       </section>
 
@@ -690,11 +703,11 @@ export default function SetupView() {
         </>
       ) : null}
 
-      {/* Boosters (only the ones in play; unused ones go back to the box) */}
+      {/* Boosters (only the ones in play; unused ones go back to the box; 原寸表示) */}
       <section>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.boosters}</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
-          {result.boosters.available.map((id) => tileCell(id))}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start" }}>
+          {result.boosters.available.map((id) => tileCell(id, undefined, true))}
         </div>
       </section>
 
