@@ -148,19 +148,24 @@ function randomSeedString(): string {
 }
 
 /**
- * Tile photo cropped from the rulebook's component overview
- * (public/setup-tiles/<id>.png). Falls back to nothing when the id has no
- * image yet (Lost Fleet tiles, until their crops are added), leaving the text
- * caption to carry the cell.
+ * Ids whose physical tile is replaced by a Lost Fleet revision (the
+ * planet-type symbol now includes the new planet kinds). The catalog keeps
+ * one id per tile; only the image swaps to <id>_LF.png in LF mode.
  */
-function TileImage({ id }: { id: string }) {
+const LF_REVISED_IDS = new Set(["TS2", "AT15", "FS03"]);
+
+/**
+ * Tile image (public/setup-tiles/<imageId>.png). Falls back to nothing when
+ * the id has no image, leaving the text caption to carry the cell.
+ */
+function TileImage({ imageId, alt }: { imageId: string; alt: string }) {
   const [failed, setFailed] = React.useState(false);
   if (failed) return null;
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={`/setup-tiles/${id}.png`}
-      alt={id}
+      src={`/setup-tiles/${imageId}.png`}
+      alt={alt}
       onError={() => setFailed(true)}
       style={{ maxWidth: 110, maxHeight: 110, width: "auto", height: "auto", display: "block", borderRadius: 4 }}
     />
@@ -274,7 +279,7 @@ export default function SetupView() {
         gap: 4,
       }}
     >
-      <TileImage id={id} />
+      <TileImage imageId={lf && LF_REVISED_IDS.has(id) ? `${id}_LF` : id} alt={id} />
       <div>
         {tag ? <span style={{ opacity: 0.6, marginRight: 6 }}>{tag}</span> : null}
         <span style={{ fontFamily: "monospace", opacity: 0.7, marginRight: 6 }}>{id}</span>
@@ -432,12 +437,17 @@ export default function SetupView() {
         <>
           <section>
             <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.scoringExtension}</div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
               {tileCell(result.advancedTech.extension!, t.extensionAdv)}
-              <div style={{ fontSize: 12, opacity: 0.8 }}>
+              <div style={{ fontSize: 12, opacity: 0.85, display: "flex", flexDirection: "column", gap: 4 }}>
+                <TileImage
+                  imageId={result.extensionFace === "vp25" ? "FACE_EXT_VP25" : "FACE_EXT_SHUTTLE"}
+                  alt="extension face"
+                />
                 {t.extensionFaceLabel}: {result.extensionFace === "vp25" ? t.faceVp25 : t.faceShuttle}
               </div>
-              <div style={{ fontSize: 12, opacity: 0.8 }}>
+              <div style={{ fontSize: 12, opacity: 0.85, display: "flex", flexDirection: "column", gap: 4 }}>
+                <TileImage imageId={result.econTileFace === "A" ? "FACE_ECON_A" : "FACE_ECON_B"} alt="econ face" />
                 {t.econFace}: {result.econTileFace === "A" ? t.econFaceA : t.econFaceB}
               </div>
             </div>
