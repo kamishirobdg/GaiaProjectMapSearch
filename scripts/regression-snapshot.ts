@@ -40,6 +40,15 @@ import { dirname, resolve } from "node:path";
 // (CONFIG_3P_LOSTFLEET.templateId / CONFIG_4P_LOSTFLEET.templateId).
 const TEMPLATE_IDS: string[] = ["3p_lostFleet", "4p_lostFleet"];
 
+// base_34p は placementMethod (1/2/3) ごとに別の検索空間なので方法別にスナップショットする。
+// LF テンプレのエントリ（placementMethod フィールドなし）はバイト不変を維持すること。
+export const RUNS: Array<{ templateId: string; placementMethod?: 1 | 2 | 3 }> = [
+  ...TEMPLATE_IDS.map((templateId) => ({ templateId })),
+  { templateId: "base_34p", placementMethod: 1 },
+  { templateId: "base_34p", placementMethod: 2 },
+  { templateId: "base_34p", placementMethod: 3 },
+];
+
 // 30 fixed, deterministic seed strings shared by every template.
 const SEED_COUNT = 30;
 const SEEDS: string[] = Array.from({ length: SEED_COUNT }, (_, i) =>
@@ -74,6 +83,8 @@ const SOFT_PARAMS: SoftParams = {
 export type SnapshotEntry = {
   seed: string;
   templateId: string;
+  /** base_34p のみ（LFエントリはフィールド省略でバイト不変を維持） */
+  placementMethod?: 1 | 2 | 3;
 
   status: "ok" | "buildLogicalMapFailed" | "extractForEvalFailed";
   errorMessage?: string;
@@ -139,14 +150,26 @@ function sum(values: number[]): number {
 // Core: run one (templateId, seed) pair through the pipeline.
 // ---------------------------------------------------------------------------
 
-function runOne(templateId: string, seed: string): SnapshotEntry {
+function runOne(
+  templateId: string,
+  seed: string,
+  placementMethod?: 1 | 2 | 3
+): SnapshotEntry {
+  // base テンプレでは H0（合法性）を常時有効化（src/gaia/search.ts runSearch と同じ規則）
+  const hardParams: HardParams =
+    templateId === "base_34p"
+      ? { ...HARD_PARAMS, banSameKindAdjacency: true }
+      : HARD_PARAMS;
+  const methodField = placementMethod === undefined ? {} : { placementMethod };
+
   let logicalMap: ReturnType<typeof buildLogicalMap>;
   try {
-    logicalMap = buildLogicalMap({ seed, templateId });
+    logicalMap = buildLogicalMap({ seed, templateId, placementMethod });
   } catch (e: any) {
     return {
       seed,
       templateId,
+      ...methodField,
       status: "buildLogicalMapFailed",
       errorMessage: String(e?.message ?? e),
     };
@@ -158,11 +181,12 @@ function runOne(templateId: string, seed: string): SnapshotEntry {
 
   let extracted: ReturnType<typeof extractForEval>;
   try {
-    extracted = extractForEval(logicalMap, HARD_PARAMS);
+    extracted = extractForEval(logicalMap, hardParams);
   } catch (e: any) {
     return {
       seed,
       templateId,
+      ...methodField,
       status: "extractForEvalFailed",
       errorMessage: String(e?.message ?? e),
       placementHash: computePlacementHash(placement),
@@ -174,7 +198,7 @@ function runOne(templateId: string, seed: string): SnapshotEntry {
     };
   }
 
-  const hardResult = checkHardConstraints(extracted, placement as any, HARD_PARAMS);
+  const hardResult = checkHardConstraints(extracted, placement as any, hardParams);
   const softResult = evaluateSoft(extracted, SOFT_PARAMS);
 
   const scoutHits = softResult.breakdown.audit.scout.scoutHits ?? [];
@@ -183,6 +207,7 @@ function runOne(templateId: string, seed: string): SnapshotEntry {
   return {
     seed,
     templateId,
+    ...methodField,
     status: "ok",
     placementHash: extracted.placementHash,
     placement: placement.map((p: any) => ({
@@ -228,24 +253,27 @@ export type Snapshot = {
 /** Path of the committed baseline, relative to the repo root. */
 export const BASELINE_PATH = "scripts/__snapshots__/baseline.json";
 
-/** Runs every (templateId, seed) pair through the pipeline. Pure: no I/O. */
+/** Runs every (templateId[, placementMethod], seed) run through the pipeline. Pure: no I/O. */
 export function buildSnapshot(): Snapshot {
   const entries: SnapshotEntry[] = [];
-  for (const templateId of TEMPLATE_IDS) {
+  for (const run of RUNS) {
     for (const seed of SEEDS) {
-      entries.push(runOne(templateId, seed));
+      entries.push(runOne(run.templateId, seed, run.placementMethod));
     }
   }
 
   // Stable ordering independent of iteration order above.
   entries.sort((a, b) => {
     if (a.templateId !== b.templateId) return a.templateId < b.templateId ? -1 : 1;
+    const am = a.placementMethod ?? 0;
+    const bm = b.placementMethod ?? 0;
+    if (am !== bm) return am - bm;
     return a.seed < b.seed ? -1 : a.seed > b.seed ? 1 : 0;
   });
 
   return {
     meta: {
-      templateIds: [...TEMPLATE_IDS].sort(),
+      templateIds: [...new Set(RUNS.map((r) => r.templateId))].sort(),
       seedCount: SEEDS.length,
       hardParams: HARD_PARAMS,
       softParams: SOFT_PARAMS,
@@ -272,7 +300,7 @@ function main() {
 
   // eslint-disable-next-line no-console
   console.log(
-    `Wrote ${snapshot.entries.length} entries (${TEMPLATE_IDS.length} templates x ${SEEDS.length} seeds) to ${outPath}`
+    `Wrote ${snapshot.entries.length} entries (${RUNS.length} runs x ${SEEDS.length} seeds) to ${outPath}`
   );
 }
 

@@ -6,6 +6,7 @@ import {
   buildSnapshot,
   serializeSnapshot,
   BASELINE_PATH,
+  RUNS,
   type Snapshot,
 } from "./regression-snapshot";
 import { checkAllCoordConsistency } from "./check-coord-consistency";
@@ -38,10 +39,9 @@ describe("regression snapshot", () => {
     expect(built).toEqual(baseline);
   });
 
-  it("covers every template and seed the baseline recorded", () => {
-    expect(built.entries).toHaveLength(
-      baseline.meta.templateIds.length * baseline.meta.seedCount
-    );
+  it("covers every run and seed the baseline recorded", () => {
+    // base_34p は placementMethod 1/2/3 で3ラン、LFはテンプレごとに1ラン。
+    expect(built.entries).toHaveLength(RUNS.length * baseline.meta.seedCount);
     expect(built.meta.templateIds).toEqual(baseline.meta.templateIds);
   });
 
