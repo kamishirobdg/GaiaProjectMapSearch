@@ -147,6 +147,26 @@ function randomSeedString(): string {
   return Math.floor(Math.random() * 2147483647 + 1).toString();
 }
 
+/**
+ * Tile photo cropped from the rulebook's component overview
+ * (public/setup-tiles/<id>.png). Falls back to nothing when the id has no
+ * image yet (Lost Fleet tiles, until their crops are added), leaving the text
+ * caption to carry the cell.
+ */
+function TileImage({ id }: { id: string }) {
+  const [failed, setFailed] = React.useState(false);
+  if (failed) return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`/setup-tiles/${id}.png`}
+      alt={id}
+      onError={() => setFailed(true)}
+      style={{ maxWidth: 110, maxHeight: 110, width: "auto", height: "auto", display: "block", borderRadius: 4 }}
+    />
+  );
+}
+
 type ExtFaceMode = "auto" | "random" | "vp25" | "shuttle";
 type EconFaceMode = "random" | "A" | "B";
 
@@ -248,11 +268,18 @@ export default function SetupView() {
         fontSize: 12,
         background: "#fafafa",
         minWidth: 0,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-start",
+        gap: 4,
       }}
     >
-      {tag ? <span style={{ opacity: 0.6, marginRight: 6 }}>{tag}</span> : null}
-      <span style={{ fontFamily: "monospace", opacity: 0.7, marginRight: 6 }}>{id}</span>
-      {labelOf(id, lang)}
+      <TileImage id={id} />
+      <div>
+        {tag ? <span style={{ opacity: 0.6, marginRight: 6 }}>{tag}</span> : null}
+        <span style={{ fontFamily: "monospace", opacity: 0.7, marginRight: 6 }}>{id}</span>
+        {labelOf(id, lang)}
+      </div>
     </div>
   );
 
