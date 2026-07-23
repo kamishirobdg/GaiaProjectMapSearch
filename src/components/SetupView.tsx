@@ -22,7 +22,7 @@ const UI = {
   ja: {
     title: "セットアップ（研究/ブースター/得点）",
     draftNote:
-      "※ 上級技術と同盟タイルの効果テキストは写真からの読み取り（確認待ち）。その他はルールブック照合済み。評価機能は未実装。Lost Fleet 拡張は未対応。",
+      "※ 基本版の全タイルはルールブック・実物確認済み。評価機能は未実装。Lost Fleet 拡張は未対応（仕様確定済み・実装待ち）。",
     seed: "シード",
     randomSeed: "ランダム",
     players: "人数",
@@ -42,7 +42,7 @@ const UI = {
   en: {
     title: "Setup (research / boosters / scoring)",
     draftNote:
-      "Note: advanced tech & federation texts are icon-read (pending check); everything else is verified against the rulebook. Evaluation not implemented. Lost Fleet expansion not covered yet.",
+      "Note: all base-game tiles verified against the rulebook and physical components. Evaluation not implemented. Lost Fleet expansion not covered yet (spec finalized, implementation pending).",
     seed: "Seed",
     randomSeed: "Random",
     players: "Players",

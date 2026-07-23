@@ -23,10 +23,9 @@
 //   - standardTech:  ✅ read from the p2 component photo (icons are large and
 //                    unambiguous); ids TS1..TS9 follow the photo's row order
 //   - finalScoring:  ✅ rulebook p18 (full text list)
-//   - advancedTech:  🟡 icon-read from the p2 photo using appendix VI's legend;
-//                    confident but awaiting the user's B-check (2026-07-22)
-//   - federations:   🟡 icon-read from the p2 photo; physical check pending
-//                    (user memo 2026-07-22)
+//   - advancedTech:  ✅ B-checked by the user against the physical tiles
+//                    (2026-07-23)
+//   - federations:   ✅ physically checked by the user (2026-07-23)
 // Fixing label/effect text never changes randomizer behavior (ids only).
 //
 // Lost Fleet expansion additions are NOT included yet — see
