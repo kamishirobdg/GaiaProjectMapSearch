@@ -48,11 +48,57 @@ export type BuildSetupInput = {
   /** Omitted = "base". Base-mode output is unchanged by the expansion. */
   mode?: SetupMode;
   /**
-   * Lost Fleet only: roll the scoring-board extension face randomly (allowed
-   * from the second game on) instead of the player-count default.
+   * Lost Fleet only: scoring-board extension face. Omitted = player-count
+   * default (2p = "vp25", 3/4p = "shuttle"); "random" rolls it (allowed from
+   * the second game on); a face value pins it.
    */
-  randomExtensionFace?: boolean;
+  extensionFaceMode?: "random" | "vp25" | "shuttle";
+  /** Lost Fleet only: pin the econ adjustment tile face. Omitted = random. */
+  econFaceMode?: "A" | "B";
+  /**
+   * Ids from AVOID_RULES: forbid specific advanced tech tiles on specific
+   * research tracks. Omitted/empty = no constraint (output unchanged).
+   */
+  avoidRules?: string[];
 };
+
+/**
+ * Preset placement-avoidance rules for advanced tech tiles (user-curated,
+ * 2026-07-24). A violating track gets ONLY ITS OWN tile re-drawn: it is
+ * swapped with the first legal spare of the same shuffle, so every other
+ * track's draw — and, with no rules active, the entire roll — is unchanged.
+ */
+export type AvoidRule = {
+  id: string;
+  track: ResearchTrackId;
+  tileIds: string[];
+  label: string;
+  labelEn: string;
+};
+
+export const AVOID_RULES: AvoidRule[] = [
+  {
+    id: "gaia-no-gaiaVp",
+    track: "gaia",
+    tileIds: ["AT08"],
+    label: "ガイア計画に「取得時：ガイア惑星×2VP」を置かない",
+    labelEn: "Keep \"2 VP per Gaia planet\" off the Gaia Project track",
+  },
+  {
+    id: "terra-no-fedPass",
+    track: "terra",
+    tileIds: ["AT01"],
+    label: "惑星改造に「パス時：同盟タイル×3VP」を置かない",
+    labelEn: "Keep \"Pass: 3 VP per federation\" off the Terraforming track",
+  },
+  {
+    id: "eco-no-resourceAction",
+    track: "eco",
+    tileIds: ["AT03", "AT07", "AT13"],
+    label: "経済に資源獲得アクション（QIC1+クレ5／鉱石3／知識3）を置かない",
+    labelEn: "Keep resource-action tiles (1 QIC+5c / 3 ore / 3 knowledge) off the Economy track",
+  },
+];
 
 /** Derive an independent RNG stream for a named component of one seed. */
 function streamFor(seed: string, stream: string) {
@@ -96,6 +142,7 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
     ? [...idsOf(SETUP_CATALOG.advancedTech), ...idsOf(SETUP_CATALOG.advancedTechLF)]
     : idsOf(SETUP_CATALOG.advancedTech);
   const adv = shuffleSeeded(advPool, streamFor(seed, "advancedTech"));
+  applyAvoidRules(adv, input.avoidRules, lf);
   const advByTrack = assignByTrack(adv.slice(0, RESEARCH_TRACK_IDS.length));
   const advExtension = adv[RESEARCH_TRACK_IDS.length]; // used only in LF mode
 
@@ -163,15 +210,19 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
     goldFederations[ship] = goldDraw[i];
   });
 
-  // Random face of the economy-research adjustment tile.
-  const econTileFace = shuffleSeeded(["A", "B"] as const, streamFor(seed, "econTileFace"))[0];
+  // Face of the economy-research adjustment tile: random unless pinned.
+  const econTileFace =
+    input.econFaceMode ?? shuffleSeeded(["A", "B"] as const, streamFor(seed, "econTileFace"))[0];
 
-  // Scoring-board extension face: player-count default, or random if opted in.
-  const extensionFace = input.randomExtensionFace
-    ? shuffleSeeded(["vp25", "shuttle"] as const, streamFor(seed, "extensionFace"))[0]
-    : playerCount === 2
-      ? ("vp25" as const)
-      : ("shuttle" as const);
+  // Scoring-board extension face: player-count default, random, or pinned.
+  const extensionFace =
+    input.extensionFaceMode === "vp25" || input.extensionFaceMode === "shuttle"
+      ? input.extensionFaceMode
+      : input.extensionFaceMode === "random"
+        ? shuffleSeeded(["vp25", "shuttle"] as const, streamFor(seed, "extensionFace"))[0]
+        : playerCount === 2
+          ? ("vp25" as const)
+          : ("shuttle" as const);
 
   return {
     ...base,
@@ -183,6 +234,31 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
     econTileFace,
     extensionFace,
   };
+}
+
+/**
+ * Enforce placement-avoidance rules on the shuffled advanced-tech array
+ * (in place). Track slots are indices 0..5; in LF, index 6 is the extension
+ * (never swapped in as a spare), so spares start at 7 there. A violating slot
+ * is swapped with the first spare that is legal for that track; if none
+ * exists (practically impossible: >=8 spares) the slot is left as drawn.
+ */
+function applyAvoidRules(adv: string[], ruleIds: string[] | undefined, lf: boolean): void {
+  if (!ruleIds || ruleIds.length === 0) return;
+  const active = AVOID_RULES.filter((r) => ruleIds.includes(r.id));
+  if (active.length === 0) return;
+
+  const spareStart = RESEARCH_TRACK_IDS.length + (lf ? 1 : 0);
+  RESEARCH_TRACK_IDS.forEach((track, i) => {
+    const banned = new Set(active.filter((r) => r.track === track).flatMap((r) => r.tileIds));
+    if (banned.size === 0 || !banned.has(adv[i])) return;
+    for (let j = spareStart; j < adv.length; j++) {
+      if (!banned.has(adv[j])) {
+        [adv[i], adv[j]] = [adv[j], adv[i]];
+        return;
+      }
+    }
+  });
 }
 
 function clampPlayers(n: number | undefined, lf: boolean): number {

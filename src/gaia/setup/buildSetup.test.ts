@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildSetupFromSeed } from "./buildSetup";
+import { buildSetupFromSeed, AVOID_RULES } from "./buildSetup";
 import { SETUP_CATALOG } from "./data";
 import { RESEARCH_TRACK_IDS } from "./types";
 
@@ -215,24 +215,27 @@ describe("Lost Fleet mode", () => {
     expect(buildSetupFromSeed({ seed: "pc", playerCount: 9, ...LF }).playerCount).toBe(4);
   });
 
-  it("extension face defaults by player count and can be randomized", () => {
+  it("extension face defaults by player count, can be randomized or pinned", () => {
     expect(r2.extensionFace).toBe("vp25");
     expect(r4.extensionFace).toBe("shuttle");
-    const rnd = buildSetupFromSeed({ seed: "lf-structure", playerCount: 4, ...LF, randomExtensionFace: true });
+    const rnd = buildSetupFromSeed({ seed: "lf-structure", playerCount: 4, ...LF, extensionFaceMode: "random" });
     expect(["vp25", "shuttle"]).toContain(rnd.extensionFace);
     // Deterministic for the same seed.
-    const rnd2 = buildSetupFromSeed({ seed: "lf-structure", playerCount: 4, ...LF, randomExtensionFace: true });
+    const rnd2 = buildSetupFromSeed({ seed: "lf-structure", playerCount: 4, ...LF, extensionFaceMode: "random" });
     expect(rnd2.extensionFace).toBe(rnd.extensionFace);
     // Some seed yields each face.
     const faces = new Set(
       Array.from({ length: 20 }, (_, i) =>
-        buildSetupFromSeed({ seed: `face-${i}`, playerCount: 4, ...LF, randomExtensionFace: true }).extensionFace
+        buildSetupFromSeed({ seed: `face-${i}`, playerCount: 4, ...LF, extensionFaceMode: "random" }).extensionFace
       )
     );
     expect(faces).toEqual(new Set(["vp25", "shuttle"]));
+    // Pinning wins regardless of player count.
+    expect(buildSetupFromSeed({ seed: "x", playerCount: 4, ...LF, extensionFaceMode: "vp25" }).extensionFace).toBe("vp25");
+    expect(buildSetupFromSeed({ seed: "x", playerCount: 2, ...LF, extensionFaceMode: "shuttle" }).extensionFace).toBe("shuttle");
   });
 
-  it("econ tile face is deterministic and covers both faces across seeds", () => {
+  it("econ tile face is deterministic, coverable, and pinnable", () => {
     expect(["A", "B"]).toContain(r4.econTileFace);
     const faces = new Set(
       Array.from({ length: 20 }, (_, i) =>
@@ -240,6 +243,63 @@ describe("Lost Fleet mode", () => {
       )
     );
     expect(faces).toEqual(new Set(["A", "B"]));
+    expect(buildSetupFromSeed({ seed: "x", playerCount: 4, ...LF, econFaceMode: "A" }).econTileFace).toBe("A");
+    expect(buildSetupFromSeed({ seed: "x", playerCount: 4, ...LF, econFaceMode: "B" }).econTileFace).toBe("B");
+  });
+});
+
+describe("avoid rules", () => {
+  const ALL_RULE_IDS = AVOID_RULES.map((r) => r.id);
+
+  it("keeps banned tiles off their tracks across many seeds (base + LF)", () => {
+    for (let i = 0; i < 60; i++) {
+      for (const mode of [{}, LF] as const) {
+        const r = buildSetupFromSeed({ seed: `avoid-${i}`, playerCount: 4, ...mode, avoidRules: ALL_RULE_IDS });
+        for (const rule of AVOID_RULES) {
+          expect(rule.tileIds).not.toContain(r.advancedTech.byTrack[rule.track]);
+        }
+      }
+    }
+  });
+
+  it("changes nothing when no rule is violated, and only the violating slot otherwise", () => {
+    let checkedSwap = false;
+    for (let i = 0; i < 60 && !checkedSwap; i++) {
+      const seed = `swap-${i}`;
+      const plain = buildSetupFromSeed({ seed, playerCount: 4 });
+      const ruled = buildSetupFromSeed({ seed, playerCount: 4, avoidRules: ["gaia-no-gaiaVp"] });
+      if (plain.advancedTech.byTrack.gaia !== "AT08") {
+        expect(ruled).toEqual(plain); // untouched roll
+      } else {
+        checkedSwap = true;
+        expect(ruled.advancedTech.byTrack.gaia).not.toBe("AT08");
+        // every other track keeps its original draw
+        for (const track of RESEARCH_TRACK_IDS) {
+          if (track === "gaia") continue;
+          expect(ruled.advancedTech.byTrack[track]).toBe(plain.advancedTech.byTrack[track]);
+        }
+        // rest of the setup untouched
+        expect(ruled.standardTech).toEqual(plain.standardTech);
+        expect(ruled.boosters).toEqual(plain.boosters);
+        expect(ruled.roundScoring).toEqual(plain.roundScoring);
+      }
+    }
+    expect(checkedSwap).toBe(true); // some seed actually exercised the swap
+  });
+
+  it("does not swap the LF extension slot in as a spare", () => {
+    for (let i = 0; i < 60; i++) {
+      const seed = `ext-${i}`;
+      const plain = buildSetupFromSeed({ seed, playerCount: 4, ...LF });
+      const ruled = buildSetupFromSeed({ seed, playerCount: 4, ...LF, avoidRules: ALL_RULE_IDS });
+      expect(ruled.advancedTech.extension).toBe(plain.advancedTech.extension);
+    }
+  });
+
+  it("empty avoidRules is identical to omitting it", () => {
+    const a = buildSetupFromSeed({ seed: "snap-0001", playerCount: 4 });
+    const b = buildSetupFromSeed({ seed: "snap-0001", playerCount: 4, avoidRules: [] });
+    expect(b).toEqual(a);
   });
 });
 

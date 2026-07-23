@@ -2,7 +2,7 @@
 "use client";
 
 import React from "react";
-import { buildSetupFromSeed } from "@/gaia/setup/buildSetup";
+import { buildSetupFromSeed, AVOID_RULES } from "@/gaia/setup/buildSetup";
 import { SETUP_CATALOG } from "@/gaia/setup/data";
 import { RESEARCH_TRACK_IDS, type ResearchTrackId, type SetupMode, type ShipId } from "@/gaia/setup/types";
 
@@ -36,7 +36,12 @@ const UI = {
     roll: "生成",
     modeBase: "基本版",
     modeLF: "Lost Fleet",
-    randomExtFace: "拡張部の面をランダムにする（2ゲーム目以降ルール）",
+    extFaceModeLabel: "拡張部の面",
+    extFaceAuto: "自動（人数で固定）",
+    extFaceRandom: "ランダム",
+    econFaceModeLabel: "経済調整タイル",
+    econFaceRandom: "ランダム",
+    avoidTitle: "配置回避（上級技術）",
     scoringExtension: "得点ボード拡張部",
     extensionAdv: "追加の上級技術",
     extensionFaceLabel: "面",
@@ -71,7 +76,12 @@ const UI = {
     roll: "Roll",
     modeBase: "Base game",
     modeLF: "Lost Fleet",
-    randomExtFace: "Randomize extension face (2nd-game-on rule)",
+    extFaceModeLabel: "Extension face",
+    extFaceAuto: "Auto (by player count)",
+    extFaceRandom: "Random",
+    econFaceModeLabel: "Econ adjustment tile",
+    econFaceRandom: "Random",
+    avoidTitle: "Placement avoidance (advanced tech)",
     scoringExtension: "Scoring board extension",
     extensionAdv: "Extra advanced tech",
     extensionFaceLabel: "Face",
@@ -133,30 +143,77 @@ function randomSeedString(): string {
   return Math.floor(Math.random() * 2147483647 + 1).toString();
 }
 
+type ExtFaceMode = "auto" | "random" | "vp25" | "shuttle";
+type EconFaceMode = "random" | "A" | "B";
+
+// Settings persisted across visits (the seed is deliberately NOT remembered,
+// same as the map page's fixed-seed field).
+const LS = {
+  mode: "gaia_setup_mode",
+  players: "gaia_setup_players",
+  extFace: "gaia_setup_extface",
+  econFace: "gaia_setup_econface",
+  avoid: "gaia_setup_avoid",
+} as const;
+
+function lsGet(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function lsSet(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // ignore
+  }
+}
+
 export default function SetupView() {
   const [lang, setLang] = React.useState<Lang>("ja");
   const [seed, setSeed] = React.useState<string>("1");
   const [players, setPlayers] = React.useState<number>(4);
   const [mode, setMode] = React.useState<SetupMode>("base");
-  const [randomExtFace, setRandomExtFace] = React.useState<boolean>(false);
+  const [extFaceMode, setExtFaceMode] = React.useState<ExtFaceMode>("auto");
+  const [econFaceMode, setEconFaceMode] = React.useState<EconFaceMode>("random");
+  const [avoid, setAvoid] = React.useState<string[]>([]);
 
-  // Match the map page's language preference.
+  // Restore language (shared with the map page) and remembered settings.
   React.useEffect(() => {
+    const v = lsGet("gaia_ui_lang");
+    if (v === "ja" || v === "en") setLang(v);
+
+    const m = lsGet(LS.mode);
+    if (m === "base" || m === "lostFleet") setMode(m);
+    const p = Number(lsGet(LS.players));
+    if (p >= 1 && p <= 4) setPlayers(m === "lostFleet" ? Math.max(2, p) : p);
+    const ef = lsGet(LS.extFace);
+    if (ef === "auto" || ef === "random" || ef === "vp25" || ef === "shuttle") setExtFaceMode(ef);
+    const ec = lsGet(LS.econFace);
+    if (ec === "random" || ec === "A" || ec === "B") setEconFaceMode(ec);
     try {
-      const v = localStorage.getItem("gaia_ui_lang");
-      if (v === "ja" || v === "en") setLang(v);
+      const raw = lsGet(LS.avoid);
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) setAvoid(arr.filter((x) => AVOID_RULES.some((r) => r.id === x)));
+      }
     } catch {
       // ignore
     }
   }, []);
 
+  // Remember settings (not the seed).
+  React.useEffect(() => lsSet(LS.mode, mode), [mode]);
+  React.useEffect(() => lsSet(LS.players, String(players)), [players]);
+  React.useEffect(() => lsSet(LS.extFace, extFaceMode), [extFaceMode]);
+  React.useEffect(() => lsSet(LS.econFace, econFaceMode), [econFaceMode]);
+  React.useEffect(() => lsSet(LS.avoid, JSON.stringify(avoid)), [avoid]);
+
   const setLangPersist = React.useCallback((l: Lang) => {
     setLang(l);
-    try {
-      localStorage.setItem("gaia_ui_lang", l);
-    } catch {
-      // ignore
-    }
+    lsSet("gaia_ui_lang", l);
   }, []);
 
   const lf = mode === "lostFleet";
@@ -167,9 +224,11 @@ export default function SetupView() {
         seed,
         playerCount: players,
         ...(lf ? { mode: "lostFleet" as const } : {}),
-        ...(lf && randomExtFace ? { randomExtensionFace: true } : {}),
+        ...(lf && extFaceMode !== "auto" ? { extensionFaceMode: extFaceMode } : {}),
+        ...(lf && econFaceMode !== "random" ? { econFaceMode } : {}),
+        ...(avoid.length > 0 ? { avoidRules: avoid } : {}),
       }),
-    [seed, players, lf, randomExtFace]
+    [seed, players, lf, extFaceMode, econFaceMode, avoid]
   );
 
   const t = UI[lang];
@@ -250,11 +309,43 @@ export default function SetupView() {
           </select>
         </label>
         {lf ? (
-          <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
-            <input type="checkbox" checked={randomExtFace} onChange={(e) => setRandomExtFace(e.target.checked)} />
-            <span>{t.randomExtFace}</span>
-          </label>
+          <>
+            <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
+              <span>{t.extFaceModeLabel}</span>
+              <select value={extFaceMode} onChange={(e) => setExtFaceMode(e.target.value as ExtFaceMode)}>
+                <option value="auto">{t.extFaceAuto}</option>
+                <option value="random">{t.extFaceRandom}</option>
+                <option value="vp25">{t.faceVp25}</option>
+                <option value="shuttle">{t.faceShuttle}</option>
+              </select>
+            </label>
+            <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
+              <span>{t.econFaceModeLabel}</span>
+              <select value={econFaceMode} onChange={(e) => setEconFaceMode(e.target.value as EconFaceMode)}>
+                <option value="random">{t.econFaceRandom}</option>
+                <option value="A">{t.faceA}</option>
+                <option value="B">{t.faceB}</option>
+              </select>
+            </label>
+          </>
         ) : null}
+      </div>
+
+      {/* Placement avoidance (advanced tech; applies in both modes) */}
+      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", fontSize: 12 }}>
+        <span style={{ fontWeight: 700 }}>{t.avoidTitle}</span>
+        {AVOID_RULES.map((rule) => (
+          <label key={rule.id} style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            <input
+              type="checkbox"
+              checked={avoid.includes(rule.id)}
+              onChange={(e) =>
+                setAvoid((prev) => (e.target.checked ? [...prev, rule.id] : prev.filter((x) => x !== rule.id)))
+              }
+            />
+            <span>{lang === "ja" ? rule.label : rule.labelEn}</span>
+          </label>
+        ))}
       </div>
 
       {/* Research tracks: advanced (top) + standard (bottom) per track */}
@@ -344,16 +435,11 @@ export default function SetupView() {
         </>
       ) : null}
 
-      {/* Boosters */}
+      {/* Boosters (only the ones in play; unused ones go back to the box) */}
       <section>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.boosters}</div>
-        <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>{t.available}</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
           {result.boosters.available.map((id) => tileCell(id))}
-        </div>
-        <div style={{ fontSize: 12, opacity: 0.7, margin: "10px 0 4px" }}>{t.unused}</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8, opacity: 0.55 }}>
-          {result.boosters.unused.map((id) => tileCell(id))}
         </div>
       </section>
     </div>
