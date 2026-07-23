@@ -2048,6 +2048,48 @@ const handleMarkUsed = React.useCallback(
   [searchKey, activePersisted, usedPersisted, capacityActive, selectedSeedLabel, templateId, searchKeyRaw, searchKeyParams, keepTop, refreshProfiles]
 );
 
+// ピン留めトグル（一覧タブ用、TODO ③）。バケット移動はせずフラグのみ更新。
+// ピン留め中の active 行は容量剪定から保護される（persistence 側）。
+const handleTogglePin = React.useCallback(
+  async (placementHash: string) => {
+    if (!searchKey) return;
+    const now = Date.now();
+
+    const act = activePersisted.slice();
+    const usd = usedPersisted.slice();
+
+    const flip = (arr: PersistedCandidate[]): boolean => {
+      const idx = arr.findIndex((c) => c.placementHash === placementHash);
+      if (idx < 0) return false;
+      const next = !arr[idx].pinned;
+      arr[idx] = {
+        ...arr[idx],
+        pinned: next,
+        ...(next ? { pinnedAt: now } : { pinnedAt: undefined }),
+        updatedAt: now,
+      };
+      return true;
+    };
+    if (!flip(act) && !flip(usd)) return;
+
+    const merged = mergeCandidates(searchKey, act, usd, [], capacityActive);
+    await saveMergeToDb(searchKey, merged);
+
+    setActivePersisted(merged.active);
+    setUsedPersisted(merged.used);
+    setActiveResults(merged.active.map(toRankedResult));
+    setUsedResults(merged.used.map(toRankedResult));
+  },
+  [searchKey, activePersisted, usedPersisted, capacityActive]
+);
+
+const pinnedHashes = React.useMemo(() => {
+  const set = new Set<string>();
+  for (const c of activePersisted) if (c.pinned) set.add(c.placementHash);
+  for (const c of usedPersisted) if (c.pinned) set.add(c.placementHash);
+  return set;
+}, [activePersisted, usedPersisted]);
+
 const handleRestore = React.useCallback(
   async (placementHash: string) => {
     if (!searchKey) return;
@@ -2234,16 +2276,28 @@ const handleDeleteUsed = React.useCallback(
               }}
             >
               <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
-                <span style={{ fontWeight: 800, fontSize: 12 }}>{idx + 1}.</span>
+                <span style={{ fontWeight: 800, fontSize: 12 }}>
+                  {pinnedHashes.has(String(hashFull)) ? "📌" : null}
+                  {idx + 1}.
+                </span>
                 <span style={{ fontSize: 12 }}>
                   <span style={{ opacity: 0.7 }}>{t("rankScore")}:</span> {fmt0(rawScore)}
                 </span>
                 <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12 }}>
                   {hash}
                 </span>
-  
+
                 <span style={{ marginLeft: "auto" }} />
-  
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleTogglePin(String(hashFull));
+                  }}
+                  style={{ padding: "2px 8px", fontSize: 12, border: "1px solid #ccc", borderRadius: 6, background: "white" }}
+                >
+                  {pinnedHashes.has(String(hashFull)) ? t("unpin") : t("pin")}
+                </button>
                 {resultsMode === "active" ? (
                   <button
                     onClick={(e) => {

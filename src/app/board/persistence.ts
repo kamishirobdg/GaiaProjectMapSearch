@@ -41,6 +41,10 @@ export type PersistedCandidate = {
   used: boolean;
   usedKey: 0 | 1;
   usedAt?: number;
+  // ピン留め（一覧タブ用、2026-07-24 TODO ③）。ピン留め中の active 行は
+  // capacityActive の剪定対象から除外される（used と同様に消えない）。
+  pinned?: boolean;
+  pinnedAt?: number;
   createdAt: number;
   updatedAt: number;
 };
@@ -364,12 +368,16 @@ export function mergeCandidates(
     }
     const used = prev.used || cand.used;
     const usedAt = prev.usedAt ?? cand.usedAt;
+    const pinned = Boolean(prev.pinned) || Boolean(cand.pinned);
+    const pinnedAt = prev.pinnedAt ?? cand.pinnedAt;
     const base = betterThan(cand, prev) ? cand : prev;
     map.set(key, {
       ...base,
       used,
       usedKey: used ? 1 : 0,
       usedAt,
+      pinned,
+      ...(pinnedAt !== undefined ? { pinnedAt } : {}),
       createdAt: prev.createdAt ?? base.createdAt,
       updatedAt: Math.max(prev.updatedAt ?? 0, cand.updatedAt ?? 0, base.updatedAt ?? 0),
       id: `${searchKey}:${key}`,
@@ -387,7 +395,11 @@ export function mergeCandidates(
   const activeAll = all.filter((c) => !c.used);
 
   activeAll.sort((a, b) => b.score - a.score || seedTieKey(a.seed) - seedTieKey(b.seed));
-  const keptActive = activeAll.slice(0, capacityActive);
+  // ピン留め行は容量あふれでも消さない（used と同じく保護される）
+  const keptActive = [
+    ...activeAll.slice(0, capacityActive),
+    ...activeAll.slice(capacityActive).filter((c) => c.pinned),
+  ];
 
   // Active deletions: any previously-active id not in kept set (e.g., capacity shrunk)
   const keptIds = new Set(keptActive.map((c) => c.id));
@@ -407,11 +419,14 @@ export async function loadFromDb(searchKey: string, capacityActive: number): Pro
   const active = await idbGetAllByIndex<PersistedCandidate>(db, STORE_CANDIDATES, "bySearchKeyUsedKeyRank", rngActive);
   const used = await idbGetAllByIndex<PersistedCandidate>(db, STORE_CANDIDATES, "bySearchKeyUsedKeyRank", rngUsed);
 
-  // Ensure active is capped (in case of older versions)
-  const activeSorted = active
+  // Ensure active is capped (in case of older versions); pinned rows survive the trim.
+  const sorted = active
     .slice()
-    .sort((a, b) => b.score - a.score || seedTieKey(a.seed) - seedTieKey(b.seed))
-    .slice(0, capacityActive);
+    .sort((a, b) => b.score - a.score || seedTieKey(a.seed) - seedTieKey(b.seed));
+  const activeSorted = [
+    ...sorted.slice(0, capacityActive),
+    ...sorted.slice(capacityActive).filter((c) => c.pinned),
+  ];
 
   // If we trimmed, delete extras to keep DB consistent
   const keepIds = new Set(activeSorted.map((c) => c.id));
