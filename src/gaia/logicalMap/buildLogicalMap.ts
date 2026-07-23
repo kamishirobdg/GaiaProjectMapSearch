@@ -20,6 +20,7 @@ import {
 // 3p/4p の slotCenters / offset の export 名が揺れても吸収できるように namespace import
 import * as SlotCenters3p from "../templates/3p_lostfleet_slotCenters";
 import * as SlotCenters4p from "../templates/4p_lostfleet_slotCenters";
+import { SLOT_CENTERS_BASE_34P } from "../templates/base_34p_slotCenters";
 
 import { makeSearchPlacementFromSeed } from "../ssot/searchPlacementConfig";
 import { computePlacementHash } from "../ssot/placementHash";
@@ -294,6 +295,11 @@ function resolveSlotCenters(templateId: string): {
   slotCenters: SlotCenters;
   middleOffsetByRotSeed: Record<number, Axial>;
 } {
+  // 基本版: LARGE スロットのみ（Middle offset なし）
+  if (templateId === "base_34p") {
+    return { slotCenters: SLOT_CENTERS_BASE_34P, middleOffsetByRotSeed: {} };
+  }
+
   const kind = normalizeTemplateIdForLogicalMap(templateId);
 
   const slotCenters3p =

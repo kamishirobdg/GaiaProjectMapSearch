@@ -26,8 +26,10 @@
 
 import { TEMPLATE_3P_LOSTFLEET } from "../src/gaia/data/templates/3p_lostFleet";
 import { TEMPLATE_4P_LOSTFLEET } from "../src/gaia/data/templates/4p_lostFleet";
+import { TEMPLATE_BASE_34P } from "../src/gaia/data/templates/base_34p";
 import * as SlotCenters3p from "../src/gaia/templates/3p_lostfleet_slotCenters";
 import * as SlotCenters4p from "../src/gaia/templates/4p_lostfleet_slotCenters";
+import { SLOT_CENTERS_BASE_34P } from "../src/gaia/templates/base_34p_slotCenters";
 import { rotate60 } from "../src/gaia/board/axial";
 import { isMainModule } from "./isMainModule";
 
@@ -116,6 +118,13 @@ export function checkAllCoordConsistency(): Mismatch[] {
     ...checkTemplate(
       (SlotCenters4p as any).SLOT_CENTERS_4P_LOSTFLEET,
       TEMPLATE_4P_LOSTFLEET as any as TemplateLike
+    )
+  );
+  // base_34p: LARGE スロットのみ（C_LARGE=(19,14) を LF と共有）
+  all.push(
+    ...checkTemplate(
+      SLOT_CENTERS_BASE_34P,
+      TEMPLATE_BASE_34P as any as TemplateLike
     )
   );
   return all;
