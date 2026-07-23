@@ -19,6 +19,7 @@ import {
   setupHistoryId,
   type SavedSetup,
 } from "@/lib/setupHistory";
+import { copyText, decodeSetupToken, setupShareUrl } from "@/lib/setupShare";
 import {
   readSharedExpansion,
   readSharedPlayers,
@@ -119,6 +120,8 @@ const UI = {
     currentBadge: "表示中",
     warnDistForceDup: "「基本到達距離＋1」の強制は1隻のみ適用されます（先頭の船が優先）",
     warnDistAvoidAll: "3人以上では3隻すべての回避は満たせません（満たせない分は無視）",
+    shareRow: "共有",
+    shareCopied: "コピーしました",
   },
   en: {
     title: "Setup (research / boosters / scoring)",
@@ -185,6 +188,8 @@ const UI = {
     currentBadge: "Shown",
     warnDistForceDup: "Only one ship can force \"Base range +1\" (first ship wins)",
     warnDistAvoidAll: "With 3+ players, avoiding it on all three ships cannot be satisfied (unmet ones are ignored)",
+    shareRow: "Share",
+    shareCopied: "Copied",
   },
 } as const;
 
@@ -377,6 +382,42 @@ export default function SetupView() {
   const [ruleModes, setRuleModes] = React.useState<Record<string, string>>({});
   // LF船ルール（距離タイルの船別 回避/強制＋リベリオン金枠同盟）
   const [shipRules, setShipRules] = React.useState<ShipRulesState>({ dist: {}, gold: "" });
+  // 共有リンクトークンの捕捉（null=未捕捉、""=なし）。ボードの pendingHashRef と同型。
+  const pendingShareRef = React.useRef<string | null>(null);
+  // 共有ボタンの「コピーしました」表示対象行
+  const [sharedCopiedId, setSharedCopiedId] = React.useState<string | null>(null);
+
+  // 保存/共有された入力を丸ごと画面へ反映（build は決定論的なので完全再現）。
+  // persist=false は共有リンク閲覧用: 受け手の記憶設定（localStorage・共有キー）
+  // を書き換えずに表示だけ差し替える。
+  const applyInput = React.useCallback((input: BuildSetupInput, persist: boolean) => {
+    const m: SetupMode = input.mode === "lostFleet" ? "lostFleet" : "base";
+    const p = Math.max(m === "lostFleet" ? 2 : 1, Math.min(4, input.playerCount ?? 4));
+    setMode(m);
+    setPlayers(p);
+    setExtFaceMode(input.extensionFaceMode ?? "auto");
+    setEconFaceMode(input.econFaceMode ?? "random");
+    const modes: Record<string, string> = {};
+    for (const id of input.avoidRules ?? []) modes[id] = "avoid";
+    for (const id of input.forceRules ?? []) modes[id] = "force";
+    for (const [id, tid] of Object.entries(input.forceTileRules ?? {})) modes[id] = `force:${tid}`;
+    for (const [id, tid] of Object.entries(input.allowTileRules ?? {})) modes[id] = `allow:${tid}`;
+    setRuleModes(modes);
+    const dist: ShipRulesState["dist"] = {};
+    for (const sh of input.shipDistanceAvoid ?? []) dist[sh] = "avoid";
+    for (const sh of input.shipDistanceForce ?? []) dist[sh] = "force";
+    const sr: ShipRulesState = { dist, gold: input.rebellionGoldFed ?? "" };
+    setShipRules(sr);
+    setSeed(input.seed);
+    if (persist) {
+      writeSharedExpansion(m);
+      writeSharedPlayers(p);
+      lsSet(LS.extFace, input.extensionFaceMode ?? "auto");
+      lsSet(LS.econFace, input.econFaceMode ?? "random");
+      lsSet(LS.avoid, JSON.stringify(modes));
+      lsSet(LS.shipRules, JSON.stringify(sr));
+    }
+  }, []);
 
   // Restore language (shared with the map page) and remembered settings.
   React.useEffect(() => {
@@ -428,7 +469,29 @@ export default function SetupView() {
     } catch {
       // ignore
     }
-  }, []);
+
+    // 共有リンク（?s=）: マップの ?h= と同じ作法。初回にトークンを ref へ捕捉して
+    // アドレスバーから除去し（Strict Mode の2回目実行でも ref から再適用）、
+    // 上の localStorage 復元より後に view-only で上書きする。
+    try {
+      if (pendingShareRef.current === null) {
+        const sp = new URLSearchParams(window.location.search);
+        pendingShareRef.current = sp.get("s") ?? "";
+        if (sp.get("s") !== null) {
+          sp.delete("s");
+          const qs = sp.toString();
+          window.history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
+        }
+      }
+      const tok = pendingShareRef.current;
+      if (tok) {
+        const input = decodeSetupToken(tok);
+        if (input) applyInput(input, false);
+      }
+    } catch {
+      // ignore
+    }
+  }, [applyInput]);
 
   // Persisting change handlers. Settings are written ONLY on user interaction —
   // a write-on-mount effect would race the restore effect above: under React
@@ -562,29 +625,10 @@ export default function SetupView() {
     void recordSetup(buildInput(seed)).then(setSaved);
   }, [buildInput, seed]);
 
-  // 行クリックで保存時の入力を丸ごと復元（build は決定論的なので完全再現）。
+  // 行クリックで保存時の入力を復元（自分の操作なので記憶設定にも反映する）。
   const restoreSaved = React.useCallback(
-    (input: BuildSetupInput) => {
-      changeMode(input.mode === "lostFleet" ? "lostFleet" : "base");
-      changePlayers(input.playerCount ?? 4);
-      changeExtFace(input.extensionFaceMode ?? "auto");
-      changeEconFace(input.econFaceMode ?? "random");
-      const modes: Record<string, string> = {};
-      for (const id of input.avoidRules ?? []) modes[id] = "avoid";
-      for (const id of input.forceRules ?? []) modes[id] = "force";
-      for (const [id, tid] of Object.entries(input.forceTileRules ?? {})) modes[id] = `force:${tid}`;
-      for (const [id, tid] of Object.entries(input.allowTileRules ?? {})) modes[id] = `allow:${tid}`;
-      setRuleModes(modes);
-      lsSet(LS.avoid, JSON.stringify(modes));
-      const dist: ShipRulesState["dist"] = {};
-      for (const sh of input.shipDistanceAvoid ?? []) dist[sh] = "avoid";
-      for (const sh of input.shipDistanceForce ?? []) dist[sh] = "force";
-      const sr: ShipRulesState = { dist, gold: input.rebellionGoldFed ?? "" };
-      setShipRules(sr);
-      lsSet(LS.shipRules, JSON.stringify(sr));
-      setSeed(input.seed);
-    },
-    [changeMode, changePlayers, changeExtFace, changeEconFace]
+    (input: BuildSetupInput) => applyInput(input, true),
+    [applyInput]
   );
 
   const currentId = React.useMemo(() => setupHistoryId(buildInput(seed)), [buildInput, seed]);
@@ -987,6 +1031,16 @@ export default function SetupView() {
                       ) : null}
                     </button>
                     <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
+                      <button
+                        onClick={() => {
+                          copyText(setupShareUrl(r.input));
+                          setSharedCopiedId(r.id);
+                          window.setTimeout(() => setSharedCopiedId((v) => (v === r.id ? null : v)), 2000);
+                        }}
+                        style={{ fontSize: 11 }}
+                      >
+                        {sharedCopiedId === r.id ? t.shareCopied : t.shareRow}
+                      </button>
                       <button onClick={() => void setSetupPinned(r.id, !r.pinned).then(setSaved)} style={{ fontSize: 11 }}>
                         {r.pinned ? t.unpin : t.pin}
                       </button>
