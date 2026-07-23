@@ -28,7 +28,14 @@ import { buildSectorLookup } from "@/gaia/board/previewBoard";
 import { encodePlacementToken, decodePlacementToken } from "@/gaia/ssot/placementHash";
 import { listSavedSetups, recordSetup, setSetupPinned, type SavedSetup } from "@/lib/setupHistory";
 import { copyText, decodeSetupToken, encodeSetupToken } from "@/lib/setupShare";
-import { readSharedExpansion, readSharedPlayers } from "@/lib/sharedSettings";
+import GlobalBar from "@/components/GlobalBar";
+import {
+  readSharedExpansion,
+  readSharedPlayers,
+  writeSharedExpansion,
+  writeSharedPlayers,
+  type Expansion,
+} from "@/lib/sharedSettings";
 import {
   recommendSetup,
   scoreSetupFactions,
@@ -177,7 +184,11 @@ function fmtWhen(ts: number | undefined, lang: Lang): string {
 
 export default function ListView() {
   const [lang, setLang] = React.useState<Lang>("ja");
+  const [players, setPlayers] = React.useState<number>(4);
+  const [expansion, setExpansion] = React.useState<Expansion>("base");
   const [pinnedMaps, setPinnedMaps] = React.useState<PersistedCandidate[]>([]);
+  // ピン留めが無いとき用: 全保存マップ中スコア最上位（要望のデフォルト選択）
+  const [topOverallMap, setTopOverallMap] = React.useState<PersistedCandidate | null>(null);
   const [templateIdBySearchKey, setTemplateIdBySearchKey] = React.useState<Record<string, string>>({});
   const [pinnedSetups, setPinnedSetups] = React.useState<SavedSetup[]>([]);
   const [copiedKey, setCopiedKey] = React.useState<string | null>(null);
@@ -209,6 +220,12 @@ export default function ListView() {
     })();
     if (v === "ja" || v === "en") setLang(v);
 
+    // 共有設定（人数・拡張）を復元（読取のみ）。
+    const sp = readSharedPlayers();
+    const se = readSharedExpansion();
+    if (sp) setPlayers(sp);
+    if (se) setExpansion(se);
+
     let alive = true;
     void (async () => {
       try {
@@ -217,6 +234,8 @@ export default function ListView() {
         const pins = all
           .filter((c) => c.pinned)
           .sort((a, b) => (b.pinnedAt ?? 0) - (a.pinnedAt ?? 0));
+        // スコア最上位（高いほど上位）。ピン留めが無いときのデフォルト選択に使う。
+        const top = all.slice().sort((a, b) => Number(b.score) - Number(a.score))[0] ?? null;
         const profiles = await loadProfilesFromDb(500);
         const tmap: Record<string, string> = {};
         for (const p of profiles) {
@@ -225,6 +244,7 @@ export default function ListView() {
         }
         if (alive) {
           setPinnedMaps(pins);
+          setTopOverallMap(top);
           setTemplateIdBySearchKey(tmap);
         }
       } catch {
@@ -270,6 +290,31 @@ export default function ListView() {
   const sectorById = React.useMemo(() => buildSectorLookup(getAllSectors() as any), []);
   const sectorImgById = React.useMemo(() => buildSectorImgById(), []);
 
+  // ペア提案のマップ候補: ピン留めがあればスコア降順（ランキング最上位が先頭）、
+  // 無ければ全保存マップ中の最上位1件（要望のデフォルト選択、2026-07-25）。
+  const selectableMaps = React.useMemo<PersistedCandidate[]>(() => {
+    if (pinnedMaps.length > 0) {
+      return pinnedMaps.slice().sort((a, b) => Number(b.score) - Number(a.score));
+    }
+    return topOverallMap ? [topOverallMap] : [];
+  }, [pinnedMaps, topOverallMap]);
+
+  // List を開いた時点のデフォルト選択（最優先=ピン留め最上位→無ければ全体最上位）。
+  React.useEffect(() => {
+    if (pairMapId === "" && selectableMaps.length > 0) {
+      setPairMapId(selectableMaps[0].id);
+    }
+  }, [selectableMaps, pairMapId]);
+
+  // 共通バーからの人数/拡張選択（共有localStorageへ書込＋ローカル状態更新）。
+  const onGlobalSelect = React.useCallback((p: number, e: Expansion) => {
+    const np = e === "lostFleet" ? Math.max(2, p) : p;
+    setPlayers(np);
+    setExpansion(e);
+    writeSharedPlayers(np);
+    writeSharedExpansion(e);
+  }, []);
+
   const t = UI[lang];
 
   const setLangPersist = React.useCallback((l: Lang) => {
@@ -314,7 +359,7 @@ export default function ListView() {
 
   // セット提案の生成（1件のみ提示。要望 2026-07-24）
   const handleGenerate = React.useCallback(() => {
-    const selected = pinnedMaps.find((c) => c.id === pairMapId) ?? null;
+    const selected = selectableMaps.find((c) => c.id === pairMapId) ?? null;
     const tid = selected ? (templateIdBySearchKey[selected.searchKey] ?? null) : null;
     if (criterion === "opposeMap" && (!selected || !tid)) {
       setPairMsg(UI[lang].needMap);
@@ -352,7 +397,7 @@ export default function ListView() {
     setRecMapTop(mapTopDetail);
     setRecSettings(settings);
     setRecorded(false);
-  }, [pinnedMaps, pairMapId, criterion, templateIdBySearchKey, lang]);
+  }, [selectableMaps, pairMapId, criterion, templateIdBySearchKey, lang]);
 
   const handleRecordRec = React.useCallback(() => {
     if (!rec) return;
@@ -363,20 +408,19 @@ export default function ListView() {
   }, [rec]);
 
   return (
+    <>
+      <GlobalBar
+        active="list"
+        players={players}
+        expansion={expansion}
+        onSelect={onGlobalSelect}
+        lang={lang}
+        onLang={setLangPersist}
+      />
     <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 14, maxWidth: 1100 }}>
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <div style={{ fontWeight: 700, fontSize: 16 }}>{t.title}</div>
         <div style={{ fontSize: 11, opacity: 0.6 }}>{t.note}</div>
-        <div style={{ display: "flex", gap: 6, alignItems: "center", marginLeft: "auto", fontSize: 12 }}>
-          <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
-            <input type="radio" name="listLang" checked={lang === "en"} onChange={() => setLangPersist("en")} />
-            EN
-          </label>
-          <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
-            <input type="radio" name="listLang" checked={lang === "ja"} onChange={() => setLangPersist("ja")} />
-            日本語
-          </label>
-        </div>
       </div>
 
       {/* Shared pair (?h=&t=&s=) */}
@@ -466,8 +510,9 @@ export default function ListView() {
               style={{ maxWidth: 260 }}
             >
               <option value="">{t.pairNoMap}</option>
-              {pinnedMaps.map((c) => (
+              {selectableMaps.map((c) => (
                 <option key={c.id} value={c.id}>
+                  {c.pinned ? "📌 " : ""}
                   {templateMeta(templateIdBySearchKey[c.searchKey] ?? "", t)} / {Math.round(Number(c.score))} /{" "}
                   {String(c.placementHash ?? "").slice(0, 8)}
                 </option>
@@ -497,7 +542,7 @@ export default function ListView() {
         </div>
         {rec && recSettings
           ? (() => {
-              const selected = pinnedMaps.find((c) => c.id === pairMapId) ?? null;
+              const selected = selectableMaps.find((c) => c.id === pairMapId) ?? null;
               const tid = selected ? (templateIdBySearchKey[selected.searchKey] ?? null) : null;
               const sToken = encodeSetupToken(rec.input);
               const pairPath =
@@ -740,5 +785,6 @@ export default function ListView() {
         )}
       </section>
     </div>
+    </>
   );
 }

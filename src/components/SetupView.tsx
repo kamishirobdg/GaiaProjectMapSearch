@@ -20,11 +20,13 @@ import {
   type SavedSetup,
 } from "@/lib/setupHistory";
 import { copyText, decodeSetupToken, setupShareUrl } from "@/lib/setupShare";
+import GlobalBar from "@/components/GlobalBar";
 import {
   readSharedExpansion,
   readSharedPlayers,
   writeSharedExpansion,
   writeSharedPlayers,
+  type Expansion,
 } from "@/lib/sharedSettings";
 import { SETUP_CATALOG } from "@/gaia/setup/data";
 import {
@@ -499,21 +501,7 @@ export default function SetupView() {
   // holding the defaults) clobbers the stored values before the second pass
   // re-reads them, resetting the user's remembered settings. (Seen live as the
   // Setup tab forgetting the Map tab's players/expansion.)
-  const changePlayers = React.useCallback((n: number) => {
-    setPlayers(n);
-    writeSharedPlayers(n);
-  }, []);
-  const changeMode = React.useCallback((m: SetupMode) => {
-    setMode(m);
-    writeSharedExpansion(m);
-    if (m === "lostFleet") {
-      setPlayers((p) => {
-        const np = Math.max(2, p); // LF is 2..4 players
-        writeSharedPlayers(np);
-        return np;
-      });
-    }
-  }, []);
+  // 人数/拡張(基本版/LF)の変更は共通バー onGlobalSelect が担当（下部で定義）。
   const changeExtFace = React.useCallback((v: ExtFaceMode) => {
     setExtFaceMode(v);
     lsSet(LS.extFace, v);
@@ -647,24 +635,33 @@ export default function SetupView() {
 
   const t = UI[lang];
 
+  // 共通バーからの人数/拡張選択（LFは2人以上へクランプ）。共有localStorageへ書込。
+  const onGlobalSelect = React.useCallback((p: number, e: Expansion) => {
+    const m: SetupMode = e === "lostFleet" ? "lostFleet" : "base";
+    const np = m === "lostFleet" ? Math.max(2, p) : p;
+    setMode(m);
+    setPlayers(np);
+    writeSharedExpansion(m);
+    writeSharedPlayers(np);
+  }, []);
+
   const tileCell = (id: string, tag?: string, full?: boolean) => (
     <TileCellView key={id + (tag ?? "")} id={id} tag={tag} lang={lang} lf={lf} full={full} />
   );
 
   return (
+    <>
+      <GlobalBar
+        active="setup"
+        players={players}
+        expansion={lf ? "lostFleet" : "base"}
+        onSelect={onGlobalSelect}
+        lang={lang}
+        onLang={setLangPersist}
+      />
     <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 14, maxWidth: 1100 }}>
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <div style={{ fontWeight: 700, fontSize: 16 }}>{t.title}</div>
-        <div style={{ display: "flex", gap: 6, alignItems: "center", marginLeft: "auto", fontSize: 12 }}>
-          <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
-            <input type="radio" name="setupLang" checked={lang === "en"} onChange={() => setLangPersist("en")} />
-            EN
-          </label>
-          <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
-            <input type="radio" name="setupLang" checked={lang === "ja"} onChange={() => setLangPersist("ja")} />
-            日本語
-          </label>
-        </div>
       </div>
 
       <div style={{ fontSize: 12, color: "#b26b00", background: "#fff8ec", border: "1px solid #f0dcae", borderRadius: 8, padding: "6px 10px" }}>
@@ -672,16 +669,7 @@ export default function SetupView() {
       </div>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>
-          <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
-            <input type="radio" name="setupMode" checked={!lf} onChange={() => changeMode("base")} />
-            <span>{t.modeBase}</span>
-          </label>
-          <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
-            <input type="radio" name="setupMode" checked={lf} onChange={() => changeMode("lostFleet")} />
-            <span>{t.modeLF}</span>
-          </label>
-        </div>
+        {/* 人数・拡張(基本版/LF)・言語は共通バー（GlobalBar）へ移動 */}
         <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <span>{t.seed}</span>
           <input value={seed} onChange={(e) => setSeed(e.target.value)} style={{ width: 140, padding: "4px 6px" }} />
@@ -692,16 +680,6 @@ export default function SetupView() {
         <button onClick={handleRecordCurrent} style={{ padding: "4px 10px", fontSize: 12 }}>
           {t.recordCurrent}
         </button>
-        <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          <span>{t.players}</span>
-          <select value={players} onChange={(e) => changePlayers(Number(e.target.value))}>
-            {(lf ? [2, 3, 4] : [1, 2, 3, 4]).map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
         {lf ? (
           <>
             <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
@@ -1059,5 +1037,6 @@ export default function SetupView() {
         })()}
       </section>
     </div>
+    </>
   );
 }

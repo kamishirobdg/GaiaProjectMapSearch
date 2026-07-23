@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { MapBoardViewer, type PlacementItem as ViewerPlacementItem } from "@/components/MapBoardViewer";
-import TabNav from "@/components/TabNav";
+import GlobalBar from "@/components/GlobalBar";
 import {
   readSharedExpansion,
   readSharedPlayers,
@@ -2253,57 +2253,21 @@ const handleDeleteUsed = React.useCallback(
     `}</style>
 
     <div style={{ width: "100%", height: isNarrow ? "auto" : "100dvh", display: "flex", flexDirection: "column", overflow: isNarrow ? "visible" : "hidden", minHeight: isNarrow ? "100dvh" : 0 }}>
+      {/* 共通バー（タブ・人数・拡張・言語を全タブ共通の固定位置に） */}
+      <GlobalBar
+        active="map"
+        players={players}
+        expansion={expansion}
+        onSelect={applySharedSelection}
+        lang={lang}
+        onLang={setLang}
+      />
+
       {/* --- header --- */}
       <div style={{ padding: 12, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <TabNav active="map" />
         <div style={{ fontWeight: 700 }}>{t("title")}</div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ fontSize: 12, opacity: 0.8 }}>{t("language")}</div>
-          <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
-            <input type="radio" name="lang" checked={lang === "en"} onChange={() => setLang("en")} />
-            <span>{t("en")}</span>
-          </label>
-          <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
-            <input type="radio" name="lang" checked={lang === "ja"} onChange={() => setLang("ja")} />
-            <span>{t("ja")}</span>
-          </label>
-        </div>
-
-        <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          <span>{t("players")}</span>
-          <select value={players} onChange={(e) => applySharedSelection(Number(e.target.value), expansion)}>
-            {[1, 2, 3, 4].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>
-          <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
-            <input
-              type="radio"
-              name="mapExpansion"
-              checked={expansion === "base"}
-              onChange={() => applySharedSelection(players, "base")}
-            />
-            <span>{t("expansionBase")}</span>
-          </label>
-          <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
-            <input
-              type="radio"
-              name="mapExpansion"
-              checked={expansion === "lostFleet"}
-              onChange={() => applySharedSelection(players, "lostFleet")}
-            />
-            <span>{t("expansionLF")}</span>
-          </label>
-        </div>
-
-        {/* 配置方法セレクタは表示設定行へ移動（基本版/LF切替でボタン位置が
-            ズレないようにするユーザー要望 2026-07-24）。検索キーに影響する
-            設定だが、位置は表示設定行の右端に置く */}
+        {/* 人数/拡張は共通バー（GlobalBar）へ移動。配置方法は表示設定行の右端。 */}
 
         <button onClick={handleGenerateRank} disabled={busy || !mapSupported} style={{ padding: "6px 10px", fontWeight: 700 }}>
           {busy ? t("searching") : t("runSearch")}
