@@ -11,8 +11,8 @@
 //   - round scoring:  9 entries = 8 x1 + 1 x2 -> physical pool of 10; 6 drawn
 //                     (the overview's "7種類" groups by icon; trading station
 //                     and gaia-mine each exist as separate 3 VP / 4 VP tiles;
-//                     the federation +5 VP pair is confirmed by the p2 photo:
-//                     the doubles row shows TS / gaia-mine / federation)
+//                     the academy/PI +5 VP pair is confirmed by the p2 photo:
+//                     the doubles row shows TS / gaia-mine / academy-PI)
 //   - final scoring:  6 tiles, 2 drawn
 //   - federations:    6 types x3 copies (Gleens-only tile excluded); 1 drawn
 //                     for Terraforming research level 5 (rulebook p4)
@@ -170,13 +170,13 @@ export const SETUP_CATALOG: SetupCatalog = {
   ],
 
   // --- 9 round scoring entries (physical pool of 10; 6 drawn) ---------------
-  // ✅ VERIFIED against rulebook appendix V (2026-07-22). The component
-  // overview's "7種類" groups tiles by icon; two of the x2 icon-types (trading
-  // station, gaia mine) exist as DIFFERENT tiles worth 3 or 4 VP ("タイルに
-  // よります"), so the catalog models 9 distinct entries. The remaining pair —
-  // federation +5 VP as two identical copies — follows by elimination
-  // (appendix lists every other tile with a single fixed value);
-  // ⚠️ that x2 assignment still awaits the user's confirmation.
+  // ✅ VERIFIED against rulebook appendix V + the p2 component photo read at
+  // high resolution (2026-07-25). The overview's "7種類" groups tiles by icon;
+  // the bottom x2 row is trading station / gaia mine / ACADEMY-PI, so the
+  // identical pair is academy/PI +5 VP (RS04, copies: 2) — TS and gaia mine
+  // are the 3/4 VP variants, and federation +5 VP (RS08) is a single, sitting
+  // in the photo's top x1 row. (An earlier elimination guess had federation as
+  // the pair; the photo overrules it. ⚠️ physical double-check welcome.)
   roundScoring: [
     {
       id: "RS01",
@@ -205,6 +205,7 @@ export const SETUP_CATALOG: SetupCatalog = {
       labelEn: "Academy/PI built: +5 VP",
       effect: "学院か惑星首府を建設したとき、追加の5勝利点を得る。",
       effectEn: "When you build an academy or planetary institute, gain 5 additional VP.",
+      copies: 2,
     },
     {
       id: "RS05",
@@ -233,7 +234,6 @@ export const SETUP_CATALOG: SetupCatalog = {
       labelEn: "Federation tile gained: +5 VP",
       effect: "同盟タイルを得たとき（入手手段は問わない）、追加の5勝利点を得る。",
       effectEn: "When you gain a federation tile (by any means), gain 5 additional VP.",
-      copies: 2,
     },
     {
       id: "RS09",

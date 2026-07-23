@@ -9,7 +9,7 @@
 //   - advanced tech: shuffle the 15 tiles; first 6 go one-per-track (rest unseen).
 //   - boosters: shuffle the 10; first (players + 3) are available, rest unused.
 //   - round scoring: shuffle the physical 10-tile pool (9 entries, the
-//     federation tile twice via `copies`); first 6 become rounds 1..6 in
+//     academy/PI tile twice via `copies`); first 6 become rounds 1..6 in
 //     order, so the x2 tile can score in up to two rounds.
 //   - final scoring: shuffle the 6 tiles; first 2 are used.
 //   - federation Lv5: 1 random tile goes to Terraforming research level 5.

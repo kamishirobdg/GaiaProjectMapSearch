@@ -32,7 +32,7 @@ describe("catalog structure", () => {
 
   it("round scoring entries form a physical pool of 10 (8 x1 + 1 x2)", () => {
     // Appendix V: trading station and gaia-mine exist as separate 3/4 VP
-    // tiles (distinct ids), so only the federation +5 VP tile is duplicated.
+    // tiles (distinct ids), so only the academy/PI +5 VP tile is duplicated.
     const total = Object.values(SCORING_COPIES).reduce((a, b) => a + b, 0);
     expect(total).toBe(10);
     expect(Object.values(SCORING_COPIES).filter((c) => c === 1)).toHaveLength(8);
@@ -336,7 +336,7 @@ const GOLDEN_SNAP_0001 = {
     available: ["RB07", "RB10", "RB03", "RB05", "RB09", "RB08", "RB02"],
     unused: ["RB04", "RB01", "RB06"],
   },
-  roundScoring: ["RS01", "RS03", "RS04", "RS08", "RS05", "RS02"],
+  roundScoring: ["RS01", "RS03", "RS04", "RS08", "RS04", "RS02"],
   finalScoring: ["FS05", "FS06"],
   federationLv5: "FED8PT",
 };
@@ -359,7 +359,7 @@ const GOLDEN_LF_SNAP_0001 = {
     available: ["RB12", "RB11", "RB10", "RB09", "RB04", "RB14", "RB07"],
     unused: ["RB13", "RB01", "RB06", "RB03", "RB05", "RB02", "RB08"],
   },
-  roundScoring: ["RS01", "RS05", "RS06", "RS02", "RS11", "RS09"],
+  roundScoring: ["RS01", "RS04", "RS05", "RS02", "RS11", "RS09"],
   finalScoring: ["FS04", "FS06"],
   federationLv5: "FED8PT",
   mode: "lostFleet",
