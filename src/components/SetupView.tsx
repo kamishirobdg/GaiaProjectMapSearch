@@ -47,7 +47,11 @@ const UI = {
     extFaceRandom: "ランダム",
     econFaceModeLabel: "経済調整タイル",
     econFaceRandom: "ランダム",
-    avoidTitle: "配置回避（上級技術）",
+    ruleOff: "設定なし",
+    ruleAvoid: "回避",
+    ruleForce: "強制",
+    fedTag: "同盟タイル",
+    econTag: "調整タイル",
     econFaceA: "面A（Lv3:鉱1クレ2パワー3／Lv4:鉱2クレ2パワー2）",
     econFaceB: "面B（Lv3:鉱1クレ3VP1／Lv4:鉱2クレ4VP1）",
     scoringExtension: "得点ボード拡張部",
@@ -89,7 +93,11 @@ const UI = {
     extFaceRandom: "Random",
     econFaceModeLabel: "Econ adjustment tile",
     econFaceRandom: "Random",
-    avoidTitle: "Placement avoidance (advanced tech)",
+    ruleOff: "Off",
+    ruleAvoid: "Avoid",
+    ruleForce: "Force",
+    fedTag: "Federation",
+    econTag: "Econ tile",
     econFaceA: "Face A (L3: 1o 2c 3pw / L4: 2o 2c 2pw)",
     econFaceB: "Face B (L3: 1o 3c 1VP / L4: 2o 4c 1VP)",
     scoringExtension: "Scoring board extension",
@@ -173,8 +181,66 @@ function TileImage({ imageId, alt }: { imageId: string; alt: string }) {
       src={`/setup-tiles/${imageId}.png`}
       alt={alt}
       onError={() => setFailed(true)}
-      style={{ maxWidth: 110, maxHeight: 110, width: "auto", height: "auto", display: "block", borderRadius: 4 }}
+      // alignSelf: flex 親の align-items:stretch で横に引き伸ばされて縦横比が
+      // 崩れるのを防ぐ（経済調整タイル 212x349 が横長に見えていた不具合）
+      style={{ maxWidth: 110, maxHeight: 110, width: "auto", height: "auto", display: "block", borderRadius: 4, alignSelf: "flex-start" }}
     />
+  );
+}
+
+/**
+ * タイル1枚のセル。説明文・IDは表示せず（ユーザー要望 2026-07-23）、
+ * title 属性のネイティブツールチップでホバー時のみ「ID ラベル — 効果」を出す。
+ * 画像が無い ID のみテキストにフォールバックする。
+ */
+function TileCellView({
+  id,
+  tag,
+  lang,
+  lf,
+}: {
+  id: string;
+  tag?: string;
+  lang: Lang;
+  lf: boolean;
+}) {
+  const [failed, setFailed] = React.useState(false);
+  const label = labelOf(id, lang);
+  const effect = effectOf(id, lang);
+  const tooltip = `${id} ${label}${effect ? ` — ${effect}` : ""}`;
+  const imageId = lf && LF_REVISED_IDS.has(id) ? `${id}_LF` : id;
+  return (
+    <div
+      title={tooltip}
+      style={{
+        border: "1px solid #ddd",
+        borderRadius: 8,
+        padding: "6px 8px",
+        fontSize: 12,
+        background: "#fafafa",
+        minWidth: 0,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-start",
+        gap: 4,
+      }}
+    >
+      {tag ? <span style={{ fontSize: 11, opacity: 0.6 }}>{tag}</span> : null}
+      {!failed ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={`/setup-tiles/${imageId}.png`}
+          alt={id}
+          onError={() => setFailed(true)}
+          style={{ maxWidth: 110, maxHeight: 110, width: "auto", height: "auto", display: "block", borderRadius: 4, alignSelf: "flex-start" }}
+        />
+      ) : (
+        <div>
+          <span style={{ fontFamily: "monospace", opacity: 0.7, marginRight: 6 }}>{id}</span>
+          {label}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -212,7 +278,8 @@ export default function SetupView() {
   const [mode, setMode] = React.useState<SetupMode>("base");
   const [extFaceMode, setExtFaceMode] = React.useState<ExtFaceMode>("auto");
   const [econFaceMode, setEconFaceMode] = React.useState<EconFaceMode>("random");
-  const [avoid, setAvoid] = React.useState<string[]>([]);
+  // ルールごとの三択（off はキー省略）。旧形式（回避IDの配列）は読み込み時に移行。
+  const [ruleModes, setRuleModes] = React.useState<Record<string, "avoid" | "force">>({});
 
   // Restore language (shared with the map page) and remembered settings.
   React.useEffect(() => {
@@ -230,8 +297,20 @@ export default function SetupView() {
     try {
       const raw = lsGet(LS.avoid);
       if (raw) {
-        const arr = JSON.parse(raw);
-        if (Array.isArray(arr)) setAvoid(arr.filter((x) => AVOID_RULES.some((r) => r.id === x)));
+        const parsed = JSON.parse(raw);
+        const valid = (x: unknown) => AVOID_RULES.some((r) => r.id === x);
+        if (Array.isArray(parsed)) {
+          // 旧形式（チェックボックス時代の回避ID配列）→ avoid として移行
+          const modes: Record<string, "avoid" | "force"> = {};
+          for (const id of parsed) if (valid(id)) modes[String(id)] = "avoid";
+          setRuleModes(modes);
+        } else if (parsed && typeof parsed === "object") {
+          const modes: Record<string, "avoid" | "force"> = {};
+          for (const [id, m] of Object.entries(parsed)) {
+            if (valid(id) && (m === "avoid" || m === "force")) modes[id] = m;
+          }
+          setRuleModes(modes);
+        }
       }
     } catch {
       // ignore
@@ -267,9 +346,14 @@ export default function SetupView() {
     setEconFaceMode(v);
     lsSet(LS.econFace, v);
   }, []);
-  const changeAvoid = React.useCallback((next: string[]) => {
-    setAvoid(next);
-    lsSet(LS.avoid, JSON.stringify(next));
+  const changeRuleMode = React.useCallback((ruleId: string, mode: "off" | "avoid" | "force") => {
+    setRuleModes((prev) => {
+      const next = { ...prev };
+      if (mode === "off") delete next[ruleId];
+      else next[ruleId] = mode;
+      lsSet(LS.avoid, JSON.stringify(next));
+      return next;
+    });
   }, []);
 
   const setLangPersist = React.useCallback((l: Lang) => {
@@ -279,45 +363,24 @@ export default function SetupView() {
 
   const lf = mode === "lostFleet";
 
-  const result = React.useMemo(
-    () =>
-      buildSetupFromSeed({
-        seed,
-        playerCount: players,
-        ...(lf ? { mode: "lostFleet" as const } : {}),
-        ...(lf && extFaceMode !== "auto" ? { extensionFaceMode: extFaceMode } : {}),
-        ...(lf && econFaceMode !== "random" ? { econFaceMode } : {}),
-        ...(avoid.length > 0 ? { avoidRules: avoid } : {}),
-      }),
-    [seed, players, lf, extFaceMode, econFaceMode, avoid]
-  );
+  const result = React.useMemo(() => {
+    const avoidIds = Object.entries(ruleModes).filter(([, m]) => m === "avoid").map(([id]) => id);
+    const forceIds = Object.entries(ruleModes).filter(([, m]) => m === "force").map(([id]) => id);
+    return buildSetupFromSeed({
+      seed,
+      playerCount: players,
+      ...(lf ? { mode: "lostFleet" as const } : {}),
+      ...(lf && extFaceMode !== "auto" ? { extensionFaceMode: extFaceMode } : {}),
+      ...(lf && econFaceMode !== "random" ? { econFaceMode } : {}),
+      ...(avoidIds.length > 0 ? { avoidRules: avoidIds } : {}),
+      ...(forceIds.length > 0 ? { forceRules: forceIds } : {}),
+    });
+  }, [seed, players, lf, extFaceMode, econFaceMode, ruleModes]);
 
   const t = UI[lang];
 
   const tileCell = (id: string, tag?: string) => (
-    <div
-      key={id + (tag ?? "")}
-      title={effectOf(id, lang) ?? ""}
-      style={{
-        border: "1px solid #ddd",
-        borderRadius: 8,
-        padding: "6px 8px",
-        fontSize: 12,
-        background: "#fafafa",
-        minWidth: 0,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "flex-start",
-        gap: 4,
-      }}
-    >
-      <TileImage imageId={lf && LF_REVISED_IDS.has(id) ? `${id}_LF` : id} alt={id} />
-      <div>
-        {tag ? <span style={{ opacity: 0.6, marginRight: 6 }}>{tag}</span> : null}
-        <span style={{ fontFamily: "monospace", opacity: 0.7, marginRight: 6 }}>{id}</span>
-        {labelOf(id, lang)}
-      </div>
-    </div>
+    <TileCellView key={id + (tag ?? "")} id={id} tag={tag} lang={lang} lf={lf} />
   );
 
   return (
@@ -391,36 +454,74 @@ export default function SetupView() {
         ) : null}
       </div>
 
-      {/* Placement avoidance (advanced tech; applies in both modes) */}
-      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", fontSize: 12 }}>
-        <span style={{ fontWeight: 700 }}>{t.avoidTitle}</span>
-        {AVOID_RULES.map((rule) => (
-          <label key={rule.id} style={{ display: "flex", gap: 4, alignItems: "center" }}>
-            <input
-              type="checkbox"
-              checked={avoid.includes(rule.id)}
-              onChange={(e) =>
-                changeAvoid(e.target.checked ? [...avoid, rule.id] : avoid.filter((x) => x !== rule.id))
-              }
-            />
-            <span>{lang === "ja" ? rule.label : rule.labelEn}</span>
-          </label>
-        ))}
-      </div>
-
-      {/* Research tracks: advanced (top) + standard (bottom) per track */}
+      {/* Research tracks: per column, top to bottom —
+          [track-top tile (terra=federation Lv5 / eco=econ adjustment face)]
+          -> advanced -> standard -> placement rule pulldown (off/avoid/force) */}
       <section>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.researchTracks}</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
-          {RESEARCH_TRACK_IDS.map((track) => (
-            <div key={track} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.8 }}>
-                {lang === "ja" ? TRACK_LABEL[track].ja : TRACK_LABEL[track].en}
+          {RESEARCH_TRACK_IDS.map((track) => {
+            const rule = AVOID_RULES.find((r) => r.track === track);
+            const showEconTop = track === "eco" && lf && result.mode === "lostFleet";
+            const econFaceLabel =
+              showEconTop && result.mode === "lostFleet"
+                ? result.econTileFace === "A"
+                  ? t.faceA
+                  : t.faceB
+                : "";
+            return (
+              <div key={track} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.8 }}>
+                  {lang === "ja" ? TRACK_LABEL[track].ja : TRACK_LABEL[track].en}
+                </div>
+                {/* トラック上部スロット（列の縦位置を揃えるため全列で高さを確保） */}
+                <div style={{ minHeight: 148, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+                  {track === "terra" ? tileCell(result.federationLv5, t.fedTag) : null}
+                  {showEconTop && result.mode === "lostFleet" ? (
+                    <div
+                      title={result.econTileFace === "A" ? t.econFaceA : t.econFaceB}
+                      style={{
+                        border: "1px solid #ddd",
+                        borderRadius: 8,
+                        padding: "6px 8px",
+                        fontSize: 12,
+                        background: "#fafafa",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "flex-start",
+                        gap: 4,
+                      }}
+                    >
+                      <span style={{ fontSize: 11, opacity: 0.6 }}>{`${t.econTag} ${econFaceLabel}`}</span>
+                      <TileImage
+                        imageId={result.econTileFace === "A" ? "FACE_ECON_A" : "FACE_ECON_B"}
+                        alt="econ face"
+                      />
+                    </div>
+                  ) : null}
+                </div>
+                {tileCell(result.advancedTech.byTrack[track], t.advanced)}
+                {tileCell(result.standardTech.byTrack[track], t.standard)}
+                {rule ? (
+                  <div
+                    title={lang === "ja" ? rule.label : rule.labelEn}
+                    style={{ fontSize: 11, display: "flex", flexDirection: "column", gap: 2 }}
+                  >
+                    <span style={{ opacity: 0.7 }}>{lang === "ja" ? rule.shortLabel : rule.shortLabelEn}</span>
+                    <select
+                      value={ruleModes[rule.id] ?? "off"}
+                      onChange={(e) => changeRuleMode(rule.id, e.target.value as "off" | "avoid" | "force")}
+                      style={{ maxWidth: 150 }}
+                    >
+                      <option value="off">{t.ruleOff}</option>
+                      <option value="avoid">{t.ruleAvoid}</option>
+                      <option value="force">{t.ruleForce}</option>
+                    </select>
+                  </div>
+                ) : null}
               </div>
-              {tileCell(result.advancedTech.byTrack[track], t.advanced)}
-              {tileCell(result.standardTech.byTrack[track], t.standard)}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -440,13 +541,7 @@ export default function SetupView() {
         </div>
       </section>
 
-      {/* Federation for Terraforming level 5, 1 of 6 types */}
-      <section>
-        <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.federationLv5}</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8, maxWidth: 320 }}>
-          {tileCell(result.federationLv5)}
-        </div>
-      </section>
+      {/* Federation Lv5 は研究トラック（テラフォーミング列上部）へ移動済み */}
 
       {/* Final scoring, 2 of 6 */}
       <section>
@@ -470,10 +565,7 @@ export default function SetupView() {
                 />
                 {t.extensionFaceLabel}: {result.extensionFace === "vp25" ? t.faceVp25 : t.faceShuttle}
               </div>
-              <div style={{ fontSize: 12, opacity: 0.85, display: "flex", flexDirection: "column", gap: 4 }}>
-                <TileImage imageId={result.econTileFace === "A" ? "FACE_ECON_A" : "FACE_ECON_B"} alt="econ face" />
-                {t.econFace}: {result.econTileFace === "A" ? t.econFaceA : t.econFaceB}
-              </div>
+              {/* 経済調整タイルは研究トラック（経済列上部）へ移動済み */}
             </div>
           </section>
 

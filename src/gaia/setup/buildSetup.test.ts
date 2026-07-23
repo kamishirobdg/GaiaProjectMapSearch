@@ -303,6 +303,73 @@ describe("avoid rules", () => {
   });
 });
 
+describe("force rules", () => {
+  const ALL_RULE_IDS = AVOID_RULES.map((r) => r.id);
+
+  it("puts one of the rule's tiles on its track across many seeds (base + LF)", () => {
+    for (let i = 0; i < 60; i++) {
+      for (const mode of [{}, LF] as const) {
+        const r = buildSetupFromSeed({ seed: `force-${i}`, playerCount: 4, ...mode, forceRules: ALL_RULE_IDS });
+        for (const rule of AVOID_RULES) {
+          expect(rule.tileIds).toContain(r.advancedTech.byTrack[rule.track]);
+        }
+      }
+    }
+  });
+
+  it("changes nothing when already satisfied, and swaps only the involved slots otherwise", () => {
+    let checkedSwap = false;
+    for (let i = 0; i < 60; i++) {
+      const seed = `fswap-${i}`;
+      const plain = buildSetupFromSeed({ seed, playerCount: 4 });
+      const ruled = buildSetupFromSeed({ seed, playerCount: 4, forceRules: ["gaia-no-gaiaVp"] });
+      if (plain.advancedTech.byTrack.gaia === "AT08") {
+        expect(ruled).toEqual(plain); // untouched roll
+      } else {
+        checkedSwap = true;
+        expect(ruled.advancedTech.byTrack.gaia).toBe("AT08");
+        // AT08 が他トラックに出ていた場合のみクロス入替（元gaiaタイルがそこへ移る）。
+        // それ以外（スペアから入替）は他トラック不変。
+        for (const track of RESEARCH_TRACK_IDS) {
+          if (track === "gaia") continue;
+          if (plain.advancedTech.byTrack[track] === "AT08") {
+            expect(ruled.advancedTech.byTrack[track]).toBe(plain.advancedTech.byTrack.gaia);
+          } else {
+            expect(ruled.advancedTech.byTrack[track]).toBe(plain.advancedTech.byTrack[track]);
+          }
+        }
+        expect(ruled.standardTech).toEqual(plain.standardTech);
+        expect(ruled.boosters).toEqual(plain.boosters);
+        expect(ruled.roundScoring).toEqual(plain.roundScoring);
+      }
+    }
+    expect(checkedSwap).toBe(true);
+  });
+
+  it("force + avoid on different tracks work together (avoid cleans up displaced tiles)", () => {
+    for (let i = 0; i < 60; i++) {
+      for (const mode of [{}, LF] as const) {
+        const r = buildSetupFromSeed({
+          seed: `mix-${i}`,
+          playerCount: 4,
+          ...mode,
+          forceRules: ["gaia-no-gaiaVp"],
+          avoidRules: ["terra-no-fedPass", "eco-no-resourceAction"],
+        });
+        expect(r.advancedTech.byTrack.gaia).toBe("AT08");
+        expect(r.advancedTech.byTrack.terra).not.toBe("AT01");
+        expect(["AT03", "AT07", "AT13"]).not.toContain(r.advancedTech.byTrack.eco);
+      }
+    }
+  });
+
+  it("empty forceRules is identical to omitting it", () => {
+    const a = buildSetupFromSeed({ seed: "snap-0001", playerCount: 4 });
+    const b = buildSetupFromSeed({ seed: "snap-0001", playerCount: 4, forceRules: [] });
+    expect(b).toEqual(a);
+  });
+});
+
 describe("player count", () => {
   it("scales available boosters as playerCount + 3", () => {
     for (const [players, expected] of [[1, 4], [2, 5], [3, 6], [4, 7]] as const) {

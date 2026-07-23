@@ -60,6 +60,13 @@ export type BuildSetupInput = {
    * research tracks. Omitted/empty = no constraint (output unchanged).
    */
   avoidRules?: string[];
+  /**
+   * Ids from AVOID_RULES used in the opposite direction: FORCE one of the
+   * rule's tiles onto its track (2026-07-23 三択プルダウン「強制」).
+   * Omitted/empty = no constraint. The same rule id must not appear in both
+   * avoidRules and forceRules (UI enforces one mode per track).
+   */
+  forceRules?: string[];
 };
 
 /**
@@ -74,6 +81,9 @@ export type AvoidRule = {
   tileIds: string[];
   label: string;
   labelEn: string;
+  /** 三択プルダウン用の短い対象名（「〜を置かない」を含まない中立表現） */
+  shortLabel: string;
+  shortLabelEn: string;
 };
 
 export const AVOID_RULES: AvoidRule[] = [
@@ -83,6 +93,8 @@ export const AVOID_RULES: AvoidRule[] = [
     tileIds: ["AT08"],
     label: "ガイア計画に「取得時：ガイア惑星×2VP」を置かない",
     labelEn: "Keep \"2 VP per Gaia planet\" off the Gaia Project track",
+    shortLabel: "ガイア惑星×2VP",
+    shortLabelEn: "2 VP per Gaia planet",
   },
   {
     id: "terra-no-fedPass",
@@ -90,6 +102,8 @@ export const AVOID_RULES: AvoidRule[] = [
     tileIds: ["AT01"],
     label: "惑星改造に「パス時：同盟タイル×3VP」を置かない",
     labelEn: "Keep \"Pass: 3 VP per federation\" off the Terraforming track",
+    shortLabel: "パス時：同盟×3VP",
+    shortLabelEn: "Pass: 3 VP per federation",
   },
   {
     id: "eco-no-resourceAction",
@@ -97,6 +111,8 @@ export const AVOID_RULES: AvoidRule[] = [
     tileIds: ["AT03", "AT07", "AT13"],
     label: "経済に資源獲得アクション（QIC1+クレ5／鉱石3／知識3）を置かない",
     labelEn: "Keep resource-action tiles (1 QIC+5c / 3 ore / 3 knowledge) off the Economy track",
+    shortLabel: "資源獲得アクション",
+    shortLabelEn: "Resource-action tiles",
   },
 ];
 
@@ -142,6 +158,9 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
     ? [...idsOf(SETUP_CATALOG.advancedTech), ...idsOf(SETUP_CATALOG.advancedTechLF)]
     : idsOf(SETUP_CATALOG.advancedTech);
   const adv = shuffleSeeded(advPool, streamFor(seed, "advancedTech"));
+  // 強制→回避の順に適用（強制のクロススロット入替で押し出されたタイルが
+  // 回避対象トラックに来ても、後続の回避スワップで除去されるようにする）
+  applyForceRules(adv, input.forceRules, lf);
   applyAvoidRules(adv, input.avoidRules, lf);
   const advByTrack = assignByTrack(adv.slice(0, RESEARCH_TRACK_IDS.length));
   const advExtension = adv[RESEARCH_TRACK_IDS.length]; // used only in LF mode
@@ -254,6 +273,39 @@ function applyAvoidRules(adv: string[], ruleIds: string[] | undefined, lf: boole
     if (banned.size === 0 || !banned.has(adv[i])) return;
     for (let j = spareStart; j < adv.length; j++) {
       if (!banned.has(adv[j])) {
+        [adv[i], adv[j]] = [adv[j], adv[i]];
+        return;
+      }
+    }
+  });
+}
+
+/**
+ * Enforce FORCE rules on the shuffled advanced-tech array (in place):
+ * each rule's track must end up holding one of the rule's tiles.
+ * - まずスペア（回避と同じ範囲）から探して入替（他トラック不変）。
+ * - スペアに無い場合のみ、対象タイルを持つ他スロット（トラック/LF拡張枠）と
+ *   クロス入替する（対象タイルはプール全量が adv に含まれるため必ず充足する）。
+ *   押し出されたタイルが回避対象トラックへ移る可能性は、この後に走る
+ *   applyAvoidRules が解消する。
+ */
+function applyForceRules(adv: string[], ruleIds: string[] | undefined, lf: boolean): void {
+  if (!ruleIds || ruleIds.length === 0) return;
+  const active = AVOID_RULES.filter((r) => ruleIds.includes(r.id));
+  if (active.length === 0) return;
+
+  const spareStart = RESEARCH_TRACK_IDS.length + (lf ? 1 : 0);
+  RESEARCH_TRACK_IDS.forEach((track, i) => {
+    const wanted = new Set(active.filter((r) => r.track === track).flatMap((r) => r.tileIds));
+    if (wanted.size === 0 || wanted.has(adv[i])) return;
+    for (let j = spareStart; j < adv.length; j++) {
+      if (wanted.has(adv[j])) {
+        [adv[i], adv[j]] = [adv[j], adv[i]];
+        return;
+      }
+    }
+    for (let j = 0; j < spareStart; j++) {
+      if (j !== i && wanted.has(adv[j])) {
         [adv[i], adv[j]] = [adv[j], adv[i]];
         return;
       }
