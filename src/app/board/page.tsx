@@ -82,7 +82,7 @@ const UI_TEXT = {
     wGaiaD3: "Gaia dist 3",
     wGaiaTip:
       "For each coloured planet, every gaia planet at distance 1/2/3 adds this weight to that colour (all gaia summed).",
-    wClusterSize: "Cluster size",
+    wClusterSize: "Cluster weight",
     wClusterTip:
       "For each connected planet cluster of size n>=2 (gaia/transdim join clusters), every colour in it gains +n x this weight (once per colour).",
     seed: "Seed",
@@ -265,7 +265,7 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     wGaiaD3: "ガイア距離3",
     wGaiaTip:
       "各色惑星から距離1/2/3にあるガイア惑星1個ごとに、この重みをその色に加点（全ガイア合算）。",
-    wClusterSize: "星系サイズ",
+    wClusterSize: "星系評価",
     wClusterTip:
       "サイズn≧2の連結惑星クラスタ（ガイア/次元横断も連結に含む）に含まれる各色に +n×この重み を加点（色ごとに1回）。",
     seed: "シード",
@@ -2050,7 +2050,10 @@ return (savedProfiles ?? []).filter((p) => {
 
   const [scoutRadius, setScoutRadius] = React.useState(3);
   const wImbalance = 100;
-  const [imbalanceMetric, setImbalanceMetric] = React.useState<"std" | "range">("std");
+  // 指標(std/range)のドロップダウンは廃止し std 固定（ユーザー確定 2026-07-23。
+  // キーには従来どおり imbalanceMetric:"std" が入り続けるので既存保存結果は不変。
+  // range で保存済みの条件は適用しても std のまま=別バケットになる点は許容済み）。
+  const imbalanceMetric = "std" as const;
 
   // 基本版専用の新評価軸（2026-07-23）: ガイア近接（距離1/2/3の全ガイア合算）と
   // 星系クラスタ（サイズn>=2の各色に+n×重み）。LFではキー・実行時とも
@@ -2299,7 +2302,7 @@ try {
   setScoutCoreAttribBest(mode === "best");
 } catch {}
 
-        if (params?.soft?.imbalanceMetric != null) setImbalanceMetric(String(params.soft.imbalanceMetric) as any);
+        // imbalanceMetric は std 固定（ドロップダウン廃止に伴い復元もしない）
         // 基本版の新評価軸（フィールド不在の旧/LFプロファイルは既定値のまま）
         if (params?.soft?.wGaiaDist1 != null) setWGaiaD1(Number(params.soft.wGaiaDist1) || 0);
         if (params?.soft?.wGaiaDist2 != null) setWGaiaD2(Number(params.soft.wGaiaDist2) || 0);
@@ -2330,7 +2333,7 @@ try {
 
       if (closePanel) setShowSavedConditions(false);
     },
-    [setWhich, setOuterSameColorMax, setCenterMode, setMaxConnectedPlanets, setH5IncludeScouts, setWOuter, setWTouch, setWScout, setWScoutCore, setScoutRadius, setImbalanceMetric, setWColorPref, setPrefBLACK, setPrefBLUE, setPrefBROWN, setPrefORANGE, setPrefRED, setPrefWHITE, setPrefYELLOW, setKeepTop, setShowSavedConditions]
+    [setWhich, setOuterSameColorMax, setCenterMode, setMaxConnectedPlanets, setH5IncludeScouts, setWOuter, setWTouch, setWScout, setWScoutCore, setScoutRadius, setWColorPref, setPrefBLACK, setPrefBLUE, setPrefBROWN, setPrefORANGE, setPrefRED, setPrefWHITE, setPrefYELLOW, setKeepTop, setShowSavedConditions]
   );
 
 
@@ -4486,13 +4489,6 @@ const handleDeleteUsed = React.useCallback(
 
               </label>
               ) : null}
-              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <span>{t("metric")}</span>
-                <select value={imbalanceMetric} onChange={(e) => setImbalanceMetric(e.target.value as any)}>
-                  <option value="std">{lang === "ja" ? "std（標準偏差）" : "std"}</option>
-                  <option value="range">{lang === "ja" ? "range（最大−最小）" : "range"}</option>
-                </select>
-              </label>
 
               <div style={{ width: "100%", borderTop: "1px dashed #ddd", marginTop: 8, paddingTop: 8 }}>
                 <div style={{ fontWeight: 700, fontSize: 12 }}>{t("colorPreference")}</div>
