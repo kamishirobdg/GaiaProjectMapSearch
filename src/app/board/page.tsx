@@ -13,6 +13,7 @@ import {
 
 import { TEMPLATE_3P_LOSTFLEET } from "@/gaia/data/templates/3p_lostFleet";
 import { TEMPLATE_4P_LOSTFLEET } from "@/gaia/data/templates/4p_lostFleet";
+import { TEMPLATE_BASE_34P } from "@/gaia/data/templates/base_34p";
 
 import { BASE_SECTORS } from "@/gaia/sectorTiles_base";
 import { EXPANSION_MIDDLE, EXPANSION_LITTLE, EXPANSION_SCOUT } from "@/gaia/sectorTiles_lostfleet";
@@ -70,6 +71,12 @@ const UI_TEXT = {
     players: "Players",
     expansionBase: "Base game",
     expansionLF: "Lost Fleet",
+    placementMethod: "Placement",
+    method1: "Method 1 (swap outer 05-10 only)",
+    method2: "Method 2 (also swap inner 01-04)",
+    method3: "Method 3 (swap all 10 tiles)",
+    placementMethodTip:
+      "Rulebook p.19: Method 1 keeps sectors 01-04 in their first-game positions and shuffles 05-10; Method 2 also shuffles 01-04 within the inner slots; Method 3 shuffles all 10 tiles. All tiles rotate freely in every method.",
     seed: "Seed",
     randomSeed: "Random Seed",
     seedMode: "Seed mode",
@@ -239,6 +246,12 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     players: "人数",
     expansionBase: "基本版",
     expansionLF: "Lost Fleet",
+    placementMethod: "配置方法",
+    method1: "方法1（外側05-10のみ入替）",
+    method2: "方法2（内側01-04も入替）",
+    method3: "方法3（全10タイル入替）",
+    placementMethodTip:
+      "ルールブックp19: 方法1は01-04を最初のゲームの位置に固定し05-10を入替。方法2は01-04も内側4スロット内で入替。方法3は全10タイルを入替。回転はどの方法でも全タイル自由。",
     seed: "シード",
     randomSeed: "ランダムシード",
     seedMode: "シード指定",
@@ -1272,15 +1285,30 @@ React.useEffect(() => {
 
   const t = React.useCallback((k: UiKey) => UI_TEXT[lang][k], [lang]);
 
-  const [which, setWhich] = React.useState<"3p" | "4p">("3p");
-  const template = React.useMemo(() => (which === "3p" ? TEMPLATE_3P_LOSTFLEET : TEMPLATE_4P_LOSTFLEET), [which]);
+  const [which, setWhich] = React.useState<"3p" | "4p" | "base">("3p");
+  const template = React.useMemo(
+    () => (which === "base" ? TEMPLATE_BASE_34P : which === "3p" ? TEMPLATE_3P_LOSTFLEET : TEMPLATE_4P_LOSTFLEET),
+    [which]
+  );
+  const isBase = which === "base";
 
   // --- Shared players/expansion (same localStorage keys as the Setup tab) ---
-  // The map template is DERIVED from them: only Lost Fleet 3p/4p exists today,
-  // so any other combination leaves the search disabled (no message, per spec).
+  // The map template is DERIVED from them: Lost Fleet 3p/4p and base 3/4p
+  // (base_34p is shared by 3 and 4 players), so any other combination leaves
+  // the search disabled (no message, per spec).
   const [players, setPlayers] = React.useState<number>(3);
   const [expansion, setExpansion] = React.useState<Expansion>("lostFleet");
-  const mapSupported = expansion === "lostFleet" && (players === 3 || players === 4);
+  const mapSupported = (players === 3 || players === 4);
+
+  // 基本版の配置方法（p19 方法1/2/3）。検索キーに含める（base のみ）。
+  // localStorage 書込みはハンドラのみ（復元effectとの併用禁止ルール）。
+  const [placementMethod, setPlacementMethod] = React.useState<1 | 2 | 3>(1);
+  React.useEffect(() => {
+    try {
+      const v = Number(localStorage.getItem("gaia_search_placement_method"));
+      if (v === 1 || v === 2 || v === 3) setPlacementMethod(v);
+    } catch {}
+  }, []);
 
   const resetResultsForTemplateChange = React.useCallback(() => {
     setSelectedPlacement(null);
@@ -1295,10 +1323,18 @@ React.useEffect(() => {
   const applySharedSelection = React.useCallback(
     (p: number, e: Expansion) => {
       setPlayers(p);
-      setExpansion(e);
+      setExpansion((prevExp) => {
+        if (prevExp !== e) {
+          // 拡張切替時は H2 既定値をそのテンプレ向けに再設定
+          // （base は惑星密度が高く cap=1 だとほぼ全棄却。実測は
+          //   scripts/_probe_base34p_rates.ts、既定値=2 はユーザー確定）
+          setOuterSameColorMax(e === "base" ? 2 : 1);
+        }
+        return e;
+      });
       writeSharedPlayers(p);
       writeSharedExpansion(e);
-      const newWhich = e === "lostFleet" && p === 4 ? "4p" : "3p";
+      const newWhich = e === "base" ? "base" : p === 4 ? "4p" : "3p";
       setWhich((prev) => {
         if (prev !== newWhich) resetResultsForTemplateChange();
         return newWhich;
@@ -1316,11 +1352,18 @@ React.useEffect(() => {
     if (e) setExpansion(e);
     const eff = e ?? "lostFleet";
     const pp = p ?? 3;
-    if (eff === "lostFleet" && pp === 4) setWhich("4p");
+    if (eff === "base") {
+      setWhich("base");
+      setOuterSameColorMax(2);
+    } else if (eff === "lostFleet" && pp === 4) setWhich("4p");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const centerModeOptions = React.useMemo(() => {
+    if (which === "base") {
+      // base: H4 は構造的に不要（方法1/2が内側配置を保証、方法3は自由が仕様）。UI非表示。
+      return [{ value: "NONE", label: "None" }] as const;
+    }
     if (which === "4p") {
       return [
         { value: "NONE", label: "None" },
@@ -2162,8 +2205,20 @@ setSelectedSeedLabel(String(found.seed ?? ""));
       if (!hasParams) return;
 
       // Keep the shared players/expansion selection in sync with the profile's
-      // template (all saved profiles are Lost Fleet 3p/4p today).
-      if (tid.startsWith("3p")) {
+      // template (Lost Fleet 3p/4p, or base_34p which is shared by 3/4 players).
+      if (tid === "base_34p") {
+        setWhich("base");
+        setExpansion("base");
+        writeSharedExpansion("base");
+        // base_34p は3・4人共用: 現在の人数が3/4ならそのまま、それ以外は4に補正
+        setPlayers((prev) => {
+          const p = prev === 3 || prev === 4 ? prev : 4;
+          writeSharedPlayers(p);
+          return p;
+        });
+        const pm = Number((params as any)?.placementMethod);
+        if (pm === 1 || pm === 2 || pm === 3) setPlacementMethod(pm as 1 | 2 | 3);
+      } else if (tid.startsWith("3p")) {
         setWhich("3p");
         setPlayers(3);
         setExpansion("lostFleet");
@@ -2258,54 +2313,75 @@ try {
     }
   }, []);
 
+  // Condition-identity objects (searchKey / baseKey).
+  // base_34p: scout系・centerMode はフィールドごと省略（スプレッド構築の既存ルール踏襲、
+  // LFキーはバイト不変）。placementMethod は base のみトップレベルに含める。
+  const keyHard = React.useMemo(() => {
+    return isBase
+      ? {
+          minSameColorDist: 3,
+          outerSameColorMax,
+          ...(maxConnectedPlanets > 0 ? { maxConnectedPlanets } : {}),
+        }
+      : {
+          minSameColorDist: 3,
+          outerSameColorMax,
+          centerMode,
+          ...(maxConnectedPlanets > 0 ? { maxConnectedPlanets } : {}),
+          ...(maxConnectedPlanets > 0 && h5IncludeScouts ? { h5IncludeScouts: true } : {}),
+        };
+  }, [isBase, outerSameColorMax, centerMode, maxConnectedPlanets, h5IncludeScouts]);
+
+  const keySoft = React.useMemo(() => {
+    return isBase
+      ? {
+          wOuter,
+          wTouch,
+          wImbalance,
+          imbalanceMetric,
+          wColorPref,
+          colorPrefByType: { BLACK: prefBLACK, BLUE: prefBLUE, BROWN: prefBROWN, ORANGE: prefORANGE, RED: prefRED, WHITE: prefWHITE, YELLOW: prefYELLOW },
+        }
+      : {
+          wOuter,
+          wTouch,
+          wScout,
+          wScoutCore,
+          scoutRadius,
+          wImbalance,
+          imbalanceMetric,
+          wScoutByScoutKey: { twilight: wScoutS1, eclipse: wScoutS2, rebellion: wScoutS3, tfmars: wScoutS4 },
+          wScoutCoreByScoutKey: { twilight: wScoutCoreS1, eclipse: wScoutCoreS2, rebellion: wScoutCoreS3, tfmars: wScoutCoreS4 },
+          scoutCoreAttributionMode: scoutCoreAttribBest ? "best" : "all",
+          wColorPref,
+          colorPrefByType: { BLACK: prefBLACK, BLUE: prefBLUE, BROWN: prefBROWN, ORANGE: prefORANGE, RED: prefRED, WHITE: prefWHITE, YELLOW: prefYELLOW },
+        };
+  }, [isBase, wOuter, wTouch, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wColorPref, prefBLACK, prefBLUE, prefBROWN, prefORANGE, prefRED, prefWHITE, prefYELLOW]);
+
   const searchKeyParams = React.useMemo(() => {
     return {
       templateId,
+      ...(isBase ? { placementMethod } : {}),
       algoVersion: SEARCH_ALGO_VERSION,
       evalVersion: EVAL_VERSION,
       // H5: only include maxConnectedPlanets when > 0, so the default (0=disabled)
       // produces a byte-identical stableStringify to the pre-H5 hard object
       // (keeps existing saved-result search keys stable).
-      hard: { minSameColorDist: 3, outerSameColorMax, centerMode, ...(maxConnectedPlanets > 0 ? { maxConnectedPlanets } : {}), ...(maxConnectedPlanets > 0 && h5IncludeScouts ? { h5IncludeScouts: true } : {}) },
-      soft: {
-  wOuter,
-  wTouch,
-  wScout,
-  wScoutCore,
-  scoutRadius,
-  wImbalance,
-  imbalanceMetric,
-  wScoutByScoutKey: { twilight: wScoutS1, eclipse: wScoutS2, rebellion: wScoutS3, tfmars: wScoutS4 },
-  wScoutCoreByScoutKey: { twilight: wScoutCoreS1, eclipse: wScoutCoreS2, rebellion: wScoutCoreS3, tfmars: wScoutCoreS4 },
-  scoutCoreAttributionMode: scoutCoreAttribBest ? "best" : "all",
-  wColorPref,
-  colorPrefByType: { BLACK: prefBLACK, BLUE: prefBLUE, BROWN: prefBROWN, ORANGE: prefORANGE, RED: prefRED, WHITE: prefWHITE, YELLOW: prefYELLOW },
-},
+      hard: keyHard,
+      soft: keySoft,
 
       // Note: trials/TopK/seedStart are execution settings, not part of the condition key.
     };
-  }, [templateId, outerSameColorMax, centerMode, maxConnectedPlanets, h5IncludeScouts, wOuter, wTouch, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wColorPref, prefBLACK, prefBLUE, prefBROWN, prefORANGE, prefRED, prefWHITE, prefYELLOW]);
+  }, [templateId, isBase, placementMethod, keyHard, keySoft]);
   const baseKeyParams = React.useMemo(() => {
     // Same condition identity excluding version fields. TopK is intentionally excluded per spec.
     return {
       templateId,
-      hard: { minSameColorDist: 3, outerSameColorMax, centerMode, ...(maxConnectedPlanets > 0 ? { maxConnectedPlanets } : {}), ...(maxConnectedPlanets > 0 && h5IncludeScouts ? { h5IncludeScouts: true } : {}) },
-      soft: {
-        wOuter,
-        wTouch,
-        wScout,
-        wScoutCore,
-        scoutRadius,
-        wImbalance,
-        imbalanceMetric,
-        wScoutByScoutKey: { twilight: wScoutS1, eclipse: wScoutS2, rebellion: wScoutS3, tfmars: wScoutS4 },
-        wScoutCoreByScoutKey: { twilight: wScoutCoreS1, eclipse: wScoutCoreS2, rebellion: wScoutCoreS3, tfmars: wScoutCoreS4 },
-        scoutCoreAttributionMode: scoutCoreAttribBest ? "best" : "all",
-        wColorPref,
-        colorPrefByType: { BLACK: prefBLACK, BLUE: prefBLUE, BROWN: prefBROWN, ORANGE: prefORANGE, RED: prefRED, WHITE: prefWHITE, YELLOW: prefYELLOW },
-      },
+      ...(isBase ? { placementMethod } : {}),
+      hard: keyHard,
+      soft: keySoft,
     };
-  }, [templateId, outerSameColorMax, centerMode, maxConnectedPlanets, h5IncludeScouts, wOuter, wTouch, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wColorPref, prefBLACK, prefBLUE, prefBROWN, prefORANGE, prefRED, prefWHITE, prefYELLOW]);
+  }, [templateId, isBase, placementMethod, keyHard, keySoft]);
 
 
 
@@ -2458,12 +2534,16 @@ refreshProfiles();
       if (selectedPlacement && Array.isArray(selectedPlacement) && selectedPlacement.length > 0) {
         return { ok: true as const, placement: selectedPlacement as any[] };
       }
-      const made = makeSearchPlacementFromSeed({ templateId, seed });
+      const made = makeSearchPlacementFromSeed({
+        templateId,
+        seed,
+        ...(isBase ? { placementMethod } : {}),
+      });
       return { ok: true as const, placement: made.placement as any[] };
     } catch (e: any) {
       return { ok: false as const, message: e?.message ? String(e.message) : String(e) };
     }
-  }, [selectedPlacement, templateId, seed]);
+  }, [selectedPlacement, templateId, seed, isBase, placementMethod]);
 
   React.useEffect(() => {
     if (!placementBaseResult.ok) setErrorMsg(placementBaseResult.message);
@@ -2965,7 +3045,16 @@ async function handleGenerateRank() {
       keepTop: capacityActive,
       seedStart,
       yieldEvery: 50,
-      hard: { minSameColorDist: 3, outerSameColorMax, centerMode, ...(maxConnectedPlanets > 0 ? { maxConnectedPlanets } : {}), ...(maxConnectedPlanets > 0 && h5IncludeScouts ? { h5IncludeScouts: true } : {}) },
+      // base_34p: 配置方法を渡す（LFでは省略）。H4/H5探査船は base では常に無効
+      // （キー上はフィールド省略、実行時は明示的に NONE/false を渡す）。
+      ...(isBase ? { placementMethod } : {}),
+      hard: {
+        minSameColorDist: 3,
+        outerSameColorMax,
+        centerMode: isBase ? ("NONE" as const) : centerMode,
+        ...(maxConnectedPlanets > 0 ? { maxConnectedPlanets } : {}),
+        ...(maxConnectedPlanets > 0 && h5IncludeScouts && !isBase ? { h5IncludeScouts: true } : {}),
+      },
       soft: {
         wOuter,
         wTouch,
@@ -3501,6 +3590,31 @@ const handleDeleteUsed = React.useCallback(
             <span>{t("expansionLF")}</span>
           </label>
         </div>
+
+        {isBase ? (
+          <label
+            style={{ display: "flex", gap: 6, alignItems: "center" }}
+            title={t("placementMethodTip")}
+          >
+            <span>{t("placementMethod")}</span>
+            <select
+              value={placementMethod}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                if (v === 1 || v === 2 || v === 3) {
+                  setPlacementMethod(v);
+                  try {
+                    localStorage.setItem("gaia_search_placement_method", String(v));
+                  } catch {}
+                }
+              }}
+            >
+              <option value={1}>{t("method1")}</option>
+              <option value={2}>{t("method2")}</option>
+              <option value={3}>{t("method3")}</option>
+            </select>
+          </label>
+        ) : null}
 
 
         <button onClick={handleGenerateRank} disabled={busy || !mapSupported} style={{ padding: "6px 10px", fontWeight: 700 }}>
@@ -4156,32 +4270,36 @@ const handleDeleteUsed = React.useCallback(
                 />
               </label>
 
-              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <input
-                  type="checkbox"
-                  checked={h5IncludeScouts}
-                  onChange={(e) => setH5IncludeScouts(e.target.checked)}
-                />
-                <span>{t("h5IncludeScouts")}</span>
-              </label>
+              {!isBase ? (
+                <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <input
+                    type="checkbox"
+                    checked={h5IncludeScouts}
+                    onChange={(e) => setH5IncludeScouts(e.target.checked)}
+                  />
+                  <span>{t("h5IncludeScouts")}</span>
+                </label>
+              ) : null}
 
-              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <span>{t("centerMode")}</span>
-                <select
-                  value={centerMode}
-                  onChange={(e) =>
-                    setCenterMode(
-                      e.target.value as "NONE" | "CENTER_7_9" | "CENTER_8" | "CENTER_7_8"
-                    )
-                  }
-                >
-                  {centerModeOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {!isBase ? (
+                <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <span>{t("centerMode")}</span>
+                  <select
+                    value={centerMode}
+                    onChange={(e) =>
+                      setCenterMode(
+                        e.target.value as "NONE" | "CENTER_7_9" | "CENTER_8" | "CENTER_7_8"
+                      )
+                    }
+                  >
+                    {centerModeOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
             </div>
 
             <details style={{ marginTop: 10 }}>
@@ -4201,6 +4319,7 @@ const handleDeleteUsed = React.useCallback(
                 <input type="number" value={wTouch} min={0} max={10} onChange={(e) => setWTouch(Number(e.target.value) || 0)} style={{ width: 60 }} />
               </label>
 
+              {!isBase ? (
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 <span>{t("radius")}</span>
                 <input
@@ -4255,6 +4374,7 @@ const handleDeleteUsed = React.useCallback(
 
 
               </label>
+              ) : null}
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 <span>{t("metric")}</span>
                 <select value={imbalanceMetric} onChange={(e) => setImbalanceMetric(e.target.value as any)}>
