@@ -3,6 +3,13 @@
 import * as React from "react";
 import { MapBoardViewer, type PlacementItem as ViewerPlacementItem } from "@/components/MapBoardViewer";
 import TabNav from "@/components/TabNav";
+import {
+  readSharedExpansion,
+  readSharedPlayers,
+  writeSharedExpansion,
+  writeSharedPlayers,
+  type Expansion,
+} from "@/lib/sharedSettings";
 
 import { TEMPLATE_3P_LOSTFLEET } from "@/gaia/data/templates/3p_lostFleet";
 import { TEMPLATE_4P_LOSTFLEET } from "@/gaia/data/templates/4p_lostFleet";
@@ -60,6 +67,9 @@ const UI_TEXT = {
     en: "EN",
 
     template: "Template",
+    players: "Players",
+    expansionBase: "Base game",
+    expansionLF: "Lost Fleet",
     seed: "Seed",
     randomSeed: "Random Seed",
     seedMode: "Seed mode",
@@ -226,6 +236,9 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     en: "EN",
 
     template: "テンプレート",
+    players: "人数",
+    expansionBase: "基本版",
+    expansionLF: "Lost Fleet",
     seed: "シード",
     randomSeed: "ランダムシード",
     seedMode: "シード指定",
@@ -1262,6 +1275,51 @@ React.useEffect(() => {
   const [which, setWhich] = React.useState<"3p" | "4p">("3p");
   const template = React.useMemo(() => (which === "3p" ? TEMPLATE_3P_LOSTFLEET : TEMPLATE_4P_LOSTFLEET), [which]);
 
+  // --- Shared players/expansion (same localStorage keys as the Setup tab) ---
+  // The map template is DERIVED from them: only Lost Fleet 3p/4p exists today,
+  // so any other combination leaves the search disabled (no message, per spec).
+  const [players, setPlayers] = React.useState<number>(3);
+  const [expansion, setExpansion] = React.useState<Expansion>("lostFleet");
+  const mapSupported = expansion === "lostFleet" && (players === 3 || players === 4);
+
+  const resetResultsForTemplateChange = React.useCallback(() => {
+    setSelectedPlacement(null);
+    setSelectedSeedLabel(null);
+    setActiveResults([]);
+    setUsedResults([]);
+    setProgressCurrent(0);
+    setProgressBest(null);
+    setHardFailBy({});
+  }, []);
+
+  const applySharedSelection = React.useCallback(
+    (p: number, e: Expansion) => {
+      setPlayers(p);
+      setExpansion(e);
+      writeSharedPlayers(p);
+      writeSharedExpansion(e);
+      const newWhich = e === "lostFleet" && p === 4 ? "4p" : "3p";
+      setWhich((prev) => {
+        if (prev !== newWhich) resetResultsForTemplateChange();
+        return newWhich;
+      });
+    },
+    [resetResultsForTemplateChange]
+  );
+
+  // Restore the shared selection on mount (results are still empty here, so
+  // no reset side effects matter).
+  React.useEffect(() => {
+    const p = readSharedPlayers();
+    const e = readSharedExpansion();
+    if (p) setPlayers(p);
+    if (e) setExpansion(e);
+    const eff = e ?? "lostFleet";
+    const pp = p ?? 3;
+    if (eff === "lostFleet" && pp === 4) setWhich("4p");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const centerModeOptions = React.useMemo(() => {
     if (which === "4p") {
       return [
@@ -2103,8 +2161,21 @@ setSelectedSeedLabel(String(found.seed ?? ""));
 
       if (!hasParams) return;
 
-      if (tid.startsWith("3p")) setWhich("3p");
-      else if (tid.startsWith("4p")) setWhich("4p");
+      // Keep the shared players/expansion selection in sync with the profile's
+      // template (all saved profiles are Lost Fleet 3p/4p today).
+      if (tid.startsWith("3p")) {
+        setWhich("3p");
+        setPlayers(3);
+        setExpansion("lostFleet");
+        writeSharedPlayers(3);
+        writeSharedExpansion("lostFleet");
+      } else if (tid.startsWith("4p")) {
+        setWhich("4p");
+        setPlayers(4);
+        setExpansion("lostFleet");
+        writeSharedPlayers(4);
+        writeSharedExpansion("lostFleet");
+      }
 
       try {
         if (params?.hard?.outerSameColorMax != null) setOuterSameColorMax(Number(params.hard.outerSameColorMax));
@@ -3401,33 +3472,44 @@ const handleDeleteUsed = React.useCallback(
         </div>
 
         <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          <span>{t("template")}</span>
-          <select
-            value={which}
-            onChange={(e) => {
-              setSelectedPlacement(null);
-              setSelectedSeedLabel(null);
-              setActiveResults([]);
-              setUsedResults([]);
-              setProgressCurrent(0);
-              setProgressBest(null);
-              setHardFailBy({});
-              setWhich(e.target.value as any);
-            }}
-          >
-            <option value="3p">3p Lost Fleet</option>
-            <option value="4p">4p Lost Fleet</option>
+          <span>{t("players")}</span>
+          <select value={players} onChange={(e) => applySharedSelection(Number(e.target.value), expansion)}>
+            {[1, 2, 3, 4].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
           </select>
         </label>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>
+          <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            <input
+              type="radio"
+              name="mapExpansion"
+              checked={expansion === "base"}
+              onChange={() => applySharedSelection(players, "base")}
+            />
+            <span>{t("expansionBase")}</span>
+          </label>
+          <label style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            <input
+              type="radio"
+              name="mapExpansion"
+              checked={expansion === "lostFleet"}
+              onChange={() => applySharedSelection(players, "lostFleet")}
+            />
+            <span>{t("expansionLF")}</span>
+          </label>
+        </div>
 
 
-        <button onClick={handleGenerateRank} disabled={busy} style={{ padding: "6px 10px", fontWeight: 700 }}>
+        <button onClick={handleGenerateRank} disabled={busy || !mapSupported} style={{ padding: "6px 10px", fontWeight: 700 }}>
           {busy ? t("searching") : t("runSearch")}
         </button>
 
         <button
           onClick={handleToggleContinuous}
-          disabled={busy && !continuousMode}
+          disabled={(busy && !continuousMode) || !mapSupported}
           style={{ padding: "6px 10px", fontWeight: 700 }}
         >
           {continuousMode ? t("stopSearch") : t("continuous")}

@@ -3,6 +3,12 @@
 
 import React from "react";
 import { buildSetupFromSeed, AVOID_RULES } from "@/gaia/setup/buildSetup";
+import {
+  readSharedExpansion,
+  readSharedPlayers,
+  writeSharedExpansion,
+  writeSharedPlayers,
+} from "@/lib/sharedSettings";
 import { SETUP_CATALOG } from "@/gaia/setup/data";
 import { RESEARCH_TRACK_IDS, type ResearchTrackId, type SetupMode, type ShipId } from "@/gaia/setup/types";
 
@@ -175,11 +181,10 @@ function TileImage({ imageId, alt }: { imageId: string; alt: string }) {
 type ExtFaceMode = "auto" | "random" | "vp25" | "shuttle";
 type EconFaceMode = "random" | "A" | "B";
 
-// Settings persisted across visits (the seed is deliberately NOT remembered,
-// same as the map page's fixed-seed field).
+// Setup-only settings persisted across visits (the seed is deliberately NOT
+// remembered, same as the map page's fixed-seed field). Players and expansion
+// live in the shared keys (src/lib/sharedSettings.ts) used by both tabs.
 const LS = {
-  mode: "gaia_setup_mode",
-  players: "gaia_setup_players",
   extFace: "gaia_setup_extface",
   econFace: "gaia_setup_econface",
   avoid: "gaia_setup_avoid",
@@ -214,10 +219,10 @@ export default function SetupView() {
     const v = lsGet("gaia_ui_lang");
     if (v === "ja" || v === "en") setLang(v);
 
-    const m = lsGet(LS.mode);
-    if (m === "base" || m === "lostFleet") setMode(m);
-    const p = Number(lsGet(LS.players));
-    if (p >= 1 && p <= 4) setPlayers(m === "lostFleet" ? Math.max(2, p) : p);
+    const m = readSharedExpansion();
+    if (m) setMode(m);
+    const p = readSharedPlayers();
+    if (p) setPlayers(m === "lostFleet" ? Math.max(2, p) : p);
     const ef = lsGet(LS.extFace);
     if (ef === "auto" || ef === "random" || ef === "vp25" || ef === "shuttle") setExtFaceMode(ef);
     const ec = lsGet(LS.econFace);
@@ -233,9 +238,9 @@ export default function SetupView() {
     }
   }, []);
 
-  // Remember settings (not the seed).
-  React.useEffect(() => lsSet(LS.mode, mode), [mode]);
-  React.useEffect(() => lsSet(LS.players, String(players)), [players]);
+  // Remember settings (not the seed). Players/expansion go to the shared keys.
+  React.useEffect(() => writeSharedExpansion(mode), [mode]);
+  React.useEffect(() => writeSharedPlayers(players), [players]);
   React.useEffect(() => lsSet(LS.extFace, extFaceMode), [extFaceMode]);
   React.useEffect(() => lsSet(LS.econFace, econFaceMode), [econFaceMode]);
   React.useEffect(() => lsSet(LS.avoid, JSON.stringify(avoid)), [avoid]);
