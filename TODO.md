@@ -5,9 +5,8 @@
 
 ## 未着手
 
-- **③ 一覧タブ**
-  ピン留め方式＋共有リンク対応。タイル素材は uiqoo 取得済み分で揃う
-  （マップ素材 map_tile_01..10 / map_deep_* / map_interspace_* も uiqoo に存在、未DL・名前判明済み）。
+（なし。マップ素材 map_tile_01..10 / map_deep_* / map_interspace_* は uiqoo に存在、
+未DL・名前判明済み — 画像ベースのミニ盤面が欲しくなったら利用可）
 
 ## 随時反映
 

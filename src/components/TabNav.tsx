@@ -9,11 +9,12 @@ import Link from "next/link";
  * so the heavy map page and the setup page stay independent; a future combined
  * "Total" tab slots in here as another route.
  */
-export type TabKey = "map" | "setup";
+export type TabKey = "map" | "setup" | "list";
 
 const TABS: Array<{ key: TabKey; href: string; label: string }> = [
   { key: "map", href: "/board", label: "Map" },
   { key: "setup", href: "/setup", label: "Setup" },
+  { key: "list", href: "/list", label: "List" },
 ];
 
 export default function TabNav({ active }: { active: TabKey }) {
