@@ -548,7 +548,7 @@ export default function ListView() {
                 <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-start" }}>
                   <div style={{ width: 300, display: "flex", flexDirection: "column", gap: 6 }}>
                     {template ? (
-                      <div style={{ pointerEvents: "none" }}>
+                      <div style={{ pointerEvents: "none", overflow: "hidden", borderRadius: 8 }}>
                         <MapBoardViewer
                           template={template as any}
                           placement={pairShared.placement as PlacementItem[]}
@@ -561,13 +561,14 @@ export default function ListView() {
                           zoom={1.0}
                           showToolbar={false}
                           disablePan
+                          bgColor="transparent"
                         />
                       </div>
                     ) : (
                       <div style={{ fontSize: 12, opacity: 0.6 }}>{t.unknownTemplate}</div>
                     )}
                     {bToken ? (
-                      <Link href={`/board?h=${bToken}`} style={{ fontSize: 12 }}>
+                      <Link href={`/board?h=${bToken}${pairShared.templateId ? `&t=${pairShared.templateId}` : ""}`} style={{ fontSize: 12 }}>
                         {t.openBoard}
                       </Link>
                     ) : null}
@@ -699,7 +700,7 @@ export default function ListView() {
                       <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-start", marginTop: 2 }}>
                         {template && selected ? (
                           <div style={{ width: 300, display: "flex", flexDirection: "column", gap: 4 }}>
-                            <div style={{ pointerEvents: "none" }}>
+                            <div style={{ pointerEvents: "none", overflow: "hidden", borderRadius: 8 }}>
                               <MapBoardViewer
                                 template={template as any}
                                 placement={(selected.placement ?? []) as PlacementItem[]}
@@ -712,6 +713,7 @@ export default function ListView() {
                                 zoom={1.0}
                                 showToolbar={false}
                                 disablePan
+                                bgColor="transparent"
                               />
                             </div>
                           </div>
@@ -726,7 +728,7 @@ export default function ListView() {
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {selected && tid ? (
                       <Link
-                        href={`/board?h=${mapToken(selected)}`}
+                        href={`/board?h=${mapToken(selected)}${tid ? `&t=${tid}` : ""}`}
                         style={{
                           fontSize: 11,
                           padding: "2px 8px",
@@ -815,7 +817,7 @@ export default function ListView() {
                   </div>
                   <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-start" }}>
                     {template ? (
-                      <div style={{ width: 300, pointerEvents: "none" }}>
+                      <div style={{ width: 300, pointerEvents: "none", overflow: "hidden", borderRadius: 8 }}>
                         <MapBoardViewer
                           template={template as any}
                           placement={p.mapPlacement}
@@ -828,6 +830,7 @@ export default function ListView() {
                           zoom={1.0}
                           showToolbar={false}
                           disablePan
+                          bgColor="transparent"
                         />
                       </div>
                     ) : null}
@@ -835,7 +838,7 @@ export default function ListView() {
                   </div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {bToken ? (
-                      <Link href={`/board?h=${bToken}`} style={linkStyle}>
+                      <Link href={`/board?h=${bToken}${p.tid ? `&t=${p.tid}` : ""}`} style={linkStyle}>
                         {t.openMap}
                       </Link>
                     ) : null}
@@ -863,7 +866,7 @@ export default function ListView() {
               const tid = templateIdBySearchKey[c.searchKey] ?? "";
               const template = TEMPLATE_BY_ID[tid];
               const token = mapToken(c);
-              const href = token ? `/board?h=${token}` : "/board";
+              const href = token ? `/board?h=${token}${tid ? `&t=${tid}` : ""}` : "/board";
               const key = `map:${c.id}`;
               return (
                 <div
@@ -882,7 +885,7 @@ export default function ListView() {
                   {template ? (
                     <Link href={href} title={t.open} style={{ display: "block", pointerEvents: "auto" }}>
                       {/* ミニ描画: 操作不要のため pan 無効・ツールバー非表示 */}
-                      <div style={{ width: "100%", pointerEvents: "none" }}>
+                      <div style={{ width: "100%", pointerEvents: "none", overflow: "hidden", borderRadius: 8 }}>
                         <MapBoardViewer
                           template={template as any}
                           placement={(c.placement ?? []) as PlacementItem[]}
@@ -895,6 +898,7 @@ export default function ListView() {
                           zoom={1.0}
                           showToolbar={false}
                           disablePan
+                          bgColor="transparent"
                         />
                       </div>
                     </Link>

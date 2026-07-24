@@ -1120,6 +1120,15 @@ setSelectedSeedLabel(String(found.seed ?? ""));
         pendingHashRef.current = h.trim();
         hashAppliedRef.current = false;
 
+        // ?t=<templateId> があれば人数/拡張ラジオをそのマップに合わせる（#9-a）。
+        // これが無いと現在の拡張ラジオのテンプレで placement を描画してしまい、
+        // List の「Mapで開く」でマップが正しく出なかった。
+        const t = url.searchParams.get("t");
+        if (t && t.trim()) {
+          applyTemplateFromId(t.trim());
+          url.searchParams.delete("t");
+        }
+
         // Drop ?h= from the address bar once captured: the board is restored
         // from pendingHashRef, and a shareable link is regenerated on demand
         // via the Share URL button, so normal browsing stays on a clean URL.
@@ -1181,6 +1190,37 @@ setSelectedSeedLabel(String(found.seed ?? ""));
   const capacityActive = React.useMemo(() => Math.max(keepTop, 100), [keepTop]);
 
   const didAutoApplyRef = React.useRef(false);
+
+  // テンプレIDから人数/拡張/which を合わせる（?h= 共有リンクの ?t= 用、#9-a）。
+  // applySavedProfile と同じ対応表。base は 3/4 共用なので現人数を保持。
+  const applyTemplateFromId = React.useCallback((tid: string) => {
+    const id = String(tid ?? "");
+    if (id === "base_34p" || id.startsWith("base")) {
+      setWhich("base");
+      setExpansion("base");
+      writeSharedExpansion("base");
+      setPlayers((prev) => {
+        const p = prev === 3 || prev === 4 ? prev : 4;
+        writeSharedPlayers(p);
+        return p;
+      });
+      setOuterSameColorMax(2);
+    } else if (id.startsWith("3p")) {
+      setWhich("3p");
+      setPlayers(3);
+      setExpansion("lostFleet");
+      writeSharedPlayers(3);
+      writeSharedExpansion("lostFleet");
+      setOuterSameColorMax(1);
+    } else if (id.startsWith("4p")) {
+      setWhich("4p");
+      setPlayers(4);
+      setExpansion("lostFleet");
+      writeSharedPlayers(4);
+      writeSharedExpansion("lostFleet");
+      setOuterSameColorMax(1);
+    }
+  }, []);
 
   const applySavedProfile = React.useCallback(
     (p: PersistedProfile, opts?: { closePanel?: boolean }) => {
@@ -2815,15 +2855,15 @@ const handleDeleteUsed = React.useCallback(
         {/* Right: Results */}
         <div
           style={{
-            width: isNarrow ? "100%" : 1080,
+            width: isNarrow ? "100%" : 880,
             flexGrow: isNarrow ? 1 : 0,
-            // Allow this pane to shrink below its preferred 1080px once the map's
-            // 480px floor (above) needs the room; it still won't go below 640px,
-            // which keeps the results readable. 480 + 640 = 1120 <= the 1180px
-            // narrow-layout breakpoint, so wide layouts never fight for space.
+            // Narrowed 1080->880 so the map gets more room (2026-07-25 要望)。
+            // 詳細表は overflowX:auto の内包スクロールなのでペインを広げず、
+            // 880-24(padding) = 856 >= 詳細表の最大幅 760 で通常は横スクロール無し。
+            // 480px の地図フロアが要求すれば minWidth 600 まで縮む。
             flexShrink: isNarrow ? 0 : 1,
-            flexBasis: isNarrow ? "auto" : 1080,
-            minWidth: isNarrow ? undefined : 640,
+            flexBasis: isNarrow ? "auto" : 880,
+            minWidth: isNarrow ? undefined : 600,
             minHeight: 0,
             borderRight: isNarrow ? "none" : "1px solid #ddd",
             borderTop: isNarrow ? "1px solid #ddd" : "none",

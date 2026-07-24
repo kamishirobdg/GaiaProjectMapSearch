@@ -212,6 +212,10 @@ export function MapBoardViewer(props: {
   // セル座標 "q,r"（extractForEval と同じグローバル軸座標）。color はリング色、
   // label はホバー時に出す帰属テキスト。
   markers?: Array<{ key: string; color: string; label?: string }>;
+
+  // SVG背景色（既定 white）。ミニ盤面では "transparent" にして、-30°回転で
+  // はみ出す白い矩形が隣接要素へ被らないようにする（List プレビュー）。
+  bgColor?: string;
 }) {
   const {
     template,
@@ -242,6 +246,7 @@ export function MapBoardViewer(props: {
     initialUiZoom = 1,
     svgPixelSize,
     markers = [],
+    bgColor = "white",
   } = props;
 
   // ホバー中マーカーのポップアップ（帰属テキスト）。SVGはCSS回転が絡むため
@@ -691,7 +696,7 @@ export function MapBoardViewer(props: {
           height={exportSvgSize ? exportSvgSize.height : "100%"}
           viewBox={viewBox}
           preserveAspectRatio="xMinYMin meet"
-          style={{ background: "white", border: "none", borderRadius: 8, touchAction: "none",
+          style={{ background: bgColor, border: "none", borderRadius: 8, touchAction: "none",
     transform: `rotate(${viewAngleDeg}deg)`,
     transformOrigin: "50% 50%", }}
 //          onWheel={onWheel}
