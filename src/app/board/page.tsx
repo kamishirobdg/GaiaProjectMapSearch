@@ -149,6 +149,19 @@ function sumCounts(obj: any): number {
 
 import { runSearchOffThread } from "./searchRunner";
 
+// 評価指数の各セル（薄い背景色のテーブル状。ユーザー要望 2026-07-24）。
+const EVAL_CELL: React.CSSProperties = {
+  display: "flex",
+  gap: 6,
+  alignItems: "center",
+  justifyContent: "space-between",
+  background: "#f2f5f9",
+  border: "1px solid rgba(0,0,0,0.12)",
+  borderRadius: 6,
+  padding: "4px 8px",
+  fontSize: 12,
+};
+
 /** ---------- main ---------- */
 
 export default function BoardPage() {
@@ -251,6 +264,7 @@ React.useEffect(() => {
   const resetResultsForTemplateChange = React.useCallback(() => {
     setSelectedPlacement(null);
     setSelectedSeedLabel(null);
+    lastShownResultRef.current = null; // テンプレ切替では表示フォールバックもクリア
     setActiveResults([]);
     setUsedResults([]);
     setProgressCurrent(0);
@@ -1640,6 +1654,17 @@ const derivedResult = React.useMemo(() => {
 
 const currentResult = matchedResult ?? derivedResult;
 
+// 表示用の「直近に表示した結果」を保持する。検索条件（soft重みなど）を変えると
+// searchKey が変わり結果バケットが空に載せ替わって currentResult が null になり、
+// 「表示Map詳細」の色別内訳テーブルが消えてパネルが縮む（＝下の評価指数がズレる）。
+// これを防ぐため、null のときは直近結果を表示にフォールバックする（次の検索や
+// テンプレ切替で更新／クリア）。ユーザー要望 2026-07-24。
+const lastShownResultRef = React.useRef<RankedResult | null>(null);
+React.useEffect(() => {
+  if (currentResult) lastShownResultRef.current = currentResult as RankedResult;
+}, [currentResult]);
+const displayResult = currentResult ?? lastShownResultRef.current;
+
 //  function sumCounts(obj: any): number {
 //    if (!obj || typeof obj !== "object") return 0;
 //    return Object.values(obj).reduce((a: number, x: any) => a + (Number(x) || 0), 0);
@@ -2104,11 +2129,11 @@ const handleDeleteUsed = React.useCallback(
 );
 
 
-  const curHashFromResult = getPlacementHashForResult(currentResult);
-  const curImb = getImbalanceSummary(currentResult);
-  const curOT = getOuterTouchCounts(currentResult);
-  const curScout = getScoutSummary(currentResult);
-  const curScoutCore = getScoutCoreSummary(currentResult);
+  const curHashFromResult = getPlacementHashForResult(displayResult);
+  const curImb = getImbalanceSummary(displayResult);
+  const curOT = getOuterTouchCounts(displayResult);
+  const curScout = getScoutSummary(displayResult);
+  const curScoutCore = getScoutCoreSummary(displayResult);
 
   // 用語集（英→日＋意味）
   // 用語集データは各ラベルの Hint ツールチップ（uiText の tip* キー）へ移行済み。
@@ -2792,30 +2817,31 @@ const handleDeleteUsed = React.useCallback(
                 </div>
 
                 <div style={{ marginTop: 8, fontSize: 12 }}>
-                  <Hint label={t("score")} tip={t("tipScore")} />={currentResult ? Number(currentResult.score ?? 0 ).toFixed(3) : "-"}
+                  <Hint label={t("score")} tip={t("tipScore")} />={displayResult ? Number(displayResult.score ?? 0 ).toFixed(3) : "-"}
                 </div>
 
                 <div style={{ marginTop: 4, fontSize: 12 }}>
-                  <Hint label={`${t("imbalance")} (${curImb.metric})`} tip={t("tipScore")} />={currentResult ? (Math.round(curImb.value * 1000) / 1000).toFixed(3) : "-"}
+                  <Hint label={`${t("imbalance")} (${curImb.metric})`} tip={t("tipScore")} />={displayResult ? (Math.round(curImb.value * 1000) / 1000).toFixed(3) : "-"}
                 </div>
 
                 <div style={{ marginTop: 4, fontSize: 12, opacity: 0.9 }}>
-                  <Hint label={t("outerCnt")} tip={t("tipOuterCnt")} />={currentResult ? curOT.outerSum : "-"} / <Hint label={t("touchCnt")} tip={t("tipTouchCnt")} />={currentResult ? curOT.touchSum : "-"}
+                  <Hint label={t("outerCnt")} tip={t("tipOuterCnt")} />={displayResult ? curOT.outerSum : "-"} / <Hint label={t("touchCnt")} tip={t("tipTouchCnt")} />={displayResult ? curOT.touchSum : "-"}
                 </div>
 
                 <div style={{ marginTop: 4, fontSize: 12, opacity: 0.9 }}>
-                  <Hint label={t("scoutRadius")} tip={t("tipScoutRadius")} />={curScout.radius ?? "-"} / {t("scoutTotal")}={currentResult ? curScout.scoutTotal : "-"}
+                  <Hint label={t("scoutRadius")} tip={t("tipScoutRadius")} />={curScout.radius ?? "-"} / {t("scoutTotal")}={displayResult ? curScout.scoutTotal : "-"}
                 </div>
 
                 <div style={{ marginTop: 4, fontSize: 12, opacity: 0.9 }}>
-                  {t("scoutCoreRadius")}={curScoutCore.radius ?? "-"} / {t("scoutCoreTotal")}={currentResult ? curScoutCore.totalCore : "-"}
-                  {currentResult ? <span> / {t("extra")}={curScoutCore.totalExtra}</span> : null}
+                  {t("scoutCoreRadius")}={curScoutCore.radius ?? "-"} / {t("scoutCoreTotal")}={displayResult ? curScoutCore.totalCore : "-"}
+                  {displayResult ? <span> / {t("extra")}={curScoutCore.totalExtra}</span> : null}
                 </div>
               </details>
 
-              {currentResult ? (
-                // デフォルト閉じ（表示Map詳細の詳細情報。2026-07-24 ユーザー要望）。
-                <details suppressHydrationWarning style={{ marginTop: 10 }}>
+              {displayResult ? (
+                // 既定で開く。表示は displayResult に基づき、条件変更で結果バケットが
+                // 空になっても直近結果を保持してパネルが縮まない（位置不変）。2026-07-24。
+                <details open suppressHydrationWarning style={{ marginTop: 10 }}>
                   <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.85 }}>
                     {isBase
                       ? lang === "ja"
@@ -2836,7 +2862,7 @@ const handleDeleteUsed = React.useCallback(
                       {(isBase
                         ? ([
                             ["total", "評価", "total", t("tipTotalCol"), false],
-                            ["gaia", "ガイア近接", "gaia", t("wGaiaTip"), false],
+                            ["gaia", "ガイア", "gaia", t("wGaiaTip"), false],
                             ["cluster", "星系", "cluster", t("wClusterTip"), false],
                             ["outer", "最外周", "outer", t("tipOuterCnt"), false],
                             ["touch", "外周", "touch", t("tipTouchCnt"), false],
@@ -2845,7 +2871,7 @@ const handleDeleteUsed = React.useCallback(
                             ["total", "評価", "total", t("tipTotalCol"), false],
                             ["scout", "船接触", "scout", t("tipWScoutShip"), false],
                             ["scoutCore", "船星系", "scoutCore", t("tipWScoutCoreShip"), false],
-                            ["gaia", "ガイア近接", "gaia", t("wGaiaTip"), !applyExtraAxesLF],
+                            ["gaia", "ガイア", "gaia", t("wGaiaTip"), !applyExtraAxesLF],
                             ["cluster", "星系", "cluster", t("wClusterTip"), !applyExtraAxesLF],
                             ["outer", "最外周", "outer", t("tipOuterCnt"), false],
                             ["touch", "外周", "touch", t("tipTouchCnt"), false],
@@ -2865,12 +2891,12 @@ const handleDeleteUsed = React.useCallback(
                       ))}
                     </div>
 
-                    <div style={{ marginTop: 8 }}><ColorBreakdownTable breakdown={getBreakdown(currentResult)} cols={breakdownCols} lang={lang} isBase={isBase} /></div>
+                    <div style={{ marginTop: 8 }}><ColorBreakdownTable breakdown={getBreakdown(displayResult)} cols={breakdownCols} lang={lang} isBase={isBase} /></div>
                 </details>
               ) : null}
 
               {/* 生の breakdown(JSON) 詳細はユーザー向けでないため非表示（2026-07-24 ユーザー要望）。 */}
-              {currentResult ? null : (
+              {displayResult ? null : (
                 <div style={{ marginTop: 6, fontSize: 12, opacity: 0.7 }}>{t("noCurrentResult")}</div>
               )}
             </div>
@@ -2971,35 +2997,37 @@ const handleDeleteUsed = React.useCallback(
               </summary>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
-              {/* --- 基本軸: outer / touch (+ LF は scout radius) --- */}
-              <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
-                <div style={{ fontWeight: 700, fontSize: 12, minWidth: 56 }}>
+              {/* --- 基本軸: outer / touch (+ LF は scout radius)。薄背景のセルで表状に --- */}
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 6 }}>
                   <Hint label={t("soft")} tip={t("tipSoft")} />
                 </div>
-                <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <Hint label={t("wOuter")} tip={t("tipWOuter")} />
-                  <input type="number" value={wOuter} min={0} max={10} onChange={(e) => setWOuter(Number(e.target.value) || 0)} style={{ width: 60 }} />
-                </label>
-                <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <Hint label={t("wTouch")} tip={t("tipWTouch")} />
-                  <input type="number" value={wTouch} min={0} max={10} onChange={(e) => setWTouch(Number(e.target.value) || 0)} style={{ width: 60 }} />
-                </label>
-                {!isBase ? (
-                  <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <Hint label={t("radius")} tip={t("tipScoutRadius")} />
-                    <input
-                      type="number"
-                      value={scoutRadius}
-                      min={1}
-                      max={12}
-                      onChange={(e) => setScoutRadius(Math.max(1, Math.min(12, Number(e.target.value) || 1)))}
-                      style={{ width: 60 }}
-                    />
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
+                  <label style={EVAL_CELL}>
+                    <Hint label={t("wOuter")} tip={t("tipWOuter")} />
+                    <input type="number" value={wOuter} min={0} max={10} onChange={(e) => setWOuter(Number(e.target.value) || 0)} style={{ width: 60 }} />
                   </label>
-                ) : null}
+                  <label style={EVAL_CELL}>
+                    <Hint label={t("wTouch")} tip={t("tipWTouch")} />
+                    <input type="number" value={wTouch} min={0} max={10} onChange={(e) => setWTouch(Number(e.target.value) || 0)} style={{ width: 60 }} />
+                  </label>
+                  {!isBase ? (
+                    <label style={EVAL_CELL}>
+                      <Hint label={t("radius")} tip={t("tipScoutRadius")} />
+                      <input
+                        type="number"
+                        value={scoutRadius}
+                        min={1}
+                        max={12}
+                        onChange={(e) => setScoutRadius(Math.max(1, Math.min(12, Number(e.target.value) || 1)))}
+                        style={{ width: 60 }}
+                      />
+                    </label>
+                  ) : null}
+                </div>
               </div>
 
-              {/* --- 拡張軸: ガイア近接・星系。枠を常時確保し、無効時は入力を disable する
+              {/* --- 拡張軸: ガイア・星系。枠を常時確保し、無効時は入力を disable する
                      （チェックのON/OFFでレイアウトが動かない。2026-07-24 ユーザー要望）。 --- */}
               <div style={{ borderTop: "1px dashed #ddd", paddingTop: 8, opacity: extraAxesOn ? 1 : 0.6 }}>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 6 }}>
@@ -3019,67 +3047,70 @@ const handleDeleteUsed = React.useCallback(
                   )}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
-                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }} title={t("wGaiaTip")}>
-                    <span style={{ fontSize: 12 }}>{t("wGaiaD1")}</span>
-                    <input type="number" value={wGaiaD1} min={0} max={20} disabled={!extraAxesOn} onChange={(e) => setWGaiaD1(Number(e.target.value) || 0)} style={{ width: 60, background: extraAxesOn ? undefined : "#f0f0f0" }} />
+                  <label style={EVAL_CELL} title={t("wGaiaTip")}>
+                    <span>{t("wGaiaD1")}</span>
+                    <input type="number" value={wGaiaD1} min={0} max={20} disabled={!extraAxesOn} onChange={(e) => setWGaiaD1(Number(e.target.value) || 0)} style={{ width: 60, background: extraAxesOn ? undefined : "#e6e6e6" }} />
                   </label>
-                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }} title={t("wGaiaTip")}>
-                    <span style={{ fontSize: 12 }}>{t("wGaiaD2")}</span>
-                    <input type="number" value={wGaiaD2} min={0} max={20} disabled={!extraAxesOn} onChange={(e) => setWGaiaD2(Number(e.target.value) || 0)} style={{ width: 60, background: extraAxesOn ? undefined : "#f0f0f0" }} />
+                  <label style={EVAL_CELL} title={t("wGaiaTip")}>
+                    <span>{t("wGaiaD2")}</span>
+                    <input type="number" value={wGaiaD2} min={0} max={20} disabled={!extraAxesOn} onChange={(e) => setWGaiaD2(Number(e.target.value) || 0)} style={{ width: 60, background: extraAxesOn ? undefined : "#e6e6e6" }} />
                   </label>
-                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }} title={t("wGaiaTip")}>
-                    <span style={{ fontSize: 12 }}>{t("wGaiaD3")}</span>
-                    <input type="number" value={wGaiaD3} min={0} max={20} disabled={!extraAxesOn} onChange={(e) => setWGaiaD3(Number(e.target.value) || 0)} style={{ width: 60, background: extraAxesOn ? undefined : "#f0f0f0" }} />
+                  <label style={EVAL_CELL} title={t("wGaiaTip")}>
+                    <span>{t("wGaiaD3")}</span>
+                    <input type="number" value={wGaiaD3} min={0} max={20} disabled={!extraAxesOn} onChange={(e) => setWGaiaD3(Number(e.target.value) || 0)} style={{ width: 60, background: extraAxesOn ? undefined : "#e6e6e6" }} />
                   </label>
-                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }} title={t("wClusterTip")}>
-                    <span style={{ fontSize: 12 }}>{t("wClusterSize")}</span>
-                    <input type="number" value={wClusterSize} min={0} max={20} disabled={!extraAxesOn} onChange={(e) => setWClusterSize(Number(e.target.value) || 0)} style={{ width: 60, background: extraAxesOn ? undefined : "#f0f0f0" }} />
+                  <label style={EVAL_CELL} title={t("wClusterTip")}>
+                    <span>{t("wClusterSize")}</span>
+                    <input type="number" value={wClusterSize} min={0} max={20} disabled={!extraAxesOn} onChange={(e) => setWClusterSize(Number(e.target.value) || 0)} style={{ width: 60, background: extraAxesOn ? undefined : "#e6e6e6" }} />
                   </label>
                 </div>
               </div>
 
-              {/* --- スカウト重み（LFのみ）: 船接触 / 船星系 --- */}
+              {/* --- スカウト重み（LFのみ）: 4列×2段。列=船（トワイライト/エクリプス/
+                     リベリオン/TFマーズ）、上段=船接触・下段=船星系で同じ船が縦に並ぶ。2026-07-24 --- */}
               {!isBase ? (
                 <div style={{ borderTop: "1px dashed #ddd", paddingTop: 8 }}>
                   <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 6 }}>
                     <Hint label={t("wScout")} tip={t("tipWScoutShip")} />
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10, alignItems: "start" }}>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8, alignItems: "start" }}>
+                    {/* 上段: 船接触（各船） */}
+                    <label style={EVAL_CELL}>
                       <Hint label={t("wScoutS1")} tip={t("tipWScoutShip")} />
-                      <input type="number" value={wScoutS1} min={0} max={20} onChange={(e) => setWScoutS1(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+                      <input type="number" value={wScoutS1} min={0} max={20} onChange={(e) => setWScoutS1(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
                     </label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                    <label style={EVAL_CELL}>
                       <Hint label={t("wScoutS2")} tip={t("tipWScoutShip")} />
-                      <input type="number" value={wScoutS2} min={0} max={20} onChange={(e) => setWScoutS2(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+                      <input type="number" value={wScoutS2} min={0} max={20} onChange={(e) => setWScoutS2(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
                     </label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                    <label style={EVAL_CELL}>
                       <Hint label={t("wScoutS3")} tip={t("tipWScoutShip")} />
-                      <input type="number" value={wScoutS3} min={0} max={20} onChange={(e) => setWScoutS3(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+                      <input type="number" value={wScoutS3} min={0} max={20} onChange={(e) => setWScoutS3(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
                     </label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                    <label style={EVAL_CELL}>
                       <Hint label={t("wScoutS4")} tip={t("tipWScoutShip")} />
-                      <input type="number" value={wScoutS4} min={0} max={20} onChange={(e) => setWScoutS4(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+                      <input type="number" value={wScoutS4} min={0} max={20} onChange={(e) => setWScoutS4(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
                     </label>
 
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                    {/* 下段: 船星系（各船） */}
+                    <label style={EVAL_CELL}>
                       <Hint label={t("wScoutCoreS1")} tip={t("tipWScoutCoreShip")} />
-                      <input type="number" value={wScoutCoreS1} min={0} max={20} onChange={(e) => setWScoutCoreS1(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+                      <input type="number" value={wScoutCoreS1} min={0} max={20} onChange={(e) => setWScoutCoreS1(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
                     </label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                    <label style={EVAL_CELL}>
                       <Hint label={t("wScoutCoreS2")} tip={t("tipWScoutCoreShip")} />
-                      <input type="number" value={wScoutCoreS2} min={0} max={20} onChange={(e) => setWScoutCoreS2(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+                      <input type="number" value={wScoutCoreS2} min={0} max={20} onChange={(e) => setWScoutCoreS2(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
                     </label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                    <label style={EVAL_CELL}>
                       <Hint label={t("wScoutCoreS3")} tip={t("tipWScoutCoreShip")} />
-                      <input type="number" value={wScoutCoreS3} min={0} max={20} onChange={(e) => setWScoutCoreS3(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+                      <input type="number" value={wScoutCoreS3} min={0} max={20} onChange={(e) => setWScoutCoreS3(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
                     </label>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                    <label style={EVAL_CELL}>
                       <Hint label={t("wScoutCoreS4")} tip={t("tipWScoutCoreShip")} />
-                      <input type="number" value={wScoutCoreS4} min={0} max={20} onChange={(e) => setWScoutCoreS4(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+                      <input type="number" value={wScoutCoreS4} min={0} max={20} onChange={(e) => setWScoutCoreS4(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
                     </label>
 
-                    <label style={{ display: "flex", gap: 8, alignItems: "center", gridColumn: "1 / -1", flexWrap: "wrap" }}>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", gridColumn: "1 / -1", flexWrap: "wrap", marginTop: 2 }}>
                       <input type="checkbox" checked={scoutCoreAttribBest} onChange={(e) => setScoutCoreAttribBest(e.target.checked)} />
                       <Hint label={t("scoutCoreAttribBest")} tip={t("tipScoutCoreAttrib")} />
                     </label>

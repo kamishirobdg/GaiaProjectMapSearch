@@ -95,7 +95,7 @@ const COL_LABEL: Record<string, { ja: string; en: string }> = {
   total: { ja: "評価", en: "total" },
   scout: { ja: "船接触", en: "scout" },
   scoutCore: { ja: "船星系", en: "scoutCore" },
-  gaia: { ja: "ガイア近接", en: "gaia" },
+  gaia: { ja: "ガイア", en: "gaia" },
   cluster: { ja: "星系", en: "cluster" },
   outer: { ja: "最外周", en: "outer" },
   // 「辺境」→「外周」（用語を uiText の touchCnt と統一、⑤ 2026-07-24）
