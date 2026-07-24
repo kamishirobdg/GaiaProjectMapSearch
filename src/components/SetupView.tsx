@@ -1098,7 +1098,13 @@ export default function SetupView() {
           </div>
         </div>
         {(() => {
-          const rows = saved.filter((r) => (savedView === "used") === r.used);
+          // 現在の人数/拡張に合致する保存のみ表示（Map のランキング同様、2026-07-25 要望）。
+          const rows = saved.filter(
+            (r) =>
+              (savedView === "used") === r.used &&
+              (lf ? r.input.mode === "lostFleet" : r.input.mode !== "lostFleet") &&
+              (r.input.playerCount ?? 4) === players
+          );
           if (rows.length === 0) {
             return (
               <div style={{ fontSize: 12, opacity: 0.6 }}>
@@ -1121,10 +1127,13 @@ export default function SetupView() {
                 return (
                   <div
                     key={r.id}
+                    onClick={() => restoreSaved(r.input)}
+                    title={t.restoreHint}
                     style={{
                       display: "flex",
                       gap: 8,
                       alignItems: "center",
+                      cursor: "pointer",
                       border: isCurrent ? "1px solid #7aa7e8" : "1px solid #ddd",
                       background: isCurrent ? "#f2f7ff" : "#fafafa",
                       borderRadius: 8,
@@ -1133,17 +1142,11 @@ export default function SetupView() {
                       flexWrap: "wrap",
                     }}
                   >
-                    <button
-                      onClick={() => restoreSaved(r.input)}
-                      title={t.restoreHint}
+                    <div
                       style={{
-                        border: "none",
-                        background: "none",
-                        cursor: "pointer",
                         display: "flex",
                         gap: 8,
                         alignItems: "center",
-                        padding: 0,
                         fontSize: 12,
                         textAlign: "left",
                         flex: 1,
@@ -1170,10 +1173,11 @@ export default function SetupView() {
                       {isCurrent ? (
                         <span style={{ color: "#3467c4", fontWeight: 700 }}>{t.currentBadge}</span>
                       ) : null}
-                    </button>
+                    </div>
                     <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           copyText(setupShareUrl(r.input));
                           setSharedCopiedId(r.id);
                           window.setTimeout(() => setSharedCopiedId((v) => (v === r.id ? null : v)), 2000);
@@ -1182,13 +1186,13 @@ export default function SetupView() {
                       >
                         {sharedCopiedId === r.id ? t.shareCopied : t.shareRow}
                       </button>
-                      <button onClick={() => void setSetupPinned(r.id, !r.pinned).then(setSaved)} style={{ fontSize: 11 }}>
+                      <button onClick={(e) => { e.stopPropagation(); void setSetupPinned(r.id, !r.pinned).then(setSaved); }} style={{ fontSize: 11 }}>
                         {r.pinned ? t.unpin : t.pin}
                       </button>
-                      <button onClick={() => void setSetupUsed(r.id, !r.used).then(setSaved)} style={{ fontSize: 11 }}>
+                      <button onClick={(e) => { e.stopPropagation(); void setSetupUsed(r.id, !r.used).then(setSaved); }} style={{ fontSize: 11 }}>
                         {r.used ? t.unmarkUsed : t.markUsed}
                       </button>
-                      <button onClick={() => void deleteSavedSetup(r.id).then(setSaved)} style={{ fontSize: 11 }}>
+                      <button onClick={(e) => { e.stopPropagation(); void deleteSavedSetup(r.id).then(setSaved); }} style={{ fontSize: 11 }}>
                         {t.deleteRow}
                       </button>
                     </div>
