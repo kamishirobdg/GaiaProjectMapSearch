@@ -84,7 +84,7 @@ import {
 } from "./persistence";
 
 import { UI_TEXT, type Lang, type UiKey } from "./uiText";
-import { ColorBreakdownTable, PLANET_ORDER, PLANET_LABEL_JA, PLANET_INPUT_BG, fmt0 } from "./BreakdownTable";
+import { ColorBreakdownTable, PLANET_ORDER, PLANET_LABEL_JA, PLANET_INPUT_BG, fmt0, type BreakdownMarker } from "./BreakdownTable";
 
 function parseSeedStart(seed: string): number {
   const n = parseInt(seed, 10);
@@ -1669,6 +1669,38 @@ React.useEffect(() => {
 }, [currentResult]);
 const displayResult = currentResult ?? lastShownResultRef.current;
 
+// #9 マーカー連動: 詳細表クリックで選んだ (軸,色) ソースごとにマーカー配列を保持。
+// 単一選択（再クリック解除）＋Ctrlで複数トグル。表示中の盤面が変わったらクリア。
+const [markSources, setMarkSources] = React.useState<Map<string, BreakdownMarker[]>>(new Map());
+const onMark = React.useCallback(
+  (sourceId: string, markers: BreakdownMarker[], additive: boolean) => {
+    setMarkSources((prev) => {
+      if (additive) {
+        const next = new Map(prev);
+        if (next.has(sourceId)) next.delete(sourceId);
+        else next.set(sourceId, markers);
+        return next;
+      }
+      // 通常クリック: 単独選択中の同ソース再クリックは解除、それ以外は置換。
+      if (prev.has(sourceId) && prev.size === 1) return new Map();
+      const single = new Map<string, BreakdownMarker[]>();
+      single.set(sourceId, markers);
+      return single;
+    });
+  },
+  []
+);
+const activeSources = React.useMemo(() => new Set(markSources.keys()), [markSources]);
+const markers = React.useMemo(() => [...markSources.values()].flat(), [markSources]);
+const markHashRef = React.useRef<string>("");
+const curMarkHash = getPlacementHashForResult(displayResult);
+React.useEffect(() => {
+  if (markHashRef.current !== curMarkHash) {
+    markHashRef.current = curMarkHash;
+    setMarkSources((prev) => (prev.size ? new Map() : prev));
+  }
+}, [curMarkHash]);
+
 //  function sumCounts(obj: any): number {
 //    if (!obj || typeof obj !== "object") return 0;
 //    return Object.values(obj).reduce((a: number, x: any) => a + (Number(x) || 0), 0);
@@ -2773,6 +2805,7 @@ const handleDeleteUsed = React.useCallback(
               showToolbar={false}
               // マップは固定表示（ドラッグ/パン無効、ツールバー廃止、2026-07-24 ユーザー要望）。
               disablePan
+              markers={markers}
             />
           </div>
 
@@ -2903,7 +2936,7 @@ const handleDeleteUsed = React.useCallback(
                       ))}
                     </div>
 
-                    <div style={{ marginTop: 8 }}><ColorBreakdownTable breakdown={getBreakdown(displayResult)} cols={breakdownCols} lang={lang} isBase={isBase} /></div>
+                    <div style={{ marginTop: 8 }}><ColorBreakdownTable breakdown={getBreakdown(displayResult)} cols={breakdownCols} lang={lang} isBase={isBase} onMark={onMark} activeSources={activeSources} /></div>
                 </details>
               ) : null}
 

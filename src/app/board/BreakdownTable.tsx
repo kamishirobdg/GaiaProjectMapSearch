@@ -29,6 +29,73 @@ export const PLANET_INPUT_BG: Record<PlanetTypeKey, string> = {
   YELLOW: "#fff9c4",
 };
 
+// --- #9 マーカー連動: 詳細表クリック→地図リング -----------------------------
+export type BreakdownMarker = { key: string; color: string; label?: string };
+export type MarkAxis = "total" | "scout" | "scoutCore" | "outer" | "touch";
+
+// 地図リング用の彩度高めの惑星色（ストロークとして視認できる濃さ）。
+const RING_COLOR: Record<string, string> = {
+  BLACK: "#444444",
+  BLUE: "#2b7fe0",
+  BROWN: "#9c6b34",
+  ORANGE: "#f0951f",
+  RED: "#e23b3b",
+  WHITE: "#d9d9d9",
+  YELLOW: "#e8c400",
+};
+
+// クリック対象にする軸（gaia/cluster は座標付きヒットが audit に無いので除外）。
+export const MARKABLE_AXES = new Set<string>(["total", "scout", "scoutCore", "outer", "touch"]);
+
+function markerColorLabel(pt: string, lang: Lang): string {
+  return lang === "ja" ? (PLANET_LABEL_JA[pt as PlanetTypeKey] ?? pt) : pt;
+}
+
+/**
+ * audit から (軸, 色) に対応する地図セルのマーカー群を作る。key は audit の
+ * セル座標 "q,r"（extractForEval のグローバル軸座標）。color は惑星色のリング、
+ * label はホバー時の帰属テキスト（色 / 軸 / 点数 / 距離）。colorKey=null は全色。
+ */
+export function axisMarkers(
+  audit: any,
+  axis: MarkAxis,
+  colorKey: string | null,
+  lang: Lang
+): BreakdownMarker[] {
+  if (!audit) return [];
+  const out: BreakdownMarker[] = [];
+  const push = (key: any, pt: any, extra: string) => {
+    const k = String(key ?? "");
+    const p = String(pt ?? "");
+    if (!k || (colorKey && p !== colorKey)) return;
+    out.push({ key: k, color: RING_COLOR[p] ?? "#666666", label: `${markerColorLabel(p, lang)}${extra}` });
+  };
+  const dist = (d: any) => (d ? (lang === "ja" ? ` / 距離${d}` : ` / dist ${d}`) : "");
+  const doOuter = () =>
+    (audit.outerHits ?? []).forEach((h: any) => push(h.cellKey, h.planetType, lang === "ja" ? " / 最外周" : " / outer"));
+  const doTouch = () =>
+    (audit.touchHits ?? []).forEach((h: any) => push(h.cellKey, h.planetType, lang === "ja" ? " / 外周" : " / touch"));
+  const doScout = () =>
+    (audit.scout?.scoutHits ?? []).forEach((h: any) =>
+      push(h.planetKey, h.planetType, (lang === "ja" ? ` / 船接触 +${h.value}` : ` / scout +${h.value}`) + dist(h.distance))
+    );
+  const doScoutCore = () =>
+    (audit.scoutCore?.coreHits ?? []).forEach((h: any) =>
+      push(h.corePlanetKey, h.corePlanetType, (lang === "ja" ? ` / 船星系 +${h.value}` : ` / core +${h.value}`) + dist(h.distance))
+    );
+  if (axis === "outer") doOuter();
+  else if (axis === "touch") doTouch();
+  else if (axis === "scout") doScout();
+  else if (axis === "scoutCore") doScoutCore();
+  else {
+    doOuter();
+    doTouch();
+    doScout();
+    doScoutCore();
+  }
+  return out;
+}
+
 export function axisGet(axis: any, k: PlanetTypeKey): number {
   const v = axis?.[k];
   const n = typeof v === "number" ? v : Number(v);
@@ -44,13 +111,35 @@ export function ColorBreakdownTable({
   cols: colsProp,
   lang,
   isBase,
+  onMark,
+  activeSources,
 }: {
   breakdown: any;
   cols?: any;
   lang: Lang;
   isBase: boolean;
+  /** セル/ヘッダクリック時に呼ぶ。sourceId=`${axis}:${color|*}`、additive=Ctrl。 */
+  onMark?: (sourceId: string, markers: BreakdownMarker[], additive: boolean) => void;
+  /** 現在アクティブな sourceId 集合（枠のハイライト用）。 */
+  activeSources?: Set<string>;
 }) {
 if (!breakdown) return null;
+
+const audit = breakdown?.audit ?? null;
+const isActiveSource = (id: string) => !!activeSources && activeSources.has(id);
+// (色, 軸) セル用のクリック属性＋アクティブ枠。
+const cellMark = (axis: MarkAxis, k: string): React.HTMLAttributes<HTMLTableCellElement> => {
+  if (!onMark) return {};
+  const id = `${axis}:${k}`;
+  return {
+    onClick: (e) => onMark(id, axisMarkers(audit, axis, k, lang), e.ctrlKey || e.metaKey),
+    title: lang === "ja" ? "地図にマーク（Ctrlで複数選択）" : "Mark on map (Ctrl = multi-select)",
+    style: {
+      cursor: "pointer",
+      boxShadow: isActiveSource(id) ? "inset 0 0 0 2px #2b7fe0" : undefined,
+    },
+  };
+};
 
 const outer = breakdown?.axesByType?.outer ?? null;
 const touch = breakdown?.axesByType?.touch ?? null;
@@ -192,13 +281,16 @@ const renderCell = (colKey: keyof typeof cols, k: string) => {
   if (!cols[colKey]) return null;
 
   if (colKey === "total") {
-    return <td style={{ ...tdStyle, fontWeight: 800, color: colorFor(exTotal.maxKeys, exTotal.minKeys, k) }}>{axisGet(totals, k as any)}</td>;
+    const m = cellMark("total", k);
+    return <td onClick={m.onClick} title={m.title} style={{ ...tdStyle, fontWeight: 800, color: colorFor(exTotal.maxKeys, exTotal.minKeys, k), ...m.style }}>{axisGet(totals, k as any)}</td>;
   }
   if (colKey === "scout") {
-    return <td style={{ ...tdStyle, color: colorFor(exScout.maxKeys, exScout.minKeys, k) }}>{axisGet(scout, k as any)}</td>;
+    const m = cellMark("scout", k);
+    return <td onClick={m.onClick} title={m.title} style={{ ...tdStyle, color: colorFor(exScout.maxKeys, exScout.minKeys, k), ...m.style }}>{axisGet(scout, k as any)}</td>;
   }
   if (colKey === "scoutCore") {
-    return <td style={{ ...tdStyle, color: colorFor(exScoutCore.maxKeys, exScoutCore.minKeys, k) }}>{axisGet(scoutCore, k as any)}</td>;
+    const m = cellMark("scoutCore", k);
+    return <td onClick={m.onClick} title={m.title} style={{ ...tdStyle, color: colorFor(exScoutCore.maxKeys, exScoutCore.minKeys, k), ...m.style }}>{axisGet(scoutCore, k as any)}</td>;
   }
   if (colKey === "gaia") {
     return <td style={{ ...tdStyle, color: colorFor(exGaia.maxKeys, exGaia.minKeys, k) }}>{axisGet(gaia, k as any)}</td>;
@@ -207,10 +299,12 @@ const renderCell = (colKey: keyof typeof cols, k: string) => {
     return <td style={{ ...tdStyle, color: colorFor(exCluster.maxKeys, exCluster.minKeys, k) }}>{axisGet(cluster, k as any)}</td>;
   }
   if (colKey === "outer") {
-    return <td style={{ ...tdStyle, color: colorFor(exOuterTouch.maxKeys, exOuterTouch.minKeys, k) }}>{axisGet(outer, k as any)}</td>;
+    const m = cellMark("outer", k);
+    return <td onClick={m.onClick} title={m.title} style={{ ...tdStyle, color: colorFor(exOuterTouch.maxKeys, exOuterTouch.minKeys, k), ...m.style }}>{axisGet(outer, k as any)}</td>;
   }
   if (colKey === "touch") {
-    return <td style={{ ...tdStyle, color: colorFor(exOuterTouch.maxKeys, exOuterTouch.minKeys, k) }}>{axisGet(touch, k as any)}</td>;
+    const m = cellMark("touch", k);
+    return <td onClick={m.onClick} title={m.title} style={{ ...tdStyle, color: colorFor(exOuterTouch.maxKeys, exOuterTouch.minKeys, k), ...m.style }}>{axisGet(touch, k as any)}</td>;
   }
   if (colKey === "cntOuter") {
     return <td style={tdStyle}>{outerCnt ? axisGet(outerCnt, k as any) : "-"}</td>;
@@ -232,9 +326,29 @@ return (
             // counts only appear if hasCounts is true
             if ((ck === "cntOuter" || ck === "cntTouch") && !hasCounts) return null;
             const label = lang === "ja" ? COL_LABEL[String(ck)].ja : COL_LABEL[String(ck)].en;
+            const axisId = `${String(ck)}:*`;
+            const canMark = !!onMark && MARKABLE_AXES.has(String(ck));
             return (
               <th key={String(ck)} style={thStyle}>
                 {label}
+                {canMark ? (
+                  <span
+                    role="button"
+                    title={lang === "ja" ? "この軸を全色まとめてマーク（Ctrlで追加）" : "Mark this whole axis (Ctrl = add)"}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMark!(axisId, axisMarkers(audit, ck as MarkAxis, null, lang), e.ctrlKey || e.metaKey);
+                    }}
+                    style={{
+                      cursor: "pointer",
+                      marginLeft: 4,
+                      fontSize: 12,
+                      color: isActiveSource(axisId) ? "#2b7fe0" : "#aaa",
+                    }}
+                  >
+                    ◎
+                  </span>
+                ) : null}
               </th>
             );
           })}

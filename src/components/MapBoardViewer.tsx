@@ -207,6 +207,11 @@ export function MapBoardViewer(props: {
 
   // ★初期ズーム（操作用）
   initialUiZoom?: number;
+
+  // 詳細表/評価指数クリックから連動するマーカー（#9）。key は audit の
+  // セル座標 "q,r"（extractForEval と同じグローバル軸座標）。color はリング色、
+  // label はホバー時に出す帰属テキスト。
+  markers?: Array<{ key: string; color: string; label?: string }>;
 }) {
   const {
     template,
@@ -235,8 +240,15 @@ export function MapBoardViewer(props: {
 
     showToolbar = true,
     initialUiZoom = 1,
-    svgPixelSize, 
+    svgPixelSize,
+    markers = [],
   } = props;
+
+  // ホバー中マーカーのポップアップ（帰属テキスト）。SVGはCSS回転が絡むため
+  // 座標計算は避け、ビューポート座標（clientX/Y）で固定配置する。
+  const [hoverMarker, setHoverMarker] = React.useState<
+    { label: string; x: number; y: number } | null
+  >(null);
 
   // Backward/forward compatible placement list
   const placementList = (placement ?? placements ?? []) as PlacementItem[];
@@ -731,7 +743,70 @@ export function MapBoardViewer(props: {
                 </text>
               );
             })}
+
+          {/* Markers (#9 詳細表/評価指数クリック連動): セル座標にリングを点滅表示 */}
+          {markers.length > 0 ? (
+            <>
+              <style>{`@keyframes mbvBlink{0%,100%{opacity:1}50%{opacity:.32}} .mbv-marker{animation:mbvBlink 1.1s ease-in-out infinite}`}</style>
+              {markers.map((m, i) => {
+                const { q, r } = parseKey(m.key);
+                if (!Number.isFinite(q) || !Number.isFinite(r)) return null;
+                const pr = axialRotateCCW({ q, r } as any, viewRot);
+                const { x, y } = axialToPixelPointy(pr, hexSize);
+                return (
+                  <circle
+                    key={`mk_${m.key}_${i}`}
+                    className="mbv-marker"
+                    cx={fmtNum(x)}
+                    cy={fmtNum(y)}
+                    r={fmtNum(hexSize * 0.82)}
+                    fill="none"
+                    stroke={m.color}
+                    strokeWidth={fmtNum(hexSize * 0.16)}
+                    style={{
+                      pointerEvents: "stroke",
+                      cursor: m.label ? "help" : undefined,
+                      filter: "drop-shadow(0 0 1.2px rgba(0,0,0,0.85))",
+                    }}
+                    onMouseEnter={
+                      m.label
+                        ? (e) => setHoverMarker({ label: m.label!, x: e.clientX, y: e.clientY })
+                        : undefined
+                    }
+                    onMouseMove={
+                      m.label
+                        ? (e) => setHoverMarker({ label: m.label!, x: e.clientX, y: e.clientY })
+                        : undefined
+                    }
+                    onMouseLeave={m.label ? () => setHoverMarker(null) : undefined}
+                  />
+                );
+              })}
+            </>
+          ) : null}
         </svg>
+        {hoverMarker ? (
+          <div
+            style={{
+              position: "fixed",
+              left: hoverMarker.x + 14,
+              top: hoverMarker.y + 14,
+              zIndex: 50,
+              pointerEvents: "none",
+              background: "rgba(20,20,20,0.92)",
+              color: "#fff",
+              fontSize: 12,
+              lineHeight: 1.4,
+              padding: "6px 9px",
+              borderRadius: 6,
+              maxWidth: 260,
+              whiteSpace: "pre-line",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.35)",
+            }}
+          >
+            {hoverMarker.label}
+          </div>
+        ) : null}
       </div>
     </div>
   );
