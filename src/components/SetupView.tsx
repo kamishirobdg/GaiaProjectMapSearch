@@ -60,6 +60,8 @@ const SHIP_LABEL: Record<ShipId, { ja: string; en: string }> = {
 const UI = {
   ja: {
     title: "セットアップ（研究/ブースター/得点）",
+    searchConds: "検索条件",
+    setupArea: "セットアップ",
     draftNote:
       "※ 全タイル（基本版・Lost Fleet）はルールブック・実物確認済み。評価機能は未実装。",
     seed: "シード",
@@ -128,6 +130,8 @@ const UI = {
   },
   en: {
     title: "Setup (research / boosters / scoring)",
+    searchConds: "Search conditions",
+    setupArea: "Setup",
     draftNote:
       "Note: all tiles (base game & Lost Fleet) verified against the rulebook and physical components. Evaluation not implemented.",
     seed: "Seed",
@@ -750,7 +754,7 @@ export default function SetupView() {
         lang={lang}
         onLang={setLangPersist}
       />
-    <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 14, maxWidth: 1100 }}>
+    <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 14, maxWidth: 1400 }}>
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <div style={{ fontWeight: 700, fontSize: 16 }}>{t.title}</div>
       </div>
@@ -759,40 +763,12 @@ export default function SetupView() {
         {t.draftNote}
       </div>
 
-      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        {/* 人数・拡張(基本版/LF)・言語は共通バー（GlobalBar）へ移動 */}
-        <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          <span>{t.seed}</span>
-          <input value={seed} onChange={(e) => setSeed(e.target.value)} style={{ width: 140, padding: "4px 6px" }} />
-        </label>
-        <button onClick={handleRoll} style={{ padding: "4px 10px", fontWeight: 700 }}>
-          {t.randomSeed}
-        </button>
-        <button onClick={handleRecordCurrent} style={{ padding: "4px 10px", fontSize: 12 }}>
-          {t.recordCurrent}
-        </button>
-        {lf ? (
-          <>
-            <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
-              <span>{t.extFaceModeLabel}</span>
-              <select value={extFaceMode} onChange={(e) => changeExtFace(e.target.value as ExtFaceMode)}>
-                <option value="auto">{t.extFaceAuto}</option>
-                <option value="random">{t.extFaceRandom}</option>
-                <option value="vp25">{t.faceVp25}</option>
-                <option value="shuttle">{t.faceShuttle}</option>
-              </select>
-            </label>
-            <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
-              <span>{t.econFaceModeLabel}</span>
-              <select value={econFaceMode} onChange={(e) => changeEconFace(e.target.value as EconFaceMode)}>
-                <option value="random">{t.econFaceRandom}</option>
-                <option value="A">{t.econFaceA}</option>
-                <option value="B">{t.econFaceB}</option>
-              </select>
-            </label>
-          </>
-        ) : null}
-      </div>
+      {/* 2カラム: row-reverse で「左=検索条件＋保存リスト / 右=セットアップ表示」（Mapと同じ左右配置）。
+          ソース順は右(セットアップ)→左(検索条件)。狭幅では flexWrap で縦積みになる。 */}
+      <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap", flexDirection: "row-reverse" }}>
+        {/* 右カラム: セットアップ表示 */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, flex: "3 1 560px", minWidth: 340 }}>
+          <div style={{ fontWeight: 700, fontSize: 14 }}>{t.setupArea}</div>
 
       {/* Research tracks: per column, top to bottom —
           [track-top tile (terra=federation Lv5 / eco=econ adjustment face)]
@@ -1000,6 +976,45 @@ export default function SetupView() {
           {result.boosters.available.map((id) => tileCell(id, undefined, true))}
         </div>
       </section>
+        </div>{/* 右カラム（セットアップ表示）終わり */}
+
+        {/* 左カラム: 検索条件（シード等）＋保存リスト（ランク） */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, flex: "1 1 320px", minWidth: 280, maxWidth: 460 }}>
+          <div style={{ fontWeight: 700, fontSize: 14 }}>{t.searchConds}</div>
+          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+            {/* 人数・拡張(基本版/LF)・言語は共通バー（GlobalBar）へ移動 */}
+            <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <span>{t.seed}</span>
+              <input value={seed} onChange={(e) => setSeed(e.target.value)} style={{ width: 140, padding: "4px 6px" }} />
+            </label>
+            <button onClick={handleRoll} style={{ padding: "4px 10px", fontWeight: 700 }}>
+              {t.randomSeed}
+            </button>
+            <button onClick={handleRecordCurrent} style={{ padding: "4px 10px", fontSize: 12 }}>
+              {t.recordCurrent}
+            </button>
+            {lf ? (
+              <>
+                <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
+                  <span>{t.extFaceModeLabel}</span>
+                  <select value={extFaceMode} onChange={(e) => changeExtFace(e.target.value as ExtFaceMode)}>
+                    <option value="auto">{t.extFaceAuto}</option>
+                    <option value="random">{t.extFaceRandom}</option>
+                    <option value="vp25">{t.faceVp25}</option>
+                    <option value="shuttle">{t.faceShuttle}</option>
+                  </select>
+                </label>
+                <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
+                  <span>{t.econFaceModeLabel}</span>
+                  <select value={econFaceMode} onChange={(e) => changeEconFace(e.target.value as EconFaceMode)}>
+                    <option value="random">{t.econFaceRandom}</option>
+                    <option value="A">{t.econFaceA}</option>
+                    <option value="B">{t.econFaceB}</option>
+                  </select>
+                </label>
+              </>
+            ) : null}
+          </div>
 
       {/* Saved setups (ranking skeleton: pinned first -> newest; used in a separate view) */}
       <section>
@@ -1127,6 +1142,8 @@ export default function SetupView() {
           );
         })()}
       </section>
+        </div>{/* 左カラム（検索条件＋保存リスト）終わり */}
+      </div>{/* 2カラム終わり */}
     </div>
     </>
   );
