@@ -1,12 +1,23 @@
 // scripts/_probe_lf_slotcenters.ts
 //
 // Phase B 調査用プローブ（2026-07-25）:
-// 現行 LF slotCenters と uiqoo randomizer(collision.js) の mapposition を突き合わせ、
-// LARGE スロットの衝突・連結・格子整合を機械的に検証する。
+// 現行 LF slotCenters を (a) uiqoo randomizer(collision.js) の mapposition と
+// (b) LFルールブック p4-5「可変的なゲームボードの配置」の構造記述 と突き合わせる。
 //
 // uiqoo 側の座標系: mapposition[player+"_lostfleet"] は各タイルの
 // 「5行パターンの先頭行 左端セル」の axial 座標 [x,y]。タイル中心は (x, y+2)。
 // （collision.js の construct() が row2 中央に [y+2][x] を置くことから導出）
+//
+// ★結論（2026-07-25、当初の見立てを訂正）:
+//   uiqoo と現行では周辺タイルの座標が 3人1枚・4人2枚ぶん違うが、これは
+//   **バグではない**。ルールブックは「残りの宙域タイルを…ランダムに置く」と
+//   しており、どちらも合法な配置のバリエーション。実際、構造判定では両者とも
+//   3人=中央1枚が6近傍 / 4人=隣接する中央2枚がそれぞれ6近傍 を満たす。
+//   さらに現行の SMALL は中央から距離3に6枚（＝中央周りの6つの穴）＋距離6に2枚、
+//   MIDDLE は距離6〜8（外周沿い）で、ルールブックの
+//   「宙間タイル8枚／深宇宙宙域タイル8枚」の記述と完全に整合する。
+//   → **評価側(logical)のジオメトリは正しい**。「見た目のズレ」の原因は
+//     表示側（グループ別 C_group と viewerAssets の手動ピクセル補正）を疑うべき。
 //
 // 実行: npx tsx scripts/_probe_lf_slotcenters.ts
 
@@ -103,7 +114,41 @@ function draw(label: string, pts: Array<{ id: string; c: Ax }>) {
   }
 }
 
+/**
+ * ルールブック（LF「可変的なゲームボードの配置」p4-5）の構造判定。
+ *   3人: 中央1枚 + それを囲む6枚 + 残り2枚
+ *   4人: 中央に並べた2枚 + 周囲8枚（中央2枚はそれぞれ6枚に囲まれ、互いに隣接）
+ * LFは各タイルを1スペースずらして置くため、隣接タイル中心間距離は 5 だが
+ * 格子方向が基本版(密充填)とは異なる（(4,1)/(5,-4)/(1,-5) 系）。
+ */
+function structureCheck(label: string, pts: Array<{ id: string; c: Ax }>, expectCenters: number) {
+  const deg = pts.map((p) => ({
+    id: p.id,
+    c: p.c,
+    n: pts.filter((x) => x.id !== p.id && axDist(p.c, x.c) === 5).length,
+  }));
+  const centers = deg.filter((d) => d.n === 6);
+  const ok = centers.length === expectCenters;
+  console.log(
+    `\n[ルールブック構造] ${label}: 6近傍を持つ中央タイル=${centers.length}枚 ` +
+      `(期待${expectCenters}枚) ${ok ? "✓ 一致" : "✗ 不一致"}`
+  );
+  console.log(
+    "  近傍数: " + deg.map((d) => `${d.id}:${d.n}`).join(" ")
+  );
+  if (centers.length === 2) {
+    const adj = axDist(centers[0].c, centers[1].c) === 5;
+    console.log(`  中央2枚が隣接: ${adj ? "✓" : "✗"}`);
+  }
+}
+
 report("3p Lost Fleet", largeCenters(SLOT_CENTERS_3P_LOSTFLEET), uiqooCenters("3_lostfleet"));
+structureCheck("3p ours", largeCenters(SLOT_CENTERS_3P_LOSTFLEET), 1);
+structureCheck(
+  "3p uiqoo",
+  uiqooCenters("3_lostfleet").map((c, i) => ({ id: `T${i + 1}`, c })),
+  1
+);
 draw("3p ours (現行 slotCenters)", largeCenters(SLOT_CENTERS_3P_LOSTFLEET));
 draw(
   "3p uiqoo (+ours基準へオフセット)",
@@ -118,6 +163,12 @@ const displayLarge = (tpl: { slots: Array<{ slotId: string; pos: Ax; accepts: st
 draw("3p ours (表示テンプレ display.pos)", displayLarge(TEMPLATE_3P_LOSTFLEET as any));
 
 report("4p Lost Fleet", largeCenters(SLOT_CENTERS_4P_LOSTFLEET), uiqooCenters("4_lostfleet"));
+structureCheck("4p ours", largeCenters(SLOT_CENTERS_4P_LOSTFLEET), 2);
+structureCheck(
+  "4p uiqoo",
+  uiqooCenters("4_lostfleet").map((c, i) => ({ id: `T${i + 1}`, c })),
+  2
+);
 draw("4p ours (現行 slotCenters)", largeCenters(SLOT_CENTERS_4P_LOSTFLEET));
 draw("4p ours (表示テンプレ display.pos)", displayLarge(TEMPLATE_4P_LOSTFLEET as any));
 draw(
