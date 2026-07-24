@@ -2240,11 +2240,6 @@ const handleDeleteUsed = React.useCallback(
                   {pinnedHashes.has(String(hashFull)) ? "📌" : null}
                   {idx + 1}.
                 </span>
-                {isShowing ? (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: "#4a90d9", borderRadius: 4, padding: "1px 6px" }}>
-                    {t("showing")}
-                  </span>
-                ) : null}
                 <span style={{ fontSize: 12 }}>
                   <span style={{ opacity: 0.7 }}>{t("rankScore")}:</span> {fmt0(rawScore)}
                 </span>
@@ -2297,6 +2292,11 @@ const handleDeleteUsed = React.useCallback(
                     </button>
                   </div>
                 )}
+                {isShowing ? (
+                  <span style={{ marginLeft: 10, fontSize: 11, fontWeight: 700, color: "#fff", background: "#4a90d9", borderRadius: 4, padding: "1px 6px" }}>
+                    {t("showing")}
+                  </span>
+                ) : null}
               </div>
               <div style={{ fontSize: 12, marginTop: 2, opacity: 0.9 }}>{planetLine}</div>
             </div>
