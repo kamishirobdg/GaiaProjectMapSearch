@@ -2143,6 +2143,8 @@ const handleDeleteUsed = React.useCallback(
   // 用語集データは各ラベルの Hint ツールチップ（uiText の tip* キー）へ移行済み。
 
   // Mobile: show Top-K early; PC order remains unchanged.
+  // 現在マップに表示中の結果のハッシュ（ランキング側に「表示中」バッジを出すため）。
+  const showingHash = getPlacementHashForResult(displayResult) ?? "";
   const topKSection = (
   <div style={{ padding: 10, border: "1px solid #ddd", borderRadius: 8, overflow: isNarrow ? "visible" : "auto", flex: isNarrow ? "0 0 auto" : 1, minHeight: isNarrow ? "auto" : 0 }}>
     <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
@@ -2172,6 +2174,7 @@ const handleDeleteUsed = React.useCallback(
           const b = getBreakdown(r);
           const hashFull = getPlacementHashForResult(r) ?? "";
           const hash = hashFull ? String(hashFull).slice(0, 12) : "-";
+          const isShowing = !!showingHash && String(hashFull) === String(showingHash);
   
           // 生スコアをそのまま表示（旧: 1000+rawScore の RankScore 表示。
           // 表示のみの変更でソート順・保存データは不変。ユーザー確定 2026-07-23）
@@ -2226,9 +2229,9 @@ const handleDeleteUsed = React.useCallback(
               style={{
                 textAlign: "left",
                 padding: "8px 10px",
-                border: "1px solid #e5e5e5",
+                border: isShowing ? "2px solid #4a90d9" : "1px solid #e5e5e5",
                 borderRadius: 8,
-                background: "white",
+                background: isShowing ? "#eef6ff" : "white",
                 cursor: "pointer",
               }}
             >
@@ -2237,6 +2240,11 @@ const handleDeleteUsed = React.useCallback(
                   {pinnedHashes.has(String(hashFull)) ? "📌" : null}
                   {idx + 1}.
                 </span>
+                {isShowing ? (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: "#4a90d9", borderRadius: 4, padding: "1px 6px" }}>
+                    {t("showing")}
+                  </span>
+                ) : null}
                 <span style={{ fontSize: 12 }}>
                   <span style={{ opacity: 0.7 }}>{t("rankScore")}:</span> {fmt0(rawScore)}
                 </span>
