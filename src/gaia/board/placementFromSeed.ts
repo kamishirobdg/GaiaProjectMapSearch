@@ -1,6 +1,6 @@
 // src/gaia/board/placementFromSeed.ts
 import { mulberry32, hashSeed, shuffleSeeded } from "./rng";
-import type { SlotDef, SlotPlacement } from "./types";
+import type { SlotDef, SlotPlacement, SlotPos } from "./types";
 
 export type PlacementFromSeedArgs = {
   slots: SlotDef[];
@@ -99,7 +99,21 @@ function pickRotMiddleForSlot(slotId: string, rng: () => number): number {
 }
 
 /**
- * Scout slot candidate sets (CONFIRMED).
+ * Scout slot candidate sets（合法な全配置）。
+ *
+ * LFルールブック「準備」の宇宙船配置ルール:
+ *   「宇宙船タイルから3スペース以内に他の宇宙船があってはいけない」
+ *   = スカウト同士を隣接ホール（axial距離3）に置かない = 互いに距離5以上。
+ * SMALLスロット間に axial距離4 は存在しないため、判定は「全ペア距離 >= 5」。
+ *
+ * これらは各テンプレのSMALLスロット幾何から導かれる合法な C(n,4) の全列挙で、
+ * placementFromSeed.scoutLegal.test.ts が実テンプレ座標から再生成して一致を検証する
+ * （テンプレ幾何が変わればテストがドリフトを検出）。runtime 自体は座標に依存しない
+ * （検索経路の slots は pos ダミーのため、幾何依存にすると壊れる）。
+ *
+ * 3人=8枠→合法5通り。4人=10枠→合法21通り。
+ * （旧実装の4人は14通りのみで、合法な7通りを取りこぼしていた。）
+ * 並びはスロット番号の辞書式。3人は旧ハードコードと byte 一致し seed→マップを保つ。
  */
 const SCOUT_SLOT_CANDIDATES_3P: string[][] = [
   ["S1", "S2", "S5", "S7"],
@@ -113,21 +127,74 @@ const SCOUT_SLOT_CANDIDATES_4P: string[][] = [
   ["S1", "S2", "S5", "S7"],
   ["S1", "S2", "S5", "S8"],
   ["S1", "S2", "S5", "S9"],
+  ["S1", "S2", "S6", "S8"],
+  ["S1", "S2", "S6", "S9"],
+  ["S1", "S2", "S7", "S9"],
   ["S1", "S5", "S7", "S9"],
   ["S1", "S5", "S7", "S10"],
+  ["S1", "S5", "S8", "S10"],
   ["S1", "S6", "S8", "S10"],
   ["S2", "S3", "S6", "S8"],
   ["S2", "S3", "S6", "S9"],
+  ["S2", "S3", "S7", "S9"],
   ["S2", "S5", "S7", "S9"],
   ["S3", "S4", "S6", "S8"],
   ["S3", "S4", "S6", "S9"],
   ["S3", "S4", "S6", "S10"],
+  ["S3", "S4", "S8", "S10"],
   ["S3", "S6", "S8", "S10"],
   ["S4", "S5", "S8", "S10"],
+  ["S4", "S6", "S8", "S10"],
 ];
 
 function is4pTemplate(slots: SlotDef[]): boolean {
   return slots.some((s: any) => String(s?.slotId) === "S9");
+}
+
+// テスト専用: ハードコード表を規則生成結果と突き合わせるためのエクスポート。
+export const __test__scoutCandidates3p = SCOUT_SLOT_CANDIDATES_3P;
+export const __test__scoutCandidates4p = SCOUT_SLOT_CANDIDATES_4P;
+
+/**
+ * スカウト合法集合を実テンプレ座標から規則生成（全ペア距離 >= SCOUT_MIN_DISTANCE）。
+ * runtime は使わずテスト専用（上のハードコード表がこの生成結果と一致することを保証）。
+ */
+export const SCOUT_MIN_DISTANCE = 5;
+
+function axialDistance(a: SlotPos, b: SlotPos): number {
+  const dq = a.q - b.q;
+  const dr = a.r - b.r;
+  const ds = -(dq + dr);
+  return Math.max(Math.abs(dq), Math.abs(dr), Math.abs(ds));
+}
+
+export function legalScoutSlotSets(slots: SlotDef[], scoutCount: number): string[][] {
+  const small = slots
+    .filter((s) => {
+      const a = Array.isArray(s.accepts) ? s.accepts[0] : (s.accepts as any);
+      return a !== "LARGE" && a !== "MIDDLE";
+    })
+    .slice()
+    .sort((x, y) => Number(String(x.slotId).slice(1)) - Number(String(y.slotId).slice(1)));
+  const n = small.length;
+  const out: string[][] = [];
+  const chosen: number[] = [];
+  const compatible = (idx: number) =>
+    chosen.every((c) => axialDistance(small[c].pos, small[idx].pos) >= SCOUT_MIN_DISTANCE);
+  const rec = (start: number) => {
+    if (chosen.length === scoutCount) {
+      out.push(chosen.map((i) => String(small[i].slotId)));
+      return;
+    }
+    for (let i = start; i < n; i++) {
+      if (!compatible(i)) continue;
+      chosen.push(i);
+      rec(i + 1);
+      chosen.pop();
+    }
+  };
+  if (scoutCount > 0) rec(0);
+  return out;
 }
 
 function chooseScoutSlotSet(slots: SlotDef[], rng: () => number, scoutCount: number): Set<string> {

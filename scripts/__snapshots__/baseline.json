@@ -6539,12 +6539,12 @@
         },
         {
           "rot": 0,
-          "sectorId": "twilight",
+          "sectorId": "19",
           "slotId": "S5"
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "twilight",
           "slotId": "S6"
         },
         {
@@ -6568,13 +6568,13 @@
           "slotId": "S10"
         }
       ],
-      "placementHash": "8173d3e1",
+      "placementHash": "ba0dcee5",
       "seed": "snap-0001",
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1884.3068340633802,
-          "value": 18.843068340633803
+          "score": -1306.498670305563,
+          "value": 13.06498670305563
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -6586,37 +6586,37 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 79,
-          "BLUE": 81,
-          "BROWN": 95,
-          "ORANGE": 82,
-          "RED": 36,
-          "WHITE": 71,
-          "YELLOW": 97
+          "BLACK": 55,
+          "BLUE": 83,
+          "BROWN": 63,
+          "ORANGE": 71,
+          "RED": 54,
+          "WHITE": 66,
+          "YELLOW": 92
         },
-        "score": -1884.306834,
+        "score": -1306.49867,
         "scoutByType": {
-          "BLACK": 24,
-          "BLUE": 23,
-          "BROWN": 28,
-          "ORANGE": 27,
-          "RED": 9,
+          "BLACK": 17,
+          "BLUE": 24,
+          "BROWN": 19,
+          "ORANGE": 22,
+          "RED": 13,
           "WHITE": 19,
-          "YELLOW": 23
+          "YELLOW": 28
         },
         "scoutCoreByType": {
-          "BLACK": 60,
-          "BLUE": 64,
-          "BROWN": 69,
-          "ORANGE": 55,
-          "RED": 33,
-          "WHITE": 60,
-          "YELLOW": 77
+          "BLACK": 43,
+          "BLUE": 65,
+          "BROWN": 46,
+          "ORANGE": 49,
+          "RED": 47,
+          "WHITE": 55,
+          "YELLOW": 67
         },
-        "scoutCoreHitsCount": 142,
-        "scoutCoreHitsValueSum": 459,
-        "scoutHitsCount": 39,
-        "scoutHitsValueSum": 185,
+        "scoutCoreHitsCount": 126,
+        "scoutCoreHitsValueSum": 409,
+        "scoutHitsCount": 37,
+        "scoutHitsValueSum": 174,
         "touchCountByType": {
           "BLACK": 2,
           "BLUE": 0,
@@ -7018,12 +7018,12 @@
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "rebellion",
           "slotId": "S5"
         },
         {
           "rot": 0,
-          "sectorId": "rebellion",
+          "sectorId": "19",
           "slotId": "S6"
         },
         {
@@ -7047,13 +7047,13 @@
           "slotId": "S10"
         }
       ],
-      "placementHash": "31fa4c99",
+      "placementHash": "b1fd7dc3",
       "seed": "snap-0003",
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1245.399698154478,
-          "value": 12.453996981544782
+          "score": -1067.3254768201627,
+          "value": 10.673254768201627
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -7065,37 +7065,37 @@
           "YELLOW": 0
         },
         "planetTypeTotals": {
-          "BLACK": 75,
-          "BLUE": 62,
-          "BROWN": 54,
-          "ORANGE": 83,
-          "RED": 58,
-          "WHITE": 81,
-          "YELLOW": 88
+          "BLACK": 85,
+          "BLUE": 68,
+          "BROWN": 51,
+          "ORANGE": 73,
+          "RED": 55,
+          "WHITE": 73,
+          "YELLOW": 66
         },
-        "score": -1245.399698,
+        "score": -1067.325477,
         "scoutByType": {
-          "BLACK": 16,
-          "BLUE": 20,
+          "BLACK": 15,
+          "BLUE": 24,
           "BROWN": 19,
-          "ORANGE": 22,
-          "RED": 16,
-          "WHITE": 24,
-          "YELLOW": 27
+          "ORANGE": 20,
+          "RED": 17,
+          "WHITE": 20,
+          "YELLOW": 17
         },
         "scoutCoreByType": {
-          "BLACK": 61,
-          "BLUE": 48,
-          "BROWN": 42,
-          "ORANGE": 65,
-          "RED": 47,
-          "WHITE": 60,
-          "YELLOW": 63
+          "BLACK": 72,
+          "BLUE": 50,
+          "BROWN": 39,
+          "ORANGE": 57,
+          "RED": 43,
+          "WHITE": 56,
+          "YELLOW": 51
         },
-        "scoutCoreHitsCount": 135,
-        "scoutCoreHitsValueSum": 451,
-        "scoutHitsCount": 36,
-        "scoutHitsValueSum": 172,
+        "scoutCoreHitsCount": 129,
+        "scoutCoreHitsValueSum": 430,
+        "scoutHitsCount": 34,
+        "scoutHitsValueSum": 164,
         "touchCountByType": {
           "BLACK": 2,
           "BLUE": 3,
@@ -7492,22 +7492,22 @@
         },
         {
           "rot": 0,
-          "sectorId": "eclipse",
+          "sectorId": "19",
           "slotId": "S9"
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "eclipse",
           "slotId": "S10"
         }
       ],
-      "placementHash": "078a01e0",
+      "placementHash": "5bb6b10a",
       "seed": "snap-0005",
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1722.9542734998595,
-          "value": 17.229542734998596
+          "score": -2263.1926158253814,
+          "value": 22.631926158253812
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -7519,37 +7519,37 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 86,
-          "BLUE": 73,
-          "BROWN": 58,
-          "ORANGE": 73,
-          "RED": 52,
+          "BLACK": 78,
+          "BLUE": 104,
+          "BROWN": 45,
+          "ORANGE": 89,
+          "RED": 50,
           "WHITE": 108,
-          "YELLOW": 82
+          "YELLOW": 84
         },
-        "score": -1722.954273,
+        "score": -2263.192616,
         "scoutByType": {
-          "BLACK": 19,
-          "BLUE": 20,
+          "BLACK": 15,
+          "BLUE": 28,
           "BROWN": 17,
-          "ORANGE": 17,
-          "RED": 18,
-          "WHITE": 29,
-          "YELLOW": 19
+          "ORANGE": 22,
+          "RED": 14,
+          "WHITE": 28,
+          "YELLOW": 15
         },
         "scoutCoreByType": {
-          "BLACK": 72,
-          "BLUE": 57,
-          "BROWN": 48,
-          "ORANGE": 60,
-          "RED": 40,
-          "WHITE": 79,
-          "YELLOW": 67
+          "BLACK": 68,
+          "BLUE": 80,
+          "BROWN": 35,
+          "ORANGE": 71,
+          "RED": 42,
+          "WHITE": 80,
+          "YELLOW": 73
         },
-        "scoutCoreHitsCount": 149,
-        "scoutCoreHitsValueSum": 494,
-        "scoutHitsCount": 40,
-        "scoutHitsValueSum": 179,
+        "scoutCoreHitsCount": 157,
+        "scoutCoreHitsValueSum": 525,
+        "scoutHitsCount": 41,
+        "scoutHitsValueSum": 183,
         "touchCountByType": {
           "BLACK": 2,
           "BLUE": 1,
@@ -7951,17 +7951,17 @@
         },
         {
           "rot": 0,
-          "sectorId": "eclipse",
+          "sectorId": "21",
           "slotId": "S6"
         },
         {
           "rot": 0,
-          "sectorId": "21",
+          "sectorId": "19",
           "slotId": "S7"
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "eclipse",
           "slotId": "S8"
         },
         {
@@ -7975,13 +7975,13 @@
           "slotId": "S10"
         }
       ],
-      "placementHash": "b44da8d5",
+      "placementHash": "1b6b6715",
       "seed": "snap-0007",
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1141.070031298049,
-          "value": 11.41070031298049
+          "score": -1838.0335543560611,
+          "value": 18.380335543560612
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -7993,35 +7993,35 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 77,
-          "BLUE": 100,
-          "BROWN": 71,
-          "ORANGE": 80,
-          "RED": 63,
-          "WHITE": 74,
-          "YELLOW": 90
+          "BLACK": 62,
+          "BLUE": 109,
+          "BROWN": 84,
+          "ORANGE": 62,
+          "RED": 57,
+          "WHITE": 68,
+          "YELLOW": 96
         },
-        "score": -1141.070031,
+        "score": -1838.033554,
         "scoutByType": {
-          "BLACK": 19,
-          "BLUE": 20,
-          "BROWN": 20,
-          "ORANGE": 23,
-          "RED": 22,
-          "WHITE": 18,
-          "YELLOW": 24
+          "BLACK": 14,
+          "BLUE": 29,
+          "BROWN": 21,
+          "ORANGE": 15,
+          "RED": 17,
+          "WHITE": 19,
+          "YELLOW": 23
         },
         "scoutCoreByType": {
-          "BLACK": 64,
+          "BLACK": 54,
           "BLUE": 84,
-          "BROWN": 54,
-          "ORANGE": 61,
-          "RED": 45,
-          "WHITE": 62,
-          "YELLOW": 69
+          "BROWN": 66,
+          "ORANGE": 51,
+          "RED": 44,
+          "WHITE": 55,
+          "YELLOW": 76
         },
         "scoutCoreHitsCount": 153,
-        "scoutCoreHitsValueSum": 505,
+        "scoutCoreHitsValueSum": 503,
         "scoutHitsCount": 37,
         "scoutHitsValueSum": 174,
         "touchCountByType": {
@@ -8173,12 +8173,12 @@
         },
         {
           "rot": 0,
-          "sectorId": "eclipse",
+          "sectorId": "21",
           "slotId": "S5"
         },
         {
           "rot": 0,
-          "sectorId": "21",
+          "sectorId": "eclipse",
           "slotId": "S6"
         },
         {
@@ -8202,13 +8202,13 @@
           "slotId": "S10"
         }
       ],
-      "placementHash": "7a849566",
+      "placementHash": "a8deaa82",
       "seed": "snap-0008",
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1716.6650155199773,
-          "value": 17.166650155199772
+          "score": -1500.8840932012338,
+          "value": 15.008840932012339
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -8220,37 +8220,37 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 64,
-          "BLUE": 55,
-          "BROWN": 85,
-          "ORANGE": 40,
-          "RED": 76,
-          "WHITE": 51,
-          "YELLOW": 90
+          "BLACK": 68,
+          "BLUE": 52,
+          "BROWN": 82,
+          "ORANGE": 43,
+          "RED": 46,
+          "WHITE": 46,
+          "YELLOW": 77
         },
-        "score": -1716.665016,
+        "score": -1500.884093,
         "scoutByType": {
-          "BLACK": 24,
-          "BLUE": 8,
+          "BLACK": 27,
+          "BLUE": 9,
           "BROWN": 23,
           "ORANGE": 14,
-          "RED": 19,
-          "WHITE": 15,
-          "YELLOW": 25
+          "RED": 14,
+          "WHITE": 14,
+          "YELLOW": 21
         },
         "scoutCoreByType": {
-          "BLACK": 43,
-          "BLUE": 52,
-          "BROWN": 64,
-          "ORANGE": 32,
-          "RED": 61,
-          "WHITE": 40,
-          "YELLOW": 68
+          "BLACK": 44,
+          "BLUE": 48,
+          "BROWN": 61,
+          "ORANGE": 35,
+          "RED": 36,
+          "WHITE": 36,
+          "YELLOW": 59
         },
-        "scoutCoreHitsCount": 130,
-        "scoutCoreHitsValueSum": 435,
-        "scoutHitsCount": 35,
-        "scoutHitsValueSum": 160,
+        "scoutCoreHitsCount": 114,
+        "scoutCoreHitsValueSum": 380,
+        "scoutHitsCount": 34,
+        "scoutHitsValueSum": 154,
         "touchCountByType": {
           "BLACK": 0,
           "BLUE": 2,
@@ -8425,22 +8425,22 @@
         },
         {
           "rot": 0,
-          "sectorId": "twilight",
+          "sectorId": "21",
           "slotId": "S9"
         },
         {
           "rot": 0,
-          "sectorId": "21",
+          "sectorId": "twilight",
           "slotId": "S10"
         }
       ],
-      "placementHash": "9ec28d65",
+      "placementHash": "a7b24c29",
       "seed": "snap-0009",
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -2874.2345919906957,
-          "value": 28.742345919906956
+          "score": -2208.425424854291,
+          "value": 22.084254248542912
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -8452,37 +8452,37 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 79,
-          "BLUE": 33,
-          "BROWN": 64,
-          "ORANGE": 130,
-          "RED": 71,
-          "WHITE": 75,
-          "YELLOW": 44
+          "BLACK": 70,
+          "BLUE": 29,
+          "BROWN": 59,
+          "ORANGE": 107,
+          "RED": 50,
+          "WHITE": 59,
+          "YELLOW": 53
         },
-        "score": -2874.234592,
+        "score": -2208.425425,
         "scoutByType": {
-          "BLACK": 20,
-          "BLUE": 15,
-          "BROWN": 15,
-          "ORANGE": 35,
-          "RED": 24,
-          "WHITE": 24,
-          "YELLOW": 12
+          "BLACK": 16,
+          "BLUE": 11,
+          "BROWN": 18,
+          "ORANGE": 28,
+          "RED": 19,
+          "WHITE": 18,
+          "YELLOW": 17
         },
         "scoutCoreByType": {
-          "BLACK": 64,
+          "BLACK": 59,
           "BLUE": 28,
-          "BROWN": 52,
-          "ORANGE": 95,
-          "RED": 52,
-          "WHITE": 56,
-          "YELLOW": 40
+          "BROWN": 44,
+          "ORANGE": 79,
+          "RED": 36,
+          "WHITE": 46,
+          "YELLOW": 44
         },
-        "scoutCoreHitsCount": 132,
-        "scoutCoreHitsValueSum": 446,
-        "scoutHitsCount": 38,
-        "scoutHitsValueSum": 181,
+        "scoutCoreHitsCount": 114,
+        "scoutCoreHitsValueSum": 389,
+        "scoutHitsCount": 34,
+        "scoutHitsValueSum": 159,
         "touchCountByType": {
           "BLACK": 2,
           "BLUE": 1,
@@ -8627,7 +8627,7 @@
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "twilight",
           "slotId": "S3"
         },
         {
@@ -8637,7 +8637,7 @@
         },
         {
           "rot": 0,
-          "sectorId": "twilight",
+          "sectorId": "19",
           "slotId": "S5"
         },
         {
@@ -8666,13 +8666,13 @@
           "slotId": "S10"
         }
       ],
-      "placementHash": "ec7bd7ba",
+      "placementHash": "78af82c6",
       "seed": "snap-0010",
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -2583.858844947271,
-          "value": 25.83858844947271
+          "score": -2776.357913761502,
+          "value": 27.76357913761502
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -8684,37 +8684,37 @@
           "YELLOW": 0
         },
         "planetTypeTotals": {
-          "BLACK": 126,
-          "BLUE": 49,
-          "BROWN": 64,
-          "ORANGE": 92,
-          "RED": 52,
-          "WHITE": 97,
-          "YELLOW": 92
+          "BLACK": 129,
+          "BLUE": 45,
+          "BROWN": 70,
+          "ORANGE": 100,
+          "RED": 50,
+          "WHITE": 94,
+          "YELLOW": 96
         },
-        "score": -2583.858845,
+        "score": -2776.357914,
         "scoutByType": {
-          "BLACK": 33,
+          "BLACK": 34,
           "BLUE": 15,
-          "BROWN": 10,
-          "ORANGE": 23,
+          "BROWN": 19,
+          "ORANGE": 29,
           "RED": 13,
-          "WHITE": 32,
-          "YELLOW": 22
+          "WHITE": 27,
+          "YELLOW": 23
         },
         "scoutCoreByType": {
-          "BLACK": 93,
-          "BLUE": 42,
-          "BROWN": 57,
-          "ORANGE": 71,
-          "RED": 44,
-          "WHITE": 69,
-          "YELLOW": 72
+          "BLACK": 95,
+          "BLUE": 38,
+          "BROWN": 54,
+          "ORANGE": 73,
+          "RED": 42,
+          "WHITE": 71,
+          "YELLOW": 75
         },
-        "scoutCoreHitsCount": 158,
-        "scoutCoreHitsValueSum": 529,
-        "scoutHitsCount": 41,
-        "scoutHitsValueSum": 188,
+        "scoutCoreHitsCount": 159,
+        "scoutCoreHitsValueSum": 527,
+        "scoutHitsCount": 42,
+        "scoutHitsValueSum": 196,
         "touchCountByType": {
           "BLACK": 0,
           "BLUE": 2,
@@ -8849,42 +8849,42 @@
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "tfmars",
           "slotId": "S2"
         },
         {
           "rot": 0,
-          "sectorId": "tfmars",
+          "sectorId": "19",
           "slotId": "S3"
         },
         {
           "rot": 0,
-          "sectorId": "rebellion",
+          "sectorId": "20",
           "slotId": "S4"
         },
         {
           "rot": 0,
-          "sectorId": "20",
+          "sectorId": "rebellion",
           "slotId": "S5"
         },
         {
           "rot": 0,
-          "sectorId": "eclipse",
+          "sectorId": "19",
           "slotId": "S6"
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "eclipse",
           "slotId": "S7"
         },
         {
           "rot": 0,
-          "sectorId": "twilight",
+          "sectorId": "19",
           "slotId": "S8"
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "twilight",
           "slotId": "S9"
         },
         {
@@ -8893,13 +8893,13 @@
           "slotId": "S10"
         }
       ],
-      "placementHash": "5c4a9b16",
+      "placementHash": "25cb1c2a",
       "seed": "snap-0011",
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -2010.9902119734595,
-          "value": 20.109902119734596
+          "score": -1161.8071777912835,
+          "value": 11.618071777912835
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -8911,37 +8911,37 @@
           "YELLOW": 3
         },
         "planetTypeTotals": {
-          "BLACK": 71,
-          "BLUE": 94,
-          "BROWN": 49,
-          "ORANGE": 27,
-          "RED": 76,
-          "WHITE": 71,
-          "YELLOW": 54
+          "BLACK": 35,
+          "BLUE": 52,
+          "BROWN": 50,
+          "ORANGE": 30,
+          "RED": 24,
+          "WHITE": 56,
+          "YELLOW": 32
         },
-        "score": -2010.990212,
+        "score": -1161.807178,
         "scoutByType": {
-          "BLACK": 23,
-          "BLUE": 22,
-          "BROWN": 14,
-          "ORANGE": 10,
-          "RED": 21,
-          "WHITE": 15,
-          "YELLOW": 19
+          "BLACK": 15,
+          "BLUE": 11,
+          "BROWN": 22,
+          "ORANGE": 5,
+          "RED": 6,
+          "WHITE": 20,
+          "YELLOW": 14
         },
         "scoutCoreByType": {
-          "BLACK": 51,
-          "BLUE": 76,
-          "BROWN": 39,
-          "ORANGE": 26,
-          "RED": 62,
-          "WHITE": 60,
-          "YELLOW": 45
+          "BLACK": 23,
+          "BLUE": 45,
+          "BROWN": 32,
+          "ORANGE": 34,
+          "RED": 25,
+          "WHITE": 40,
+          "YELLOW": 28
         },
-        "scoutCoreHitsCount": 129,
-        "scoutCoreHitsValueSum": 431,
-        "scoutHitsCount": 36,
-        "scoutHitsValueSum": 160,
+        "scoutCoreHitsCount": 80,
+        "scoutCoreHitsValueSum": 264,
+        "scoutHitsCount": 27,
+        "scoutHitsValueSum": 125,
         "touchCountByType": {
           "BLACK": 0,
           "BLUE": 1,
@@ -9061,17 +9061,17 @@
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "tfmars",
           "slotId": "S1"
         },
         {
           "rot": 0,
-          "sectorId": "tfmars",
+          "sectorId": "19",
           "slotId": "S2"
         },
         {
           "rot": 0,
-          "sectorId": "rebellion",
+          "sectorId": "19",
           "slotId": "S3"
         },
         {
@@ -9081,42 +9081,42 @@
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "20",
           "slotId": "S5"
         },
         {
           "rot": 0,
-          "sectorId": "eclipse",
+          "sectorId": "rebellion",
           "slotId": "S6"
         },
         {
           "rot": 0,
-          "sectorId": "20",
+          "sectorId": "19",
           "slotId": "S7"
         },
         {
           "rot": 0,
-          "sectorId": "twilight",
+          "sectorId": "eclipse",
           "slotId": "S8"
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "21",
           "slotId": "S9"
         },
         {
           "rot": 0,
-          "sectorId": "21",
+          "sectorId": "twilight",
           "slotId": "S10"
         }
       ],
-      "placementHash": "3e0dc18b",
+      "placementHash": "a773f6bb",
       "seed": "snap-0012",
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1207.6288117376032,
-          "value": 12.076288117376032
+          "score": -1417.6727120063174,
+          "value": 14.176727120063175
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -9128,37 +9128,37 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 77,
-          "BLUE": 97,
-          "BROWN": 69,
-          "ORANGE": 63,
-          "RED": 85,
-          "WHITE": 88,
-          "YELLOW": 96
+          "BLACK": 69,
+          "BLUE": 79,
+          "BROWN": 49,
+          "ORANGE": 42,
+          "RED": 74,
+          "WHITE": 82,
+          "YELLOW": 73
         },
-        "score": -1207.628812,
+        "score": -1417.672712,
         "scoutByType": {
           "BLACK": 20,
-          "BLUE": 26,
-          "BROWN": 22,
-          "ORANGE": 18,
-          "RED": 27,
-          "WHITE": 20,
-          "YELLOW": 25
+          "BLUE": 20,
+          "BROWN": 14,
+          "ORANGE": 4,
+          "RED": 22,
+          "WHITE": 26,
+          "YELLOW": 24
         },
         "scoutCoreByType": {
-          "BLACK": 61,
-          "BLUE": 76,
-          "BROWN": 52,
-          "ORANGE": 51,
-          "RED": 61,
-          "WHITE": 69,
-          "YELLOW": 74
+          "BLACK": 53,
+          "BLUE": 64,
+          "BROWN": 40,
+          "ORANGE": 44,
+          "RED": 55,
+          "WHITE": 57,
+          "YELLOW": 52
         },
-        "scoutCoreHitsCount": 157,
-        "scoutCoreHitsValueSum": 513,
-        "scoutHitsCount": 40,
-        "scoutHitsValueSum": 190,
+        "scoutCoreHitsCount": 129,
+        "scoutCoreHitsValueSum": 420,
+        "scoutHitsCount": 34,
+        "scoutHitsValueSum": 162,
         "touchCountByType": {
           "BLACK": 1,
           "BLUE": 2,
@@ -9338,12 +9338,12 @@
         },
         {
           "rot": 0,
-          "sectorId": "twilight",
+          "sectorId": "19",
           "slotId": "S7"
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "twilight",
           "slotId": "S8"
         },
         {
@@ -9357,13 +9357,13 @@
           "slotId": "S10"
         }
       ],
-      "placementHash": "7598fc9e",
+      "placementHash": "61c8943e",
       "seed": "snap-0013",
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1433.9897247233835,
-          "value": 14.339897247233836
+          "score": -1511.3178463357935,
+          "value": 15.113178463357936
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -9375,36 +9375,36 @@
           "YELLOW": 0
         },
         "planetTypeTotals": {
-          "BLACK": 50,
-          "BLUE": 63,
-          "BROWN": 97,
-          "ORANGE": 76,
+          "BLACK": 42,
+          "BLUE": 59,
+          "BROWN": 90,
+          "ORANGE": 78,
           "RED": 69,
-          "WHITE": 87,
-          "YELLOW": 78
+          "WHITE": 73,
+          "YELLOW": 85
         },
-        "score": -1433.989725,
+        "score": -1511.317846,
         "scoutByType": {
           "BLACK": 13,
-          "BLUE": 20,
-          "BROWN": 23,
-          "ORANGE": 16,
+          "BLUE": 19,
+          "BROWN": 20,
+          "ORANGE": 18,
           "RED": 25,
-          "WHITE": 26,
-          "YELLOW": 20
+          "WHITE": 22,
+          "YELLOW": 30
         },
         "scoutCoreByType": {
-          "BLACK": 47,
-          "BLUE": 51,
-          "BROWN": 75,
+          "BLACK": 39,
+          "BLUE": 48,
+          "BROWN": 71,
           "ORANGE": 64,
           "RED": 48,
-          "WHITE": 69,
-          "YELLOW": 59
+          "WHITE": 59,
+          "YELLOW": 56
         },
-        "scoutCoreHitsCount": 147,
-        "scoutCoreHitsValueSum": 489,
-        "scoutHitsCount": 39,
+        "scoutCoreHitsCount": 137,
+        "scoutCoreHitsValueSum": 453,
+        "scoutHitsCount": 38,
         "scoutHitsValueSum": 179,
         "touchCountByType": {
           "BLACK": 1,
@@ -9787,42 +9787,42 @@
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "tfmars",
           "slotId": "S2"
         },
         {
           "rot": 0,
-          "sectorId": "tfmars",
+          "sectorId": "19",
           "slotId": "S3"
         },
         {
           "rot": 0,
-          "sectorId": "eclipse",
+          "sectorId": "19",
           "slotId": "S4"
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "eclipse",
           "slotId": "S5"
         },
         {
           "rot": 0,
-          "sectorId": "rebellion",
+          "sectorId": "19",
           "slotId": "S6"
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "rebellion",
           "slotId": "S7"
         },
         {
           "rot": 0,
-          "sectorId": "twilight",
+          "sectorId": "20",
           "slotId": "S8"
         },
         {
           "rot": 0,
-          "sectorId": "20",
+          "sectorId": "twilight",
           "slotId": "S9"
         },
         {
@@ -9831,13 +9831,13 @@
           "slotId": "S10"
         }
       ],
-      "placementHash": "c344165e",
+      "placementHash": "af0d05fa",
       "seed": "snap-0015",
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1666.2312356369523,
-          "value": 16.662312356369522
+          "score": -1574.2831215949614,
+          "value": 15.742831215949614
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -9849,37 +9849,37 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 82,
-          "BLUE": 81,
-          "BROWN": 94,
-          "ORANGE": 56,
-          "RED": 76,
-          "WHITE": 41,
-          "YELLOW": 79
+          "BLACK": 76,
+          "BLUE": 72,
+          "BROWN": 77,
+          "ORANGE": 53,
+          "RED": 79,
+          "WHITE": 34,
+          "YELLOW": 77
         },
-        "score": -1666.231236,
+        "score": -1574.283122,
         "scoutByType": {
-          "BLACK": 18,
-          "BLUE": 26,
-          "BROWN": 27,
-          "ORANGE": 10,
+          "BLACK": 23,
+          "BLUE": 15,
+          "BROWN": 19,
+          "ORANGE": 9,
           "RED": 23,
-          "WHITE": 13,
-          "YELLOW": 24
+          "WHITE": 9,
+          "YELLOW": 22
         },
         "scoutCoreByType": {
-          "BLACK": 68,
-          "BLUE": 61,
-          "BROWN": 71,
-          "ORANGE": 53,
-          "RED": 57,
-          "WHITE": 36,
+          "BLACK": 57,
+          "BLUE": 63,
+          "BROWN": 62,
+          "ORANGE": 51,
+          "RED": 60,
+          "WHITE": 33,
           "YELLOW": 60
         },
-        "scoutCoreHitsCount": 142,
-        "scoutCoreHitsValueSum": 467,
-        "scoutHitsCount": 38,
-        "scoutHitsValueSum": 169,
+        "scoutCoreHitsCount": 137,
+        "scoutCoreHitsValueSum": 440,
+        "scoutHitsCount": 36,
+        "scoutHitsValueSum": 168,
         "touchCountByType": {
           "BLACK": 1,
           "BLUE": 0,
@@ -10054,22 +10054,22 @@
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "tfmars",
           "slotId": "S9"
         },
         {
           "rot": 0,
-          "sectorId": "tfmars",
+          "sectorId": "19",
           "slotId": "S10"
         }
       ],
-      "placementHash": "c5882dec",
+      "placementHash": "f65ce84e",
       "seed": "snap-0016",
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1930.105210202019,
-          "value": 19.30105210202019
+          "score": -1729.338672700625,
+          "value": 17.29338672700625
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -10081,37 +10081,37 @@
           "YELLOW": 0
         },
         "planetTypeTotals": {
-          "BLACK": 54,
-          "BLUE": 104,
-          "BROWN": 73,
-          "ORANGE": 57,
-          "RED": 99,
-          "WHITE": 85,
-          "YELLOW": 57
+          "BLACK": 64,
+          "BLUE": 94,
+          "BROWN": 64,
+          "ORANGE": 60,
+          "RED": 98,
+          "WHITE": 84,
+          "YELLOW": 49
         },
-        "score": -1930.10521,
+        "score": -1729.338673,
         "scoutByType": {
-          "BLACK": 11,
-          "BLUE": 26,
-          "BROWN": 30,
-          "ORANGE": 17,
-          "RED": 26,
-          "WHITE": 22,
-          "YELLOW": 13
+          "BLACK": 20,
+          "BLUE": 21,
+          "BROWN": 25,
+          "ORANGE": 22,
+          "RED": 24,
+          "WHITE": 23,
+          "YELLOW": 12
         },
         "scoutCoreByType": {
-          "BLACK": 48,
-          "BLUE": 79,
-          "BROWN": 46,
-          "ORANGE": 48,
-          "RED": 77,
-          "WHITE": 67,
-          "YELLOW": 47
+          "BLACK": 49,
+          "BLUE": 74,
+          "BROWN": 42,
+          "ORANGE": 46,
+          "RED": 78,
+          "WHITE": 65,
+          "YELLOW": 40
         },
-        "scoutCoreHitsCount": 149,
-        "scoutCoreHitsValueSum": 491,
-        "scoutHitsCount": 38,
-        "scoutHitsValueSum": 177,
+        "scoutCoreHitsCount": 139,
+        "scoutCoreHitsValueSum": 464,
+        "scoutHitsCount": 37,
+        "scoutHitsValueSum": 175,
         "touchCountByType": {
           "BLACK": 2,
           "BLUE": 1,
@@ -10508,12 +10508,12 @@
         },
         {
           "rot": 0,
-          "sectorId": "twilight",
+          "sectorId": "19",
           "slotId": "S5"
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "twilight",
           "slotId": "S6"
         },
         {
@@ -10537,13 +10537,13 @@
           "slotId": "S10"
         }
       ],
-      "placementHash": "e20c8ad2",
+      "placementHash": "b2b8b4ae",
       "seed": "snap-0018",
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1783.9419776416041,
-          "value": 17.83941977641604
+          "score": -2060.315014550851,
+          "value": 20.60315014550851
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -10555,37 +10555,37 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 68,
-          "BLUE": 74,
-          "BROWN": 77,
-          "ORANGE": 86,
-          "RED": 32,
-          "WHITE": 70,
-          "YELLOW": 44
+          "BLACK": 77,
+          "BLUE": 66,
+          "BROWN": 78,
+          "ORANGE": 92,
+          "RED": 31,
+          "WHITE": 65,
+          "YELLOW": 37
         },
-        "score": -1783.941978,
+        "score": -2060.315015,
         "scoutByType": {
-          "BLACK": 23,
-          "BLUE": 20,
+          "BLACK": 26,
+          "BLUE": 15,
           "BROWN": 27,
-          "ORANGE": 24,
-          "RED": 14,
-          "WHITE": 22,
+          "ORANGE": 29,
+          "RED": 12,
+          "WHITE": 18,
           "YELLOW": 11
         },
         "scoutCoreByType": {
-          "BLACK": 51,
-          "BLUE": 58,
-          "BROWN": 51,
-          "ORANGE": 67,
-          "RED": 27,
-          "WHITE": 56,
-          "YELLOW": 40
+          "BLACK": 57,
+          "BLUE": 55,
+          "BROWN": 52,
+          "ORANGE": 68,
+          "RED": 28,
+          "WHITE": 55,
+          "YELLOW": 33
         },
-        "scoutCoreHitsCount": 126,
-        "scoutCoreHitsValueSum": 416,
-        "scoutHitsCount": 38,
-        "scoutHitsValueSum": 173,
+        "scoutCoreHitsCount": 122,
+        "scoutCoreHitsValueSum": 405,
+        "scoutHitsCount": 37,
+        "scoutHitsValueSum": 166,
         "touchCountByType": {
           "BLACK": 0,
           "BLUE": 1,
@@ -10967,12 +10967,12 @@
         },
         {
           "rot": 0,
-          "sectorId": "rebellion",
+          "sectorId": "19",
           "slotId": "S5"
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "rebellion",
           "slotId": "S6"
         },
         {
@@ -10996,13 +10996,13 @@
           "slotId": "S10"
         }
       ],
-      "placementHash": "7e1c1748",
+      "placementHash": "daf23e9a",
       "seed": "snap-0020",
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -2147.2336260635357,
-          "value": 21.472336260635355
+          "score": -1901.0201343016881,
+          "value": 19.01020134301688
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -11014,37 +11014,37 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 76,
-          "BLUE": 73,
+          "BLACK": 81,
+          "BLUE": 75,
           "BROWN": 50,
-          "ORANGE": 125,
-          "RED": 64,
-          "WHITE": 79,
-          "YELLOW": 81
+          "ORANGE": 113,
+          "RED": 58,
+          "WHITE": 87,
+          "YELLOW": 72
         },
-        "score": -2147.233626,
+        "score": -1901.020134,
         "scoutByType": {
-          "BLACK": 24,
+          "BLACK": 29,
           "BLUE": 14,
           "BROWN": 14,
-          "ORANGE": 35,
-          "RED": 17,
-          "WHITE": 24,
-          "YELLOW": 22
+          "ORANGE": 29,
+          "RED": 11,
+          "WHITE": 25,
+          "YELLOW": 21
         },
         "scoutCoreByType": {
           "BLACK": 56,
-          "BLUE": 59,
+          "BLUE": 61,
           "BROWN": 41,
-          "ORANGE": 93,
+          "ORANGE": 87,
           "RED": 52,
-          "WHITE": 59,
-          "YELLOW": 63
+          "WHITE": 66,
+          "YELLOW": 55
         },
-        "scoutCoreHitsCount": 150,
-        "scoutCoreHitsValueSum": 485,
-        "scoutHitsCount": 38,
-        "scoutHitsValueSum": 182,
+        "scoutCoreHitsCount": 149,
+        "scoutCoreHitsValueSum": 488,
+        "scoutHitsCount": 37,
+        "scoutHitsValueSum": 175,
         "touchCountByType": {
           "BLACK": 1,
           "BLUE": 0,
@@ -11184,12 +11184,12 @@
         },
         {
           "rot": 0,
-          "sectorId": "21",
+          "sectorId": "tfmars",
           "slotId": "S2"
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "21",
           "slotId": "S3"
         },
         {
@@ -11199,7 +11199,7 @@
         },
         {
           "rot": 0,
-          "sectorId": "tfmars",
+          "sectorId": "19",
           "slotId": "S5"
         },
         {
@@ -11228,13 +11228,13 @@
           "slotId": "S10"
         }
       ],
-      "placementHash": "aed00df2",
+      "placementHash": "b9fcf7ce",
       "seed": "snap-0021",
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1116.6641283350173,
-          "value": 11.166641283350174
+          "score": -1588.3504471171161,
+          "value": 15.883504471171161
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -11246,37 +11246,37 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 81,
-          "BLUE": 75,
-          "BROWN": 65,
-          "ORANGE": 84,
-          "RED": 86,
-          "WHITE": 55,
-          "YELLOW": 87
+          "BLACK": 71,
+          "BLUE": 70,
+          "BROWN": 59,
+          "ORANGE": 63,
+          "RED": 73,
+          "WHITE": 38,
+          "YELLOW": 95
         },
-        "score": -1116.664128,
+        "score": -1588.350447,
         "scoutByType": {
-          "BLACK": 20,
-          "BLUE": 27,
+          "BLACK": 19,
+          "BLUE": 26,
           "BROWN": 14,
-          "ORANGE": 24,
-          "RED": 21,
-          "WHITE": 13,
-          "YELLOW": 26
+          "ORANGE": 20,
+          "RED": 15,
+          "WHITE": 9,
+          "YELLOW": 22
         },
         "scoutCoreByType": {
-          "BLACK": 64,
-          "BLUE": 55,
-          "BROWN": 56,
-          "ORANGE": 65,
-          "RED": 69,
-          "WHITE": 48,
-          "YELLOW": 67
+          "BLACK": 55,
+          "BLUE": 51,
+          "BROWN": 50,
+          "ORANGE": 48,
+          "RED": 62,
+          "WHITE": 35,
+          "YELLOW": 79
         },
-        "scoutCoreHitsCount": 153,
-        "scoutCoreHitsValueSum": 493,
-        "scoutHitsCount": 40,
-        "scoutHitsValueSum": 185,
+        "scoutCoreHitsCount": 136,
+        "scoutCoreHitsValueSum": 446,
+        "scoutHitsCount": 36,
+        "scoutHitsValueSum": 165,
         "touchCountByType": {
           "BLACK": 0,
           "BLUE": 1,
@@ -11416,32 +11416,32 @@
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "eclipse",
           "slotId": "S2"
         },
         {
           "rot": 0,
-          "sectorId": "21",
+          "sectorId": "19",
           "slotId": "S3"
         },
         {
           "rot": 0,
-          "sectorId": "20",
+          "sectorId": "21",
           "slotId": "S4"
         },
         {
           "rot": 0,
-          "sectorId": "eclipse",
+          "sectorId": "20",
           "slotId": "S5"
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "tfmars",
           "slotId": "S6"
         },
         {
           "rot": 0,
-          "sectorId": "tfmars",
+          "sectorId": "19",
           "slotId": "S7"
         },
         {
@@ -11460,13 +11460,13 @@
           "slotId": "S10"
         }
       ],
-      "placementHash": "cc5fcb8f",
+      "placementHash": "b03f8e3f",
       "seed": "snap-0022",
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1770.1608366911473,
-          "value": 17.701608366911472
+          "score": -1601.6573049341669,
+          "value": 16.01657304934167
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -11478,37 +11478,37 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 61,
-          "BLUE": 57,
-          "BROWN": 28,
-          "ORANGE": 70,
-          "RED": 84,
-          "WHITE": 82,
-          "YELLOW": 54
+          "BLACK": 48,
+          "BLUE": 69,
+          "BROWN": 24,
+          "ORANGE": 56,
+          "RED": 56,
+          "WHITE": 66,
+          "YELLOW": 77
         },
-        "score": -1770.160837,
+        "score": -1601.657305,
         "scoutByType": {
-          "BLACK": 17,
-          "BLUE": 19,
-          "BROWN": 9,
-          "ORANGE": 26,
-          "RED": 23,
-          "WHITE": 29,
-          "YELLOW": 11
+          "BLACK": 15,
+          "BLUE": 17,
+          "BROWN": 8,
+          "ORANGE": 22,
+          "RED": 14,
+          "WHITE": 20,
+          "YELLOW": 22
         },
         "scoutCoreByType": {
-          "BLACK": 51,
-          "BLUE": 44,
-          "BROWN": 28,
-          "ORANGE": 50,
-          "RED": 67,
-          "WHITE": 55,
-          "YELLOW": 47
+          "BLACK": 40,
+          "BLUE": 58,
+          "BROWN": 25,
+          "ORANGE": 40,
+          "RED": 48,
+          "WHITE": 48,
+          "YELLOW": 59
         },
-        "scoutCoreHitsCount": 120,
-        "scoutCoreHitsValueSum": 400,
-        "scoutHitsCount": 37,
-        "scoutHitsValueSum": 170,
+        "scoutCoreHitsCount": 116,
+        "scoutCoreHitsValueSum": 382,
+        "scoutHitsCount": 33,
+        "scoutHitsValueSum": 150,
         "touchCountByType": {
           "BLACK": 1,
           "BLUE": 0,
@@ -12581,12 +12581,12 @@
         },
         {
           "rot": 0,
-          "sectorId": "eclipse",
+          "sectorId": "19",
           "slotId": "S5"
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "eclipse",
           "slotId": "S6"
         },
         {
@@ -12596,12 +12596,12 @@
         },
         {
           "rot": 0,
-          "sectorId": "20",
+          "sectorId": "twilight",
           "slotId": "S8"
         },
         {
           "rot": 0,
-          "sectorId": "twilight",
+          "sectorId": "20",
           "slotId": "S9"
         },
         {
@@ -12610,13 +12610,13 @@
           "slotId": "S10"
         }
       ],
-      "placementHash": "0b85bc19",
+      "placementHash": "a1bb55e3",
       "seed": "snap-0027",
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1289.9928808536351,
-          "value": 12.899928808536352
+          "score": -709.98706513081,
+          "value": 7.099870651308101
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -12628,37 +12628,37 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 83,
-          "BLUE": 98,
-          "BROWN": 60,
-          "ORANGE": 67,
-          "RED": 64,
-          "WHITE": 88,
-          "YELLOW": 80
+          "BLACK": 66,
+          "BLUE": 70,
+          "BROWN": 59,
+          "ORANGE": 56,
+          "RED": 73,
+          "WHITE": 78,
+          "YELLOW": 66
         },
-        "score": -1289.992881,
+        "score": -709.987065,
         "scoutByType": {
-          "BLACK": 23,
-          "BLUE": 28,
-          "BROWN": 22,
-          "ORANGE": 11,
-          "RED": 19,
-          "WHITE": 19,
+          "BLACK": 21,
+          "BLUE": 19,
+          "BROWN": 19,
+          "ORANGE": 16,
+          "RED": 17,
+          "WHITE": 20,
           "YELLOW": 21
         },
         "scoutCoreByType": {
-          "BLACK": 65,
-          "BLUE": 76,
-          "BROWN": 44,
-          "ORANGE": 61,
-          "RED": 49,
-          "WHITE": 72,
-          "YELLOW": 63
+          "BLACK": 50,
+          "BLUE": 57,
+          "BROWN": 46,
+          "ORANGE": 45,
+          "RED": 60,
+          "WHITE": 61,
+          "YELLOW": 49
         },
-        "scoutCoreHitsCount": 146,
-        "scoutCoreHitsValueSum": 485,
-        "scoutHitsCount": 37,
-        "scoutHitsValueSum": 171,
+        "scoutCoreHitsCount": 122,
+        "scoutCoreHitsValueSum": 408,
+        "scoutHitsCount": 35,
+        "scoutHitsValueSum": 165,
         "touchCountByType": {
           "BLACK": 2,
           "BLUE": 0,
@@ -13040,12 +13040,12 @@
         },
         {
           "rot": 0,
-          "sectorId": "twilight",
+          "sectorId": "21",
           "slotId": "S5"
         },
         {
           "rot": 0,
-          "sectorId": "21",
+          "sectorId": "twilight",
           "slotId": "S6"
         },
         {
@@ -13055,12 +13055,12 @@
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "tfmars",
           "slotId": "S8"
         },
         {
           "rot": 0,
-          "sectorId": "tfmars",
+          "sectorId": "19",
           "slotId": "S9"
         },
         {
@@ -13069,13 +13069,13 @@
           "slotId": "S10"
         }
       ],
-      "placementHash": "139917f6",
+      "placementHash": "3628cbb2",
       "seed": "snap-0029",
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -2229.4869914170745,
-          "value": 22.294869914170746
+          "score": -2515.016127671745,
+          "value": 25.15016127671745
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -13087,37 +13087,37 @@
           "YELLOW": 0
         },
         "planetTypeTotals": {
-          "BLACK": 32,
-          "BLUE": 47,
-          "BROWN": 53,
-          "ORANGE": 99,
-          "RED": 61,
-          "WHITE": 88,
-          "YELLOW": 80
+          "BLACK": 45,
+          "BLUE": 72,
+          "BROWN": 62,
+          "ORANGE": 81,
+          "RED": 74,
+          "WHITE": 130,
+          "YELLOW": 58
         },
-        "score": -2229.486991,
+        "score": -2515.016128,
         "scoutByType": {
-          "BLACK": 12,
-          "BLUE": 13,
+          "BLACK": 15,
+          "BLUE": 24,
           "BROWN": 17,
-          "ORANGE": 28,
-          "RED": 9,
-          "WHITE": 24,
-          "YELLOW": 23
+          "ORANGE": 20,
+          "RED": 11,
+          "WHITE": 30,
+          "YELLOW": 19
         },
         "scoutCoreByType": {
-          "BLACK": 28,
-          "BLUE": 38,
-          "BROWN": 43,
-          "ORANGE": 72,
-          "RED": 55,
-          "WHITE": 66,
-          "YELLOW": 59
+          "BLACK": 38,
+          "BLUE": 52,
+          "BROWN": 52,
+          "ORANGE": 62,
+          "RED": 66,
+          "WHITE": 102,
+          "YELLOW": 41
         },
-        "scoutCoreHitsCount": 129,
-        "scoutCoreHitsValueSum": 427,
-        "scoutHitsCount": 34,
-        "scoutHitsValueSum": 158,
+        "scoutCoreHitsCount": 150,
+        "scoutCoreHitsValueSum": 494,
+        "scoutHitsCount": 37,
+        "scoutHitsValueSum": 168,
         "touchCountByType": {
           "BLACK": 2,
           "BLUE": 1,
@@ -13272,12 +13272,12 @@
         },
         {
           "rot": 0,
-          "sectorId": "tfmars",
+          "sectorId": "19",
           "slotId": "S5"
         },
         {
           "rot": 0,
-          "sectorId": "19",
+          "sectorId": "tfmars",
           "slotId": "S6"
         },
         {
@@ -13301,13 +13301,13 @@
           "slotId": "S10"
         }
       ],
-      "placementHash": "6d7f73ce",
+      "placementHash": "7afaa89e",
       "seed": "snap-0030",
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -2021.6178609000774,
-          "value": 20.216178609000774
+          "score": -1732.6398403380117,
+          "value": 17.326398403380118
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -13319,37 +13319,37 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 58,
-          "BLUE": 30,
-          "BROWN": 91,
-          "ORANGE": 76,
-          "RED": 39,
-          "WHITE": 40,
-          "YELLOW": 52
+          "BLACK": 47,
+          "BLUE": 36,
+          "BROWN": 78,
+          "ORANGE": 58,
+          "RED": 45,
+          "WHITE": 28,
+          "YELLOW": 74
         },
-        "score": -2021.617861,
+        "score": -1732.63984,
         "scoutByType": {
-          "BLACK": 24,
-          "BLUE": 8,
-          "BROWN": 28,
-          "ORANGE": 24,
+          "BLACK": 20,
+          "BLUE": 13,
+          "BROWN": 19,
+          "ORANGE": 19,
           "RED": 13,
           "WHITE": 10,
-          "YELLOW": 11
+          "YELLOW": 21
         },
         "scoutCoreByType": {
-          "BLACK": 40,
-          "BLUE": 30,
-          "BROWN": 67,
-          "ORANGE": 57,
-          "RED": 31,
-          "WHITE": 36,
-          "YELLOW": 47
+          "BLACK": 33,
+          "BLUE": 31,
+          "BROWN": 63,
+          "ORANGE": 44,
+          "RED": 37,
+          "WHITE": 24,
+          "YELLOW": 59
         },
-        "scoutCoreHitsCount": 110,
-        "scoutCoreHitsValueSum": 361,
-        "scoutHitsCount": 33,
-        "scoutHitsValueSum": 150,
+        "scoutCoreHitsCount": 106,
+        "scoutCoreHitsValueSum": 347,
+        "scoutHitsCount": 32,
+        "scoutHitsValueSum": 147,
         "touchCountByType": {
           "BLACK": 0,
           "BLUE": 2,
