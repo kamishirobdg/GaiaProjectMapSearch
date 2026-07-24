@@ -131,6 +131,14 @@ describe("buildSetupFromSeed structure", () => {
   it("draws one federation type for Terraforming level 5", () => {
     expect(FED_IDS).toContain(r.federationLv5);
   });
+
+  it("orders all 7 base planet colors on the transform board (no repeats)", () => {
+    expect(r.planetSatellites).toHaveLength(7);
+    expect(new Set(r.planetSatellites).size).toBe(7);
+    expect([...r.planetSatellites].sort()).toEqual(
+      ["BLACK", "BLUE", "BROWN", "ORANGE", "RED", "WHITE", "YELLOW"]
+    );
+  });
 });
 
 describe("Lost Fleet mode", () => {
@@ -588,6 +596,7 @@ const GOLDEN_SNAP_0001 = {
   roundScoring: ["RS01", "RS03", "RS04", "RS08", "RS04", "RS02"],
   finalScoring: ["FS05", "FS06"],
   federationLv5: "FED8PT",
+  planetSatellites: ["RED", "BROWN", "BLUE", "BLACK", "YELLOW", "WHITE", "ORANGE"],
 };
 
 // Golden LF roll for the same seed (regenerate deliberately, same command with
@@ -611,6 +620,7 @@ const GOLDEN_LF_SNAP_0001 = {
   roundScoring: ["RS01", "RS04", "RS05", "RS02", "RS11", "RS09"],
   finalScoring: ["FS04", "FS06"],
   federationLv5: "FED8PT",
+  planetSatellites: ["RED", "BROWN", "BLUE", "BLACK", "YELLOW", "WHITE", "ORANGE"],
   mode: "lostFleet",
   ships: ["twilight", "eclipse", "rebellion", "tfmars"],
   shipTech: { eclipse: "TSL1", rebellion: "TSL3", tfmars: "TSL2" },

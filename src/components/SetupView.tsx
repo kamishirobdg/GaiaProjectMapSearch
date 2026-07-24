@@ -32,6 +32,7 @@ import { SETUP_CATALOG } from "@/gaia/setup/data";
 import {
   RESEARCH_TRACK_IDS,
   TECH_SHIP_IDS,
+  type PlanetColorKey,
   type ResearchTrackId,
   type SetupMode,
   type SetupResult,
@@ -39,6 +40,19 @@ import {
 } from "@/gaia/setup/types";
 
 type Lang = "ja" | "en";
+
+// Muaked/Tinkerroid satellite colors: swatch + label per base planet color.
+// Swatches mirror the map side's palette (BreakdownTable PLANET_INPUT_BG); a
+// darker ink keeps light swatches (white/yellow) readable.
+const PLANET_COLOR_STYLE: Record<PlanetColorKey, { bg: string; ja: string; en: string }> = {
+  BLACK: { bg: "#adadad", ja: "黒", en: "Black" },
+  BLUE: { bg: "#cfe8ff", ja: "青", en: "Blue" },
+  BROWN: { bg: "#e7d3b1", ja: "茶", en: "Brown" },
+  ORANGE: { bg: "#ffe0b2", ja: "橙", en: "Orange" },
+  RED: { bg: "#ffd2d2", ja: "赤", en: "Red" },
+  WHITE: { bg: "#ffffff", ja: "白", en: "White" },
+  YELLOW: { bg: "#fff9c4", ja: "黄", en: "Yellow" },
+};
 
 // Research track display names (labels only; ids are the source of truth).
 const TRACK_LABEL: Record<ResearchTrackId, { ja: string; en: string }> = {
@@ -62,6 +76,8 @@ const UI = {
     title: "セットアップ（研究/ブースター/得点）",
     searchConds: "検索条件",
     setupArea: "セットアップ",
+    satellites: "衛星駒の順（モウェイド人／ティンカーロイド）",
+    satellitesNote: "惑星改造ボードの7スペースに置く色順（番号順）。勢力選択とは独立。",
     draftNote:
       "※ 全タイル（基本版・Lost Fleet）はルールブック・実物確認済み。評価機能は未実装。",
     seed: "シード",
@@ -132,6 +148,8 @@ const UI = {
     title: "Setup (research / boosters / scoring)",
     searchConds: "Search conditions",
     setupArea: "Setup",
+    satellites: "Satellite order (Muaked / Tinkerroid)",
+    satellitesNote: "Color order for the 7 planet-transform board spaces (by number). Independent of faction choice.",
     draftNote:
       "Note: all tiles (base game & Lost Fleet) verified against the rulebook and physical components. Evaluation not implemented.",
     seed: "Seed",
@@ -974,6 +992,45 @@ export default function SetupView() {
         <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.boosters}</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start" }}>
           {result.boosters.available.map((id) => tileCell(id, undefined, true))}
+        </div>
+      </section>
+
+      {/* Muaked/Tinkerroid planet-transform satellites: 7 colors in board order */}
+      <section>
+        <div style={{ fontWeight: 700, marginBottom: 2 }}>{t.satellites}</div>
+        <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 6 }}>{t.satellitesNote}</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start" }}>
+          {result.planetSatellites.map((c, i) => {
+            const s = PLANET_COLOR_STYLE[c];
+            return (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 3,
+                  border: "1px solid #ddd",
+                  borderRadius: 8,
+                  padding: "6px 8px",
+                  minWidth: 44,
+                }}
+              >
+                <span style={{ fontSize: 11, fontWeight: 700, opacity: 0.6 }}>{i + 1}</span>
+                <span
+                  title={lang === "ja" ? s.ja : s.en}
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: "50%",
+                    background: s.bg,
+                    border: "1px solid #999",
+                  }}
+                />
+                <span style={{ fontSize: 11 }}>{lang === "ja" ? s.ja : s.en}</span>
+              </div>
+            );
+          })}
         </div>
       </section>
         </div>{/* 右カラム（セットアップ表示）終わり */}

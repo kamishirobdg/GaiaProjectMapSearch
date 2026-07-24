@@ -31,6 +31,7 @@
 
 import { mulberry32, hashSeed, shuffleSeeded } from "../board/rng";
 import {
+  PLANET_COLOR_KEYS,
   RESEARCH_TRACK_IDS,
   SHIP_IDS,
   TECH_SHIP_IDS,
@@ -227,6 +228,11 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
   const feds = shuffleSeeded(idsOf(SETUP_CATALOG.federations), streamFor(seed, "federationLv5"));
   const federationLv5 = feds[0];
 
+  // 7) Muaked/Tinkerroid planet-transform: shuffle the 7 base colors into the
+  //    board's 7 spaces. Independent stream + faction-agnostic, so it never
+  //    shifts another draw and is present in both base and LF modes.
+  const planetSatellites = shuffleSeeded(PLANET_COLOR_KEYS, streamFor(seed, "planetSatellites"));
+
   const base: SetupResult = {
     seed,
     playerCount,
@@ -236,6 +242,7 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
     roundScoring,
     finalScoring,
     federationLv5,
+    planetSatellites,
   };
 
   if (!lf) return base;

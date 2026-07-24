@@ -43,6 +43,25 @@ export const RESEARCH_TRACK_IDS: readonly ResearchTrackId[] = [
 ] as const;
 
 /**
+ * The 7 basic planet colors of the base game. Used for the Muaked/Tinkerroid
+ * planet-transform board: one satellite of each color is placed in random order
+ * on the board's 7 spaces, which fixes the order the faction must transform
+ * planets in (rulebook §モウェイド人／ティンカーロイド). Keys match the map
+ * side's normalized color vocabulary (BreakdownTable PLANET_ORDER).
+ */
+export type PlanetColorKey = "BLACK" | "BLUE" | "BROWN" | "ORANGE" | "RED" | "WHITE" | "YELLOW";
+
+export const PLANET_COLOR_KEYS: readonly PlanetColorKey[] = [
+  "BLACK",
+  "BLUE",
+  "BROWN",
+  "ORANGE",
+  "RED",
+  "WHITE",
+  "YELLOW",
+] as const;
+
+/**
  * A catalog entry for any randomized setup component. `effect`/`effectEn` are
  * DRAFT descriptions pending the user's verification; the id and the slot
  * counts are the authoritative part the randomizer relies on.
@@ -171,6 +190,13 @@ export type SetupResult = {
 
   /** Federation tile type id placed on Terraforming research level 5. */
   federationLv5: string;
+
+  /**
+   * モウェイド人／ティンカーロイド用惑星改造ボードの7スペースに置く衛星駒の
+   * 色順（index 0 = スペース1 … 6 = スペース7）。基本7色のランダム順で、勢力
+   * 選択とは独立に決まる。基本・Lost Fleet 両モードで常に生成される。
+   */
+  planetSatellites: PlanetColorKey[];
 
   // --- Lost Fleet mode only -------------------------------------------------
 

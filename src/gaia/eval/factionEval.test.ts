@@ -32,6 +32,7 @@ function syntheticSetup(partial?: Partial<SetupResult>): SetupResult {
     roundScoring: ["RS07", "RS07", "RS01", "RS02", "RS03", "RS04"],
     finalScoring: ["FS02", "FS06"],
     federationLv5: "FED12",
+    planetSatellites: ["BLACK", "BLUE", "BROWN", "ORANGE", "RED", "WHITE", "YELLOW"],
     ...partial,
   };
 }
