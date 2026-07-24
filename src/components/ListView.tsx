@@ -182,6 +182,14 @@ function fmtWhen(ts: number | undefined, lang: Lang): string {
   });
 }
 
+// タブ遷移時の「デフォルト→復元」ちらつきを消すため、復元は paint 前に走る
+// layout effect で行う（SSRでは useEffect にフォールバック）。2026-07-24。
+const useIsoLayoutEffect = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
+
+// List のマップ/基準の選択を記憶する localStorage キー（人数/拡張と同様に永続）。
+const LS_LIST_MAP = "gaia_list_pair_map";
+const LS_LIST_CRITERION = "gaia_list_criterion";
+
 export default function ListView() {
   const [lang, setLang] = React.useState<Lang>("ja");
   const [players, setPlayers] = React.useState<number>(4);
@@ -210,7 +218,8 @@ export default function ListView() {
   } | null>(null);
 
   // 復元は読み取りのみ（書込みはユーザー操作ハンドラのみの規律）。
-  React.useEffect(() => {
+  // paint 前に走らせてタブ遷移時のちらつきを防ぐ。
+  useIsoLayoutEffect(() => {
     const v = (() => {
       try {
         return localStorage.getItem("gaia_ui_lang");
@@ -225,6 +234,17 @@ export default function ListView() {
     const se = readSharedExpansion();
     if (sp) setPlayers(sp);
     if (se) setExpansion(se);
+
+    // マップ/基準の選択を復元（読取のみ）。paint 前に効くので DB ロード前でも
+    // 正しい選択が即座に表示され、遷移後に一拍置いて切り替わるのを防ぐ。
+    try {
+      const savedMap = localStorage.getItem(LS_LIST_MAP);
+      if (savedMap) setPairMapId(savedMap);
+      const savedCrit = localStorage.getItem(LS_LIST_CRITERION);
+      if (savedCrit === "opposeMap" || savedCrit === "topBalance" || savedCrit === "neutralBalance") {
+        setCriterion(savedCrit as RecommendCriterion);
+      }
+    } catch {}
 
     let alive = true;
     void (async () => {
@@ -300,8 +320,9 @@ export default function ListView() {
   }, [pinnedMaps, topOverallMap]);
 
   // List を開いた時点のデフォルト選択（最優先=ピン留め最上位→無ければ全体最上位）。
+  // 復元した pairMapId が選択候補に無い場合（ピン解除後など）もデフォルトへフォールバック。
   React.useEffect(() => {
-    if (pairMapId === "" && selectableMaps.length > 0) {
+    if (selectableMaps.length > 0 && !selectableMaps.some((m) => m.id === pairMapId)) {
       setPairMapId(selectableMaps[0].id);
     }
   }, [selectableMaps, pairMapId]);
@@ -504,6 +525,7 @@ export default function ListView() {
               value={pairMapId}
               onChange={(e) => {
                 setPairMapId(e.target.value);
+                try { localStorage.setItem(LS_LIST_MAP, e.target.value); } catch {}
                 setRec(null);
                 setPairMsg(null);
               }}
@@ -525,6 +547,7 @@ export default function ListView() {
               value={criterion}
               onChange={(e) => {
                 setCriterion(e.target.value as RecommendCriterion);
+                try { localStorage.setItem(LS_LIST_CRITERION, e.target.value); } catch {}
                 setRec(null);
                 setPairMsg(null);
               }}

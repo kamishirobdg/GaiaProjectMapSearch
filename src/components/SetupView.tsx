@@ -372,6 +372,10 @@ function lsSet(key: string, value: string): void {
   }
 }
 
+// タブ遷移時の「デフォルト→復元」ちらつきを消すため、復元は paint 前に走る
+// layout effect で行う（SSRでは useEffect にフォールバック）。2026-07-24。
+const useIsoLayoutEffect = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
+
 export default function SetupView() {
   const [lang, setLang] = React.useState<Lang>("ja");
   const [seed, setSeed] = React.useState<string>("1");
@@ -422,7 +426,7 @@ export default function SetupView() {
   }, []);
 
   // Restore language (shared with the map page) and remembered settings.
-  React.useEffect(() => {
+  useIsoLayoutEffect(() => {
     const v = lsGet("gaia_ui_lang");
     if (v === "ja" || v === "en") setLang(v);
 

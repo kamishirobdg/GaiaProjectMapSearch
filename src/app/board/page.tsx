@@ -149,6 +149,10 @@ function sumCounts(obj: any): number {
 
 import { runSearchOffThread } from "./searchRunner";
 
+// タブ遷移時の「デフォルト→復元」ちらつきを消すため、共有選択の復元は
+// paint 前に走る layout effect で行う（SSRでは useEffect にフォールバック）。2026-07-24。
+const useIsoLayoutEffect = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
+
 // 評価指数の各セル（薄い背景色のテーブル状。ユーザー要望 2026-07-24）。
 const EVAL_CELL: React.CSSProperties = {
   display: "flex",
@@ -296,8 +300,8 @@ React.useEffect(() => {
   );
 
   // Restore the shared selection on mount (results are still empty here, so
-  // no reset side effects matter).
-  React.useEffect(() => {
+  // no reset side effects matter). paint 前に走らせてタブ遷移時のちらつきを防ぐ。
+  useIsoLayoutEffect(() => {
     const p = readSharedPlayers();
     const e = readSharedExpansion();
     if (p) setPlayers(p);
