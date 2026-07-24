@@ -78,13 +78,14 @@ const colsIn = colsProp ?? {
   cntTouch: hasCounts,
 };
 
-// 出し分け: base では scout/scoutCore を出さず、新軸（gaia/cluster）は
-// データがある場合のみ。LF では新軸を出さない（従来表示のまま）。
+// 出し分け: base では scout/scoutCore を出さない。新軸（gaia/cluster）は
+// base・LF ともデータがある場合のみ表示（LF はガイア近接・星系を有効化した
+// ときだけ breakdown に軸が入るので、データ有無で自動的に出し分く。2026-07-24）。
 const cols = {
   ...colsIn,
-  ...(isBase
-    ? { scout: false, scoutCore: false, gaia: !!gaia && (colsIn as any).gaia !== false, cluster: !!cluster && (colsIn as any).cluster !== false }
-    : { gaia: false, cluster: false }),
+  ...(isBase ? { scout: false, scoutCore: false } : {}),
+  gaia: !!gaia && (colsIn as any).gaia !== false,
+  cluster: !!cluster && (colsIn as any).cluster !== false,
 };
 
 // --- order: total -> scout -> scoutCore -> gaia -> cluster -> outer -> touch (counts at the end) ---

@@ -341,7 +341,7 @@ React.useEffect(() => {
 
 
   const [showImportExport, setShowImportExport] = React.useState(false);
-  const [showMapToolbar, setShowMapToolbar] = React.useState(false);
+  // マップ調整ツールバーは不要になったため常時非表示（2026-07-24 ユーザー要望）。
   const [showSavedConditions, setShowSavedConditions] = React.useState(false);
   const [savedProfiles, setSavedProfiles] = React.useState<PersistedProfile[]>([]);
 
@@ -2423,10 +2423,6 @@ const handleDeleteUsed = React.useCallback(
   <span>{t("savedConditions")}</span>
 </label>
 
-<label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
-  <input type="checkbox" checked={showMapToolbar} onChange={(e) => setShowMapToolbar(e.target.checked)} />
-  <span>{t("mapTools")}</span>
-</label>
 
         {/* 基本版のみ: 配置方法（検索キーに影響する設定。上段からの移動は
             基本版/LF切替でボタン位置がズレないようにするため、2026-07-24） */}
@@ -2715,7 +2711,10 @@ const handleDeleteUsed = React.useCallback(
             display: "flex",
             flexDirection: "column",
             // Mobile: do not make the map itself a scroll container; let the page scroll instead.
-            overflow: isNarrow ? "hidden" : "auto",
+            // Desktop: the SVG fits-to-container (preserveAspectRatio meet) so vertical
+            // scroll is never needed; disable it (2026-07-24 ユーザー要望). 横方向のみ念のため auto。
+            overflowX: isNarrow ? "hidden" : "auto",
+            overflowY: "hidden",
             WebkitOverflowScrolling: isNarrow ? undefined : "touch",
             // Mobile: allow the browser to handle vertical pan gestures for page scrolling.
             touchAction: isNarrow ? "pan-y" : undefined,
@@ -2734,9 +2733,8 @@ const handleDeleteUsed = React.useCallback(
               scaleByAccepts={{ LARGE: 1.02, MIDDLE: 0.93, SMALL: 1.1 }}
               boundsPad={isNarrow ? 40 : 65}
               zoom={isNarrow ? 0.85 : 1.0}
-              showToolbar={showMapToolbar}
-              // マップは固定表示（ドラッグ/パン無効、2026-07-24 ユーザー要望）。
-              // ズームは「マップ調整」ツールバーで調整可能。
+              showToolbar={false}
+              // マップは固定表示（ドラッグ/パン無効、ツールバー廃止、2026-07-24 ユーザー要望）。
               disablePan
             />
           </div>
@@ -2982,109 +2980,122 @@ const handleDeleteUsed = React.useCallback(
               <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.9 }} title={t("tipSoft")}>
                 {t("soft")}
               </summary>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <div style={{ fontWeight: 700, fontSize: 12 }}>
-                <Hint label={t("soft")} tip={t("tipSoft")} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+              {/* --- 基本軸: outer / touch (+ LF は scout radius) --- */}
+              <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
+                <div style={{ fontWeight: 700, fontSize: 12, minWidth: 56 }}>
+                  <Hint label={t("soft")} tip={t("tipSoft")} />
+                </div>
+                <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <Hint label={t("wOuter")} tip={t("tipWOuter")} />
+                  <input type="number" value={wOuter} min={0} max={10} onChange={(e) => setWOuter(Number(e.target.value) || 0)} style={{ width: 60 }} />
+                </label>
+                <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <Hint label={t("wTouch")} tip={t("tipWTouch")} />
+                  <input type="number" value={wTouch} min={0} max={10} onChange={(e) => setWTouch(Number(e.target.value) || 0)} style={{ width: 60 }} />
+                </label>
+                {!isBase ? (
+                  <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <Hint label={t("radius")} tip={t("tipScoutRadius")} />
+                    <input
+                      type="number"
+                      value={scoutRadius}
+                      min={1}
+                      max={12}
+                      onChange={(e) => setScoutRadius(Math.max(1, Math.min(12, Number(e.target.value) || 1)))}
+                      style={{ width: 60 }}
+                    />
+                  </label>
+                ) : null}
               </div>
 
-              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <Hint label={t("wOuter")} tip={t("tipWOuter")} />
-                <input type="number" value={wOuter} min={0} max={10} onChange={(e) => setWOuter(Number(e.target.value) || 0)} style={{ width: 60 }} />
-              </label>
+              {/* --- 拡張軸: ガイア近接・星系。枠を常時確保し、無効時は入力を disable する
+                     （チェックのON/OFFでレイアウトが動かない。2026-07-24 ユーザー要望）。 --- */}
+              <div style={{ borderTop: "1px dashed #ddd", paddingTop: 8, opacity: extraAxesOn ? 1 : 0.6 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 6 }}>
+                  {!isBase ? (
+                    <label style={{ display: "flex", gap: 6, alignItems: "center", fontWeight: 700, fontSize: 12 }} title={t("tipExtraAxesLF")}>
+                      <input
+                        type="checkbox"
+                        checked={applyExtraAxesLF}
+                        onChange={(e) => changeApplyExtraAxesLF(e.target.checked)}
+                      />
+                      <Hint label={t("extraAxesLF")} tip={t("tipExtraAxesLF")} />
+                    </label>
+                  ) : (
+                    <div style={{ fontWeight: 700, fontSize: 12 }}>
+                      <Hint label={t("extraAxesLF")} tip={t("tipExtraAxesLF")} />
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
+                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }} title={t("wGaiaTip")}>
+                    <span style={{ fontSize: 12 }}>{t("wGaiaD1")}</span>
+                    <input type="number" value={wGaiaD1} min={0} max={20} disabled={!extraAxesOn} onChange={(e) => setWGaiaD1(Number(e.target.value) || 0)} style={{ width: 60, background: extraAxesOn ? undefined : "#f0f0f0" }} />
+                  </label>
+                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }} title={t("wGaiaTip")}>
+                    <span style={{ fontSize: 12 }}>{t("wGaiaD2")}</span>
+                    <input type="number" value={wGaiaD2} min={0} max={20} disabled={!extraAxesOn} onChange={(e) => setWGaiaD2(Number(e.target.value) || 0)} style={{ width: 60, background: extraAxesOn ? undefined : "#f0f0f0" }} />
+                  </label>
+                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }} title={t("wGaiaTip")}>
+                    <span style={{ fontSize: 12 }}>{t("wGaiaD3")}</span>
+                    <input type="number" value={wGaiaD3} min={0} max={20} disabled={!extraAxesOn} onChange={(e) => setWGaiaD3(Number(e.target.value) || 0)} style={{ width: 60, background: extraAxesOn ? undefined : "#f0f0f0" }} />
+                  </label>
+                  <label style={{ display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }} title={t("wClusterTip")}>
+                    <span style={{ fontSize: 12 }}>{t("wClusterSize")}</span>
+                    <input type="number" value={wClusterSize} min={0} max={20} disabled={!extraAxesOn} onChange={(e) => setWClusterSize(Number(e.target.value) || 0)} style={{ width: 60, background: extraAxesOn ? undefined : "#f0f0f0" }} />
+                  </label>
+                </div>
+              </div>
 
-              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <Hint label={t("wTouch")} tip={t("tipWTouch")} />
-                <input type="number" value={wTouch} min={0} max={10} onChange={(e) => setWTouch(Number(e.target.value) || 0)} style={{ width: 60 }} />
-              </label>
-
-              {/* LF: ガイア近接・星系軸のオプトイン（既定OFF。ONで既存LFキーと別バケット） */}
+              {/* --- スカウト重み（LFのみ）: 船接触 / 船星系 --- */}
               {!isBase ? (
-                <label style={{ display: "flex", gap: 6, alignItems: "center" }} title={t("tipExtraAxesLF")}>
-                  <input
-                    type="checkbox"
-                    checked={applyExtraAxesLF}
-                    onChange={(e) => changeApplyExtraAxesLF(e.target.checked)}
-                  />
-                  <Hint label={t("extraAxesLF")} tip={t("tipExtraAxesLF")} />
-                </label>
-              ) : null}
+                <div style={{ borderTop: "1px dashed #ddd", paddingTop: 8 }}>
+                  <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 6 }}>
+                    <Hint label={t("wScout")} tip={t("tipWScoutShip")} />
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10, alignItems: "start" }}>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                      <Hint label={t("wScoutS1")} tip={t("tipWScoutShip")} />
+                      <input type="number" value={wScoutS1} min={0} max={20} onChange={(e) => setWScoutS1(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+                    </label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                      <Hint label={t("wScoutS2")} tip={t("tipWScoutShip")} />
+                      <input type="number" value={wScoutS2} min={0} max={20} onChange={(e) => setWScoutS2(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+                    </label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                      <Hint label={t("wScoutS3")} tip={t("tipWScoutShip")} />
+                      <input type="number" value={wScoutS3} min={0} max={20} onChange={(e) => setWScoutS3(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+                    </label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                      <Hint label={t("wScoutS4")} tip={t("tipWScoutShip")} />
+                      <input type="number" value={wScoutS4} min={0} max={20} onChange={(e) => setWScoutS4(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+                    </label>
 
-              {extraAxesOn ? (
-                <>
-                  <label style={{ display: "flex", gap: 6, alignItems: "center" }} title={t("wGaiaTip")}>
-                    <span>{t("wGaiaD1")}</span>
-                    <input type="number" value={wGaiaD1} min={0} max={20} onChange={(e) => setWGaiaD1(Number(e.target.value) || 0)} style={{ width: 60 }} />
-                  </label>
-                  <label style={{ display: "flex", gap: 6, alignItems: "center" }} title={t("wGaiaTip")}>
-                    <span>{t("wGaiaD2")}</span>
-                    <input type="number" value={wGaiaD2} min={0} max={20} onChange={(e) => setWGaiaD2(Number(e.target.value) || 0)} style={{ width: 60 }} />
-                  </label>
-                  <label style={{ display: "flex", gap: 6, alignItems: "center" }} title={t("wGaiaTip")}>
-                    <span>{t("wGaiaD3")}</span>
-                    <input type="number" value={wGaiaD3} min={0} max={20} onChange={(e) => setWGaiaD3(Number(e.target.value) || 0)} style={{ width: 60 }} />
-                  </label>
-                  <label style={{ display: "flex", gap: 6, alignItems: "center" }} title={t("wClusterTip")}>
-                    <span>{t("wClusterSize")}</span>
-                    <input type="number" value={wClusterSize} min={0} max={20} onChange={(e) => setWClusterSize(Number(e.target.value) || 0)} style={{ width: 60 }} />
-                  </label>
-                </>
-              ) : null}
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                      <Hint label={t("wScoutCoreS1")} tip={t("tipWScoutCoreShip")} />
+                      <input type="number" value={wScoutCoreS1} min={0} max={20} onChange={(e) => setWScoutCoreS1(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+                    </label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                      <Hint label={t("wScoutCoreS2")} tip={t("tipWScoutCoreShip")} />
+                      <input type="number" value={wScoutCoreS2} min={0} max={20} onChange={(e) => setWScoutCoreS2(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+                    </label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                      <Hint label={t("wScoutCoreS3")} tip={t("tipWScoutCoreShip")} />
+                      <input type="number" value={wScoutCoreS3} min={0} max={20} onChange={(e) => setWScoutCoreS3(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+                    </label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                      <Hint label={t("wScoutCoreS4")} tip={t("tipWScoutCoreShip")} />
+                      <input type="number" value={wScoutCoreS4} min={0} max={20} onChange={(e) => setWScoutCoreS4(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
+                    </label>
 
-              {!isBase ? (
-              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <Hint label={t("radius")} tip={t("tipScoutRadius")} />
-                <input
-                  type="number"
-                  value={scoutRadius}
-                  min={1}
-                  max={12}
-                  onChange={(e) => setScoutRadius(Math.max(1, Math.min(12, Number(e.target.value) || 1)))}
-                  style={{ width: 60 }}
-                />
-
-<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10, alignItems: "start" }}>
-  <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-    <Hint label={t("wScoutS1")} tip={t("tipWScoutShip")} />
-    <input type="number" value={wScoutS1} min={0} max={20} onChange={(e) => setWScoutS1(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
-  </label>
-  <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-    <Hint label={t("wScoutS2")} tip={t("tipWScoutShip")} />
-    <input type="number" value={wScoutS2} min={0} max={20} onChange={(e) => setWScoutS2(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
-  </label>
-  <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-    <Hint label={t("wScoutS3")} tip={t("tipWScoutShip")} />
-    <input type="number" value={wScoutS3} min={0} max={20} onChange={(e) => setWScoutS3(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
-  </label>
-  <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-    <Hint label={t("wScoutS4")} tip={t("tipWScoutShip")} />
-    <input type="number" value={wScoutS4} min={0} max={20} onChange={(e) => setWScoutS4(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
-  </label>
-
-  <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-    <Hint label={t("wScoutCoreS1")} tip={t("tipWScoutCoreShip")} />
-    <input type="number" value={wScoutCoreS1} min={0} max={20} onChange={(e) => setWScoutCoreS1(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
-  </label>
-  <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-    <Hint label={t("wScoutCoreS2")} tip={t("tipWScoutCoreShip")} />
-    <input type="number" value={wScoutCoreS2} min={0} max={20} onChange={(e) => setWScoutCoreS2(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
-  </label>
-  <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-    <Hint label={t("wScoutCoreS3")} tip={t("tipWScoutCoreShip")} />
-    <input type="number" value={wScoutCoreS3} min={0} max={20} onChange={(e) => setWScoutCoreS3(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
-  </label>
-  <label style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-    <Hint label={t("wScoutCoreS4")} tip={t("tipWScoutCoreShip")} />
-    <input type="number" value={wScoutCoreS4} min={0} max={20} onChange={(e) => setWScoutCoreS4(Number(e.target.value) || 0)} style={{ width: 110, maxWidth: "100%", flex: "0 0 auto" }} />
-  </label>
-
-  <label style={{ display: "flex", gap: 8, alignItems: "center", gridColumn: "1 / -1", flexWrap: "wrap" }}>
-    <input type="checkbox" checked={scoutCoreAttribBest} onChange={(e) => setScoutCoreAttribBest(e.target.checked)} />
-    <Hint label={t("scoutCoreAttribBest")} tip={t("tipScoutCoreAttrib")} />
-  </label>
-</div>
-
-
-              </label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center", gridColumn: "1 / -1", flexWrap: "wrap" }}>
+                      <input type="checkbox" checked={scoutCoreAttribBest} onChange={(e) => setScoutCoreAttribBest(e.target.checked)} />
+                      <Hint label={t("scoutCoreAttribBest")} tip={t("tipScoutCoreAttrib")} />
+                    </label>
+                  </div>
+                </div>
               ) : null}
 
               <div style={{ width: "100%", borderTop: "1px dashed #ddd", marginTop: 8, paddingTop: 8 }}>
