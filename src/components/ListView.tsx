@@ -90,6 +90,9 @@ const UI = {
     sharePair: "セット共有URL",
     recordToList: "保存リストに記録",
     recorded: "記録しました",
+    savedProposals: "保存した提案",
+    saveProposal: "提案を保存",
+    deleteProposal: "削除",
     sharedPairTitle: "共有されたセット",
   },
   en: {
@@ -130,6 +133,9 @@ const UI = {
     sharePair: "Share pair URL",
     recordToList: "Record to saved list",
     recorded: "Recorded",
+    savedProposals: "Saved proposals",
+    saveProposal: "Save proposal",
+    deleteProposal: "Delete",
     sharedPairTitle: "Shared pair",
   },
 } as const;
@@ -193,6 +199,38 @@ const useIsoLayoutEffect = typeof window !== "undefined" ? React.useLayoutEffect
 const LS_LIST_MAP = "gaia_list_pair_map";
 const LS_LIST_CRITERION = "gaia_list_criterion";
 
+// 保存した提案（マップ配置＋基準＋セットアップ入力の自己完結スナップショット）。
+// DBマイグレーションを避け localStorage に保持し、画面上から即再表示する。2026-07-24。
+const LS_LIST_PROPOSALS = "gaia_list_proposals";
+const PROPOSALS_CAP = 50;
+type SavedProposal = {
+  id: string;
+  createdAt: number;
+  criterion: RecommendCriterion;
+  tid: string;
+  mapPlacement: PlacementItem[];
+  mapScore: number;
+  mapHash: string;
+  setupInput: BuildSetupInput;
+  players: number;
+  lf: boolean;
+};
+function loadProposals(): SavedProposal[] {
+  try {
+    const raw = localStorage.getItem(LS_LIST_PROPOSALS);
+    if (!raw) return [];
+    const a = JSON.parse(raw);
+    return Array.isArray(a) ? (a as SavedProposal[]) : [];
+  } catch {
+    return [];
+  }
+}
+function writeProposals(list: SavedProposal[]): void {
+  try {
+    localStorage.setItem(LS_LIST_PROPOSALS, JSON.stringify(list));
+  } catch {}
+}
+
 export default function ListView() {
   const [lang, setLang] = React.useState<Lang>("ja");
   const [players, setPlayers] = React.useState<number>(4);
@@ -210,6 +248,7 @@ export default function ListView() {
   const [rec, setRec] = React.useState<Recommendation | null>(null);
   const [recMapTop, setRecMapTop] = React.useState<Array<{ id: FactionId; score: number }> | null>(null);
   const [recSettings, setRecSettings] = React.useState<{ players: number; lf: boolean } | null>(null);
+  const [savedProposals, setSavedProposals] = React.useState<SavedProposal[]>([]);
   const [pairMsg, setPairMsg] = React.useState<string | null>(null);
   const [recorded, setRecorded] = React.useState(false);
   // 共有されたセット（/list?h=&t=&s=）。捕捉は初回のみ（Strict Mode二重実行対応）。
@@ -248,6 +287,9 @@ export default function ListView() {
         setCriterion(savedCrit as RecommendCriterion);
       }
     } catch {}
+
+    // 保存した提案を復元（読取のみ）。
+    setSavedProposals(loadProposals());
 
     let alive = true;
     void (async () => {
@@ -430,6 +472,43 @@ export default function ListView() {
       setRecorded(true);
     });
   }, [rec]);
+
+  // 提案（マップ＋基準＋セットアップ）を自己完結スナップショットとして保存。
+  const handleSaveProposal = React.useCallback(() => {
+    if (!rec || !recSettings) return;
+    const selected = selectableMaps.find((c) => c.id === pairMapId) ?? null;
+    const tid = selected ? (templateIdBySearchKey[selected.searchKey] ?? "") : "";
+    const prop: SavedProposal = {
+      id: `${pairMapId}|${criterion}|${rec.input.seed}|${Date.now()}`,
+      createdAt: Date.now(),
+      criterion,
+      tid,
+      mapPlacement: (selected?.placement ?? []) as PlacementItem[],
+      mapScore: Number(selected?.score ?? 0),
+      mapHash: String(selected?.placementHash ?? ""),
+      setupInput: rec.input,
+      players: recSettings.players,
+      lf: recSettings.lf,
+    };
+    setSavedProposals((prev) => {
+      const next = [prop, ...prev].slice(0, PROPOSALS_CAP);
+      writeProposals(next);
+      return next;
+    });
+  }, [rec, recSettings, selectableMaps, pairMapId, criterion, templateIdBySearchKey]);
+
+  const handleDeleteProposal = React.useCallback((id: string) => {
+    setSavedProposals((prev) => {
+      const next = prev.filter((p) => p.id !== id);
+      writeProposals(next);
+      return next;
+    });
+  }, []);
+
+  const criterionLabel = React.useCallback(
+    (c: RecommendCriterion) => (c === "opposeMap" ? t.crit1 : c === "topBalance" ? t.crit2 : t.crit3),
+    [t]
+  );
 
   return (
     <>
@@ -684,12 +763,92 @@ export default function ListView() {
                     <button onClick={handleRecordRec} style={{ fontSize: 11 }} disabled={recorded}>
                       {recorded ? t.recorded : t.recordToList}
                     </button>
+                    <button onClick={handleSaveProposal} style={{ fontSize: 11 }}>
+                      {t.saveProposal}
+                    </button>
                   </div>
                 </div>
               );
             })()
           : null}
       </section>
+
+      {/* 保存した提案（自己完結スナップショット。マップが後でピン解除されても再表示可能）。2026-07-24 */}
+      {savedProposals.length > 0 ? (
+        <section>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>
+            {t.savedProposals} ({savedProposals.length})
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {savedProposals.map((p) => {
+              const template = TEMPLATE_BY_ID[p.tid];
+              const setupResult = buildSetupFromSeed(p.setupInput);
+              let bToken = "";
+              try {
+                bToken = encodePlacementToken(p.mapPlacement as any);
+              } catch {}
+              const sToken = encodeSetupToken(p.setupInput);
+              const linkStyle: React.CSSProperties = {
+                fontSize: 11,
+                padding: "2px 8px",
+                border: "1px solid #ccc",
+                borderRadius: 6,
+                background: "white",
+                textDecoration: "none",
+                color: "#333",
+              };
+              return (
+                <div
+                  key={p.id}
+                  style={{ border: "1px solid #ddd", borderRadius: 8, background: "#fafafa", padding: "8px 10px", display: "flex", flexDirection: "column", gap: 6, fontSize: 12 }}
+                >
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <span style={{ opacity: 0.75 }}>
+                      {criterionLabel(p.criterion)} ・ {p.lf ? t.modeLF : t.modeBase} ・ {t.players}: {p.players} ・{" "}
+                      <span style={{ fontFamily: "monospace" }}>seed {p.setupInput.seed}</span> ・ {Math.round(p.mapScore)} ・{" "}
+                      <span style={{ fontFamily: "monospace" }}>{String(p.mapHash).slice(0, 8)}</span>
+                    </span>
+                    <span style={{ marginLeft: "auto" }} />
+                    <button onClick={() => handleDeleteProposal(p.id)} style={{ fontSize: 11 }}>
+                      {t.deleteProposal}
+                    </button>
+                  </div>
+                  <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-start" }}>
+                    {template ? (
+                      <div style={{ width: 300, pointerEvents: "none" }}>
+                        <MapBoardViewer
+                          template={template as any}
+                          placement={p.mapPlacement}
+                          sectorById={sectorById as any}
+                          sectorImgById={sectorImgById}
+                          imgOffsetBySlotId={IMG_OFFSET_BY_SLOT as any}
+                          rotOffsetsBySlotId={ROT_OFFSETS_BY_SLOT as any}
+                          scaleByAccepts={{ LARGE: 1.02, MIDDLE: 0.93, SMALL: 1.1 }}
+                          boundsPad={40}
+                          zoom={1.0}
+                          showToolbar={false}
+                          disablePan
+                        />
+                      </div>
+                    ) : null}
+                    <SetupBoard result={setupResult} lang={lang} compact />
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {bToken ? (
+                      <Link href={`/board?h=${bToken}`} style={linkStyle}>
+                        {t.openMap}
+                      </Link>
+                    ) : null}
+                    <Link href={`/setup?s=${sToken}`} style={linkStyle}>
+                      {t.openSetup}
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       {/* Pinned maps */}
       <section>
