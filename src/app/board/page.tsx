@@ -985,6 +985,25 @@ return (savedProfiles ?? []).filter((p) => {
   const [wGaiaD3, setWGaiaD3] = React.useState(1);
   const [wClusterSize, setWClusterSize] = React.useState(1);
 
+  // LF でガイア近接・星系軸を有効化するオプトイン（Phase A, 2026-07-25）。
+  // 既定 OFF。OFF のときはキーからフィールドごと省略＝既存LFキーはバイト不変。
+  // ON にすると base と同じ2軸を評価に加える（LFキーが変わり別バケット＝了承済み）。
+  // base では常時有効なのでこのフラグは無視される。
+  const [applyExtraAxesLF, setApplyExtraAxesLF] = React.useState(false);
+  React.useEffect(() => {
+    try {
+      if (localStorage.getItem("gaia_lf_extra_axes") === "1") setApplyExtraAxesLF(true);
+    } catch {}
+  }, []);
+  const changeApplyExtraAxesLF = React.useCallback((on: boolean) => {
+    setApplyExtraAxesLF(on);
+    try {
+      localStorage.setItem("gaia_lf_extra_axes", on ? "1" : "0");
+    } catch {}
+  }, []);
+  // base か、LFでオプトインしているとき 2軸を評価・キーに含める
+  const extraAxesOn = isBase || applyExtraAxesLF;
+
   // Color preference (by planetTypeTotals)
   const [wColorPref, setWColorPref] = React.useState(3);
   const [prefBLACK, setPrefBLACK] = React.useState(0);
@@ -1224,11 +1243,21 @@ try {
 } catch {}
 
         // imbalanceMetric は std 固定（ドロップダウン廃止に伴い復元もしない）
-        // 基本版の新評価軸（フィールド不在の旧/LFプロファイルは既定値のまま）
+        // ガイア近接・星系軸（フィールド不在の旧/OFFのLFプロファイルは既定値のまま）
         if (params?.soft?.wGaiaDist1 != null) setWGaiaD1(Number(params.soft.wGaiaDist1) || 0);
         if (params?.soft?.wGaiaDist2 != null) setWGaiaD2(Number(params.soft.wGaiaDist2) || 0);
         if (params?.soft?.wGaiaDist3 != null) setWGaiaD3(Number(params.soft.wGaiaDist3) || 0);
         if (params?.soft?.wClusterSize != null) setWClusterSize(Number(params.soft.wClusterSize) || 0);
+        // LFプロファイルにこの2軸フィールドがあれば、オプトインを ON にして復元
+        {
+          const tidR = String((params as any)?.templateId ?? p.templateId ?? "");
+          const hasExtra =
+            params?.soft?.wGaiaDist1 != null ||
+            params?.soft?.wGaiaDist2 != null ||
+            params?.soft?.wGaiaDist3 != null ||
+            params?.soft?.wClusterSize != null;
+          if (tidR !== "base_34p") changeApplyExtraAxesLF(hasExtra);
+        }
         if ((params as any)?.soft?.wColorPref != null) setWColorPref(Number((params as any).soft.wColorPref) || 0);
         try {
           const cp = (params as any)?.soft?.colorPrefByType ?? (params as any)?.soft?.colorBiasByType ?? null;
@@ -1254,7 +1283,7 @@ try {
 
       if (closePanel) setShowSavedConditions(false);
     },
-    [setWhich, setOuterSameColorMax, setCenterMode, setMaxConnectedPlanets, setH5IncludeScouts, setWOuter, setWTouch, setWScout, setWScoutCore, setScoutRadius, setWColorPref, setPrefBLACK, setPrefBLUE, setPrefBROWN, setPrefORANGE, setPrefRED, setPrefWHITE, setPrefYELLOW, setKeepTop, setShowSavedConditions]
+    [setWhich, setOuterSameColorMax, setCenterMode, setMaxConnectedPlanets, setH5IncludeScouts, setWOuter, setWTouch, setWScout, setWScoutCore, setScoutRadius, setWColorPref, setPrefBLACK, setPrefBLUE, setPrefBROWN, setPrefORANGE, setPrefRED, setPrefWHITE, setPrefYELLOW, setKeepTop, setShowSavedConditions, changeApplyExtraAxesLF]
   );
 
 
@@ -1288,16 +1317,18 @@ try {
   }, [isBase, outerSameColorMax, centerMode, maxConnectedPlanets, h5IncludeScouts]);
 
   const keySoft = React.useMemo(() => {
+    // ガイア近接・星系軸: base は常時、LF はオプトイン時のみキーに含める
+    // （OFF のとき省略＝既存LFキーがバイト不変）。
+    const extraAxes = extraAxesOn
+      ? { wGaiaDist1: wGaiaD1, wGaiaDist2: wGaiaD2, wGaiaDist3: wGaiaD3, wClusterSize }
+      : {};
     return isBase
       ? {
           wOuter,
           wTouch,
           wImbalance,
           imbalanceMetric,
-          wGaiaDist1: wGaiaD1,
-          wGaiaDist2: wGaiaD2,
-          wGaiaDist3: wGaiaD3,
-          wClusterSize,
+          ...extraAxes,
           wColorPref,
           colorPrefByType: { BLACK: prefBLACK, BLUE: prefBLUE, BROWN: prefBROWN, ORANGE: prefORANGE, RED: prefRED, WHITE: prefWHITE, YELLOW: prefYELLOW },
         }
@@ -1312,10 +1343,11 @@ try {
           wScoutByScoutKey: { twilight: wScoutS1, eclipse: wScoutS2, rebellion: wScoutS3, tfmars: wScoutS4 },
           wScoutCoreByScoutKey: { twilight: wScoutCoreS1, eclipse: wScoutCoreS2, rebellion: wScoutCoreS3, tfmars: wScoutCoreS4 },
           scoutCoreAttributionMode: scoutCoreAttribBest ? "best" : "all",
+          ...extraAxes,
           wColorPref,
           colorPrefByType: { BLACK: prefBLACK, BLUE: prefBLUE, BROWN: prefBROWN, ORANGE: prefORANGE, RED: prefRED, WHITE: prefWHITE, YELLOW: prefYELLOW },
         };
-  }, [isBase, wOuter, wTouch, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wGaiaD1, wGaiaD2, wGaiaD3, wClusterSize, wColorPref, prefBLACK, prefBLUE, prefBROWN, prefORANGE, prefRED, prefWHITE, prefYELLOW]);
+  }, [isBase, extraAxesOn, wOuter, wTouch, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wGaiaD1, wGaiaD2, wGaiaD3, wClusterSize, wColorPref, prefBLACK, prefBLUE, prefBROWN, prefORANGE, prefRED, prefWHITE, prefYELLOW]);
 
   const searchKeyParams = React.useMemo(() => {
     return {
@@ -1733,8 +1765,9 @@ async function handleGenerateRank() {
         scoutCoreAttributionMode: scoutCoreAttribBest ? "best" : "all",
         wColorPref,
         colorPrefByType: { BLACK: prefBLACK, BLUE: prefBLUE, BROWN: prefBROWN, ORANGE: prefORANGE, RED: prefRED, WHITE: prefWHITE, YELLOW: prefYELLOW },
-        // 基本版専用の新評価軸（LFではフィールドごと省略=evaluateSoftが完全スキップ）
-        ...(isBase
+        // ガイア近接・星系軸: base は常時、LF はオプトイン時のみ（キーと一致）。
+        // OFF の LF ではフィールド省略＝evaluateSoft が完全スキップ（既存挙動不変）。
+        ...(extraAxesOn
           ? { wGaiaDist1: wGaiaD1, wGaiaDist2: wGaiaD2, wGaiaDist3: wGaiaD3, wClusterSize }
           : {}),
       },
@@ -2790,8 +2823,8 @@ const handleDeleteUsed = React.useCallback(
                         ? "色別の内訳（outer/touch/gaia/cluster/total）"
                         : "By color (outer/touch/gaia/cluster/total)"
                       : lang === "ja"
-                        ? "色別の内訳（outer/touch/scout/total）"
-                        : "By color (outer/touch/scout/total)"}
+                        ? `色別の内訳（outer/touch/scout${applyExtraAxesLF ? "/gaia/cluster" : ""}/total）`
+                        : `By color (outer/touch/scout${applyExtraAxesLF ? "/gaia/cluster" : ""}/total)`}
                   </summary>
                   <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
                       <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.85 }}>
@@ -2810,6 +2843,13 @@ const handleDeleteUsed = React.useCallback(
                             ["total", "評価", "total", t("tipTotalCol")],
                             ["scout", "船接触", "scout", t("tipWScoutShip")],
                             ["scoutCore", "船星系", "scoutCore", t("tipWScoutCoreShip")],
+                            // LF オプトイン時のみ gaia/cluster 列を選択可能に
+                            ...(applyExtraAxesLF
+                              ? ([
+                                  ["gaia", "ガイア近接", "gaia", t("wGaiaTip")],
+                                  ["cluster", "星系", "cluster", t("wClusterTip")],
+                                ] as const)
+                              : ([] as const)),
                             ["outer", "最外周", "outer", t("tipOuterCnt")],
                             ["touch", "外周", "touch", t("tipTouchCnt")],
                           ] as const)
@@ -2957,7 +2997,19 @@ const handleDeleteUsed = React.useCallback(
                 <input type="number" value={wTouch} min={0} max={10} onChange={(e) => setWTouch(Number(e.target.value) || 0)} style={{ width: 60 }} />
               </label>
 
-              {isBase ? (
+              {/* LF: ガイア近接・星系軸のオプトイン（既定OFF。ONで既存LFキーと別バケット） */}
+              {!isBase ? (
+                <label style={{ display: "flex", gap: 6, alignItems: "center" }} title={t("tipExtraAxesLF")}>
+                  <input
+                    type="checkbox"
+                    checked={applyExtraAxesLF}
+                    onChange={(e) => changeApplyExtraAxesLF(e.target.checked)}
+                  />
+                  <Hint label={t("extraAxesLF")} tip={t("tipExtraAxesLF")} />
+                </label>
+              ) : null}
+
+              {extraAxesOn ? (
                 <>
                   <label style={{ display: "flex", gap: 6, alignItems: "center" }} title={t("wGaiaTip")}>
                     <span>{t("wGaiaD1")}</span>

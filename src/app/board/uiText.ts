@@ -217,6 +217,9 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     tipPin: "Pinned maps appear in the List tab and are protected from capacity trimming",
     tipMarkUsed: "Move to the Used list (e.g. already played)",
     tipTotalCol: "Sum of all evaluation axes for that color",
+    extraAxesLF: "Gaia proximity / cluster axes",
+    tipExtraAxesLF:
+      "Enable the base-game gaia-proximity and star-cluster axes for Lost Fleet. Off = existing Lost Fleet results are unchanged; turning it on creates a separate result bucket (old maps stay available to copy).",
   },
   ja: {
     title: "ボード表示（確認用）",
@@ -427,6 +430,9 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     tipPin: "Listタブに集約されます。保存上限による自動削除からも保護されます",
     tipMarkUsed: "使用済み一覧へ移動します（プレイ済みマップの記録用）",
     tipTotalCol: "その色の全評価軸の合計",
+    extraAxesLF: "ガイア近接・星系を有効化",
+    tipExtraAxesLF:
+      "基本版のガイア近接・星系クラスタ軸を Lost Fleet でも使う。OFF のあいだ既存のLF結果は不変で、ONにすると別の結果バケットになります（旧マップはコピーで引き継ぎ可能）。",
   },
 } as const;
 
