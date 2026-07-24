@@ -2814,48 +2814,48 @@ const handleDeleteUsed = React.useCallback(
               </details>
 
               {currentResult ? (
-                <details open suppressHydrationWarning style={{ marginTop: 10 }}>
+                // デフォルト閉じ（表示Map詳細の詳細情報。2026-07-24 ユーザー要望）。
+                <details suppressHydrationWarning style={{ marginTop: 10 }}>
                   <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.85 }}>
                     {isBase
                       ? lang === "ja"
                         ? "色別の内訳（outer/touch/gaia/cluster/total）"
                         : "By color (outer/touch/gaia/cluster/total)"
+                      // LF: サマリ文言は固定（拡張軸トグルで幅が変わらないように。2026-07-24）
                       : lang === "ja"
-                        ? `色別の内訳（outer/touch/scout${applyExtraAxesLF ? "/gaia/cluster" : ""}/total）`
-                        : `By color (outer/touch/scout${applyExtraAxesLF ? "/gaia/cluster" : ""}/total)`}
+                        ? "色別の内訳（outer/touch/scout/total）"
+                        : "By color (outer/touch/scout/total)"}
                   </summary>
                   <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
                       <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.85 }}>
                         {lang === "ja" ? "詳細表表示" : "Table columns"}
                       </span>
 
+                      {/* 列セレクタは拡張軸トグルで増減させない（レイアウト不変）。
+                          LF では gaia/cluster を常時表示し、無効時は disable する。2026-07-24 */}
                       {(isBase
                         ? ([
-                            ["total", "評価", "total", t("tipTotalCol")],
-                            ["gaia", "ガイア近接", "gaia", t("wGaiaTip")],
-                            ["cluster", "星系", "cluster", t("wClusterTip")],
-                            ["outer", "最外周", "outer", t("tipOuterCnt")],
-                            ["touch", "外周", "touch", t("tipTouchCnt")],
+                            ["total", "評価", "total", t("tipTotalCol"), false],
+                            ["gaia", "ガイア近接", "gaia", t("wGaiaTip"), false],
+                            ["cluster", "星系", "cluster", t("wClusterTip"), false],
+                            ["outer", "最外周", "outer", t("tipOuterCnt"), false],
+                            ["touch", "外周", "touch", t("tipTouchCnt"), false],
                           ] as const)
                         : ([
-                            ["total", "評価", "total", t("tipTotalCol")],
-                            ["scout", "船接触", "scout", t("tipWScoutShip")],
-                            ["scoutCore", "船星系", "scoutCore", t("tipWScoutCoreShip")],
-                            // LF オプトイン時のみ gaia/cluster 列を選択可能に
-                            ...(applyExtraAxesLF
-                              ? ([
-                                  ["gaia", "ガイア近接", "gaia", t("wGaiaTip")],
-                                  ["cluster", "星系", "cluster", t("wClusterTip")],
-                                ] as const)
-                              : ([] as const)),
-                            ["outer", "最外周", "outer", t("tipOuterCnt")],
-                            ["touch", "外周", "touch", t("tipTouchCnt")],
+                            ["total", "評価", "total", t("tipTotalCol"), false],
+                            ["scout", "船接触", "scout", t("tipWScoutShip"), false],
+                            ["scoutCore", "船星系", "scoutCore", t("tipWScoutCoreShip"), false],
+                            ["gaia", "ガイア近接", "gaia", t("wGaiaTip"), !applyExtraAxesLF],
+                            ["cluster", "星系", "cluster", t("wClusterTip"), !applyExtraAxesLF],
+                            ["outer", "最外周", "outer", t("tipOuterCnt"), false],
+                            ["touch", "外周", "touch", t("tipTouchCnt"), false],
                           ] as const)
-                      ).map(([k, ja, en, tip]) => (
-                        <label key={k} style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 12 }}>
+                      ).map(([k, ja, en, tip, disabled]) => (
+                        <label key={k} style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 12, opacity: disabled ? 0.4 : 1 }}>
                           <input
                             type="checkbox"
                             checked={(breakdownCols as any)[k]}
+                            disabled={disabled}
                             onChange={(e) =>
                               setBreakdownCols((prev) => ({ ...prev, [k]: e.target.checked }))
                             }
@@ -2869,19 +2869,8 @@ const handleDeleteUsed = React.useCallback(
                 </details>
               ) : null}
 
-{currentResult ? (
-  <>
-  </>
-) : null}
-
-              {currentResult ? (
-                <details style={{ marginTop: 8 }}>
-                  <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.85 }}>{t("breakdown")}</summary>
-                  <pre style={{ margin: 0, fontSize: 11, whiteSpace: "pre-wrap", overflowX: "auto" }}>
-                    {JSON.stringify(getBreakdown(currentResult), null, 2)}
-                  </pre>
-                </details>
-              ) : (
+              {/* 生の breakdown(JSON) 詳細はユーザー向けでないため非表示（2026-07-24 ユーザー要望）。 */}
+              {currentResult ? null : (
                 <div style={{ marginTop: 6, fontSize: 12, opacity: 0.7 }}>{t("noCurrentResult")}</div>
               )}
             </div>
