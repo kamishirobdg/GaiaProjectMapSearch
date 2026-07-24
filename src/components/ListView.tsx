@@ -197,6 +197,7 @@ const useIsoLayoutEffect = typeof window !== "undefined" ? React.useLayoutEffect
 
 // List のマップ/基準の選択を記憶する localStorage キー（人数/拡張と同様に永続）。
 const LS_LIST_MAP = "gaia_list_pair_map";
+const LS_LIST_MAP_LABEL = "gaia_list_pair_map_label";
 const LS_LIST_CRITERION = "gaia_list_criterion";
 
 // 保存した提案（マップ配置＋基準＋セットアップ入力の自己完結スナップショット）。
@@ -244,6 +245,11 @@ export default function ListView() {
 
   // --- セット提案（マップ＋セットアップ、2026-07-24） ---
   const [pairMapId, setPairMapId] = React.useState<string>("");
+  // 選択中マップの表示ラベルをキャッシュ。ピン留めは IndexedDB から非同期で
+  // 読むので、ロード前は options が空になり select が「選択なし」→保存マップへ
+  // 一拍遅れて切り替わる（ちらつき）。キャッシュしたラベルの合成 option を先に
+  // 出して初回描画から正しい表示にする（#4/#6 List選択のちらつき解消）。
+  const [pendingMapLabel, setPendingMapLabel] = React.useState<string>("");
   const [criterion, setCriterion] = React.useState<RecommendCriterion>("opposeMap");
   const [rec, setRec] = React.useState<Recommendation | null>(null);
   const [recMapTop, setRecMapTop] = React.useState<Array<{ id: FactionId; score: number }> | null>(null);
@@ -282,6 +288,8 @@ export default function ListView() {
     try {
       const savedMap = localStorage.getItem(LS_LIST_MAP);
       if (savedMap) setPairMapId(savedMap);
+      const savedMapLabel = localStorage.getItem(LS_LIST_MAP_LABEL);
+      if (savedMapLabel) setPendingMapLabel(savedMapLabel);
       const savedCrit = localStorage.getItem(LS_LIST_CRITERION);
       if (savedCrit === "opposeMap" || savedCrit === "topBalance" || savedCrit === "neutralBalance") {
         setCriterion(savedCrit as RecommendCriterion);
@@ -608,13 +616,22 @@ export default function ListView() {
               value={pairMapId}
               onChange={(e) => {
                 setPairMapId(e.target.value);
-                try { localStorage.setItem(LS_LIST_MAP, e.target.value); } catch {}
+                const label = e.target.options[e.target.selectedIndex]?.text ?? "";
+                setPendingMapLabel(label);
+                try {
+                  localStorage.setItem(LS_LIST_MAP, e.target.value);
+                  localStorage.setItem(LS_LIST_MAP_LABEL, label);
+                } catch {}
                 setRec(null);
                 setPairMsg(null);
               }}
               style={{ maxWidth: 260 }}
             >
               <option value="">{t.pairNoMap}</option>
+              {/* ロード前は候補が空。保存マップの合成 option を先に出してちらつき防止。 */}
+              {pairMapId && pendingMapLabel && !selectableMaps.some((m) => m.id === pairMapId) ? (
+                <option value={pairMapId}>{pendingMapLabel}</option>
+              ) : null}
               {selectableMaps.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.pinned ? "📌 " : ""}
@@ -729,6 +746,8 @@ export default function ListView() {
                     {selected && tid ? (
                       <Link
                         href={`/board?h=${mapToken(selected)}${tid ? `&t=${tid}` : ""}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         style={{
                           fontSize: 11,
                           padding: "2px 8px",
@@ -744,6 +763,8 @@ export default function ListView() {
                     ) : null}
                     <Link
                       href={`/setup?s=${sToken}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       style={{
                         fontSize: 11,
                         padding: "2px 8px",
