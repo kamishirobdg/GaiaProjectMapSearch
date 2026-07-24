@@ -34,6 +34,7 @@ import {
   TECH_SHIP_IDS,
   type ResearchTrackId,
   type SetupMode,
+  type SetupResult,
   type ShipId,
 } from "@/gaia/setup/types";
 
@@ -375,6 +376,92 @@ function lsSet(key: string, value: string): void {
 // タブ遷移時の「デフォルト→復元」ちらつきを消すため、復元は paint 前に走る
 // layout effect で行う（SSRでは useEffect にフォールバック）。2026-07-24。
 const useIsoLayoutEffect = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
+
+// --- 縮小セットアップ盤面（List の提案プレビュー用・読み取り専用）。2026-07-24 ---
+function SmallTile({ id, lang, lf, size }: { id: string; lang: Lang; lf: boolean; size: number }) {
+  const [failed, setFailed] = React.useState(false);
+  if (!id) return null;
+  const imageId = lf && LF_REVISED_IDS.has(id) ? `${id}_LF` : id;
+  const label = labelOf(id, lang);
+  const effect = effectOf(id, lang);
+  const tooltip = `${id} ${label}${effect ? ` — ${effect}` : ""}`;
+  if (failed) {
+    return (
+      <span title={tooltip} style={{ fontSize: 9, border: "1px solid #ddd", borderRadius: 3, padding: "1px 3px", background: "#fafafa" }}>
+        {id}
+      </span>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`/setup-tiles/${imageId}.png`}
+      alt={id}
+      title={tooltip}
+      onError={() => setFailed(true)}
+      style={{ maxWidth: size, maxHeight: size, width: "auto", height: "auto", display: "block", borderRadius: 3 }}
+    />
+  );
+}
+
+/** SetupResult を小さなタイル画像でコンパクトに描画する読み取り専用ボード。 */
+export function SetupBoard({ result, lang, compact }: { result: SetupResult; lang: Lang; compact?: boolean }) {
+  const lf = result.mode === "lostFleet";
+  const size = compact ? 54 : 96;
+  const row: React.CSSProperties = { display: "flex", flexWrap: "wrap", gap: 4, alignItems: "flex-start" };
+  const head: React.CSSProperties = { fontSize: 10, fontWeight: 700, opacity: 0.6, marginBottom: 2 };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 11 }}>
+      {/* 研究トラック（各列: 上=Fed Lv5(terra) / 上級 / 標準） */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "flex-start" }}>
+        {RESEARCH_TRACK_IDS.map((track) => (
+          <div key={track} style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "center" }}>
+            <div style={{ fontSize: 9, opacity: 0.6 }}>{lang === "ja" ? TRACK_LABEL[track].ja : TRACK_LABEL[track].en}</div>
+            {track === "terra" ? <SmallTile id={result.federationLv5} lang={lang} lf={lf} size={size} /> : null}
+            <SmallTile id={result.advancedTech.byTrack[track]} lang={lang} lf={lf} size={size} />
+            <SmallTile id={result.standardTech.byTrack[track]} lang={lang} lf={lf} size={size} />
+          </div>
+        ))}
+      </div>
+
+      {result.standardTech.free && result.standardTech.free.length > 0 ? (
+        <div>
+          <div style={head}>free tech</div>
+          <div style={row}>{result.standardTech.free.map((id, i) => <SmallTile key={`f${i}`} id={id} lang={lang} lf={lf} size={size} />)}</div>
+        </div>
+      ) : null}
+
+      <div>
+        <div style={head}>scoring</div>
+        <div style={row}>
+          {result.roundScoring.map((id, i) => <SmallTile key={`r${i}`} id={id} lang={lang} lf={lf} size={size} />)}
+          {result.finalScoring.map((id, i) => <SmallTile key={`fs${i}`} id={id} lang={lang} lf={lf} size={size} />)}
+        </div>
+      </div>
+
+      <div>
+        <div style={head}>boosters</div>
+        <div style={row}>{result.boosters.available.map((id, i) => <SmallTile key={`b${i}`} id={id} lang={lang} lf={lf} size={size} />)}</div>
+      </div>
+
+      {lf && result.ships ? (
+        <div>
+          <div style={head}>LF ships</div>
+          <div style={row}>
+            {result.advancedTech.extension ? <SmallTile id={result.advancedTech.extension} lang={lang} lf={lf} size={size} /> : null}
+            {result.ships.map((ship) => (
+              <React.Fragment key={ship}>
+                {result.goldFederations?.[ship] ? <SmallTile id={result.goldFederations[ship]!} lang={lang} lf={lf} size={size} /> : null}
+                {result.shipTech?.[ship] ? <SmallTile id={result.shipTech[ship]!} lang={lang} lf={lf} size={size} /> : null}
+              </React.Fragment>
+            ))}
+            {(result.artifacts ?? []).map((id, i) => <SmallTile key={`a${i}`} id={id} lang={lang} lf={lf} size={size} />)}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export default function SetupView() {
   const [lang, setLang] = React.useState<Lang>("ja");

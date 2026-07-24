@@ -47,6 +47,7 @@ import {
 import { mapFactionScores } from "@/gaia/eval/mapFaction";
 import { FACTIONS, type FactionId } from "@/gaia/eval/factionWeights";
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
+import { SetupBoard } from "@/components/SetupView";
 
 type Lang = "ja" | "en";
 
@@ -84,6 +85,7 @@ const UI = {
     setupStrong: "セットアップ優位（上位5）",
     trialsNote: "200シードから最良1件",
     openSetup: "Setupで開く",
+    openMap: "Mapで開く",
     openBoard: "ボードで開く",
     sharePair: "セット共有URL",
     recordToList: "保存リストに記録",
@@ -123,6 +125,7 @@ const UI = {
     setupStrong: "Setup favors (top 5)",
     trialsNote: "best of 200 seeds",
     openSetup: "Open in Setup",
+    openMap: "Open in Map",
     openBoard: "Open board",
     sharePair: "Share pair URL",
     recordToList: "Record to saved list",
@@ -608,7 +611,56 @@ export default function ListView() {
                     <span style={{ opacity: 0.7 }}>{t.setupStrong}:</span>{" "}
                     {topFactionText(rec.setupScores, 5, lang)}
                   </div>
+
+                  {/* 提案中のマップとセットアップを画像で表示（ミニ盤面＋縮小セットアップ）。2026-07-24 */}
+                  {(() => {
+                    const template = tid ? TEMPLATE_BY_ID[tid] : null;
+                    const setupResult = buildSetupFromSeed(rec.input);
+                    return (
+                      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-start", marginTop: 2 }}>
+                        {template && selected ? (
+                          <div style={{ width: 300, display: "flex", flexDirection: "column", gap: 4 }}>
+                            <div style={{ pointerEvents: "none" }}>
+                              <MapBoardViewer
+                                template={template as any}
+                                placement={(selected.placement ?? []) as PlacementItem[]}
+                                sectorById={sectorById as any}
+                                sectorImgById={sectorImgById}
+                                imgOffsetBySlotId={IMG_OFFSET_BY_SLOT as any}
+                                rotOffsetsBySlotId={ROT_OFFSETS_BY_SLOT as any}
+                                scaleByAccepts={{ LARGE: 1.02, MIDDLE: 0.93, SMALL: 1.1 }}
+                                boundsPad={40}
+                                zoom={1.0}
+                                showToolbar={false}
+                                disablePan
+                              />
+                            </div>
+                          </div>
+                        ) : null}
+                        <div style={{ transformOrigin: "top left" }}>
+                          <SetupBoard result={setupResult} lang={lang} compact />
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {selected && tid ? (
+                      <Link
+                        href={`/board?h=${mapToken(selected)}`}
+                        style={{
+                          fontSize: 11,
+                          padding: "2px 8px",
+                          border: "1px solid #ccc",
+                          borderRadius: 6,
+                          background: "white",
+                          textDecoration: "none",
+                          color: "#333",
+                        }}
+                      >
+                        {t.openMap}
+                      </Link>
+                    ) : null}
                     <Link
                       href={`/setup?s=${sToken}`}
                       style={{
