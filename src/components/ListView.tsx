@@ -49,6 +49,7 @@ import { mapFactionScores } from "@/gaia/eval/mapFaction";
 import { FACTIONS, type FactionId } from "@/gaia/eval/factionWeights";
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
 import { SetupBoard } from "@/components/SetupView";
+import { PageBody, Panel, TwoCol } from "@/components/ui/layout";
 
 type Lang = "ja" | "en";
 
@@ -765,12 +766,143 @@ export default function ListView() {
         lang={lang}
         onLang={setLangPersist}
       />
-    <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 14, maxWidth: 1100 }}>
+    <PageBody>
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <div style={{ fontWeight: 700, fontSize: 16 }}>{t.title}</div>
         <div style={{ fontSize: 11, opacity: 0.6 }}>{t.note}</div>
       </div>
 
+      {/* 統一レイアウト: 左=探索条件（操作）／右=結果（共有セット・候補・保存・ピン留め） */}
+      <TwoCol
+        left={
+          <Panel title={t.pairTitle} note={t.pairNote}>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 12 }}>
+              {/* 探索の向き（2026-07-25 要望） */}
+              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span>{t.pairDirLabel}</span>
+                <select
+                  value={pairDir}
+                  onChange={(e) => {
+                    const v = e.target.value as PairDir;
+                    setPairDir(v);
+                    try { localStorage.setItem(LS_LIST_DIR, v); } catch {}
+                    clearPair();
+                    setPairMsg(null);
+                  }}
+                  style={{ maxWidth: 200 }}
+                >
+                  <option value="mapToSetup">{t.dirMapToSetup}</option>
+                  <option value="setupToMap">{t.dirSetupToMap}</option>
+                </select>
+              </label>
+    
+              {/* マップ→セットアップ時のみ: 相手の探し方 */}
+              {pairDir === "mapToSetup" ? (
+                <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <span>{t.setupSourceLabel}</span>
+                  <select
+                    value={setupSource}
+                    onChange={(e) => {
+                      const v = e.target.value as SetupSource;
+                      setSetupSource(v);
+                      try { localStorage.setItem(LS_LIST_SRC, v); } catch {}
+                      clearPair();
+                      setPairMsg(null);
+                    }}
+                    style={{ maxWidth: 170 }}
+                  >
+                    <option value="random">{t.srcRandom}</option>
+                    <option value="saved">{t.srcSaved}</option>
+                  </select>
+                </label>
+              ) : null}
+    
+              {/* セットアップ→マップ時のみ: 起点セットアップ */}
+              {pairDir === "setupToMap" ? (
+                <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <span>{t.pairSetup}</span>
+                  <select
+                    value={pairSetupId}
+                    onChange={(e) => {
+                      setPairSetupId(e.target.value);
+                      try { localStorage.setItem(LS_LIST_SETUP, e.target.value); } catch {}
+                      clearPair();
+                      setPairMsg(null);
+                    }}
+                    style={{ maxWidth: 300 }}
+                  >
+                    {selectableSetups.map((r) => {
+                      const s = setupSettingsOf(r);
+                      return (
+                        <option key={r.id} value={r.id}>
+                          {r.pinned ? "📌 " : ""}
+                          {r.input.seed} / {s.lf ? t.modeLF : t.modeBase} {s.players}p
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+              ) : null}
+    
+              {pairDir === "mapToSetup" ? (
+              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span>{t.pairMap}</span>
+                <select
+                  value={pairMapId}
+                  onChange={(e) => {
+                    setPairMapId(e.target.value);
+                    const label = e.target.options[e.target.selectedIndex]?.text ?? "";
+                    setPendingMapLabel(label);
+                    try {
+                      localStorage.setItem(LS_LIST_MAP, e.target.value);
+                      localStorage.setItem(LS_LIST_MAP_LABEL, label);
+                    } catch {}
+                    clearPair();
+                    setPairMsg(null);
+                  }}
+                  style={{ maxWidth: 260 }}
+                >
+                  <option value="">{t.pairNoMap}</option>
+                  {/* ロード前は候補が空。保存マップの合成 option を先に出してちらつき防止。 */}
+                  {pairMapId && pendingMapLabel && !selectableMaps.some((m) => m.id === pairMapId) ? (
+                    <option value={pairMapId}>{pendingMapLabel}</option>
+                  ) : null}
+                  {selectableMaps.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.pinned ? "📌 " : ""}
+                      {templateMeta(templateIdBySearchKey[c.searchKey] ?? "", t)} / {Math.round(Number(c.score))} /{" "}
+                      {String(c.placementHash ?? "").slice(0, 8)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              ) : null}
+              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span>{t.pairCriterion}</span>
+                <select
+                  value={criterion}
+                  onChange={(e) => {
+                    setCriterion(e.target.value as RecommendCriterion);
+                    try { localStorage.setItem(LS_LIST_CRITERION, e.target.value); } catch {}
+                    clearPair();
+                    setPairMsg(null);
+                  }}
+                  style={{ maxWidth: 280 }}
+                >
+                  <option value="opposeMap">{t.crit1}</option>
+                  <option value="topBalance">{t.crit2}</option>
+                  <option value="neutralBalance">{t.crit3}</option>
+                </select>
+              </label>
+              <button onClick={handleGenerate} style={{ padding: "3px 12px", fontWeight: 700 }}>
+                {rec ? t.regenerate : t.generate}
+              </button>
+              {pairMsg ? <span style={{ color: "#b3261e" }}>{pairMsg}</span> : null}
+            </div>
+          </Panel>
+        }
+        right={
+          <>
       {/* Shared pair (?h=&t=&s=) */}
       {pairShared
         ? (() => {
@@ -840,135 +972,7 @@ export default function ListView() {
           })()
         : null}
 
-      {/* Pair proposal (map -> recommended setup) */}
       <section>
-        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}>
-          <div style={{ fontWeight: 700 }}>{t.pairTitle}</div>
-          <div style={{ fontSize: 11, opacity: 0.6 }}>{t.pairNote}</div>
-        </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 12 }}>
-          {/* 探索の向き（2026-07-25 要望） */}
-          <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <span>{t.pairDirLabel}</span>
-            <select
-              value={pairDir}
-              onChange={(e) => {
-                const v = e.target.value as PairDir;
-                setPairDir(v);
-                try { localStorage.setItem(LS_LIST_DIR, v); } catch {}
-                clearPair();
-                setPairMsg(null);
-              }}
-              style={{ maxWidth: 200 }}
-            >
-              <option value="mapToSetup">{t.dirMapToSetup}</option>
-              <option value="setupToMap">{t.dirSetupToMap}</option>
-            </select>
-          </label>
-
-          {/* マップ→セットアップ時のみ: 相手の探し方 */}
-          {pairDir === "mapToSetup" ? (
-            <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <span>{t.setupSourceLabel}</span>
-              <select
-                value={setupSource}
-                onChange={(e) => {
-                  const v = e.target.value as SetupSource;
-                  setSetupSource(v);
-                  try { localStorage.setItem(LS_LIST_SRC, v); } catch {}
-                  clearPair();
-                  setPairMsg(null);
-                }}
-                style={{ maxWidth: 170 }}
-              >
-                <option value="random">{t.srcRandom}</option>
-                <option value="saved">{t.srcSaved}</option>
-              </select>
-            </label>
-          ) : null}
-
-          {/* セットアップ→マップ時のみ: 起点セットアップ */}
-          {pairDir === "setupToMap" ? (
-            <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <span>{t.pairSetup}</span>
-              <select
-                value={pairSetupId}
-                onChange={(e) => {
-                  setPairSetupId(e.target.value);
-                  try { localStorage.setItem(LS_LIST_SETUP, e.target.value); } catch {}
-                  clearPair();
-                  setPairMsg(null);
-                }}
-                style={{ maxWidth: 300 }}
-              >
-                {selectableSetups.map((r) => {
-                  const s = setupSettingsOf(r);
-                  return (
-                    <option key={r.id} value={r.id}>
-                      {r.pinned ? "📌 " : ""}
-                      {r.input.seed} / {s.lf ? t.modeLF : t.modeBase} {s.players}p
-                    </option>
-                  );
-                })}
-              </select>
-            </label>
-          ) : null}
-
-          {pairDir === "mapToSetup" ? (
-          <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <span>{t.pairMap}</span>
-            <select
-              value={pairMapId}
-              onChange={(e) => {
-                setPairMapId(e.target.value);
-                const label = e.target.options[e.target.selectedIndex]?.text ?? "";
-                setPendingMapLabel(label);
-                try {
-                  localStorage.setItem(LS_LIST_MAP, e.target.value);
-                  localStorage.setItem(LS_LIST_MAP_LABEL, label);
-                } catch {}
-                clearPair();
-                setPairMsg(null);
-              }}
-              style={{ maxWidth: 260 }}
-            >
-              <option value="">{t.pairNoMap}</option>
-              {/* ロード前は候補が空。保存マップの合成 option を先に出してちらつき防止。 */}
-              {pairMapId && pendingMapLabel && !selectableMaps.some((m) => m.id === pairMapId) ? (
-                <option value={pairMapId}>{pendingMapLabel}</option>
-              ) : null}
-              {selectableMaps.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.pinned ? "📌 " : ""}
-                  {templateMeta(templateIdBySearchKey[c.searchKey] ?? "", t)} / {Math.round(Number(c.score))} /{" "}
-                  {String(c.placementHash ?? "").slice(0, 8)}
-                </option>
-              ))}
-            </select>
-          </label>
-          ) : null}
-          <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <span>{t.pairCriterion}</span>
-            <select
-              value={criterion}
-              onChange={(e) => {
-                setCriterion(e.target.value as RecommendCriterion);
-                try { localStorage.setItem(LS_LIST_CRITERION, e.target.value); } catch {}
-                clearPair();
-                setPairMsg(null);
-              }}
-              style={{ maxWidth: 280 }}
-            >
-              <option value="opposeMap">{t.crit1}</option>
-              <option value="topBalance">{t.crit2}</option>
-              <option value="neutralBalance">{t.crit3}</option>
-            </select>
-          </label>
-          <button onClick={handleGenerate} style={{ padding: "3px 12px", fontWeight: 700 }}>
-            {rec ? t.regenerate : t.generate}
-          </button>
-          {pairMsg ? <span style={{ color: "#b3261e" }}>{pairMsg}</span> : null}
-        </div>
 
         {/* 候補（上位 PAIR_TOP_N）。クリックで下の詳細を切り替えて見比べる。 */}
         {pairOptions.length > 1 ? (
@@ -1384,7 +1388,10 @@ export default function ListView() {
           </div>
         )}
       </section>
-    </div>
+          </>
+        }
+      />
+    </PageBody>
     </>
   );
 }

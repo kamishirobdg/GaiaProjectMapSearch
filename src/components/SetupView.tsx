@@ -21,6 +21,7 @@ import {
 } from "@/lib/setupHistory";
 import { copyText, decodeSetupToken, setupShareUrl } from "@/lib/setupShare";
 import GlobalBar from "@/components/GlobalBar";
+import { PageBody, SectionTitle, T, TwoCol } from "@/components/ui/layout";
 import {
   readSharedExpansion,
   readSharedPlayers,
@@ -772,21 +773,20 @@ export default function SetupView() {
         lang={lang}
         onLang={setLangPersist}
       />
-    <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 14, maxWidth: 1400 }}>
+    <PageBody>
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <div style={{ fontWeight: 700, fontSize: 16 }}>{t.title}</div>
       </div>
 
-      <div style={{ fontSize: 12, color: "#b26b00", background: "#fff8ec", border: "1px solid #f0dcae", borderRadius: 8, padding: "6px 10px" }}>
+      <div style={{ fontSize: 12, color: "#b26b00", background: "#fff8ec", border: "1px solid #f0dcae", borderRadius: T.radius, padding: "6px 10px" }}>
         {t.draftNote}
       </div>
 
-      {/* 2カラム: row-reverse で「左=検索条件＋保存リスト / 右=セットアップ表示」（Mapと同じ左右配置）。
-          ソース順は右(セットアップ)→左(検索条件)。狭幅では flexWrap で縦積みになる。 */}
-      <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap", flexDirection: "row-reverse" }}>
-        {/* 右カラム: セットアップ表示 */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14, flex: "3 1 560px", minWidth: 340 }}>
-          <div style={{ fontWeight: 700, fontSize: 14 }}>{t.setupArea}</div>
+      {/* 2カラム（共通 TwoCol）。ソース順は右(セットアップ)→左(検索条件)。 */}
+      <TwoCol
+        right={
+          <>
+          <SectionTitle>{t.setupArea}</SectionTitle>
 
       {/* Research tracks: per column, top to bottom —
           [track-top tile (terra=federation Lv5 / eco=econ adjustment face)]
@@ -1033,11 +1033,11 @@ export default function SetupView() {
           })}
         </div>
       </section>
-        </div>{/* 右カラム（セットアップ表示）終わり */}
-
-        {/* 左カラム: 検索条件（シード等）＋保存リスト（ランク） */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14, flex: "1 1 320px", minWidth: 280, maxWidth: 460 }}>
-          <div style={{ fontWeight: 700, fontSize: 14 }}>{t.searchConds}</div>
+          </>
+        }
+        left={
+          <>
+          <SectionTitle>{t.searchConds}</SectionTitle>
           <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             {/* 人数・拡張(基本版/LF)・言語は共通バー（GlobalBar）へ移動 */}
             <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -1203,9 +1203,10 @@ export default function SetupView() {
           );
         })()}
       </section>
-        </div>{/* 左カラム（検索条件＋保存リスト）終わり */}
-      </div>{/* 2カラム終わり */}
-    </div>
+          </>
+        }
+      />
+    </PageBody>
     </>
   );
 }
