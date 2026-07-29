@@ -41,20 +41,20 @@ export type FactionDef = {
 };
 
 export const FACTIONS: FactionDef[] = [
-  { id: "terrans", color: "BLUE", labelJa: "テラン", labelEn: "Terrans" },
-  { id: "lantids", color: "BLUE", labelJa: "ランティド", labelEn: "Lantids" },
-  { id: "xenos", color: "YELLOW", labelJa: "ゼノ", labelEn: "Xenos" },
-  { id: "gleens", color: "YELLOW", labelJa: "グリーン", labelEn: "Gleens" },
-  { id: "taklons", color: "BROWN", labelJa: "タクロン", labelEn: "Taklons" },
-  { id: "ambas", color: "BROWN", labelJa: "アンバス", labelEn: "Ambas" },
-  { id: "hadschHallas", color: "RED", labelJa: "ハッシュ・ホラ", labelEn: "Hadsch Hallas" },
-  { id: "ivits", color: "RED", labelJa: "イヴィッツ", labelEn: "Ivits" },
-  { id: "geodens", color: "ORANGE", labelJa: "ジオデン", labelEn: "Geodens" },
-  { id: "balTaks", color: "ORANGE", labelJa: "バルタック", labelEn: "Bal T'aks" },
-  { id: "firaks", color: "BLACK", labelJa: "フィラク", labelEn: "Firaks" },
-  { id: "bescods", color: "BLACK", labelJa: "ベスコド", labelEn: "Bescods" },
-  { id: "nevlas", color: "WHITE", labelJa: "ネヴラ", labelEn: "Nevlas" },
-  { id: "itars", color: "WHITE", labelJa: "イタル", labelEn: "Itars" },
+  { id: "terrans", color: "BLUE", labelJa: "地球人", labelEn: "Terrans" },
+  { id: "lantids", color: "BLUE", labelJa: "ランティダ人", labelEn: "Lantids" },
+  { id: "xenos", color: "YELLOW", labelJa: "ゼノ族", labelEn: "Xenos" },
+  { id: "gleens", color: "YELLOW", labelJa: "グリーン人", labelEn: "Gleens" },
+  { id: "taklons", color: "BROWN", labelJa: "タクロン族", labelEn: "Taklons" },
+  { id: "ambas", color: "BROWN", labelJa: "アンバス人", labelEn: "Ambas" },
+  { id: "hadschHallas", color: "RED", labelJa: "ハッシュ・ホラ人", labelEn: "Hadsch Hallas" },
+  { id: "ivits", color: "RED", labelJa: "ダー・シュワーム人", labelEn: "Ivits" },
+  { id: "geodens", color: "ORANGE", labelJa: "ジオデン人", labelEn: "Geodens" },
+  { id: "balTaks", color: "ORANGE", labelJa: "バルタック人", labelEn: "Bal T'aks" },
+  { id: "firaks", color: "BLACK", labelJa: "フィラク族", labelEn: "Firaks" },
+  { id: "bescods", color: "BLACK", labelJa: "マッドアンドロイド", labelEn: "Bescods" },
+  { id: "nevlas", color: "WHITE", labelJa: "ネヴラ人", labelEn: "Nevlas" },
+  { id: "itars", color: "WHITE", labelJa: "イタル人", labelEn: "Itars" },
 ];
 
 export const FACTION_IDS: readonly FactionId[] = FACTIONS.map((f) => f.id);
