@@ -42,11 +42,11 @@ describe("scoreSetupFactions", () => {
   it("sums draft weights over drawn tiles (round scoring counts copies)", () => {
     const s = syntheticSetup();
     const scores = scoreSetupFactions(s);
-    // firaks: AT02(+2) + AT13(+1) + RS07×2(+2×2) = 7、
-    // ＋標準技術: sci(aff2)にTS6(pref1) → 2*1*0.5 = 1 ⇒ 計8
-    expect(scores.firaks).toBe(8);
-    // ivits: FS06(+2) = 2、＋標準技術: terra(aff1)にTS1(pref1) → 1*1*0.5 ⇒ 計2.5
-    expect(scores.ivits).toBe(2.5);
+    // firaks: AT02(+2) + AT13(+1) + RS07×2(+2×2) + RB01(+1) = 8、
+    // ＋標準技術: sci列のTS6 → 2*0.5 = 1 ⇒ 計9
+    expect(scores.firaks).toBe(9);
+    // ivits: FS06(+2) + RB02(+1) = 3、＋標準技術: terra列のTS1 → 1*0.5 ⇒ 計3.5
+    expect(scores.ivits).toBe(3.5);
     // タイル由来と標準技術由来の合計になっていること（terrans で確認）
     const terransTiles =
       (TILE_FACTION_WEIGHTS.AT02?.terrans ?? 0) +

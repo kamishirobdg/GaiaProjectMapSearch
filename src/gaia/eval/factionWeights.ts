@@ -9,9 +9,10 @@
 // - 標準技術タイル9種は毎ゲーム全部場に出るが、「どの研究トラックの下に付くか」
 //   はセットアップごとに変わる。2026-07-25 のレビューを受け、トラック配置を
 //   TRACK_AFFINITY × TECH_PREF の積で評価する（下部の「標準技術のトラック別評価」）。
-// - 同盟タイル（惑星改造Lv5）は全員が同条件で1枚のみ → 全種族0とする。
+// - 同盟タイル（惑星改造Lv5）は到達者1人が取る単発の賞。VP量は共通なので
+//   付随資源の相性のみ弱め（1）に見る（2026-07-25 に 全0 から変更）。
 // - LFの金枠同盟・アーティファクトは全員が取り合う共有物なので原則0、
-//   明確なアーキタイプ相性のみ非ゼロ。
+//   明確なアーキタイプ相性のみ非ゼロ（原則1）。
 
 import type { ResearchTrackId } from "@/gaia/setup/types";
 
@@ -250,8 +251,8 @@ export const TILE_FACTION_WEIGHTS: Record<string, Partial<Record<FactionId, numb
   AT21: { lantids: 1, xenos: 1, taklons: 1 }, // パス時：深宇宙宙域×2VP
 
   // ===== ラウンドブースター（10＋LF4） =====
-  RB01: {}, // 収入：鉱石1・知識1
-  RB02: {}, // 収入：クレジット2・QIC1
+  RB01: { geodens: 1, gleens: 1, firaks: 1, bescods: 1 }, // 収入：鉱石1・知識1（改造勢の鉱石＋研究勢の知識）
+  RB02: { xenos: 1, ivits: 1, hadschHallas: 1 }, // 収入：クレジット2・QIC1（QIC勢＋クレ経済）
   RB03: { itars: 1, taklons: 1 }, // 収入：パワートークン2・鉱石1
   RB04: { geodens: 1, xenos: 1 }, // 収入：クレジット2／特別：鉱山建設（改造1無料）
   RB05: { balTaks: 2, terrans: 1, itars: 1 }, // 収入：パワー2／特別：鉱山建設orガイア計画（距離+3）
@@ -291,40 +292,43 @@ export const TILE_FACTION_WEIGHTS: Record<string, Partial<Record<FactionId, numb
   FS09: { lantids: 1, xenos: 1, taklons: 1 }, // 深宇宙宙域 最多
 
   // ===== 同盟タイル（惑星改造Lv5） =====
+  // 改造Lv5に到達した1人だけが取る単発の賞。VP量は同じなので、
+  // 付随資源の相性だけを弱め（1）に見る。12VP は純粋な点数＝相性なし。
   FED12: {}, // 同盟：12VP
-  FED8Q: {}, // 同盟：8VP＋QIC1
-  FED8PT: {}, // 同盟：8VP＋パワートークン2
-  FED7O: {}, // 同盟：7VP＋鉱石2
-  FED7C: {}, // 同盟：7VP＋クレジット6
-  FED6K: {}, // 同盟：6VP＋知識2
+  FED8Q: { xenos: 1, ivits: 1 }, // 同盟：8VP＋QIC1
+  FED8PT: { taklons: 1, nevlas: 1, itars: 1 }, // 同盟：8VP＋パワートークン2
+  FED7O: { geodens: 1, gleens: 1 }, // 同盟：7VP＋鉱石2
+  FED7C: { hadschHallas: 1 }, // 同盟：7VP＋クレジット6
+  FED6K: { firaks: 1, bescods: 1, nevlas: 1 }, // 同盟：6VP＋知識2
 
   // ===== LF 船の基本技術 =====
   TSL1: { geodens: 1 }, // 即時：2段階無料改造＋鉱山建設
   TSL2: { balTaks: 2, gleens: 1 }, // 基本到達距離＋1
-  TSL3: {}, // 即時：鉱石1＋知識3
+  TSL3: { firaks: 1, bescods: 1, nevlas: 1, lantids: 1 }, // 即時：鉱石1＋知識3
 
   // ===== LF 金枠同盟 =====
-  FEDG1: {}, // 金枠同盟：12VP（緑面あり）
-  FEDG2: {}, // 金枠同盟：任意の技術タイル1枚
+  FEDG1: {}, // 金枠同盟：12VP（緑面あり）＝純粋な点数
+  FEDG2: { firaks: 1, bescods: 1, itars: 1 }, // 金枠同盟：任意の技術タイル1枚
   FEDG3: { balTaks: 1 }, // 金枠同盟：距離無限の鉱山建設
-  FEDG4: {}, // 金枠同盟：3段階無料改造＋鉱山建設
-  FEDG5: {}, // 金枠同盟：4VP＋鉱石2＋QIC1
-  FEDG6: {}, // 金枠同盟：4VP＋知識4
-  FEDG7: {}, // 金枠同盟：7VP＋パワートークン2
-  FEDG8: {}, // 金枠同盟：8VP＋クレジット8
+  FEDG4: { geodens: 2, gleens: 1, lantids: 1 }, // 金枠同盟：3段階無料改造＋鉱山建設
+  FEDG5: { xenos: 1, geodens: 1 }, // 金枠同盟：4VP＋鉱石2＋QIC1
+  FEDG6: { firaks: 1, bescods: 1, nevlas: 1 }, // 金枠同盟：4VP＋知識4
+  FEDG7: { taklons: 1, nevlas: 1, itars: 1 }, // 金枠同盟：7VP＋パワートークン2
+  FEDG8: { hadschHallas: 1 }, // 金枠同盟：8VP＋クレジット8
 
   // ===== LF アーティファクト =====
-  ART01: {}, // 7VP（小惑星鉱山扱い）
-  ART02: {}, // 7VP（原始惑星鉱山扱い）
+  // 全員で取り合う共有物なので、明確なアーキタイプ相性のみ非ゼロ（原則1）。
+  ART01: {}, // 7VP（小惑星鉱山扱い）＝純粋な点数
+  ART02: {}, // 7VP（原始惑星鉱山扱い）＝純粋な点数
   ART03: { bescods: 1, firaks: 1 }, // 科学レベル×3VP
   ART04: { terrans: 1, balTaks: 1, itars: 1 }, // ガイア計画レベル×3VP
   ART05: { firaks: 1 }, // Lv3以上の研究×3VP
-  ART06: {}, // 深宇宙宙域×3VP
-  ART07: {}, // 3VP＋惑星種類×1VP
-  ART08: {}, // 同盟タイル1枚の恩恵を再取得
-  ART09: {}, // 即時：知識3＋QIC1
-  ART10: {}, // 即時：クレジット5＋鉱石2
-  ART11: {}, // 即時：クレジット3＋鉱石3
-  ART12: {}, // 収入：パワー駒2個（エリアIII）
-  ART13: {}, // 収入：知識1＋鉱石1
+  ART06: { lantids: 1, xenos: 1, taklons: 1 }, // 深宇宙宙域×3VP
+  ART07: { geodens: 1, lantids: 1, gleens: 1 }, // 3VP＋惑星種類×1VP
+  ART08: { ivits: 1, ambas: 1, xenos: 1 }, // 同盟タイル1枚の恩恵を再取得
+  ART09: { firaks: 1, bescods: 1, nevlas: 1 }, // 即時：知識3＋QIC1
+  ART10: { hadschHallas: 1, geodens: 1 }, // 即時：クレジット5＋鉱石2
+  ART11: { geodens: 1, gleens: 1 }, // 即時：クレジット3＋鉱石3
+  ART12: { taklons: 1, nevlas: 1, itars: 1 }, // 収入：パワー駒2個（エリアIII）
+  ART13: { firaks: 1, bescods: 1, geodens: 1 }, // 収入：知識1＋鉱石1
 };
