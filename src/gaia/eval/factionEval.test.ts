@@ -9,6 +9,7 @@ import type { SetupResult } from "@/gaia/setup/types";
 import {
   criterionScore,
   recommendSetup,
+  recommendSetups,
   scoreSetupFactions,
   scoreStandardTech,
   topFactions,
@@ -136,6 +137,30 @@ describe("recommendSetup", () => {
       const r = recommendSetup({ criterion: "neutralBalance", seeds: [seed], playerCount: 4, lostFleet: false });
       expect(a!.score).toBeGreaterThanOrEqual(r!.score);
     }
+  });
+
+  it("recommendSetups returns topN in descending score, and recommendSetup is its head", () => {
+    const top = recommendSetups({
+      criterion: "neutralBalance",
+      seeds,
+      playerCount: 4,
+      lostFleet: false,
+      topN: 5,
+    });
+    expect(top).toHaveLength(5);
+    for (let i = 1; i < top.length; i++) {
+      expect(top[i - 1].score).toBeGreaterThanOrEqual(top[i].score);
+    }
+    // 候補は互いに異なるセットアップ（同一シードの重複が無い）
+    expect(new Set(top.map((r) => r.input.seed)).size).toBe(5);
+    const single = recommendSetup({ criterion: "neutralBalance", seeds, playerCount: 4, lostFleet: false });
+    expect(single?.input).toEqual(top[0].input);
+  });
+
+  it("recommendSetups clamps topN to the seed count and handles topN<=0", () => {
+    const few = recommendSetups({ criterion: "neutralBalance", seeds: seeds.slice(0, 2), playerCount: 4, lostFleet: false, topN: 5 });
+    expect(few).toHaveLength(2);
+    expect(recommendSetups({ criterion: "neutralBalance", seeds, playerCount: 4, lostFleet: false, topN: 0 })).toEqual([]);
   });
 
   it("returns null for an empty seed list", () => {

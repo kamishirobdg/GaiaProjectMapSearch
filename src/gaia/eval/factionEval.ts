@@ -149,8 +149,24 @@ export function recommendSetup(args: {
   lostFleet: boolean;
   mapTop3?: FactionId[];
 }): Recommendation | null {
-  const { criterion, seeds, playerCount, lostFleet, mapTop3 } = args;
-  let best: Recommendation | null = null;
+  return recommendSetups({ ...args, topN: 1 })[0] ?? null;
+}
+
+/**
+ * 同上をスコア降順 topN 件返す（比較用に複数提案を出すため、2026-07-25）。
+ * 同着は seeds の順で安定。topN <= 0 は空配列。
+ */
+export function recommendSetups(args: {
+  criterion: RecommendCriterion;
+  seeds: string[];
+  playerCount: number;
+  lostFleet: boolean;
+  mapTop3?: FactionId[];
+  topN: number;
+}): Recommendation[] {
+  const { criterion, seeds, playerCount, lostFleet, mapTop3, topN } = args;
+  if (topN <= 0) return [];
+  const all: Recommendation[] = [];
   for (const seed of seeds) {
     const input: BuildSetupInput = {
       seed,
@@ -160,9 +176,8 @@ export function recommendSetup(args: {
     const result = buildSetupFromSeed(input);
     const setupScores = scoreSetupFactions(result);
     const score = criterionScore(criterion, setupScores, { playerCount, mapTop3 });
-    if (!best || score > best.score) {
-      best = { input, result, setupScores, criterion, score, trials: seeds.length };
-    }
+    all.push({ input, result, setupScores, criterion, score, trials: seeds.length });
   }
-  return best;
+  // 安定ソート（Array#sort は安定）なので同着は seeds の順を保つ。
+  return all.sort((a, b) => b.score - a.score).slice(0, topN);
 }

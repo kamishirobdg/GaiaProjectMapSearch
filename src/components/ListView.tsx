@@ -38,7 +38,7 @@ import {
 } from "@/lib/sharedSettings";
 import {
   criterionScore,
-  recommendSetup,
+  recommendSetups,
   scoreSetupFactions,
   topFactions,
   type FactionScores,
@@ -72,7 +72,7 @@ const UI = {
     players: "人数",
     unknownTemplate: "テンプレート不明（プレビューなし）",
     pairTitle: "セット提案（マップ＋セットアップ）",
-    pairNote: "ピン留めマップを選ぶと、基準に沿った推奨セットアップを1件提示します（種族重みはDRAFT）",
+    pairNote: "探索の向きと基準を選ぶと、条件に合う候補を上位5件まで提示します（種族重みはDRAFT）",
     pairMap: "マップ",
     pairNoMap: "（マップなし）",
     pairCriterion: "基準",
@@ -82,6 +82,7 @@ const UI = {
     generate: "提案を生成",
     regenerate: "再生成",
     needMap: "基準1にはマップの選択が必要です",
+    candidates: "候補:",
     pairDirLabel: "探索の向き",
     dirMapToSetup: "マップ → セットアップ",
     dirSetupToMap: "セットアップ → マップ",
@@ -95,7 +96,7 @@ const UI = {
     mapIndependentNote: "※基準2・3はマップに依存しないため、マップは条件が合う先頭のものになります",
     mapStrong: "マップ優位",
     setupStrong: "セットアップ優位（上位5）",
-    trialsNote: "200シードから最良1件",
+    trialsNote: "候補から上位5件",
     openSetup: "Setupで開く",
     openMap: "Mapで開く",
     openBoard: "ボードで開く",
@@ -126,7 +127,7 @@ const UI = {
     players: "Players",
     unknownTemplate: "Unknown template (no preview)",
     pairTitle: "Pair proposal (map + setup)",
-    pairNote: "Pick a pinned map to get one recommended setup per criterion (faction weights are DRAFT)",
+    pairNote: "Pick a direction and criterion to get up to 5 ranked candidates (faction weights are DRAFT)",
     pairMap: "Map",
     pairNoMap: "(no map)",
     pairCriterion: "Criterion",
@@ -136,6 +137,7 @@ const UI = {
     generate: "Generate",
     regenerate: "Regenerate",
     needMap: "Criterion 1 requires a selected map",
+    candidates: "Candidates:",
     pairDirLabel: "Direction",
     dirMapToSetup: "Map → Setup",
     dirSetupToMap: "Setup → Map",
@@ -149,7 +151,7 @@ const UI = {
     mapIndependentNote: "Note: criteria 2 and 3 do not depend on the map, so the first matching map is used",
     mapStrong: "Map favors",
     setupStrong: "Setup favors (top 5)",
-    trialsNote: "best of 200 seeds",
+    trialsNote: "top 5 of candidates",
     openSetup: "Open in Setup",
     openMap: "Open in Map",
     openBoard: "Open board",
@@ -221,6 +223,18 @@ const useIsoLayoutEffect = typeof window !== "undefined" ? React.useLayoutEffect
 // List のマップ/基準の選択を記憶する localStorage キー（人数/拡張と同様に永続）。
 /** 探索候補に載せるランキングマップの上限（描画とスコア計算のコスト抑制）。 */
 const RANKED_MAP_CAP = 200;
+
+/** 提案を出す件数（比較用に複数出す、2026-07-25 要望）。 */
+const PAIR_TOP_N = 5;
+
+/** 提案1件分（マップ＋セットアップ＋スコア）。クリックで切り替えて見比べる。 */
+type PairOption = {
+  key: string;
+  /** 表示対象のマップ id（候補に無い場合は ""）。 */
+  mapId: string;
+  rec: Recommendation;
+  mapTop: Array<{ id: FactionId; score: number }> | null;
+};
 
 /** 探索の向き（2026-07-25 要望）。 */
 type PairDir = "mapToSetup" | "setupToMap";
@@ -294,10 +308,20 @@ export default function ListView() {
   const [setupSource, setSetupSource] = React.useState<SetupSource>("random");
   const [pairSetupId, setPairSetupId] = React.useState<string>("");
   // 提案結果のマップ。mapToSetup では起点の選択、setupToMap では探索結果。
-  const [pairResultMapId, setPairResultMapId] = React.useState<string>("");
-  const [rec, setRec] = React.useState<Recommendation | null>(null);
-  const [recMapTop, setRecMapTop] = React.useState<Array<{ id: FactionId; score: number }> | null>(null);
+  // 提案は上位 PAIR_TOP_N 件を出し、クリックで見比べる（2026-07-25 要望）。
+  // 表示中の1件（rec / recMapTop / pairResultMapId）はここから導出する。
+  const [pairOptions, setPairOptions] = React.useState<PairOption[]>([]);
+  const [pairIndex, setPairIndex] = React.useState(0);
   const [recSettings, setRecSettings] = React.useState<{ players: number; lf: boolean } | null>(null);
+  const current = pairOptions[pairIndex] ?? null;
+  const rec = current?.rec ?? null;
+  const recMapTop = current?.mapTop ?? null;
+  const pairResultMapId = current?.mapId ?? "";
+  /** 生成し直し・条件変更で提案をクリアする。 */
+  const clearPair = React.useCallback(() => {
+    setPairOptions([]);
+    setPairIndex(0);
+  }, []);
   const [savedProposals, setSavedProposals] = React.useState<SavedProposal[]>([]);
   const [pairMsg, setPairMsg] = React.useState<string | null>(null);
   const [recorded, setRecorded] = React.useState(false);
@@ -533,7 +557,7 @@ export default function ListView() {
       const src = selectableSetups.find((r) => r.id === pairSetupId) ?? null;
       if (!src) {
         setPairMsg(UI[lang].needSetup);
-        setRec(null);
+        clearPair();
         return;
       }
       const settings = setupSettingsOf(src);
@@ -546,32 +570,42 @@ export default function ListView() {
         const s = deriveSetupSettings(tid);
         return s.lf === settings.lf && (s.lf ? s.players === settings.players : true);
       });
-      let best: { c: PersistedCandidate; score: number; top: ReturnType<typeof mapTopOf> } | null = null;
+      const scored: Array<{ c: PersistedCandidate; score: number; top: NonNullable<ReturnType<typeof mapTopOf>> }> = [];
       for (const c of cands) {
         const top = mapTopOf(c);
         if (!top) continue;
-        const score = criterionScore(criterion, setupScores, {
-          playerCount: settings.players,
-          mapTop3: top.top3,
+        scored.push({
+          c,
+          top,
+          score: criterionScore(criterion, setupScores, {
+            playerCount: settings.players,
+            mapTop3: top.top3,
+          }),
         });
-        if (!best || score > best.score) best = { c, score, top };
       }
-      if (!best) {
+      if (scored.length === 0) {
         setPairMsg(UI[lang].needMapPool);
-        setRec(null);
+        clearPair();
         return;
       }
+      scored.sort((a, b) => b.score - a.score);
       setPairMsg(criterion === "opposeMap" ? null : UI[lang].mapIndependentNote);
-      setPairResultMapId(best.c.id);
-      setRec({
-        input: src.input,
-        result,
-        setupScores,
-        criterion,
-        score: best.score,
-        trials: cands.length,
-      });
-      setRecMapTop(best.top?.detail ?? null);
+      setPairOptions(
+        scored.slice(0, PAIR_TOP_N).map((x) => ({
+          key: `m:${x.c.id}`,
+          mapId: x.c.id,
+          mapTop: x.top.detail,
+          rec: {
+            input: src.input,
+            result,
+            setupScores,
+            criterion,
+            score: x.score,
+            trials: cands.length,
+          },
+        }))
+      );
+      setPairIndex(0);
       setRecSettings(settings);
       return;
     }
@@ -581,11 +615,10 @@ export default function ListView() {
     const tid = selected ? (templateIdBySearchKey[selected.searchKey] ?? null) : null;
     if (criterion === "opposeMap" && (!selected || !tid)) {
       setPairMsg(UI[lang].needMap);
-      setRec(null);
+      clearPair();
       return;
     }
     setPairMsg(null);
-    setPairResultMapId(pairMapId);
     let mapTop3: FactionId[] | undefined;
     let mapTopDetail: Array<{ id: FactionId; score: number }> | null = null;
     if (selected && tid) {
@@ -595,7 +628,7 @@ export default function ListView() {
         mapTopDetail = top.detail;
       } else if (criterion === "opposeMap") {
         setPairMsg(UI[lang].needMap);
-        setRec(null);
+        clearPair();
         return;
       }
     }
@@ -607,30 +640,41 @@ export default function ListView() {
         const s = setupSettingsOf(r);
         return s.lf === settings.lf && s.players === settings.players;
       });
-      let best: { r: SavedSetup; score: number; scores: FactionScores } | null = null;
-      for (const r of cands) {
+      const scored = cands.map((r) => {
         const res = buildSetupFromSeed(r.input);
         const scores = scoreSetupFactions(res);
-        const score = criterionScore(criterion, scores, {
-          playerCount: settings.players,
-          ...(mapTop3 ? { mapTop3 } : {}),
-        });
-        if (!best || score > best.score) best = { r, score, scores };
-      }
-      if (!best) {
+        return {
+          r,
+          res,
+          scores,
+          score: criterionScore(criterion, scores, {
+            playerCount: settings.players,
+            ...(mapTop3 ? { mapTop3 } : {}),
+          }),
+        };
+      });
+      if (scored.length === 0) {
         setPairMsg(UI[lang].needSetupPool);
-        setRec(null);
+        clearPair();
         return;
       }
-      setRec({
-        input: best.r.input,
-        result: buildSetupFromSeed(best.r.input),
-        setupScores: best.scores,
-        criterion,
-        score: best.score,
-        trials: cands.length,
-      });
-      setRecMapTop(mapTopDetail);
+      scored.sort((a, b) => b.score - a.score);
+      setPairOptions(
+        scored.slice(0, PAIR_TOP_N).map((x) => ({
+          key: `s:${x.r.id}`,
+          mapId: pairMapId,
+          mapTop: mapTopDetail,
+          rec: {
+            input: x.r.input,
+            result: x.res,
+            setupScores: x.scores,
+            criterion,
+            score: x.score,
+            trials: cands.length,
+          },
+        }))
+      );
+      setPairIndex(0);
       setRecSettings(settings);
       return;
     }
@@ -639,15 +683,18 @@ export default function ListView() {
     const seeds = Array.from({ length: 200 }, () =>
       String(Math.floor(Math.random() * 2147483647) + 1)
     );
-    const r = recommendSetup({
+    const rs = recommendSetups({
       criterion,
       seeds,
       playerCount: settings.players,
       lostFleet: settings.lf,
       ...(mapTop3 ? { mapTop3 } : {}),
+      topN: PAIR_TOP_N,
     });
-    setRec(r);
-    setRecMapTop(mapTopDetail);
+    setPairOptions(
+      rs.map((r) => ({ key: `r:${r.input.seed}`, mapId: pairMapId, mapTop: mapTopDetail, rec: r }))
+    );
+    setPairIndex(0);
     setRecSettings(settings);
   }, [
     selectableMaps,
@@ -659,6 +706,7 @@ export default function ListView() {
     setupSettingsOf,
     criterion,
     templateIdBySearchKey,
+    clearPair,
     lang,
   ]);
 
@@ -808,7 +856,7 @@ export default function ListView() {
                 const v = e.target.value as PairDir;
                 setPairDir(v);
                 try { localStorage.setItem(LS_LIST_DIR, v); } catch {}
-                setRec(null);
+                clearPair();
                 setPairMsg(null);
               }}
               style={{ maxWidth: 200 }}
@@ -828,7 +876,7 @@ export default function ListView() {
                   const v = e.target.value as SetupSource;
                   setSetupSource(v);
                   try { localStorage.setItem(LS_LIST_SRC, v); } catch {}
-                  setRec(null);
+                  clearPair();
                   setPairMsg(null);
                 }}
                 style={{ maxWidth: 170 }}
@@ -848,7 +896,7 @@ export default function ListView() {
                 onChange={(e) => {
                   setPairSetupId(e.target.value);
                   try { localStorage.setItem(LS_LIST_SETUP, e.target.value); } catch {}
-                  setRec(null);
+                  clearPair();
                   setPairMsg(null);
                 }}
                 style={{ maxWidth: 300 }}
@@ -879,7 +927,7 @@ export default function ListView() {
                   localStorage.setItem(LS_LIST_MAP, e.target.value);
                   localStorage.setItem(LS_LIST_MAP_LABEL, label);
                 } catch {}
-                setRec(null);
+                clearPair();
                 setPairMsg(null);
               }}
               style={{ maxWidth: 260 }}
@@ -906,7 +954,7 @@ export default function ListView() {
               onChange={(e) => {
                 setCriterion(e.target.value as RecommendCriterion);
                 try { localStorage.setItem(LS_LIST_CRITERION, e.target.value); } catch {}
-                setRec(null);
+                clearPair();
                 setPairMsg(null);
               }}
               style={{ maxWidth: 280 }}
@@ -921,6 +969,41 @@ export default function ListView() {
           </button>
           {pairMsg ? <span style={{ color: "#b3261e" }}>{pairMsg}</span> : null}
         </div>
+
+        {/* 候補（上位 PAIR_TOP_N）。クリックで下の詳細を切り替えて見比べる。 */}
+        {pairOptions.length > 1 ? (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8, alignItems: "center" }}>
+            <span style={{ fontSize: 11, opacity: 0.6 }}>{t.candidates}</span>
+            {pairOptions.map((o, i) => {
+              const active = i === pairIndex;
+              const m = selectableMaps.find((c) => c.id === o.mapId) ?? null;
+              // 向きで見出しを変える: マップ探索なら盤面、セットアップ探索ならシード。
+              const label =
+                pairDir === "setupToMap"
+                  ? `${String(m?.placementHash ?? "").slice(0, 6) || "?"} / ${Math.round(Number(m?.score ?? 0))}`
+                  : String(o.rec.input.seed);
+              return (
+                <button
+                  key={o.key}
+                  onClick={() => setPairIndex(i)}
+                  title={`${t.score}: ${Math.round(o.rec.score * 100) / 100}`}
+                  style={{
+                    fontSize: 11,
+                    padding: "3px 9px",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    border: active ? "2px solid #4a90d9" : "1px solid #ccc",
+                    background: active ? "#eef6ff" : "white",
+                    fontWeight: active ? 700 : 400,
+                  }}
+                >
+                  {i + 1}. {label}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
         {rec && recSettings
           ? (() => {
               const selected = selectableMaps.find((c) => c.id === pairResultMapId) ?? null;
