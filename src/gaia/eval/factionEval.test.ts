@@ -10,6 +10,7 @@ import {
   criterionScore,
   recommendSetup,
   scoreSetupFactions,
+  scoreStandardTech,
   topFactions,
   type FactionScores,
 } from "./factionEval";
@@ -41,19 +42,52 @@ describe("scoreSetupFactions", () => {
   it("sums draft weights over drawn tiles (round scoring counts copies)", () => {
     const s = syntheticSetup();
     const scores = scoreSetupFactions(s);
-    // firaks: AT02(+2) + AT13(+1) + RS07×2(+2×2) = 7
-    expect(scores.firaks).toBe(7);
-    // ivits: FS06(+2) = 2
-    expect(scores.ivits).toBe(2);
-    // 標準技術は対象外: TS7(terrans+2級のガイア系)でも terrans は AT/RS由来のみ
-    const terransExpected =
+    // firaks: AT02(+2) + AT13(+1) + RS07×2(+2×2) = 7、
+    // ＋標準技術: sci(aff2)にTS6(pref1) → 2*1*0.5 = 1 ⇒ 計8
+    expect(scores.firaks).toBe(8);
+    // ivits: FS06(+2) = 2、＋標準技術: terra(aff1)にTS1(pref1) → 1*1*0.5 ⇒ 計2.5
+    expect(scores.ivits).toBe(2.5);
+    // タイル由来と標準技術由来の合計になっていること（terrans で確認）
+    const terransTiles =
       (TILE_FACTION_WEIGHTS.AT02?.terrans ?? 0) +
       (TILE_FACTION_WEIGHTS.AT03?.terrans ?? 0) +
       (TILE_FACTION_WEIGHTS.AT13?.terrans ?? 0) +
       (TILE_FACTION_WEIGHTS.AT06?.terrans ?? 0) +
       (TILE_FACTION_WEIGHTS.AT07?.terrans ?? 0) +
       (TILE_FACTION_WEIGHTS.AT09?.terrans ?? 0);
-    expect(scores.terrans).toBe(terransExpected);
+    expect(scores.terrans).toBe(terransTiles + scoreStandardTech(s).terrans);
+  });
+
+  it("standard tech: 同じ9枚でもトラック配置が変われば評価が変わる", () => {
+    // TS7（ガイア惑星に鉱山＋3VP）が ガイア(terrans aff2) の下にある場合と、
+    // terrans が登らない eco の下にある場合で terrans のスコアが変わる。
+    const onGaia = syntheticSetup({
+      standardTech: {
+        byTrack: { terra: "TS1", nav: "TS2", ai: "TS3", gaia: "TS7", eco: "TS5", sci: "TS6" },
+        free: ["TS4", "TS8", "TS9"],
+      },
+    });
+    const onEco = syntheticSetup({
+      standardTech: {
+        byTrack: { terra: "TS1", nav: "TS2", ai: "TS3", gaia: "TS5", eco: "TS7", sci: "TS6" },
+        free: ["TS4", "TS8", "TS9"],
+      },
+    });
+    // terrans: gaia aff2 × TS7 pref2 × 0.5 = 2 / eco は aff0 なので 0
+    expect(scoreStandardTech(onGaia).terrans).toBeGreaterThan(scoreStandardTech(onEco).terrans);
+    expect(scoreStandardTech(onGaia).terrans).toBe(2);
+    expect(scoreStandardTech(onEco).terrans).toBe(0);
+  });
+
+  it("standard tech: 自由列はトラック非依存に低係数で効く", () => {
+    // hadschHallas は TS8（クレ4収入、pref2）を自由列に持つと 2*0.25 = 0.5。
+    const s = syntheticSetup({
+      standardTech: {
+        byTrack: { terra: "TS1", nav: "TS2", ai: "TS3", gaia: "TS4", eco: "TS5", sci: "TS6" },
+        free: ["TS7", "TS8", "TS9"],
+      },
+    });
+    expect(scoreStandardTech(s).hadschHallas).toBe(0.5);
   });
 
   it("returns a finite score for every faction", () => {

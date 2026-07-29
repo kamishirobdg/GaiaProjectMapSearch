@@ -5,17 +5,51 @@
 //
 // スコアの意味: scoreSetupFactions は「そのセットアップで各種族がどれだけ
 // 有利か」の相対値（タイル重みの単純合計、ラウンド得点は枚数分加算）。
-// 標準技術9種は毎ゲーム全部出るため対象外（factionWeights.ts 冒頭メモ参照）。
+// 標準技術9種は「どのトラックの下に付くか」で価値が変わるため、
+// TRACK_AFFINITY × TECH_PREF の積で別途加算する（2026-07-25、scoreStandardTech）。
 
 import type { SetupResult } from "@/gaia/setup/types";
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
-import { FACTION_IDS, TILE_FACTION_WEIGHTS, type FactionId } from "./factionWeights";
+import {
+  FACTION_IDS,
+  STD_TECH_FREE_SCALE,
+  STD_TECH_TRACK_SCALE,
+  TECH_PREF,
+  TILE_FACTION_WEIGHTS,
+  TRACK_AFFINITY,
+  type FactionId,
+} from "./factionWeights";
+import { RESEARCH_TRACK_IDS, type ResearchTrackId } from "@/gaia/setup/types";
 
 export type FactionScores = Record<FactionId, number>;
 
 function zeroScores(): FactionScores {
   const out = {} as FactionScores;
   for (const f of FACTION_IDS) out[f] = 0;
+  return out;
+}
+
+/**
+ * 標準技術の寄与（2026-07-25 案1）。トラック下の6枚は
+ * 「そのトラックを登りたいか × そのタイルが有用か」の積、自由列3枚は
+ * タイル有用度のみ（低係数）。非ゼロのみ返す差分オブジェクト。
+ */
+export function scoreStandardTech(result: SetupResult): FactionScores {
+  const out = zeroScores();
+  for (const track of RESEARCH_TRACK_IDS as readonly ResearchTrackId[]) {
+    const pref = TECH_PREF[result.standardTech.byTrack[track]];
+    if (!pref) continue;
+    for (const f of FACTION_IDS) {
+      const aff = TRACK_AFFINITY[f]?.[track] ?? 0;
+      const p = pref[f] ?? 0;
+      if (aff && p) out[f] += aff * p * STD_TECH_TRACK_SCALE;
+    }
+  }
+  for (const id of result.standardTech.free) {
+    const pref = TECH_PREF[id];
+    if (!pref) continue;
+    for (const [f, v] of Object.entries(pref)) out[f as FactionId] += (v ?? 0) * STD_TECH_FREE_SCALE;
+  }
   return out;
 }
 
@@ -40,6 +74,9 @@ export function scoreSetupFactions(result: SetupResult): FactionScores {
     for (const id of Object.values(result.goldFederations ?? {})) add(id);
     for (const id of result.artifacts ?? []) add(id);
   }
+  // 標準技術はトラック配置で価値が変わるので別式で加算（2026-07-25）。
+  const std = scoreStandardTech(result);
+  for (const f of FACTION_IDS) scores[f] += std[f];
   return scores;
 }
 
