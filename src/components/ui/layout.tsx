@@ -40,7 +40,29 @@ export const T = {
   rightMin: 340,
   /** ページ全体の最大幅。Map が全画面なので他ページも上限を設けない。 */
   pageMax: "none",
+  /**
+   * 1カラム（縦積み）へ切り替える閾値。Map の isNarrow と同じ 1180px。
+   * 左880が最小600まで縮んでも 600+480=1080 なので、1180 以上なら必ず横に
+   * 並ぶ。スマホ（Android の一般的な幅 360-430、横向きでも ~900）やタブレット
+   * 縦（768-834）は下回るので確実に縦積みになる。
+   */
+  narrowPx: 1180,
 } as const;
+
+/**
+ * 画面幅が px 未満かを返す（Map の同名フックと同じ作法）。
+ * SSR とハイドレーション直後は false（＝広い）から始まり、mount 後に確定する。
+ */
+export function useIsNarrow(px: number = T.narrowPx) {
+  const [narrow, setNarrow] = React.useState(false);
+  React.useEffect(() => {
+    const on = () => setNarrow(window.innerWidth < px);
+    on();
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, [px]);
+  return narrow;
+}
 
 /** セクション見出し（全ページ共通の体裁）。 */
 export function SectionTitle({
@@ -89,6 +111,12 @@ export function Panel({
 /**
  * 2カラムの外枠。row-reverse なので子は「右カラム → 左カラム」の順に渡す
  * （Map の既存実装と同じ並びに合わせてある）。
+ *
+ * 折り返しは flexWrap ではなく閾値（T.narrowPx）で明示的に切り替える。
+ * flexWrap だと「基準幅の合計に届かない＝縮めば入る幅」でも折り返してしまい、
+ * 1280px 級の画面で Map だけ横並び・他は縦積み、という不一致が出るため
+ * （Map の isNarrow と同じ作法に統一。2026-07-25）。
+ * 縦積み時は「操作・条件（左）を上、結果（右）を下」にする。
  */
 export function TwoCol({
   right,
@@ -99,14 +127,15 @@ export function TwoCol({
   left: React.ReactNode;
   style?: React.CSSProperties;
 }) {
+  const isNarrow = useIsNarrow();
   return (
     <div
       style={{
         display: "flex",
-        flexDirection: "row-reverse",
+        // 縦積みは column-reverse: ソース順（右→左）のまま「左＝操作」が上に来る。
+        flexDirection: isNarrow ? "column-reverse" : "row-reverse",
         gap: T.gap * 1.3,
-        alignItems: "flex-start",
-        flexWrap: "wrap",
+        alignItems: "stretch",
         ...style,
       }}
     >
@@ -116,8 +145,8 @@ export function TwoCol({
           display: "flex",
           flexDirection: "column",
           gap: T.gap,
-          flex: `1 0 ${T.rightBasis}px`,
-          minWidth: T.rightMin,
+          flex: isNarrow ? "0 0 auto" : `1 0 ${T.rightBasis}px`,
+          minWidth: isNarrow ? 0 : T.rightMin,
         }}
       >
         {right}
@@ -128,9 +157,9 @@ export function TwoCol({
           display: "flex",
           flexDirection: "column",
           gap: T.gap,
-          flex: `0 1 ${T.leftBasis}px`,
-          minWidth: T.leftMin,
-          maxWidth: T.leftMax,
+          flex: isNarrow ? "0 0 auto" : `0 1 ${T.leftBasis}px`,
+          minWidth: isNarrow ? 0 : T.leftMin,
+          maxWidth: isNarrow ? "100%" : T.leftMax,
         }}
       >
         {left}

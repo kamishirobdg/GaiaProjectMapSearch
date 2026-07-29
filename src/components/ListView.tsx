@@ -84,6 +84,8 @@ const UI = {
     regenerate: "再生成",
     needMap: "基準1にはマップの選択が必要です",
     candidates: "候補:",
+    pairLog: "提案ログ",
+    clearLog: "ログを消去",
     pairDirLabel: "探索の向き",
     dirMapToSetup: "マップ → セットアップ",
     dirSetupToMap: "セットアップ → マップ",
@@ -139,6 +141,8 @@ const UI = {
     regenerate: "Regenerate",
     needMap: "Criterion 1 requires a selected map",
     candidates: "Candidates:",
+    pairLog: "Proposal log",
+    clearLog: "Clear log",
     pairDirLabel: "Direction",
     dirMapToSetup: "Map → Setup",
     dirSetupToMap: "Setup → Map",
@@ -165,6 +169,12 @@ const UI = {
     sharedPairTitle: "Shared pair",
   },
 } as const;
+
+/** 基準の短縮表示（提案ログ用）。 */
+function criterionShort(c: RecommendCriterion, t: (typeof UI)["ja" | "en"]): string {
+  const full = c === "opposeMap" ? t.crit1 : c === "topBalance" ? t.crit2 : t.crit3;
+  return full.split("（")[0].split(" (")[0];
+}
 
 /** 種族の表示名。 */
 function factionLabel(id: FactionId, lang: Lang): string {
@@ -281,6 +291,43 @@ function writeProposals(list: SavedProposal[]): void {
   } catch {}
 }
 
+// --- 提案ログ（生成のたびに自動で残す履歴、2026-07-25 要望） -----------------
+// 「保存した提案」（明示保存・スナップショット）とは別物で、こちらは
+// 何をどの条件で提案したかの記録。左ペインの空きスペースに出す。
+const LS_LIST_PAIRLOG = "gaia_list_pair_log";
+const PAIRLOG_CAP = 30;
+type PairLogEntry = {
+  id: string;
+  at: number;
+  dir: PairDir;
+  source: SetupSource;
+  criterion: RecommendCriterion;
+  players: number;
+  lf: boolean;
+  /** 提示できた候補数（上位N件の N）。 */
+  count: number;
+  /** 先頭候補の識別子（マップ＝盤面ハッシュ先頭、セットアップ＝シード）。 */
+  seed: string;
+  mapHash: string;
+  mapScore: number;
+  score: number;
+};
+function loadPairLog(): PairLogEntry[] {
+  try {
+    const raw = localStorage.getItem(LS_LIST_PAIRLOG);
+    if (!raw) return [];
+    const a = JSON.parse(raw);
+    return Array.isArray(a) ? (a as PairLogEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+function writePairLog(list: PairLogEntry[]): void {
+  try {
+    localStorage.setItem(LS_LIST_PAIRLOG, JSON.stringify(list));
+  } catch {}
+}
+
 export default function ListView() {
   const [lang, setLang] = React.useState<Lang>("ja");
   const [players, setPlayers] = React.useState<number>(4);
@@ -324,6 +371,7 @@ export default function ListView() {
     setPairIndex(0);
   }, []);
   const [savedProposals, setSavedProposals] = React.useState<SavedProposal[]>([]);
+  const [pairLog, setPairLog] = React.useState<PairLogEntry[]>([]);
   const [pairMsg, setPairMsg] = React.useState<string | null>(null);
   const [recorded, setRecorded] = React.useState(false);
   // 共有されたセット（/list?h=&t=&s=）。捕捉は初回のみ（Strict Mode二重実行対応）。
@@ -371,8 +419,9 @@ export default function ListView() {
       if (savedSetupId) setPairSetupId(savedSetupId);
     } catch {}
 
-    // 保存した提案を復元（読取のみ）。
+    // 保存した提案・提案ログを復元（読取のみ）。
     setSavedProposals(loadProposals());
+    setPairLog(loadPairLog());
 
     let alive = true;
     void (async () => {
@@ -537,7 +586,21 @@ export default function ListView() {
     }
   }, []);
 
-  // セット提案の生成（1件のみ提示。要望 2026-07-24）
+  /** 生成のたびに提案ログへ1件積む（先頭候補の内容を記録）。 */
+  const pushPairLog = React.useCallback(
+    (e: Omit<PairLogEntry, "id" | "at">) => {
+      const at = Date.now();
+      const entry: PairLogEntry = { ...e, at, id: `${at}-${e.seed}-${e.mapHash}` };
+      setPairLog((prev) => {
+        const next = [entry, ...prev].slice(0, PAIRLOG_CAP);
+        writePairLog(next);
+        return next;
+      });
+    },
+    []
+  );
+
+  // セット提案の生成（上位 PAIR_TOP_N 件を提示。要望 2026-07-25）
   const handleGenerate = React.useCallback(() => {
     setRecorded(false);
     // マップの上位種族を出す小ヘルパ（テンプレ不整合は null）。
@@ -608,6 +671,18 @@ export default function ListView() {
       );
       setPairIndex(0);
       setRecSettings(settings);
+      pushPairLog({
+        dir: pairDir,
+        source: setupSource,
+        criterion,
+        players: settings.players,
+        lf: settings.lf,
+        count: Math.min(scored.length, PAIR_TOP_N),
+        seed: String(src.input.seed),
+        mapHash: String(scored[0].c.placementHash ?? ""),
+        mapScore: Number(scored[0].c.score ?? 0),
+        score: scored[0].score,
+      });
       return;
     }
 
@@ -677,6 +752,18 @@ export default function ListView() {
       );
       setPairIndex(0);
       setRecSettings(settings);
+      pushPairLog({
+        dir: pairDir,
+        source: setupSource,
+        criterion,
+        players: settings.players,
+        lf: settings.lf,
+        count: Math.min(scored.length, PAIR_TOP_N),
+        seed: String(scored[0].r.input.seed),
+        mapHash: String(selected?.placementHash ?? ""),
+        mapScore: Number(selected?.score ?? 0),
+        score: scored[0].score,
+      });
       return;
     }
 
@@ -697,7 +784,22 @@ export default function ListView() {
     );
     setPairIndex(0);
     setRecSettings(settings);
+    if (rs.length > 0) {
+      pushPairLog({
+        dir: pairDir,
+        source: setupSource,
+        criterion,
+        players: settings.players,
+        lf: settings.lf,
+        count: rs.length,
+        seed: String(rs[0].input.seed),
+        mapHash: String(selected?.placementHash ?? ""),
+        mapScore: Number(selected?.score ?? 0),
+        score: rs[0].score,
+      });
+    }
   }, [
+    pushPairLog,
     selectableMaps,
     selectableSetups,
     pairMapId,
@@ -775,6 +877,7 @@ export default function ListView() {
       {/* 統一レイアウト: 左=探索条件（操作）／右=結果（共有セット・候補・保存・ピン留め） */}
       <TwoCol
         left={
+          <>
           <Panel title={t.pairTitle} note={t.pairNote}>
             <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 12 }}>
               {/* 探索の向き（2026-07-25 要望） */}
@@ -900,6 +1003,62 @@ export default function ListView() {
               {pairMsg ? <span style={{ color: "#b3261e" }}>{pairMsg}</span> : null}
             </div>
           </Panel>
+          {/* 提案ログ: 生成のたびに自動で積む履歴（左ペインの空きスペース）。 */}
+          {pairLog.length > 0 ? (
+            <Panel
+              title={`${t.pairLog} (${pairLog.length})`}
+              note={
+                <button
+                  onClick={() => {
+                    setPairLog([]);
+                    writePairLog([]);
+                  }}
+                  style={{ fontSize: 11 }}
+                >
+                  {t.clearLog}
+                </button>
+              }
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                {pairLog.map((e) => (
+                  <div
+                    key={e.id}
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      alignItems: "baseline",
+                      flexWrap: "wrap",
+                      fontSize: 11,
+                      borderBottom: "1px solid rgba(0,0,0,0.06)",
+                      padding: "3px 0",
+                    }}
+                  >
+                    <span style={{ opacity: 0.55, minWidth: 74 }}>{fmtWhen(e.at, lang)}</span>
+                    <span style={{ fontWeight: 700 }}>
+                      {e.dir === "setupToMap" ? t.dirSetupToMap : t.dirMapToSetup}
+                    </span>
+                    <span style={{ opacity: 0.75 }}>
+                      {e.dir === "mapToSetup" ? (e.source === "saved" ? t.srcSaved : t.srcRandom) : ""}
+                    </span>
+                    <span style={{ opacity: 0.75 }}>{criterionShort(e.criterion, t)}</span>
+                    <span>{e.lf ? t.modeLF : t.modeBase} {e.players}p</span>
+                    {e.mapHash ? (
+                      <span style={{ fontFamily: "monospace" }}>
+                        M:{e.mapHash.slice(0, 6)}
+                        {e.mapScore ? `/${Math.round(e.mapScore)}` : ""}
+                      </span>
+                    ) : null}
+                    <span style={{ fontFamily: "monospace" }}>S:{e.seed}</span>
+                    <span style={{ marginLeft: "auto", opacity: 0.6 }}>
+                      {t.candidates}
+                      {e.count}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          ) : null}
+          </>
         }
         right={
           <>
