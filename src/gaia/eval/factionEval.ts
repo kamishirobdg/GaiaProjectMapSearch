@@ -15,8 +15,8 @@ import {
   STD_TECH_FREE_SCALE,
   STD_TECH_TRACK_SCALE,
   TECH_PREF,
+  TECH_TRACK_WEIGHTS,
   TILE_FACTION_WEIGHTS,
-  TRACK_AFFINITY,
   type FactionId,
 } from "./factionWeights";
 import { RESEARCH_TRACK_IDS, type ResearchTrackId } from "@/gaia/setup/types";
@@ -30,19 +30,17 @@ function zeroScores(): FactionScores {
 }
 
 /**
- * 標準技術の寄与（2026-07-25 案1）。トラック下の6枚は
- * 「そのトラックを登りたいか × そのタイルが有用か」の積、自由列3枚は
- * タイル有用度のみ（低係数）。非ゼロのみ返す差分オブジェクト。
+ * 標準技術の寄与（2026-07-25 案1）。トラック下の6枚は編集用テーブル
+ * TECH_TRACK_WEIGHTS[タイル][研究列] を引く。自由列3枚はタイル有用度のみ
+ * （低係数）。非ゼロのみ入った差分オブジェクトを返す。
  */
 export function scoreStandardTech(result: SetupResult): FactionScores {
   const out = zeroScores();
   for (const track of RESEARCH_TRACK_IDS as readonly ResearchTrackId[]) {
-    const pref = TECH_PREF[result.standardTech.byTrack[track]];
-    if (!pref) continue;
-    for (const f of FACTION_IDS) {
-      const aff = TRACK_AFFINITY[f]?.[track] ?? 0;
-      const p = pref[f] ?? 0;
-      if (aff && p) out[f] += aff * p * STD_TECH_TRACK_SCALE;
+    const cell = TECH_TRACK_WEIGHTS[result.standardTech.byTrack[track]]?.[track];
+    if (!cell) continue;
+    for (const [f, v] of Object.entries(cell)) {
+      out[f as FactionId] += (v ?? 0) * STD_TECH_TRACK_SCALE;
     }
   }
   for (const id of result.standardTech.free) {

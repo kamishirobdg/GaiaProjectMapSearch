@@ -80,31 +80,113 @@ export const MAP_AFFINITY: Partial<Record<FactionId, { gaia?: number; transdim?:
 //
 // 標準技術9種は毎ゲーム全部場に出るが、「6種がどの研究トラックの下に付くか」
 // はセットアップごとに変わる。トラック下のタイルは そのトラックを1段上げる
-// ついでに手に入る ので、価値は「その種族がそのトラックを登りたいか」×
-// 「そのタイル自体がその種族に有用か」の積で決まる。
-//   寄与 = Σ_トラック TRACK_AFFINITY[種族][トラック] × TECH_PREF[タイル][種族]
-// 54ペアを直接持つ代わりに この2表の積で表現する（数値が少なく調整しやすい）。
-// 自由列3枚はトラック制約なく取れるので TECH_PREF のみ（低い係数）で加算する。
-
-/** 種族がそのトラックをどれだけ登りたいか（0..2、非ゼロのみ）。DRAFT。 */
-export const TRACK_AFFINITY: Partial<Record<FactionId, Partial<Record<ResearchTrackId, number>>>> = {
-  terrans: { gaia: 2, terra: 1, sci: 1 }, // ガイアエンジン
-  lantids: { sci: 2, nav: 1, terra: 1 }, // 研究得意・他人の惑星へ入植＝射程
-  xenos: { ai: 2, terra: 1, nav: 1 }, // QIC・多鉱山
-  gleens: { terra: 2, gaia: 1, nav: 1 }, // 改造主体（QIC→鉱石、研究は苦手＝sci 0）
-  taklons: { eco: 2, nav: 2 }, // 経済＋航法（広く展開するほどパワー受動が増える）
-  ambas: { nav: 2, terra: 1, eco: 1 }, // 首府スワップ＝距離
-  hadschHallas: { eco: 2, terra: 1 }, // クレジット経済
-  ivits: { ai: 2, nav: 1, terra: 1 }, // 宇宙ステーション＝QIC＋射程
-  geodens: { terra: 2, ai: 1 }, // 惑星種類・改造
-  balTaks: { gaia: 2, terra: 1 }, // ガイアフォーマー（航行は登れない＝nav 0）
-  firaks: { sci: 2, ai: 1, eco: 1 }, // 研究所
-  bescods: { sci: 2, ai: 1, eco: 1 }, // 灰色・技術
-  nevlas: { sci: 2, eco: 2 }, // パワー経済＋知識
-  itars: { gaia: 2, sci: 1 }, // ガイアフォーマー・トークン→技術
+// ついでに手に入る ので、価値は「そのトラックを登りたいか」×「そのタイルが
+// 有用か」で決まる。
+//
+// ★ここが編集用の正本テーブル（研究列 × 技術タイル）。
+//   セルに「そのタイルがその研究列に置かれたとき ± がある種族と値」を書く。
+//   記載なし＝0。値の目安: 4=主役級 / 2=得意 / 1=噛み合う / -1..-2=噛み合わない。
+//   寄与 = TECH_TRACK_WEIGHTS[タイル][研究列][種族] × STD_TECH_TRACK_SCALE
+//
+// 初期値は「トラック親和度(0..2) × タイル有用度(-1..2)」で機械生成したもの。
+// 参考にした親和度（＝その種族が登りたい列）:
+//   terrans:ガイア2/改造1/科学1  lantids:科学2/航行1/改造1  xenos:AI2/改造1/航行1
+//   gleens:改造2/ガイア1/航行1（科学0＝研究苦手）  taklons:経済2/航行2
+//   ambas:航行2/改造1/経済1  hadschHallas:経済2/改造1  ivits:AI2/航行1/改造1
+//   geodens:改造2/AI1  balTaks:ガイア2/改造1（航行0＝登れない）
+//   firaks:科学2/AI1/経済1  bescods:科学2/AI1/経済1  nevlas:科学2/経済2
+//   itars:ガイア2/科学1
+export const TECH_TRACK_WEIGHTS: Record<
+  string,
+  Partial<Record<ResearchTrackId, Partial<Record<FactionId, number>>>>
+> = {
+  // TS1 即時:鉱石1+QIC1
+  TS1: {
+    terra: { xenos: 1, ivits: 1, geodens: 2 }, // 惑星改造
+    nav:   { xenos: 1, ivits: 1 }, // 航行
+    ai:    { xenos: 2, ivits: 2, geodens: 1 }, // 人工知能
+    gaia:  {}, // ガイア計画
+    eco:   {}, // 経済
+    sci:   {}, // 科学
+  },
+  // TS2 即時:惑星種類×知識1
+  TS2: {
+    terra: { lantids: 1, xenos: 1, gleens: 2, geodens: 4 }, // 惑星改造
+    nav:   { lantids: 1, xenos: 1, gleens: 1 }, // 航行
+    ai:    { xenos: 2, geodens: 2 }, // 人工知能
+    gaia:  { gleens: 1 }, // ガイア計画
+    eco:   {}, // 経済
+    sci:   { lantids: 2 }, // 科学
+  },
+  // TS3 首府学院のパワー値4
+  TS3: {
+    terra: { ambas: 1 }, // 惑星改造
+    nav:   { taklons: 4, ambas: 2 }, // 航行
+    ai:    { bescods: 1 }, // 人工知能
+    gaia:  { itars: 2 }, // ガイア計画
+    eco:   { taklons: 4, ambas: 1, bescods: 1, nevlas: 4 }, // 経済
+    sci:   { bescods: 2, nevlas: 4, itars: 1 }, // 科学
+  },
+  // TS4 即時:7VP（純粋な点数＝相性なし）
+  TS4: {
+    terra: {}, // 惑星改造
+    nav:   {}, // 航行
+    ai:    {}, // 人工知能
+    gaia:  {}, // ガイア計画
+    eco:   {}, // 経済
+    sci:   {}, // 科学
+  },
+  // TS5 収入:鉱石1+パワー1
+  TS5: {
+    terra: { gleens: 2, geodens: 2 }, // 惑星改造
+    nav:   { gleens: 1, taklons: 2 }, // 航行
+    ai:    { geodens: 1 }, // 人工知能
+    gaia:  { gleens: 1, itars: 2 }, // ガイア計画
+    eco:   { taklons: 2 }, // 経済
+    sci:   { itars: 1 }, // 科学
+  },
+  // TS6 収入:知識1+クレ1
+  TS6: {
+    terra: { lantids: 1, gleens: -2 }, // 惑星改造
+    nav:   { lantids: 1, gleens: -1 }, // 航行
+    ai:    { firaks: 1, bescods: 1 }, // 人工知能
+    gaia:  { gleens: -1 }, // ガイア計画
+    eco:   { firaks: 1, bescods: 1, nevlas: 2 }, // 経済
+    sci:   { lantids: 2, firaks: 2, bescods: 2, nevlas: 2 }, // 科学
+  },
+  // TS7 ガイア鉱山+3VP
+  TS7: {
+    terra: { terrans: 2, gleens: 4, balTaks: 1 }, // 惑星改造
+    nav:   { gleens: 2 }, // 航行
+    ai:    {}, // 人工知能
+    gaia:  { terrans: 4, gleens: 2, balTaks: 2, itars: 4 }, // ガイア計画
+    eco:   {}, // 経済
+    sci:   { terrans: 2, itars: 2 }, // 科学
+  },
+  // TS8 収入:クレ4
+  TS8: {
+    terra: { ambas: 1, hadschHallas: 2 }, // 惑星改造
+    nav:   { taklons: 2, ambas: 2 }, // 航行
+    ai:    {}, // 人工知能
+    gaia:  {}, // ガイア計画
+    eco:   { taklons: 2, ambas: 1, hadschHallas: 4, nevlas: 2 }, // 経済
+    sci:   { nevlas: 2 }, // 科学
+  },
+  // TS9 アクション:パワー4
+  TS9: {
+    terra: {}, // 惑星改造
+    nav:   { taklons: 4 }, // 航行
+    ai:    { bescods: 1 }, // 人工知能
+    gaia:  { itars: 2 }, // ガイア計画
+    eco:   { taklons: 4, bescods: 1, nevlas: 4 }, // 経済
+    sci:   { bescods: 2, nevlas: 4, itars: 1 }, // 科学
+  },
 };
 
-/** 標準技術タイル id → 種族別の有用度（-1..2、非ゼロのみ）。DRAFT。 */
+/**
+ * 自由列（トラックに紐付かない3枚）用のタイル別有用度（-1..2、非ゼロのみ）。
+ * 研究列に関係なく取れるぶん、上のテーブルより低い係数で効かせる。DRAFT。
+ */
 export const TECH_PREF: Record<string, Partial<Record<FactionId, number>>> = {
   TS1: { xenos: 1, ivits: 1, geodens: 1 }, // 即時：鉱石1＋QIC1
   TS2: { geodens: 2, xenos: 1, lantids: 1, gleens: 1 }, // 即時：惑星種類×知識1
