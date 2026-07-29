@@ -27,12 +27,19 @@ export const T = {
   fontHead: 14,
   fontBody: 12,
   fontNote: 11,
-  /** 左（操作・条件）カラムの基準幅。 */
-  leftBasis: 360,
-  leftMin: 280,
-  leftMax: 460,
-  /** ページ全体の最大幅（Map は全画面なので使わない）。 */
-  pageMax: 1400,
+  /**
+   * 左（操作・条件）カラムの幅。Map の結果ペインと同じ値に揃えてある
+   * （タブを切り替えても左ペインの幅が変わらないようにするため。2026-07-25）。
+   * Setup/List も今後ここに色別評価・スコア・評価指数の入力を載せる前提。
+   */
+  leftBasis: 880,
+  leftMin: 600,
+  leftMax: 880,
+  /** 右（結果）カラムの基準幅。Map の地図ペインと同じ 480。 */
+  rightBasis: 480,
+  rightMin: 340,
+  /** ページ全体の最大幅。Map が全画面なので他ページも上限を設けない。 */
+  pageMax: "none",
 } as const;
 
 /** セクション見出し（全ページ共通の体裁）。 */
@@ -103,15 +110,25 @@ export function TwoCol({
         ...style,
       }}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: T.gap, flex: "3 1 560px", minWidth: 340 }}>
-        {right}
-      </div>
+      {/* 右（結果）: Map の地図ペインと同じく伸びる側。縮むのは左に任せる。 */}
       <div
         style={{
           display: "flex",
           flexDirection: "column",
           gap: T.gap,
-          flex: `1 1 ${T.leftBasis}px`,
+          flex: `1 0 ${T.rightBasis}px`,
+          minWidth: T.rightMin,
+        }}
+      >
+        {right}
+      </div>
+      {/* 左（操作・条件）: Map の結果ペインと同じ 880px 基準で、狭いときだけ縮む。 */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: T.gap,
+          flex: `0 1 ${T.leftBasis}px`,
           minWidth: T.leftMin,
           maxWidth: T.leftMax,
         }}
