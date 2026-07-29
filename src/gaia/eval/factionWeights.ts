@@ -59,47 +59,55 @@ export const FACTION_IDS: readonly FactionId[] = FACTIONS.map((f) => f.id);
 /**
  * マップ特徴への親和度（母星色の供給量は全種族共通で基本点になるため、
  * ここにはガイア惑星・次元横断惑星への依存度だけを持つ）。
- * DRAFT: テラン/グリーン=ガイア依存、バルタック/イタル=ガイア計画エンジン。
+ * スコア寄与は mapFaction.ts で `0.5 * (gaia*ガイア数 + transdim*横断数)`。
+ *
+ * 2026-07-25 ユーザーレビュー反映:
+ * - ガイア惑星（既成の緑惑星）依存はグリーンのみ。
+ * - ガイアフォーマー（次元横断→ガイア化）依存は テラン(最高) > イタル(高い)
+ *   > バルタック(他種族よりはあり) の順。
  */
 export const MAP_AFFINITY: Partial<Record<FactionId, { gaia?: number; transdim?: number }>> = {
-  terrans: { gaia: 2, transdim: 1 },
-  gleens: { gaia: 2, transdim: 1 },
-  balTaks: { gaia: 1, transdim: 2 },
-  itars: { gaia: 1, transdim: 2 },
+  gleens: { gaia: 2 },
+  terrans: { transdim: 2 },
+  itars: { transdim: 1.5 },
+  balTaks: { transdim: 1 },
 };
 
 /**
  * タイル id → 種族別重み（非ゼロのみ）。DRAFT — 全値レビュー対象。
- * 根拠はアーキタイプの通説ベース:
- *   lantids=入植数/widespread、firaks=研究所・研究、ivits=単一大同盟・衛星、
- *   geodens=惑星種類・改造、gleens/terrans=ガイア得点、hadschHallas=クレ経済、
+ * 根拠はアーキタイプの通説ベース（2026-07-25 レビュー反映）:
+ *   lantids=入植数/widespread・研究得意、firaks/bescods/nevlas=研究、
+ *   gleens=ガイア得点だが研究は苦手（研究タイルは負値）、
+ *   ivits=単一大同盟・衛星、geodens=惑星種類・改造、
+ *   terrans/gleens/itars=ガイア得点（イタルもメイン）、hadschHallas=クレ経済、
  *   ambas=首府スワップ、nevlas=パワー経済・学院、itars=トークン→技術、
- *   bescods=灰色/技術、xenos=多鉱山・同盟数、taklons=パワー柔軟、
- *   balTaks=ガイアフォーマー（航行弱い）。
+ *   bescods=灰色/技術、xenos=多鉱山・同盟数、
+ *   taklons=経済＋航法＋広域展開（パワー受動が増える程強い）、
+ *   balTaks=ガイアフォーマー（航行弱い／小惑星化＝消費は不利）。
  */
 export const TILE_FACTION_WEIGHTS: Record<string, Partial<Record<FactionId, number>>> = {
   // --- 上級技術（15＋LF6） ---
   AT01: { ivits: 2, xenos: 1, ambas: 1, gleens: 1 }, // パス時：同盟×3VP
-  AT02: { firaks: 2, bescods: 1, nevlas: 1 }, // 研究を進めるたび+2VP
-  AT03: { hadschHallas: 1 }, // アクション：QIC1+クレ5
+  AT02: { firaks: 2, bescods: 1, nevlas: 1, lantids: 1, gleens: -1 }, // 研究を進めるたび+2VP（研究系: ランティド得意/グリーン苦手）
+  AT03: { hadschHallas: 1, nevlas: 1, taklons: 1 }, // アクション：QIC1+クレ5（経済系: ネヴラ/タクロンも得意）
   AT04: { lantids: 2, xenos: 1, geodens: 1 }, // 取得時：鉱山×2VP
-  AT05: { firaks: 2, bescods: 1 }, // パス時：研究所×3VP
-  AT06: { lantids: 1, ambas: 1 }, // 取得時：宙域×鉱石1
+  AT05: { firaks: 2, bescods: 1, lantids: 1, gleens: -1 }, // パス時：研究所×3VP（研究系: ランティド得意/グリーン苦手）
+  AT06: { lantids: 1, ambas: 1, taklons: 1 }, // 取得時：宙域×鉱石1（タクロンは広域展開）
   AT07: { geodens: 1 }, // アクション：鉱石3
-  AT08: { terrans: 2, gleens: 2, itars: 1, balTaks: 1 }, // 取得時：ガイア×2VP
+  AT08: { terrans: 2, gleens: 2, itars: 2, balTaks: 1 }, // 取得時：ガイア×2VP（イタルもメイン）
   AT09: { hadschHallas: 1, taklons: 1 }, // 取得時：交易所×4VP
-  AT10: { lantids: 1, ambas: 1, xenos: 1 }, // 取得時：宙域×2VP
+  AT10: { lantids: 1, ambas: 1, xenos: 1, taklons: 1 }, // 取得時：宙域×2VP（タクロンは広域展開）
   AT11: { hadschHallas: 1, nevlas: 1 }, // 交易所建設ごと+3VP
   AT12: { ivits: 2, ambas: 1, xenos: 1, gleens: 1 }, // 取得時：同盟×5VP
   AT13: { bescods: 1, firaks: 1 }, // アクション：知識3
   AT14: { lantids: 2, geodens: 1, xenos: 1 }, // 鉱山建設ごと+3VP
   AT15: { geodens: 2, lantids: 1, xenos: 1, gleens: 1 }, // パス時：惑星種類×1VP
   AT16: { nevlas: 1, ambas: 1, itars: 1 }, // 取得時：首府・学院×6VP (LF)
-  AT17: { lantids: 1, xenos: 1 }, // 取得時：深宇宙×4VP (LF)
-  AT18: { balTaks: 1, terrans: 1 }, // パス時：小惑星×2VP (LF、小惑星=ガイアフォーマー消費)
+  AT17: { lantids: 1, xenos: 1, taklons: 1 }, // 取得時：深宇宙×4VP (LF、タクロンは広域展開)
+  AT18: { balTaks: -1 }, // パス時：小惑星×2VP (LF、小惑星=ガイアフォーマー消費でバルタックはむしろ不利)
   AT19: { geodens: 2, xenos: 1, lantids: 1 }, // 改造1段階ごと+2VP (LF)
   AT20: { hadschHallas: 1, xenos: 1 }, // QICアクションごと+4VP (LF)
-  AT21: { lantids: 1, xenos: 1 }, // パス時：深宇宙×2VP (LF)
+  AT21: { lantids: 1, xenos: 1, taklons: 1 }, // パス時：深宇宙×2VP (LF、タクロンは広域展開)
 
   // --- ラウンドブースター（10＋LF4） ---
   RB03: { itars: 1, taklons: 1 }, // 収入：PT2+鉱石1
@@ -117,28 +125,28 @@ export const TILE_FACTION_WEIGHTS: Record<string, Partial<Record<FactionId, numb
 
   // --- ラウンド得点（9種＋LF3、×2はエンジン側で枚数分加算） ---
   RS01: { lantids: 1, xenos: 1, geodens: 1 }, // 鉱山+2VP
-  RS02: { hadschHallas: 1 }, // 交易所+3VP
-  RS03: { hadschHallas: 1 }, // 交易所+4VP
+  RS02: { hadschHallas: 1, nevlas: 1, taklons: 1 }, // 交易所+3VP（経済系: ネヴラ/タクロンも得意）
+  RS03: { hadschHallas: 1, nevlas: 1, taklons: 1 }, // 交易所+4VP（経済系: ネヴラ/タクロンも得意）
   RS04: { ambas: 1, nevlas: 1, itars: 1, bescods: 1 }, // 学院/首府+5VP
-  RS05: { terrans: 2, gleens: 2, balTaks: 1, itars: 1 }, // ガイア鉱山+3VP
-  RS06: { terrans: 2, gleens: 2, balTaks: 1, itars: 1 }, // ガイア鉱山+4VP
-  RS07: { firaks: 2, bescods: 1, nevlas: 1 }, // 研究+2VP
+  RS05: { terrans: 2, gleens: 2, itars: 2, balTaks: 1 }, // ガイア鉱山+3VP（イタルもメイン）
+  RS06: { terrans: 2, gleens: 2, itars: 2, balTaks: 1 }, // ガイア鉱山+4VP（イタルもメイン）
+  RS07: { firaks: 2, bescods: 1, nevlas: 1, lantids: 1, gleens: -1 }, // 研究+2VP（研究系: ランティド得意/グリーン苦手）
   RS08: { ivits: 2, ambas: 1, xenos: 1 }, // 同盟+5VP
   RS09: { geodens: 2, xenos: 1 }, // 改造1段階+2VP
-  RS10: { lantids: 1, ambas: 1, xenos: 1 }, // 未入植宙域で鉱山+3VP (LF)
+  RS10: { lantids: 1, ambas: 1, xenos: 1, taklons: 1 }, // 未入植宙域で鉱山+3VP (LF、タクロンは広域展開)
   RS11: { geodens: 2, lantids: 1, gleens: 1 }, // 未入植種類に鉱山+3VP (LF)
-  RS12: { firaks: 2, bescods: 1 }, // 研究所+4VP (LF)
+  RS12: { firaks: 2, bescods: 1, lantids: 1, gleens: -1 }, // 研究所+4VP (LF、研究系: ランティド得意/グリーン苦手)
 
   // --- 最終得点（6＋LF3） ---
   FS01: { ivits: 2, ambas: 1, xenos: 1 }, // 同盟内建造物 最多
-  FS02: { lantids: 2, xenos: 1 }, // 建造物 最多
+  FS02: { lantids: 2, xenos: 1, taklons: 1 }, // 建造物 最多（タクロンは広域展開）
   FS03: { geodens: 2, lantids: 1, gleens: 1, xenos: 1 }, // 惑星種類 最多
-  FS04: { terrans: 2, gleens: 2, itars: 1, balTaks: 1 }, // ガイア 最多
-  FS05: { lantids: 1, ambas: 1, ivits: -1 }, // 入植宙域 最多（イヴィッツは一極集中）
+  FS04: { terrans: 2, gleens: 2, itars: 2, balTaks: 1 }, // ガイア 最多（イタルもメイン）
+  FS05: { lantids: 1, ambas: 1, taklons: 1, ivits: -1 }, // 入植宙域 最多（タクロン広域/イヴィッツは一極集中）
   FS06: { ivits: 2 }, // 衛星 最多（宇宙ステーションが衛星扱い）
-  FS07: { balTaks: 2, terrans: 1, itars: 1 }, // 小惑星 最多 (LF)
+  FS07: { balTaks: -1 }, // 小惑星 最多 (LF、ガイアフォーマー消費でバルタックはむしろ不利)
   FS08: { ambas: 2 }, // 首府⇔学院 距離最長 (LF、首府スワップで操作可能)
-  FS09: { lantids: 1, xenos: 1 }, // 深宇宙 最多 (LF)
+  FS09: { lantids: 1, xenos: 1, taklons: 1 }, // 深宇宙 最多 (LF、タクロンは広域展開)
 
   // --- LF 宇宙船まわり（共有物のため原則0、明確な相性のみ） ---
   TSL1: { geodens: 1 }, // 2段階無料改造+鉱山

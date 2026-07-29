@@ -123,14 +123,22 @@ describe("mapFaction", () => {
   });
 
   it("applies home color counts + gaia/transdim affinity (draft formula)", () => {
-    const counts = { byColor: { BLUE: 4, RED: 6 }, gaia: 2, transdim: 2 };
+    const counts = { byColor: { BLUE: 4, RED: 5 }, gaia: 2, transdim: 4 };
     const scores = mapFactionScoresFromCounts(counts);
-    // terrans: BLUE4 + 0.5*(2*2 + 1*2) = 7 / lantids: BLUE4（親和なし）
-    expect(scores.terrans).toBe(7);
+    // 2026-07-25 レビュー反映: ガイア惑星依存=グリーンのみ、
+    // ガイアフォーマー(横断)依存= テラン(2) > イタル(1.5) > バルタック(1)。
+    // terrans: BLUE4 + 0.5*(transdim 2 * 4) = 8（ガイア惑星依存なし）
+    expect(scores.terrans).toBe(8);
+    // lantids: BLUE4（親和なし）
     expect(scores.lantids).toBe(4);
-    // hadschHallas/ivits: RED6（親和なし）
-    expect(scores.hadschHallas).toBe(6);
-    expect(scores.ivits).toBe(6);
+    // gleens: 0.5*(gaia 2 * 2) = 2（ガイア惑星依存はグリーンのみ）
+    expect(scores.gleens).toBe(2);
+    // itars: 0.5*(transdim 1.5 * 4) = 3 / balTaks: 0.5*(transdim 1 * 4) = 2
+    expect(scores.itars).toBe(3);
+    expect(scores.balTaks).toBe(2);
+    // hadschHallas/ivits: RED5（親和なし）
+    expect(scores.hadschHallas).toBe(5);
+    expect(scores.ivits).toBe(5);
     expect(topFactions(scores, 1)[0]).toBe("terrans");
   });
 });
