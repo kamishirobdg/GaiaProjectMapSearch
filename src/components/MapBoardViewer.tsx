@@ -39,10 +39,10 @@ export type PlacementItem = { slotId: string; sectorId: string; rot: number; rot
  * 正式名（トワイライト等）は六角枠に収まらないため（2026-07-25 要望）。
  */
 const SHIP_SHORT: Record<string, string> = {
-  twilight: "トワ",
-  eclipse: "エク",
-  rebellion: "リベ",
-  tfmars: "TFM",
+  twilight: "TW",
+  eclipse: "EC",
+  rebellion: "RB",
+  tfmars: "TF",
 };
 
 /**
@@ -759,12 +759,9 @@ export function MapBoardViewer(props: {
               // ↻n）を省いて番号/略称を大きく1行で出す（2026-07-25 要望）。
               const noRot = isRotationlessTile(t.sectorId);
               const label = SHIP_SHORT[t.sectorId] ?? t.sectorId;
-              // 六角形の内幅に収まる字面に合わせる。全角（カタカナ）は半角の約2倍
-              // 幅を食うので、字種と文字数で係数を分ける。
-              const isWide = /[^ -]/.test(label);
-              const labelSize = noRot
-                ? r * (isWide ? 0.7 : label.length >= 3 ? 0.66 : 0.95)
-                : r * 0.55;
+              // 六角形の内幅に収まる字面に合わせる（ラベルは番号か2文字の船コードで
+              // すべて半角なので、文字数だけで決めてよい）。
+              const labelSize = noRot ? r * (label.length >= 3 ? 0.7 : 0.95) : r * 0.55;
               return (
                 <g key={t.key}>
                   <polygon
