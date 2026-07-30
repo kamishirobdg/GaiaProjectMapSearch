@@ -71,7 +71,8 @@ export function setupFactionBreakdown(
   };
 
   for (const id of Object.values(result.advancedTech.byTrack)) add("advanced", id);
-  add("advanced", result.advancedTech.extension);
+  // 得点ボード拡張部の追加上級は取得条件が通常の上級と違うので別カテゴリ。
+  add("advExtension", result.advancedTech.extension);
   for (const id of result.boosters.available) add("booster", id);
   for (const id of result.roundScoring) add("roundScoring", id); // ×2タイルは2回出るので枚数分加算
   for (const id of result.finalScoring) add("finalScoring", id);

@@ -12,6 +12,8 @@ import type { SetupResult } from "@/gaia/setup/types";
 import { scoreSetupFactions, setupFactionBreakdown } from "./factionEval";
 import {
   DEFAULT_SETUP_WEIGHTS,
+  LF_ONLY_WEIGHT_KEYS,
+  SETUP_WEIGHT_DISPLAY_ORDER,
   SETUP_WEIGHT_KEYS,
   isDefaultWeights,
   sanitizeSetupWeights,
@@ -48,10 +50,24 @@ describe("DEFAULT_SETUP_WEIGHTS", () => {
   it("既定は導入前の計算と同値（標準技術の2定数がそのまま入る）", () => {
     expect(DEFAULT_SETUP_WEIGHTS.stdTrack).toBe(STD_TECH_TRACK_SCALE);
     expect(DEFAULT_SETUP_WEIGHTS.stdFree).toBe(STD_TECH_FREE_SCALE);
-    for (const k of ["advanced", "booster", "roundScoring", "finalScoring", "federation", "lfShip"] as const) {
+    for (const k of [
+      "advanced",
+      "advExtension",
+      "booster",
+      "roundScoring",
+      "finalScoring",
+      "federation",
+      "lfShip",
+    ] as const) {
       expect(DEFAULT_SETUP_WEIGHTS[k]).toBe(1);
     }
     expect(isDefaultWeights(DEFAULT_SETUP_WEIGHTS)).toBe(true);
+  });
+
+  it("表示順は全カテゴリを過不足なく並べたもの", () => {
+    expect([...SETUP_WEIGHT_DISPLAY_ORDER].sort()).toEqual([...SETUP_WEIGHT_KEYS].sort());
+    // 影響の小さい2列は右端（横スクロールで最初に隠れる位置）。2026-07-30 要望。
+    expect(SETUP_WEIGHT_DISPLAY_ORDER.slice(-2)).toEqual(["roundScoring", "booster"]);
   });
 
   it("既定を明示で渡しても省略時と同じスコアになる", () => {
@@ -96,9 +112,32 @@ describe("setupFactionBreakdown", () => {
     for (const f of FACTION_IDS) expect(zeroed.byCategory.advanced[f] === 0).toBe(true);
   });
 
-  it("基本版では LF 船カテゴリが常に0（LFのみ加算される）", () => {
-    const base = setupFactionBreakdown(syntheticSetup(), withWeight("lfShip", 3));
-    for (const f of FACTION_IDS) expect(base.byCategory.lfShip[f]).toBe(0);
+  it("基本版では LF 専用カテゴリが常に0（LFのみ加算される）", () => {
+    const base = setupFactionBreakdown(syntheticSetup(), {
+      ...DEFAULT_SETUP_WEIGHTS,
+      lfShip: 3,
+      advExtension: 3,
+    });
+    for (const k of LF_ONLY_WEIGHT_KEYS) {
+      for (const f of FACTION_IDS) expect(base.byCategory[k][f]).toBe(0);
+    }
+  });
+
+  it("追加上級（拡張部）は通常の上級とは別カテゴリに入る", () => {
+    // 拡張部の追加上級 AT02 を持つ LF セットアップ。通常の上級には AT02 を置かない。
+    const s = syntheticSetup({
+      mode: "lostFleet",
+      advancedTech: {
+        byTrack: { terra: "AT03", nav: "AT06", ai: "AT07", gaia: "AT09", eco: "AT10", sci: "AT11" },
+        extension: "AT02",
+      },
+    });
+    const base = setupFactionBreakdown(s, DEFAULT_SETUP_WEIGHTS);
+    const scaled = setupFactionBreakdown(s, withWeight("advExtension", 2));
+    // firaks は AT02 で +2。追加上級の係数だけが効き、通常の上級は動かない。
+    expect(base.byCategory.advExtension.firaks).toBe(2);
+    expect(scaled.byCategory.advExtension.firaks).toBe(4);
+    expect(scaled.byCategory.advanced.firaks).toBe(base.byCategory.advanced.firaks);
   });
 });
 

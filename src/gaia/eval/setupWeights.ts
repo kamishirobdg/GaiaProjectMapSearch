@@ -12,7 +12,9 @@ import { STD_TECH_FREE_SCALE, STD_TECH_TRACK_SCALE } from "./factionWeights";
 
 /**
  * 係数のカテゴリ。タイルの出どころで分けてある:
- * - advanced      上級技術（研究トラック6枚＋LFの追加上級）
+ * - advanced      上級技術（研究トラック下の6枚）
+ * - advExtension  得点ボード拡張部の追加上級技術（取得条件が通常の上級と違うため別枠。
+ *                 2026-07-30 ユーザー要望）
  * - booster       ラウンドブースター（使用分のみ）
  * - roundScoring  ラウンド得点（×2タイルは枚数分入る）
  * - finalScoring  最終得点計算
@@ -23,6 +25,7 @@ import { STD_TECH_FREE_SCALE, STD_TECH_TRACK_SCALE } from "./factionWeights";
  */
 export const SETUP_WEIGHT_KEYS = [
   "advanced",
+  "advExtension",
   "booster",
   "roundScoring",
   "finalScoring",
@@ -35,9 +38,27 @@ export const SETUP_WEIGHT_KEYS = [
 export type SetupWeightKey = (typeof SETUP_WEIGHT_KEYS)[number];
 export type SetupWeights = Record<SetupWeightKey, number>;
 
+/**
+ * 画面での並び順（評価表の列・評価指数の入力欄で共用）。
+ * ブースターとラウンド得点はラベルが長い割に影響が小さいので右端へ置く
+ * （横スクロールで最初に隠れるのが影響の小さい列になる。2026-07-30 要望）。
+ */
+export const SETUP_WEIGHT_DISPLAY_ORDER: readonly SetupWeightKey[] = [
+  "advanced",
+  "advExtension",
+  "finalScoring",
+  "federation",
+  "stdTrack",
+  "stdFree",
+  "lfShip",
+  "roundScoring",
+  "booster",
+];
+
 /** 既定値＝評価指数の導入前と同じ計算になる係数。 */
 export const DEFAULT_SETUP_WEIGHTS: SetupWeights = {
   advanced: 1,
+  advExtension: 1,
   booster: 1,
   roundScoring: 1,
   finalScoring: 1,
@@ -47,8 +68,11 @@ export const DEFAULT_SETUP_WEIGHTS: SetupWeights = {
   lfShip: 1,
 };
 
-/** LF でしか効かないカテゴリ（基本版では入力欄を出さない）。 */
-export const LF_ONLY_WEIGHT_KEYS: ReadonlySet<SetupWeightKey> = new Set<SetupWeightKey>(["lfShip"]);
+/** LF でしか効かないカテゴリ（基本版では列も入力欄も出さない）。 */
+export const LF_ONLY_WEIGHT_KEYS: ReadonlySet<SetupWeightKey> = new Set<SetupWeightKey>([
+  "advExtension",
+  "lfShip",
+]);
 
 export function isDefaultWeights(w: SetupWeights): boolean {
   return SETUP_WEIGHT_KEYS.every((k) => w[k] === DEFAULT_SETUP_WEIGHTS[k]);

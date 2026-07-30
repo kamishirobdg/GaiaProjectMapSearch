@@ -16,7 +16,7 @@ import { FACTIONS, type FactionId } from "@/gaia/eval/factionWeights";
 import {
   DEFAULT_SETUP_WEIGHTS,
   LF_ONLY_WEIGHT_KEYS,
-  SETUP_WEIGHT_KEYS,
+  SETUP_WEIGHT_DISPLAY_ORDER,
   isDefaultWeights,
   readSetupWeights,
   writeSetupWeights,
@@ -28,15 +28,62 @@ import { T } from "@/components/ui/layout";
 
 type Lang = "ja" | "en";
 
-const CAT_LABEL: Record<SetupWeightKey, { ja: string; en: string }> = {
-  advanced: { ja: "上級", en: "adv" },
-  booster: { ja: "ブースター", en: "boost" },
-  roundScoring: { ja: "ラウンド", en: "round" },
-  finalScoring: { ja: "最終", en: "final" },
-  federation: { ja: "同盟", en: "fed" },
-  stdTrack: { ja: "標準(列)", en: "std/track" },
-  stdFree: { ja: "標準(自由)", en: "std/free" },
-  lfShip: { ja: "LF船", en: "LF ship" },
+// ラベルは短く、意味はツールチップ（title）で引けるようにする（2026-07-30 要望）。
+const CAT_LABEL: Record<SetupWeightKey, { ja: string; en: string; tipJa: string; tipEn: string }> = {
+  advanced: {
+    ja: "上級",
+    en: "adv",
+    tipJa: "上級技術タイル（研究トラックの下に付く6枚）",
+    tipEn: "Advanced tech (the six under the research tracks)",
+  },
+  advExtension: {
+    ja: "追加上級",
+    en: "adv+",
+    tipJa: "得点ボード拡張部の追加上級技術（取得条件が通常の上級と異なるため別枠）",
+    tipEn: "Extra advanced tech on the scoring-board extension (different acquisition rule)",
+  },
+  booster: {
+    ja: "ブースター",
+    en: "boost",
+    tipJa: "使用するラウンドブースター",
+    tipEn: "Round boosters in play",
+  },
+  roundScoring: {
+    ja: "ラウンド",
+    en: "round",
+    tipJa: "ラウンド得点タイル（同じタイルが2枚出れば枚数分加算）",
+    tipEn: "Round scoring tiles (duplicates count twice)",
+  },
+  finalScoring: {
+    ja: "最終",
+    en: "final",
+    tipJa: "最終得点計算タイル2枚",
+    tipEn: "The two final scoring tiles",
+  },
+  federation: {
+    ja: "同盟",
+    en: "fed",
+    tipJa: "同盟タイル（惑星改造 研究レベル5）",
+    tipEn: "Federation tile (Terraforming level 5)",
+  },
+  stdTrack: {
+    ja: "トラック",
+    en: "track",
+    tipJa: "標準技術タイルのうち、研究トラックの下に付く6枚（どの列に付くかで価値が変わる）",
+    tipEn: "Standard tech placed under a research track (value depends on the track)",
+  },
+  stdFree: {
+    ja: "フリー",
+    en: "free",
+    tipJa: "標準技術タイルのうち、フリー枠の3枚（トラック非依存）",
+    tipEn: "Standard tech in the free row (track-independent)",
+  },
+  lfShip: {
+    ja: "LF船",
+    en: "LF ship",
+    tipJa: "失われた艦隊の船関連（船の基本技術・金枠同盟・アーティファクト）",
+    tipEn: "Lost Fleet ships (ship tech, gold federations, artifacts)",
+  },
 };
 
 const UI = {
@@ -49,6 +96,8 @@ const UI = {
     isDefault: "既定値",
     colFaction: "種族",
     colTotal: "総合",
+    tipFaction: "行の背景色＝その種族の母星色",
+    tipTotal: "各カテゴリに評価指数を掛けた合計",
     summary: "総合スコア",
     mean: "平均",
     topK: "上位",
@@ -65,6 +114,8 @@ const UI = {
     isDefault: "defaults",
     colFaction: "Faction",
     colTotal: "total",
+    tipFaction: "Row background = the faction's home planet color",
+    tipTotal: "Sum of every category after its eval weight",
     summary: "Overall",
     mean: "mean",
     topK: "top",
@@ -173,7 +224,7 @@ export function FactionScoreTable({
     [result, weights]
   );
 
-  const cols = SETUP_WEIGHT_KEYS.filter((k) => lf || !LF_ONLY_WEIGHT_KEYS.has(k));
+  const cols = SETUP_WEIGHT_DISPLAY_ORDER.filter((k) => lf || !LF_ONLY_WEIGHT_KEYS.has(k));
   const rows = [...FACTIONS].sort((a, b) => total[b.id] - total[a.id]);
 
   const exTotal = extremesOf(FACTIONS.map((f) => total[f.id]));
@@ -185,10 +236,14 @@ export function FactionScoreTable({
       <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 560 }}>
         <thead>
           <tr>
-            <th style={{ ...thStyle, textAlign: "left" }}>{t.colFaction}</th>
-            <th style={thStyle}>{t.colTotal}</th>
+            <th style={{ ...thStyle, textAlign: "left" }} title={t.tipFaction}>
+              {t.colFaction}
+            </th>
+            <th style={thStyle} title={t.tipTotal}>
+              {t.colTotal}
+            </th>
             {cols.map((k) => (
-              <th key={k} style={thStyle}>
+              <th key={k} style={thStyle} title={lang === "ja" ? CAT_LABEL[k].tipJa : CAT_LABEL[k].tipEn}>
                 {lang === "ja" ? CAT_LABEL[k].ja : CAT_LABEL[k].en}
               </th>
             ))}
@@ -285,7 +340,7 @@ export function SetupWeightInputs({
   lf: boolean;
 }) {
   const t = UI[lang];
-  const keys = SETUP_WEIGHT_KEYS.filter((k) => lf || !LF_ONLY_WEIGHT_KEYS.has(k));
+  const keys = SETUP_WEIGHT_DISPLAY_ORDER.filter((k) => lf || !LF_ONLY_WEIGHT_KEYS.has(k));
   const atDefault = isDefaultWeights(weights);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -300,6 +355,7 @@ export function SetupWeightInputs({
         {keys.map((k) => (
           <label
             key={k}
+            title={lang === "ja" ? CAT_LABEL[k].tipJa : CAT_LABEL[k].tipEn}
             style={{
               display: "flex",
               gap: 4,
