@@ -1735,7 +1735,59 @@ const onMark = React.useCallback(
   []
 );
 const activeSources = React.useMemo(() => new Set(markSources.keys()), [markSources]);
-const markers = React.useMemo(() => [...markSources.values()].flat(), [markSources]);
+/**
+ * 評価/audit のセル座標（論理マップのフレーム）→ 描画のセル座標（テンプレートの
+ * フレーム）の対応表。
+ *
+ * この2つは別フレームで、スロットごとに向きが反転している（テンプレの slot.pos と
+ * SLOT_CENTERS_* が独立に採寸されているため。実測: base_34p は全スロットで
+ * slot.pos + logicalCenter = (19,14) の一定値だが、LFテンプレでは 17/18/19 と
+ * スロットごとにばらつくので単一の回転では表せない）。
+ * そのため audit のキーをそのまま描画座標に使うとマーカーが大きくズレる
+ * （2026-07-30 報告）。スロットごとに中心セル（localKey "0,0"）を基準にして
+ *   templateCell = templateSlotPos - (logicalCell - logicalCenter)
+ * で変換する。全テンプレ・全セルで中心セルが存在し、変換後は必ず自スロット中心の
+ * 半径2以内に収まることを確認済み。
+ */
+const cellKeyLogicalToTemplate = React.useMemo(() => {
+  const m = new Map<string, string>();
+  try {
+    const lm: any = buildLogicalMapFromPlacement({
+      templateId,
+      placement: placementForViewer as any,
+    });
+    const slotById = new Map<string, any>(
+      ((template as any).slots ?? []).map((s: any) => [s.slotId, s])
+    );
+    const bySlot = new Map<string, any[]>();
+    for (const c of lm.cellsByKey.values()) {
+      const arr = bySlot.get(c.slotId) ?? [];
+      arr.push(c);
+      bySlot.set(c.slotId, arr);
+    }
+    for (const [slotId, cells] of bySlot) {
+      const slot = slotById.get(slotId);
+      const center = cells.find((c: any) => c.localKey === "0,0");
+      if (!slot || !center) continue;
+      for (const c of cells) {
+        const tq = slot.pos.q - (c.pos.q - center.pos.q);
+        const tr = slot.pos.r - (c.pos.r - center.pos.r);
+        m.set(`${c.pos.q},${c.pos.r}`, `${tq},${tr}`);
+      }
+    }
+  } catch {
+    // 変換できないときは素通し（従来動作）
+  }
+  return m;
+}, [templateId, placementForViewer, template]);
+
+const markers = React.useMemo(
+  () =>
+    [...markSources.values()]
+      .flat()
+      .map((m) => ({ ...m, key: cellKeyLogicalToTemplate.get(m.key) ?? m.key })),
+  [markSources, cellKeyLogicalToTemplate]
+);
 const markHashRef = React.useRef<string>("");
 const curMarkHash = getPlacementHashForResult(displayResult);
 React.useEffect(() => {
