@@ -50,6 +50,7 @@ import { FACTIONS, type FactionId } from "@/gaia/eval/factionWeights";
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
 import { SetupBoard } from "@/components/SetupView";
 import { PageBody, Panel, TwoCol } from "@/components/ui/layout";
+import { buildMapPool } from "@/lib/mapCandidates";
 
 type Lang = "ja" | "en";
 
@@ -508,14 +509,19 @@ export default function ListView() {
   // ペア提案のマップ候補: ピン留め（スコア降順）を先頭に、続けてランキング
   // （全保存マップのスコア降順、重複除去）。ピン留めが無くてもランキングから
   // 選べる／探せるようにする（2026-07-25 要望）。
-  const selectableMaps = React.useMemo<PersistedCandidate[]>(() => {
-    const pins = pinnedMaps.slice().sort((a, b) => Number(b.score) - Number(a.score));
-    const seen = new Set(pins.map((c) => c.id));
-    const rest = rankedMaps.filter((c) => !seen.has(c.id));
-    const merged = [...pins, ...rest];
-    if (merged.length > 0) return merged;
-    return topOverallMap ? [topOverallMap] : [];
-  }, [pinnedMaps, rankedMaps, topOverallMap]);
+  // 重複除去は「盤面」単位（テンプレ＋placementHash）。同じ盤面が別の検索条件
+  // （searchKey）で保存されていると id は別なので、id 単位では同一マップが候補に
+  // 複数並んでしまう（2026-07-25 報告）。ロジックは mapCandidates.ts（テスト済み）。
+  const selectableMaps = React.useMemo<PersistedCandidate[]>(
+    () =>
+      buildMapPool({
+        pinned: pinnedMaps,
+        ranked: rankedMaps,
+        templateIdBySearchKey,
+        topOverall: topOverallMap,
+      }),
+    [pinnedMaps, rankedMaps, topOverallMap, templateIdBySearchKey]
+  );
 
   // セットアップ候補: ピン留めを先頭に、続けて保存リスト（新しい順）。
   const selectableSetups = React.useMemo<SavedSetup[]>(() => {
