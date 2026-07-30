@@ -34,6 +34,28 @@ type Axial = { q: number; r: number };
 // rot30（30度単位の追加回転）
 export type PlacementItem = { slotId: string; sectorId: string; rot: number; rot30?: number };
 
+/**
+ * 模式表示（tileMode="schematic"）用の船タイルの略称（2文字）。
+ * 正式名（トワイライト等）は六角枠に収まらないため（2026-07-25 要望）。
+ */
+const SHIP_SHORT: Record<string, string> = {
+  twilight: "トワ",
+  eclipse: "エク",
+  rebellion: "リベ",
+  tfmars: "TFM",
+};
+
+/**
+ * 模式表示で「向き（回転）を出さない」タイルか。
+ * 小さいタイル（19以降）と船は向きを設定する必要がないため、回転表示を省いて
+ * 番号/略称を大きく出す（2026-07-25 要望）。
+ */
+function isRotationlessTile(sectorId: string): boolean {
+  if (SHIP_SHORT[sectorId]) return true;
+  const n = parseInt(String(sectorId), 10);
+  return Number.isFinite(n) && n >= 19;
+}
+
 function parseKey(key: string): Axial {
   const [q, r] = key.split(",").map((v) => Number(v));
   return { q, r };
@@ -733,6 +755,16 @@ export function MapBoardViewer(props: {
                   return `${fmtNum(cx + r * Math.cos(a), 3)},${fmtNum(cy + r * Math.sin(a), 3)}`;
                 })
                 .join(" ");
+              // 小さいタイル（19以降）と船は向きの設定が不要なので、回転表示（矢印と
+              // ↻n）を省いて番号/略称を大きく1行で出す（2026-07-25 要望）。
+              const noRot = isRotationlessTile(t.sectorId);
+              const label = SHIP_SHORT[t.sectorId] ?? t.sectorId;
+              // 六角形の内幅に収まる字面に合わせる。全角（カタカナ）は半角の約2倍
+              // 幅を食うので、字種と文字数で係数を分ける。
+              const isWide = /[^ -]/.test(label);
+              const labelSize = noRot
+                ? r * (isWide ? 0.7 : label.length >= 3 ? 0.66 : 0.95)
+                : r * 0.55;
               return (
                 <g key={t.key}>
                   <polygon
@@ -742,33 +774,37 @@ export function MapBoardViewer(props: {
                     strokeWidth={fmtNum(Math.max(1, r * 0.045), 3)}
                   />
                   {/* 向き: タイルの実際の回転（画面上の向き）を矢印で示す */}
-                  <g transform={`translate(${fmtNum(cx)},${fmtNum(cy)}) rotate(${fmtNum(t.tileDeg)})`}>
-                    <path
-                      d={`M 0 ${fmtNum(-r * 0.82)} l ${fmtNum(-r * 0.15)} ${fmtNum(r * 0.26)} l ${fmtNum(r * 0.3)} 0 Z`}
-                      fill="#d0021b"
-                    />
-                  </g>
-                  {/* 番号と回転量: 全体回転を打ち消して水平に表示 */}
+                  {noRot ? null : (
+                    <g transform={`translate(${fmtNum(cx)},${fmtNum(cy)}) rotate(${fmtNum(t.tileDeg)})`}>
+                      <path
+                        d={`M 0 ${fmtNum(-r * 0.82)} l ${fmtNum(-r * 0.15)} ${fmtNum(r * 0.26)} l ${fmtNum(r * 0.3)} 0 Z`}
+                        fill="#d0021b"
+                      />
+                    </g>
+                  )}
+                  {/* 番号（と回転量）: 全体回転を打ち消して水平に表示 */}
                   <g transform={`translate(${fmtNum(cx)},${fmtNum(cy)}) rotate(${fmtNum(-viewAngleDeg)})`}>
                     <text
-                      y={fmtNum(-r * 0.08)}
+                      y={fmtNum(noRot ? 0 : -r * 0.08)}
                       textAnchor="middle"
                       dominantBaseline="middle"
-                      fontSize={fmtNum(r * 0.55, 3)}
+                      fontSize={fmtNum(labelSize, 3)}
                       fontWeight={700}
                       fill="#111"
                     >
-                      {t.sectorId}
+                      {label}
                     </text>
-                    <text
-                      y={fmtNum(r * 0.45)}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      fontSize={fmtNum(r * 0.3, 3)}
-                      fill="#555"
-                    >
-                      {`↻${t.rot6}`}
-                    </text>
+                    {noRot ? null : (
+                      <text
+                        y={fmtNum(r * 0.45)}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fontSize={fmtNum(r * 0.3, 3)}
+                        fill="#555"
+                      >
+                        {`↻${t.rot6}`}
+                      </text>
+                    )}
                   </g>
                 </g>
               );
