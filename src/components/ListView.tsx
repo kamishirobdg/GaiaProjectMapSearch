@@ -49,6 +49,7 @@ import { mapFactionScores } from "@/gaia/eval/mapFaction";
 import { FACTIONS, type FactionId } from "@/gaia/eval/factionWeights";
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
 import { SetupBoard } from "@/components/SetupView";
+import FactionEvalPanel, { useSetupWeights } from "@/components/FactionEvalPanel";
 import { PageBody, Panel, TwoCol } from "@/components/ui/layout";
 import { buildMapPool } from "@/lib/mapCandidates";
 
@@ -387,6 +388,9 @@ export default function ListView() {
   const [pairOptions, setPairOptions] = React.useState<PairOption[]>([]);
   const [pairIndex, setPairIndex] = React.useState(0);
   const [recSettings, setRecSettings] = React.useState<{ players: number; lf: boolean } | null>(null);
+  // 評価指数（カテゴリ別係数）。Setup タブと localStorage を共有し、
+  // 表示だけでなくセット提案の選定（criterionScore に渡すスコア）にも効かせる。
+  const [evalWeights, changeEvalWeight, resetEvalWeights] = useSetupWeights();
   const current = pairOptions[pairIndex] ?? null;
   const rec = current?.rec ?? null;
   const recMapTop = current?.mapTop ?? null;
@@ -674,7 +678,7 @@ export default function ListView() {
       }
       const settings = setupSettingsOf(src);
       const result = buildSetupFromSeed(src.input);
-      const setupScores = scoreSetupFactions(result);
+      const setupScores = scoreSetupFactions(result, evalWeights);
       // 人数/拡張が一致するマップだけを対象にする。
       const cands = selectableMaps.filter((c) => {
         const tid = templateIdBySearchKey[c.searchKey] ?? "";
@@ -775,7 +779,7 @@ export default function ListView() {
       });
       const scored = cands.map((r) => {
         const res = buildSetupFromSeed(r.input);
-        const scores = scoreSetupFactions(res);
+        const scores = scoreSetupFactions(res, evalWeights);
         return {
           r,
           res,
@@ -842,6 +846,7 @@ export default function ListView() {
       lostFleet: settings.lf,
       ...(mapTop3 ? { mapTop3 } : {}),
       ...(mapTopK ? { mapTopK } : {}),
+      weights: evalWeights,
       topN: PAIR_TOP_N,
     });
     setPairOptions(
@@ -882,6 +887,7 @@ export default function ListView() {
     templateIdBySearchKey,
     clearPair,
     lang,
+    evalWeights,
   ]);
 
   /**
@@ -904,7 +910,7 @@ export default function ListView() {
           rec: {
             input: o.input,
             result,
-            setupScores: scoreSetupFactions(result),
+            setupScores: scoreSetupFactions(result, evalWeights),
             criterion: e.criterion,
             score: o.score,
             trials: e.count,
@@ -922,7 +928,7 @@ export default function ListView() {
       const lostMap = !!e.mapHash && !opts.some((o) => o.mapId);
       setPairMsg(lostMap ? UI[lang].logMapMissing : null);
     },
-    [selectableMaps, mapTopOf, lang]
+    [selectableMaps, mapTopOf, lang, evalWeights]
   );
 
   const handleRecordRec = React.useCallback(() => {
@@ -1144,6 +1150,20 @@ export default function ListView() {
               {pairMsg ? <span style={{ color: "#b3261e" }}>{pairMsg}</span> : null}
             </div>
           </Panel>
+          {/* 評価（種族別）＋評価指数。表示中の提案セットアップを評価する。
+              提案未生成のときは表を空にして評価指数だけ出す（先に指数を決めて
+              から生成する使い方ができるように）。 */}
+          <Panel>
+            <FactionEvalPanel
+              result={rec?.result ?? null}
+              weights={evalWeights}
+              onChangeWeight={changeEvalWeight}
+              onResetWeights={resetEvalWeights}
+              lang={lang}
+              lf={recSettings?.lf ?? expansion === "lostFleet"}
+              players={recSettings?.players ?? players}
+            />
+          </Panel>
           {/* 提案ログ: 生成のたびに自動で積む履歴（左ペインの空きスペース）。 */}
           {pairLog.length > 0 ? (
             <Panel
@@ -1222,7 +1242,7 @@ export default function ListView() {
               }
             })();
             const sToken = encodeSetupToken(pairShared.input);
-            const scores = scoreSetupFactions(buildSetupFromSeed(pairShared.input));
+            const scores = scoreSetupFactions(buildSetupFromSeed(pairShared.input), evalWeights);
             const lfShared = pairShared.input.mode === "lostFleet";
             return (
               <section

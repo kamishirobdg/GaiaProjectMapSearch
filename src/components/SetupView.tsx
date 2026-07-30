@@ -21,6 +21,7 @@ import {
 } from "@/lib/setupHistory";
 import { copyText, decodeSetupToken, setupShareUrl } from "@/lib/setupShare";
 import GlobalBar from "@/components/GlobalBar";
+import FactionEvalPanel, { useSetupWeights } from "@/components/FactionEvalPanel";
 import { PageBody, SectionTitle, T, TwoCol } from "@/components/ui/layout";
 import {
   readSharedExpansion,
@@ -80,7 +81,7 @@ const UI = {
     satellites: "衛星駒の順（モウェイド人／ティンカーロイド）",
     satellitesNote: "惑星改造ボードの7スペースに置く色順（番号順）。勢力選択とは独立。",
     draftNote:
-      "※ 全タイル（基本版・Lost Fleet）はルールブック・実物確認済み。評価機能は未実装。",
+      "※ 全タイル（基本版・Lost Fleet）はルールブック・実物確認済み。種族別評価の重みは DRAFT（レビュー中）。",
     seed: "シード",
     randomSeed: "ランダム",
     players: "人数",
@@ -152,7 +153,7 @@ const UI = {
     satellites: "Satellite order (Muaked / Tinkerroid)",
     satellitesNote: "Color order for the 7 planet-transform board spaces (by number). Independent of faction choice.",
     draftNote:
-      "Note: all tiles (base game & Lost Fleet) verified against the rulebook and physical components. Evaluation not implemented.",
+      "Note: all tiles (base game & Lost Fleet) verified against the rulebook and physical components. Faction weights are DRAFT (under review).",
     seed: "Seed",
     randomSeed: "Random",
     players: "Players",
@@ -700,6 +701,9 @@ export default function SetupView() {
 
   const result = React.useMemo(() => buildSetupFromSeed(buildInput(seed)), [seed, buildInput]);
 
+  // 評価指数（カテゴリ別係数）。List タブと localStorage を共有する。
+  const [evalWeights, changeEvalWeight, resetEvalWeights] = useSetupWeights();
+
   // ----- 保存リスト（ランキング骨組み: ピン留め→新しい順、TODO ⑧） -----
   const [saved, setSaved] = React.useState<SavedSetup[]>([]);
   const [savedView, setSavedView] = React.useState<"active" | "used">("active");
@@ -1072,6 +1076,19 @@ export default function SetupView() {
               </>
             ) : null}
           </div>
+
+      {/* 評価（種族別）＋評価指数。表示中のセットアップをそのまま評価する。 */}
+      <section>
+        <FactionEvalPanel
+          result={result}
+          weights={evalWeights}
+          onChangeWeight={changeEvalWeight}
+          onResetWeights={resetEvalWeights}
+          lang={lang}
+          lf={lf}
+          players={players}
+        />
+      </section>
 
       {/* Saved setups (ranking skeleton: pinned first -> newest; used in a separate view) */}
       <section>
