@@ -12,16 +12,26 @@ import type { SetupResult } from "@/gaia/setup/types";
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
 import {
   FACTION_IDS,
-  STD_TECH_FREE_SCALE,
-  STD_TECH_TRACK_SCALE,
   TECH_PREF,
   TECH_TRACK_WEIGHTS,
   TILE_FACTION_WEIGHTS,
   type FactionId,
 } from "./factionWeights";
+import {
+  DEFAULT_SETUP_WEIGHTS,
+  SETUP_WEIGHT_KEYS,
+  type SetupWeightKey,
+  type SetupWeights,
+} from "./setupWeights";
 import { RESEARCH_TRACK_IDS, type ResearchTrackId } from "@/gaia/setup/types";
 
 export type FactionScores = Record<FactionId, number>;
+
+/** カテゴリ別の内訳（係数適用後）と合計。左ペインの評価表がこれを描く。 */
+export type SetupFactionBreakdown = {
+  byCategory: Record<SetupWeightKey, FactionScores>;
+  total: FactionScores;
+};
 
 function zeroScores(): FactionScores {
   const out = {} as FactionScores;
@@ -32,50 +42,73 @@ function zeroScores(): FactionScores {
 /**
  * 標準技術の寄与（2026-07-25 案1）。トラック下の6枚は編集用テーブル
  * TECH_TRACK_WEIGHTS[タイル][研究列] を引く。自由列3枚はタイル有用度のみ
- * （低係数）。非ゼロのみ入った差分オブジェクトを返す。
+ * （低係数）。係数は評価指数（stdTrack / stdFree）で、既定は従来の定数と同値。
  */
-export function scoreStandardTech(result: SetupResult): FactionScores {
+export function scoreStandardTech(result: SetupResult, weights?: SetupWeights): FactionScores {
+  const b = setupFactionBreakdown(result, weights);
   const out = zeroScores();
+  for (const f of FACTION_IDS) out[f] = b.byCategory.stdTrack[f] + b.byCategory.stdFree[f];
+  return out;
+}
+
+/**
+ * セットアップに出ているタイル群から、カテゴリ別の種族スコアを作る。
+ * 各カテゴリは評価指数（SetupWeights）を掛けた後の値。
+ */
+export function setupFactionBreakdown(
+  result: SetupResult,
+  weights?: SetupWeights
+): SetupFactionBreakdown {
+  const w = weights ?? DEFAULT_SETUP_WEIGHTS;
+  const byCategory = {} as Record<SetupWeightKey, FactionScores>;
+  for (const k of SETUP_WEIGHT_KEYS) byCategory[k] = zeroScores();
+
+  const add = (cat: SetupWeightKey, tileId: string | undefined) => {
+    if (!tileId) return;
+    const tw = TILE_FACTION_WEIGHTS[tileId];
+    if (!tw) return;
+    for (const [f, v] of Object.entries(tw)) byCategory[cat][f as FactionId] += v ?? 0;
+  };
+
+  for (const id of Object.values(result.advancedTech.byTrack)) add("advanced", id);
+  add("advanced", result.advancedTech.extension);
+  for (const id of result.boosters.available) add("booster", id);
+  for (const id of result.roundScoring) add("roundScoring", id); // ×2タイルは2回出るので枚数分加算
+  for (const id of result.finalScoring) add("finalScoring", id);
+  add("federation", result.federationLv5); // 現行DRAFTでは全0
+  if (result.mode === "lostFleet") {
+    for (const id of Object.values(result.shipTech ?? {})) add("lfShip", id);
+    for (const id of Object.values(result.goldFederations ?? {})) add("lfShip", id);
+    for (const id of result.artifacts ?? []) add("lfShip", id);
+  }
+
+  // 標準技術はトラック配置で価値が変わるので別式（2026-07-25）。
   for (const track of RESEARCH_TRACK_IDS as readonly ResearchTrackId[]) {
     const cell = TECH_TRACK_WEIGHTS[result.standardTech.byTrack[track]]?.[track];
     if (!cell) continue;
-    for (const [f, v] of Object.entries(cell)) {
-      out[f as FactionId] += (v ?? 0) * STD_TECH_TRACK_SCALE;
-    }
+    for (const [f, v] of Object.entries(cell)) byCategory.stdTrack[f as FactionId] += v ?? 0;
   }
   for (const id of result.standardTech.free) {
     const pref = TECH_PREF[id];
     if (!pref) continue;
-    for (const [f, v] of Object.entries(pref)) out[f as FactionId] += (v ?? 0) * STD_TECH_FREE_SCALE;
+    for (const [f, v] of Object.entries(pref)) byCategory.stdFree[f as FactionId] += v ?? 0;
   }
-  return out;
+
+  // 係数を掛けてから合算する（表示の内訳と合計が必ず一致するようにする）。
+  const total = zeroScores();
+  for (const k of SETUP_WEIGHT_KEYS) {
+    const scale = w[k];
+    for (const f of FACTION_IDS) {
+      byCategory[k][f] *= scale;
+      total[f] += byCategory[k][f];
+    }
+  }
+  return { byCategory, total };
 }
 
 /** セットアップに出ているタイル群から種族別スコアを合算する。 */
-export function scoreSetupFactions(result: SetupResult): FactionScores {
-  const scores = zeroScores();
-  const add = (tileId: string | undefined) => {
-    if (!tileId) return;
-    const w = TILE_FACTION_WEIGHTS[tileId];
-    if (!w) return;
-    for (const [f, v] of Object.entries(w)) scores[f as FactionId] += v ?? 0;
-  };
-
-  for (const id of Object.values(result.advancedTech.byTrack)) add(id);
-  add(result.advancedTech.extension);
-  for (const id of result.boosters.available) add(id);
-  for (const id of result.roundScoring) add(id); // ×2タイルは2回出るので枚数分加算
-  for (const id of result.finalScoring) add(id);
-  add(result.federationLv5); // 現行DRAFTでは全0
-  if (result.mode === "lostFleet") {
-    for (const id of Object.values(result.shipTech ?? {})) add(id);
-    for (const id of Object.values(result.goldFederations ?? {})) add(id);
-    for (const id of result.artifacts ?? []) add(id);
-  }
-  // 標準技術はトラック配置で価値が変わるので別式で加算（2026-07-25）。
-  const std = scoreStandardTech(result);
-  for (const f of FACTION_IDS) scores[f] += std[f];
-  return scores;
+export function scoreSetupFactions(result: SetupResult, weights?: SetupWeights): FactionScores {
+  return setupFactionBreakdown(result, weights).total;
 }
 
 function mean(xs: number[]): number {
@@ -159,6 +192,7 @@ export function recommendSetup(args: {
   lostFleet: boolean;
   mapTop3?: FactionId[];
   mapTopK?: FactionId[];
+  weights?: SetupWeights;
 }): Recommendation | null {
   return recommendSetups({ ...args, topN: 1 })[0] ?? null;
 }
@@ -174,9 +208,10 @@ export function recommendSetups(args: {
   lostFleet: boolean;
   mapTop3?: FactionId[];
   mapTopK?: FactionId[];
+  weights?: SetupWeights;
   topN: number;
 }): Recommendation[] {
-  const { criterion, seeds, playerCount, lostFleet, mapTop3, mapTopK, topN } = args;
+  const { criterion, seeds, playerCount, lostFleet, mapTop3, mapTopK, weights, topN } = args;
   if (topN <= 0) return [];
   const all: Recommendation[] = [];
   for (const seed of seeds) {
@@ -186,7 +221,7 @@ export function recommendSetups(args: {
       ...(lostFleet ? { mode: "lostFleet" as const } : {}),
     };
     const result = buildSetupFromSeed(input);
-    const setupScores = scoreSetupFactions(result);
+    const setupScores = scoreSetupFactions(result, weights);
     const score = criterionScore(criterion, setupScores, { playerCount, mapTop3, mapTopK });
     all.push({ input, result, setupScores, criterion, score, trials: seeds.length });
   }
