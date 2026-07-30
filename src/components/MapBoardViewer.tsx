@@ -55,6 +55,21 @@ export type PlacementItem = { slotId: string; sectorId: string; rot: number; rot
 const MARKER_RADIAL_CALIBRATION = 1.0;
 
 /**
+ * マーカーのハロー（下敷き）色。リング色は惑星色そのものなので、そのままだと
+ * 同じ色の惑星の上でほとんど見えない（黒・茶で顕著。2026-07-30 報告）。
+ * リング色の明度で下敷きを白／黒に振り分けると、どの惑星の上でも必ず輪郭が出る。
+ */
+function markerHalo(color: string): string {
+  const s = String(color).replace("#", "");
+  if (s.length !== 6) return "#ffffff";
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(s.slice(i, i + 2), 16) / 255);
+  const lin = (u: number) => (u <= 0.04045 ? u / 12.92 : ((u + 0.055) / 1.055) ** 2.4);
+  const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  // 明るいリング（白・黄など）は黒で縁取り、暗いリング（黒・茶など）は白で縁取る
+  return L > 0.5 ? "rgba(0,0,0,0.9)" : "rgba(255,255,255,0.95)";
+}
+
+/**
  * 模式表示（tileMode="schematic"）用の船タイルの略称（2文字）。
  * 正式名（トワイライト等）は六角枠に収まらないため（2026-07-25 要望）。
  */
@@ -1090,33 +1105,44 @@ export function MapBoardViewer(props: {
                       const exact =
                         m.slotId && m.localKey ? markerPosArtwork(m.slotId, m.localKey) : null;
                       if (!exact) return null;
+                      const w = exact.hex * 0.15;
                       return (
-                        <circle
-                          key={`mka_${m.key}_${i}`}
-                          className="mbv-marker"
-                          cx={fmtNum(exact.x)}
-                          cy={fmtNum(exact.y)}
-                          r={fmtNum(exact.hex * 0.74)}
-                          fill="none"
-                          stroke={m.color}
-                          strokeWidth={fmtNum(exact.hex * 0.15)}
-                          style={{
-                            pointerEvents: "stroke",
-                            cursor: m.label ? "help" : undefined,
-                            filter: "drop-shadow(0 0 1.2px rgba(0,0,0,0.85))",
-                          }}
-                          onMouseEnter={
-                            m.label
-                              ? (e) => setHoverMarker({ label: m.label!, x: e.clientX, y: e.clientY })
-                              : undefined
-                          }
-                          onMouseMove={
-                            m.label
-                              ? (e) => setHoverMarker({ label: m.label!, x: e.clientX, y: e.clientY })
-                              : undefined
-                          }
-                          onMouseLeave={m.label ? () => setHoverMarker(null) : undefined}
-                        />
+                        <g key={`mka_${m.key}_${i}`} className="mbv-marker">
+                          {/* ハロー: リング色と反対の明度で一回り太く敷き、
+                              同色の惑星の上でも輪郭が出るようにする */}
+                          <circle
+                            cx={fmtNum(exact.x)}
+                            cy={fmtNum(exact.y)}
+                            r={fmtNum(exact.hex * 0.74)}
+                            fill="none"
+                            stroke={markerHalo(m.color)}
+                            strokeWidth={fmtNum(w * 2.0)}
+                            style={{ pointerEvents: "none" }}
+                          />
+                          <circle
+                            cx={fmtNum(exact.x)}
+                            cy={fmtNum(exact.y)}
+                            r={fmtNum(exact.hex * 0.74)}
+                            fill="none"
+                            stroke={m.color}
+                            strokeWidth={fmtNum(w)}
+                            style={{
+                              pointerEvents: "stroke",
+                              cursor: m.label ? "help" : undefined,
+                            }}
+                            onMouseEnter={
+                              m.label
+                                ? (e) => setHoverMarker({ label: m.label!, x: e.clientX, y: e.clientY })
+                                : undefined
+                            }
+                            onMouseMove={
+                              m.label
+                                ? (e) => setHoverMarker({ label: m.label!, x: e.clientX, y: e.clientY })
+                                : undefined
+                            }
+                            onMouseLeave={m.label ? () => setHoverMarker(null) : undefined}
+                          />
+                        </g>
                       );
                     }),
                   ].concat(

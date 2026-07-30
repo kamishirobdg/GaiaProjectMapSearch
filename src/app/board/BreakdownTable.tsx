@@ -31,7 +31,7 @@ export const PLANET_INPUT_BG: Record<PlanetTypeKey, string> = {
 
 // --- #9 マーカー連動: 詳細表クリック→地図リング -----------------------------
 export type BreakdownMarker = { key: string; color: string; label?: string };
-export type MarkAxis = "total" | "scout" | "scoutCore" | "outer" | "touch";
+export type MarkAxis = "total" | "scout" | "scoutCore" | "gaia" | "cluster" | "outer" | "touch";
 
 // 地図リング用の彩度高めの惑星色（ストロークとして視認できる濃さ）。
 //
@@ -50,16 +50,32 @@ const RING_COLOR: Record<string, string> = {
   YELLOW: "#e8c400",
   PROTO: "#3d8cb5",
   ASTEROID: "#9c4a8f",
+  // 星系マーカーはクラスタ構成セルすべてを出すので、ガイア/次元横断も色を持つ。
+  // 同じくタイル画像から採色（GAIA 色相102度の緑 / TRANSDIM 色相294度の紫）。
+  // TRANSDIM は ASTEROID と色相が近いので明るめの紫にして分けた（色差 34.8）。
+  GAIA: "#3fae2a",
+  TRANSDIM: "#b25ce0",
 };
 
 // 惑星以外（LFの原始惑星・小惑星）の表示名。内訳表の追加行とマーカーのホバーで共用。
 export const EXTRA_LABEL_JA: Record<string, string> = {
   PROTO: "原始",
   ASTEROID: "小惑星",
+  GAIA: "ガイア",
+  TRANSDIM: "次元横断",
 };
 
-// クリック対象にする軸（gaia/cluster は座標付きヒットが audit に無いので除外）。
-export const MARKABLE_AXES = new Set<string>(["total", "scout", "scoutCore", "outer", "touch"]);
+// クリック対象にする軸。gaia/cluster も evaluateSoft が座標付きヒットを
+// 出すようになったので対象に含める（2026-07-30）。
+export const MARKABLE_AXES = new Set<string>([
+  "total",
+  "scout",
+  "scoutCore",
+  "gaia",
+  "cluster",
+  "outer",
+  "touch",
+]);
 
 function markerColorLabel(pt: string, lang: Lang): string {
   if (lang !== "ja") return pt;
@@ -98,15 +114,27 @@ export function axisMarkers(
     (audit.scoutCore?.coreHits ?? []).forEach((h: any) =>
       push(h.corePlanetKey, h.corePlanetType, (lang === "ja" ? ` / 船星系 +${h.value}` : ` / core +${h.value}`) + dist(h.distance))
     );
+  const doGaia = () =>
+    (audit.gaiaProximity?.gaiaHits ?? []).forEach((h: any) =>
+      push(h.cellKey, h.planetType, (lang === "ja" ? ` / ガイア +${h.value}` : ` / gaia +${h.value}`) + dist(h.distance))
+    );
+  const doCluster = () =>
+    (audit.cluster?.clusterHits ?? []).forEach((h: any) =>
+      push(h.cellKey, h.planetType, lang === "ja" ? ` / 星系 ${h.size}個` : ` / cluster of ${h.size}`)
+    );
   if (axis === "outer") doOuter();
   else if (axis === "touch") doTouch();
   else if (axis === "scout") doScout();
   else if (axis === "scoutCore") doScoutCore();
+  else if (axis === "gaia") doGaia();
+  else if (axis === "cluster") doCluster();
   else {
     doOuter();
     doTouch();
     doScout();
     doScoutCore();
+    doGaia();
+    doCluster();
   }
   return out;
 }
@@ -309,10 +337,12 @@ const renderCell = (colKey: keyof typeof cols, k: string) => {
     return <td onClick={m.onClick} title={m.title} style={{ ...tdStyle, color: colorFor(exScoutCore.maxKeys, exScoutCore.minKeys, k), ...m.style }}>{axisGet(scoutCore, k as any)}</td>;
   }
   if (colKey === "gaia") {
-    return <td style={{ ...tdStyle, color: colorFor(exGaia.maxKeys, exGaia.minKeys, k) }}>{axisGet(gaia, k as any)}</td>;
+    const m = cellMark("gaia", k);
+    return <td onClick={m.onClick} title={m.title} style={{ ...tdStyle, color: colorFor(exGaia.maxKeys, exGaia.minKeys, k), ...m.style }}>{axisGet(gaia, k as any)}</td>;
   }
   if (colKey === "cluster") {
-    return <td style={{ ...tdStyle, color: colorFor(exCluster.maxKeys, exCluster.minKeys, k) }}>{axisGet(cluster, k as any)}</td>;
+    const m = cellMark("cluster", k);
+    return <td onClick={m.onClick} title={m.title} style={{ ...tdStyle, color: colorFor(exCluster.maxKeys, exCluster.minKeys, k), ...m.style }}>{axisGet(cluster, k as any)}</td>;
   }
   if (colKey === "outer") {
     const m = cellMark("outer", k);
@@ -385,37 +415,64 @@ return (
           );
         })}
 
-        {/* Extras (PROTO/ASTEROID): keep at the end, and follow the same column toggles */}
+        {/* Extras (PROTO/ASTEROID): keep at the end, and follow the same column toggles.
+            軸（planetTypeTotals）には入らない表示専用の行だが、値の意味と
+            マーカーのクリックは基本7色の行とまったく同じにしてある（2026-07-30）。 */}
         {(() => {
-          const scoutExtra = breakdown?.audit?.scout?.extraByKind ?? null;
-          const scoutCoreExtra = breakdown?.audit?.scoutCore?.extraByKind ?? null;
+          const a = breakdown?.audit ?? null;
+          const ex = (o: any, k: string) => Number(o?.[k] ?? 0) || 0;
           const kinds = ["PROTO", "ASTEROID"] as const;
 
-          const hasAny =
-            (scoutExtra && (scoutExtra.PROTO || scoutExtra.ASTEROID)) ||
-            (scoutCoreExtra && (scoutCoreExtra.PROTO || scoutCoreExtra.ASTEROID));
-
+          const sources = [
+            a?.scout?.extraByKind,
+            a?.scoutCore?.extraByKind,
+            a?.gaiaProximity?.extraByKind,
+            a?.cluster?.extraByKind,
+            a?.outerExtraByKind,
+            a?.touchExtraByKind,
+          ];
+          const hasAny = kinds.some((k) => sources.some((s) => ex(s, k) !== 0));
           if (!hasAny) return null;
 
           return kinds.map((k) => {
-            const vScout = Number((scoutExtra as any)?.[k] ?? 0) || 0;
-            const vCore = Number((scoutCoreExtra as any)?.[k] ?? 0) || 0;
-            const vOuter = 0;
-            const vTouch = 0;
-            const vTotal = vScout + vCore;
+            const vScout = ex(a?.scout?.extraByKind, k);
+            const vCore = ex(a?.scoutCore?.extraByKind, k);
+            const vGaia = ex(a?.gaiaProximity?.extraByKind, k);
+            const vCluster = ex(a?.cluster?.extraByKind, k);
+            const vOuter = ex(a?.outerExtraByKind, k);
+            const vTouch = ex(a?.touchExtraByKind, k);
+            const cOuter = ex(a?.outerCountExtraByKind, k);
+            const cTouch = ex(a?.touchCountExtraByKind, k);
+            const vTotal = vScout + vCore + vGaia + vCluster + vOuter + vTouch;
 
             const label = lang === "ja" ? EXTRA_LABEL_JA[k] : k;
 
+            // 基本7色の行と同じクリック挙動（sourceId も同形式 `${axis}:${kind}`）
+            const markExtra = (axis: MarkAxis) => cellMark(axis, k);
+
             const cellForExtra = (colKey: keyof typeof cols) => {
               if (!cols[colKey]) return null;
-              if (colKey === "total") return <td style={{ ...tdStyle, fontWeight: 800 }}>{vTotal}</td>;
-              if (colKey === "scout") return <td style={tdStyle}>{vScout}</td>;
-              if (colKey === "scoutCore") return <td style={tdStyle}>{vCore}</td>;
-              if (colKey === "gaia" || colKey === "cluster") return <td style={tdStyle}>-</td>;
-              if (colKey === "outer") return <td style={tdStyle}>{vOuter}</td>;
-              if (colKey === "touch") return <td style={tdStyle}>{vTouch}</td>;
-              if (colKey === "cntOuter") return hasCounts ? <td style={tdStyle}>-</td> : null;
-              if (colKey === "cntTouch") return hasCounts ? <td style={tdStyle}>-</td> : null;
+              const val = (axis: MarkAxis, v: number, bold?: boolean) => {
+                const m = markExtra(axis);
+                return (
+                  <td
+                    onClick={m.onClick}
+                    title={m.title}
+                    style={{ ...tdStyle, ...(bold ? { fontWeight: 800 } : {}), ...m.style }}
+                  >
+                    {v}
+                  </td>
+                );
+              };
+              if (colKey === "total") return val("total", vTotal, true);
+              if (colKey === "scout") return val("scout", vScout);
+              if (colKey === "scoutCore") return val("scoutCore", vCore);
+              if (colKey === "gaia") return val("gaia", vGaia);
+              if (colKey === "cluster") return val("cluster", vCluster);
+              if (colKey === "outer") return val("outer", vOuter);
+              if (colKey === "touch") return val("touch", vTouch);
+              if (colKey === "cntOuter") return hasCounts ? <td style={tdStyle}>{cOuter}</td> : null;
+              if (colKey === "cntTouch") return hasCounts ? <td style={tdStyle}>{cTouch}</td> : null;
               return null;
             };
 

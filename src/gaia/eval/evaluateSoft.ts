@@ -104,9 +104,16 @@ export type SoftBreakdown = {
     outerCountByType: CountByType;
     touchCountByType: CountByType;
 
+    /** PROTO/ASTEROID 分（軸には入らない表示用。値は重み適用後／Count は素の枚数） */
+    outerExtraByKind?: Record<string, number>;
+    touchExtraByKind?: Record<string, number>;
+    outerCountExtraByKind?: Record<string, number>;
+    touchCountExtraByKind?: Record<string, number>;
+
+    // planetType は基本7色に加え PROTO/ASTEROID も入る（マーカー用）
     outerHits: Array<{
       cellKey: string;
-      planetType: PlanetType;
+      planetType: PlanetType | string;
       kind: any;
       slotId: string;
       sectorId: string;
@@ -114,7 +121,7 @@ export type SoftBreakdown = {
     }>;
     touchHits: Array<{
       cellKey: string;
-      planetType: PlanetType;
+      planetType: PlanetType | string;
       kind: any;
       slotId: string;
       sectorId: string;
@@ -190,6 +197,10 @@ scoutCore: {
       hitCount: number;
       gaiaCellCount: number;
       weights: { d1: number; d2: number; d3: number };
+      /** PROTO/ASTEROID 分（軸には入らない表示用） */
+      extraByKind?: Record<string, number>;
+      /** マーカー用の座標付きヒット（得点した惑星側） */
+      gaiaHits?: Array<{ cellKey: string; planetType: string; distance: number; value: number }>;
     };
 
     /** 基本版のみ（星系クラスタ軸が有効なときだけ存在） */
@@ -197,6 +208,10 @@ scoutCore: {
       byType: AxisByType;
       weight: number;
       clusters: Array<{ size: number; colors: string[] }>;
+      /** PROTO/ASTEROID 分（軸には入らない表示用） */
+      extraByKind?: Record<string, number>;
+      /** マーカー用の座標付きヒット（クラスタ構成セルすべて） */
+      clusterHits?: Array<{ cellKey: string; planetType: string; size: number }>;
     };
   };
 
@@ -351,6 +366,37 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
   for (const t of PLANET_TYPES) {
     outerAxis[t] = -wOuter * outerCountByType[t];
     touchAxis[t] = -wTouch * touchCountByType[t];
+  }
+
+  // PROTO/ASTEROID（基本7色に入らない惑星）の最外周/外周。
+  // scout/scoutCore の extraByKind と同じ扱いで、監査・表示・マーカー用にだけ集計する。
+  // 軸（outerAxis/touchAxis）と planetTypeTotals には入れないのでスコアは不変
+  // ＝既存の保存結果・回帰スナップショットに影響しない（2026-07-30）。
+  const outerExtraByKind: Record<string, number> = {};
+  const touchExtraByKind: Record<string, number> = {};
+  const outerCountExtraByKind: Record<string, number> = {};
+  const touchCountExtraByKind: Record<string, number> = {};
+  for (const p of extracted.planetCells) {
+    if (toPlanetType((p as any).planetKind as any, (p as any).colorKey)) continue;
+    const kindU = String((p as any).planetKind ?? "").toUpperCase() || "UNKNOWN";
+    const hit = {
+      cellKey: p.key,
+      planetType: kindU,
+      kind: (p as any).kind,
+      slotId: (p as any).slotId,
+      sectorId: (p as any).sectorId,
+      tags: (p as any).tags ?? [],
+    };
+    if (extracted.outerCells.has(p.key)) {
+      outerCountExtraByKind[kindU] = (outerCountExtraByKind[kindU] ?? 0) + 1;
+      outerExtraByKind[kindU] = (outerExtraByKind[kindU] ?? 0) + -wOuter;
+      outerHits.push(hit);
+    }
+    if (extracted.touchCells.has(p.key)) {
+      touchCountExtraByKind[kindU] = (touchCountExtraByKind[kindU] ?? 0) + 1;
+      touchExtraByKind[kindU] = (touchExtraByKind[kindU] ?? 0) + -wTouch;
+      touchHits.push({ ...hit });
+    }
   }
 
   // ===== scout (planetCells = GAIA/TRANSDIM除外済; PROTO/ASTEROID含む) =====
@@ -558,6 +604,9 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
   const gaiaEnabled = wGaia1 !== 0 || wGaia2 !== 0 || wGaia3 !== 0;
 
   const gaiaAxis = zeroAxis();
+  const gaiaExtraByKind: Record<string, number> = {};
+  // マーカー用の座標付きヒット。得点した惑星側にマークする（outer/touch/scout と同じ作法）。
+  const gaiaHits: Array<{ cellKey: string; planetType: string; distance: number; value: number }> = [];
   let gaiaHitCount = 0;
   let gaiaCellCount = 0;
   if (gaiaEnabled) {
@@ -565,17 +614,25 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
       (c) => (c as any).isPlanet && String((c as any).planetKind ?? "").toUpperCase() === "GAIA"
     );
     gaiaCellCount = gaiaCells.length;
-    for (const p of extracted.normalPlanetCells) {
+    // PROTO/ASTEROID も拾うため planetCells を回す。軸へ足すのは基本7色だけなので
+    // gaiaAxis / gaiaHitCount は従来と同値（スコア不変）。
+    for (const p of extracted.planetCells) {
       const t = toPlanetType((p as any).planetKind as any, (p as any).colorKey);
-      if (!t) continue;
+      const kindU = String((p as any).planetKind ?? "").toUpperCase() || "UNKNOWN";
       for (const g of gaiaCells) {
         const d = axialDistance(p.q, p.r, (g as any).q, (g as any).r);
         const w = d === 1 ? wGaia1 : d === 2 ? wGaia2 : d === 3 ? wGaia3 : 0;
         if (w === 0) continue;
-        gaiaAxis[t] += w;
-        gaiaHitCount += 1;
+        if (t) {
+          gaiaAxis[t] += w;
+          gaiaHitCount += 1;
+        } else {
+          gaiaExtraByKind[kindU] = (gaiaExtraByKind[kindU] ?? 0) + w;
+        }
+        gaiaHits.push({ cellKey: p.key, planetType: t ?? kindU, distance: d, value: w });
       }
     }
+    gaiaHits.sort((a, b) => String(a.cellKey).localeCompare(String(b.cellKey)) || a.distance - b.distance);
   }
 
   // ===== cluster / 星系 (基本版専用; フィールド省略時は完全スキップ=LF不変) =====
@@ -585,6 +642,10 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
   const clusterEnabled = wCluster !== 0;
 
   const clusterAxis = zeroAxis();
+  const clusterExtraByKind: Record<string, number> = {};
+  // マーカー用の座標付きヒット。クラスタを構成するセルすべてを対象にする
+  // （軸へ効くのは基本7色だけだが、◎で軸全体を出したときに星系の形が見えるように）。
+  const clusterHits: Array<{ cellKey: string; planetType: string; size: number }> = [];
   const clusterList: Array<{ size: number; colors: string[] }> = [];
   if (clusterEnabled) {
     const planetPts = (extracted.cells ?? []).filter((c) => (c as any).isPlanet);
@@ -593,14 +654,22 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
     for (const comp of comps) {
       if (comp.length < 2) continue;
       const colorSet = new Set<PlanetType>();
+      const extraSet = new Set<string>();
       for (const pos of comp) {
         const c = cellByKey.get(`${pos.q},${pos.r}`);
-        const t = c ? toPlanetType((c as any).planetKind as any, (c as any).colorKey) : null;
+        if (!c) continue;
+        const t = toPlanetType((c as any).planetKind as any, (c as any).colorKey);
+        const kindU = String((c as any).planetKind ?? "").toUpperCase() || "UNKNOWN";
         if (t) colorSet.add(t);
+        else extraSet.add(kindU);
+        clusterHits.push({ cellKey: (c as any).key, planetType: t ?? kindU, size: comp.length });
       }
       for (const t of colorSet) clusterAxis[t] += wCluster * comp.length;
+      // 色ごとに1回、と同じ規則で追加種別にも入れる（表示・マーカー用。スコアには入らない）
+      for (const k of extraSet) clusterExtraByKind[k] = (clusterExtraByKind[k] ?? 0) + wCluster * comp.length;
       clusterList.push({ size: comp.length, colors: [...colorSet].sort() });
     }
+    clusterHits.sort((a, b) => String(a.cellKey).localeCompare(String(b.cellKey)));
     // deterministic ordering for audit
     clusterList.sort((a, b) => b.size - a.size || a.colors.join(",").localeCompare(b.colors.join(",")));
   }
@@ -653,6 +722,11 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
       audit: {
         outerCountByType,
         touchCountByType,
+        // PROTO/ASTEROID 分（軸には入らない表示・マーカー用。2026-07-30）
+        outerExtraByKind,
+        touchExtraByKind,
+        outerCountExtraByKind,
+        touchCountExtraByKind,
         outerHits,
         touchHits,
         scout: {
@@ -685,6 +759,8 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
                 hitCount: gaiaHitCount,
                 gaiaCellCount,
                 weights: { d1: wGaia1, d2: wGaia2, d3: wGaia3 },
+                extraByKind: gaiaExtraByKind,
+                gaiaHits,
               },
             }
           : {}),
@@ -694,6 +770,8 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
                 byType: clusterAxis,
                 weight: wCluster,
                 clusters: clusterList,
+                extraByKind: clusterExtraByKind,
+                clusterHits,
               },
             }
           : {}),
