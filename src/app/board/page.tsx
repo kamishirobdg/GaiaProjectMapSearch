@@ -1749,44 +1749,29 @@ const activeSources = React.useMemo(() => new Set(markSources.keys()), [markSour
  * で変換する。全テンプレ・全セルで中心セルが存在し、変換後は必ず自スロット中心の
  * 半径2以内に収まることを確認済み。
  */
-const cellKeyLogicalToTemplate = React.useMemo(() => {
-  const m = new Map<string, string>();
+const cellKeyToTile = React.useMemo(() => {
+  const m = new Map<string, { slotId: string; localKey: string }>();
   try {
     const lm: any = buildLogicalMapFromPlacement({
       templateId,
       placement: placementForViewer as any,
     });
-    const slotById = new Map<string, any>(
-      ((template as any).slots ?? []).map((s: any) => [s.slotId, s])
-    );
-    const bySlot = new Map<string, any[]>();
     for (const c of lm.cellsByKey.values()) {
-      const arr = bySlot.get(c.slotId) ?? [];
-      arr.push(c);
-      bySlot.set(c.slotId, arr);
-    }
-    for (const [slotId, cells] of bySlot) {
-      const slot = slotById.get(slotId);
-      const center = cells.find((c: any) => c.localKey === "0,0");
-      if (!slot || !center) continue;
-      for (const c of cells) {
-        const tq = slot.pos.q - (c.pos.q - center.pos.q);
-        const tr = slot.pos.r - (c.pos.r - center.pos.r);
-        m.set(`${c.pos.q},${c.pos.r}`, `${tq},${tr}`);
-      }
+      m.set(`${c.pos.q},${c.pos.r}`, { slotId: c.slotId, localKey: c.localKey });
     }
   } catch {
-    // 変換できないときは素通し（従来動作）
+    // 取れないときは素通し（viewer 側が素の軸座標にフォールバックする）
   }
   return m;
-}, [templateId, placementForViewer, template]);
+}, [templateId, placementForViewer]);
 
 const markers = React.useMemo(
   () =>
-    [...markSources.values()]
-      .flat()
-      .map((m) => ({ ...m, key: cellKeyLogicalToTemplate.get(m.key) ?? m.key })),
-  [markSources, cellKeyLogicalToTemplate]
+    [...markSources.values()].flat().map((m) => {
+      const t = cellKeyToTile.get(m.key);
+      return t ? { ...m, slotId: t.slotId, localKey: t.localKey } : m;
+    }),
+  [markSources, cellKeyToTile]
 );
 const markHashRef = React.useRef<string>("");
 const curMarkHash = getPlacementHashForResult(displayResult);

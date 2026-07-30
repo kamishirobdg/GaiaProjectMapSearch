@@ -233,7 +233,15 @@ export function MapBoardViewer(props: {
   // 詳細表/評価指数クリックから連動するマーカー（#9）。key は audit の
   // セル座標 "q,r"（extractForEval と同じグローバル軸座標）。color はリング色、
   // label はホバー時に出す帰属テキスト。
-  markers?: Array<{ key: string; color: string; label?: string }>;
+  // slotId/localKey が付いていれば、タイル画像とまったく同じ変換
+  // （タイル中心 + 回転 + 縮小）でセル位置を出す。無ければ素の軸座標へフォールバック。
+  markers?: Array<{
+    key: string;
+    color: string;
+    label?: string;
+    slotId?: string;
+    localKey?: string;
+  }>;
 
   // SVG背景色（既定 white）。ミニ盤面では "transparent" にして、-30°回転で
   // はみ出す白い矩形が隣接要素へ被らないようにする（List プレビュー）。
@@ -456,6 +464,14 @@ export function MapBoardViewer(props: {
           slotPureX: x,
           slotPureY: y,
           scale,
+          // セル配置に必要な「タイル画像内のセル群の中心補正」（縮小適用済み）。
+          // 対称なセクタでは 0 だが、小タイル/船など非対称なセクタでは 0 でなく、
+          // これを足さないとそのタイルだけマーカーがズレる。
+          boxOffX: offsetX,
+          boxOffY: offsetY,
+          // 中心補正をどのフレームで測ったか。0 なら未回転フレーム（回転前に足す）、
+          // tileDeg なら回転後フレームで測っているので回転後に足す。
+          bboxRotDeg,
         };
       })
       .filter(Boolean) as Array<{
@@ -473,6 +489,9 @@ export function MapBoardViewer(props: {
       slotPureX: number;
       slotPureY: number;
       scale: number;
+      boxOffX: number;
+      boxOffY: number;
+      bboxRotDeg: number;
     }>;
   }, [placementList,
     slotById,
@@ -521,6 +540,43 @@ export function MapBoardViewer(props: {
    * セルが属するタイルを最近傍のスロット中心で特定し、タイル中心からの相対位置を
    * 画像と同じ縮小率で拡げてから、描画済みのタイル中心に足す。
    */
+  const tileBySlotId = React.useMemo(() => {
+    const m = new Map<string, (typeof tileItems)[number]>();
+    for (const t of tileItems) m.set(t.slotId, t);
+    return m;
+  }, [tileItems]);
+
+  /**
+   * セルの正確な描画位置。タイル画像は「タイル中心に置いて tileDeg 回転し
+   * accepts別の縮小を掛ける」形で描かれているので、セルもまったく同じ変換で置く。
+   * グローバル軸座標を経由するとタイルごとに回転の食い違いが出てズレる
+   * （2026-07-30: マップによってズレる位置が違う、という報告の原因）。
+   */
+  const markerPosLocal = React.useCallback(
+    (slotId: string, localKey: string) => {
+      const t = tileBySlotId.get(slotId);
+      if (!t) return null;
+      const sector = dictGet(sectorById as any, t.sectorId);
+      if (!sector) return null;
+      const local = fixBaseLocalCoord(sector, parseKey(localKey));
+      const p = axialToPixelPointy(local, hexSize);
+      // 画像中心 = セル群の外接中心。中心補正はそれを測ったフレームに合わせて足す
+      // （未回転フレームなら回転前、回転後フレームなら回転後）。
+      const rp =
+        t.bboxRotDeg === 0
+          ? rotatePoint(p.x * t.scale + t.boxOffX, p.y * t.scale + t.boxOffY, t.tileDeg)
+          : (() => {
+              const q = rotatePoint(p.x * t.scale, p.y * t.scale, t.tileDeg);
+              return { x: q.x + t.boxOffX, y: q.y + t.boxOffY };
+            })();
+      return {
+        x: t.imgX + t.w / 2 + rp.x,
+        y: t.imgY + t.h / 2 + rp.y,
+      };
+    },
+    [tileBySlotId, sectorById, hexSize]
+  );
+
   const markerPos = React.useCallback(
     (q: number, r: number) => {
       const pr = axialRotateCCW({ q, r } as any, viewRot);
@@ -897,7 +953,10 @@ export function MapBoardViewer(props: {
               {markers.map((m, i) => {
                 const { q, r } = parseKey(m.key);
                 if (!Number.isFinite(q) || !Number.isFinite(r)) return null;
-                const { x, y } = markerPos(q, r);
+                // slotId/localKey があればタイル画像と同じ変換で正確に置く。
+                const exact =
+                  m.slotId && m.localKey ? markerPosLocal(m.slotId, m.localKey) : null;
+                const { x, y } = exact ?? markerPos(q, r);
                 return (
                   <circle
                     key={`mk_${m.key}_${i}`}
