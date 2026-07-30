@@ -216,6 +216,14 @@ export function MapBoardViewer(props: {
   // SVG背景色（既定 white）。ミニ盤面では "transparent" にして、-30°回転で
   // はみ出す白い矩形が隣接要素へ被らないようにする（List プレビュー）。
   bgColor?: string;
+
+  // true にすると、CSS回転（viewAngleDeg）で外へはみ出す分だけ自動で縮小し、
+  // 枠内に全体が収まるようにする。overflow:hidden で切り取るミニ盤面用。
+  fitRotation?: boolean;
+
+  // "schematic" はタイル画像の代わりに「セクタ番号＋向き」だけを描く簡易表示。
+  // 小さい盤面でタイルが判別しづらいとき用（2026-07-25 要望）。
+  tileMode?: "image" | "schematic";
 }) {
   const {
     template,
@@ -247,7 +255,38 @@ export function MapBoardViewer(props: {
     svgPixelSize,
     markers = [],
     bgColor = "white",
+    fitRotation = false,
+    tileMode = "image",
   } = props;
+
+  // CSS回転で外にはみ出す分を自動で縮める（fitRotation）。
+  // 幅W×高Hの箱を θ 回転すると外接は W*|cos|+H*|sin| × W*|sin|+H*|cos| になるので、
+  // その比率だけ scale して枠内に収める。枠サイズは ResizeObserver で追う。
+  const fitBoxRef = React.useRef<HTMLDivElement | null>(null);
+  const [fitScale, setFitScale] = React.useState(1);
+  React.useEffect(() => {
+    if (!fitRotation) {
+      setFitScale(1);
+      return;
+    }
+    const el = fitBoxRef.current;
+    if (!el) return;
+    const calc = () => {
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (!(w > 0 && h > 0)) return;
+      const rad = (Math.abs(viewAngleDeg) * Math.PI) / 180;
+      const c = Math.abs(Math.cos(rad));
+      const s = Math.abs(Math.sin(rad));
+      const rotW = w * c + h * s;
+      const rotH = w * s + h * c;
+      setFitScale(Math.min(1, w / rotW, h / rotH));
+    };
+    calc();
+    const ro = new ResizeObserver(calc);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [fitRotation, viewAngleDeg]);
 
   // ホバー中マーカーのポップアップ（帰属テキスト）。SVGはCSS回転が絡むため
   // 座標計算は避け、ビューポート座標（clientX/Y）で固定配置する。
@@ -417,6 +456,7 @@ export function MapBoardViewer(props: {
           w,
           h,
           tileDeg,
+          rot6,
         };
       })
       .filter(Boolean) as Array<{
@@ -430,6 +470,7 @@ export function MapBoardViewer(props: {
       w: number;
       h: number;
       tileDeg: number;
+      rot6: number;
     }>;
   }, [placementList,
     slotById,
@@ -689,7 +730,7 @@ export function MapBoardViewer(props: {
         </div>
       )}
 
-      <div style={{ flex: 1, minHeight: 0, overflow: "visible" }}>
+      <div ref={fitBoxRef} style={{ flex: 1, minHeight: 0, overflow: "visible" }}>
         <svg
           ref={svgRef}
           width={exportSvgSize ? exportSvgSize.width : "100%"}
@@ -697,7 +738,7 @@ export function MapBoardViewer(props: {
           viewBox={viewBox}
           preserveAspectRatio="xMinYMin meet"
           style={{ background: bgColor, border: "none", borderRadius: 8, touchAction: "none",
-    transform: `rotate(${viewAngleDeg}deg)`,
+    transform: `rotate(${viewAngleDeg}deg)${fitScale < 1 ? ` scale(${fmtNum(fitScale, 4)})` : ""}`,
     transformOrigin: "50% 50%", }}
 //          onWheel={onWheel}
           onPointerDown={onPointerDown}
@@ -707,6 +748,59 @@ export function MapBoardViewer(props: {
         >
           {/* Tiles */}
           {tileItems.map((t) => {
+            // 模式表示: 画像の代わりに「セクタ番号＋向き」を描く（小さい盤面で
+            // タイルが判別しづらいとき用）。文字は SVG 全体の回転を打ち消して
+            // 水平に読めるようにし、向きは打ち消さない矢印で示す。
+            if (tileMode === "schematic") {
+              const cx = t.imgX + t.w / 2;
+              const cy = t.imgY + t.h / 2;
+              const r = Math.min(t.w, t.h) * 0.46;
+              const pts = [0, 1, 2, 3, 4, 5]
+                .map((k) => {
+                  const a = (Math.PI / 180) * (60 * k + 30);
+                  return `${fmtNum(cx + r * Math.cos(a), 3)},${fmtNum(cy + r * Math.sin(a), 3)}`;
+                })
+                .join(" ");
+              return (
+                <g key={t.key}>
+                  <polygon
+                    points={pts}
+                    fill="#ffffff"
+                    stroke="#555"
+                    strokeWidth={fmtNum(Math.max(1, r * 0.045), 3)}
+                  />
+                  {/* 向き: タイルの実際の回転（画面上の向き）を矢印で示す */}
+                  <g transform={`translate(${fmtNum(cx)},${fmtNum(cy)}) rotate(${fmtNum(t.tileDeg)})`}>
+                    <path
+                      d={`M 0 ${fmtNum(-r * 0.82)} l ${fmtNum(-r * 0.15)} ${fmtNum(r * 0.26)} l ${fmtNum(r * 0.3)} 0 Z`}
+                      fill="#d0021b"
+                    />
+                  </g>
+                  {/* 番号と回転量: 全体回転を打ち消して水平に表示 */}
+                  <g transform={`translate(${fmtNum(cx)},${fmtNum(cy)}) rotate(${fmtNum(-viewAngleDeg)})`}>
+                    <text
+                      y={fmtNum(-r * 0.08)}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fontSize={fmtNum(r * 0.55, 3)}
+                      fontWeight={700}
+                      fill="#111"
+                    >
+                      {t.sectorId}
+                    </text>
+                    <text
+                      y={fmtNum(r * 0.45)}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fontSize={fmtNum(r * 0.3, 3)}
+                      fill="#555"
+                    >
+                      {`↻${t.rot6}`}
+                    </text>
+                  </g>
+                </g>
+              );
+            }
             const iw = t.w * imageShrink;
             const ih = t.h * imageShrink;
             const ox = (t.w - iw) / 2;

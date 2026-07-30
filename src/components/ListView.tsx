@@ -87,6 +87,9 @@ const UI = {
     candidates: "候補:",
     pairLog: "提案ログ",
     clearLog: "ログを消去",
+    tileModeLabel: "盤面表示",
+    tileImage: "画像",
+    tileSchematic: "番号＋向き",
     logRestoreHint: "クリックでこの提案を再表示",
     logNoRestore: "この行は再表示できません（旧形式のログ）",
     logMapMissing: "このログのマップは候補に見つかりません（ピン解除/削除済み）。セットアップのみ再表示しました",
@@ -147,6 +150,9 @@ const UI = {
     candidates: "Candidates:",
     pairLog: "Proposal log",
     clearLog: "Clear log",
+    tileModeLabel: "Board view",
+    tileImage: "Images",
+    tileSchematic: "Number + rotation",
     logRestoreHint: "Click to re-display this proposal",
     logNoRestore: "This row cannot be restored (older log format)",
     logMapMissing: "The map for this log entry is no longer among the candidates; showing the setup only",
@@ -262,6 +268,7 @@ type SetupSource = "random" | "saved";
 const LS_LIST_DIR = "gaia_list_pair_dir";
 const LS_LIST_SRC = "gaia_list_setup_source";
 const LS_LIST_SETUP = "gaia_list_pair_setup";
+const LS_TILE_MODE = "gaia_tile_mode";
 const LS_LIST_MAP = "gaia_list_pair_map";
 const LS_LIST_MAP_LABEL = "gaia_list_pair_map_label";
 const LS_LIST_CRITERION = "gaia_list_criterion";
@@ -386,6 +393,8 @@ export default function ListView() {
   }, []);
   const [savedProposals, setSavedProposals] = React.useState<SavedProposal[]>([]);
   const [pairLog, setPairLog] = React.useState<PairLogEntry[]>([]);
+  // 盤面の表示モード（画像／番号+向きの模式表示）。2026-07-25 要望。
+  const [tileMode, setTileMode] = React.useState<"image" | "schematic">("image");
   const [pairMsg, setPairMsg] = React.useState<string | null>(null);
   const [recorded, setRecorded] = React.useState(false);
   // 共有されたセット（/list?h=&t=&s=）。捕捉は初回のみ（Strict Mode二重実行対応）。
@@ -431,6 +440,8 @@ export default function ListView() {
       if (savedSrc === "random" || savedSrc === "saved") setSetupSource(savedSrc);
       const savedSetupId = localStorage.getItem(LS_LIST_SETUP);
       if (savedSetupId) setPairSetupId(savedSetupId);
+      const savedTileMode = localStorage.getItem(LS_TILE_MODE);
+      if (savedTileMode === "image" || savedTileMode === "schematic") setTileMode(savedTileMode);
     } catch {}
 
     // 保存した提案・提案ログを復元（読取のみ）。
@@ -1079,6 +1090,23 @@ export default function ListView() {
                   <option value="neutralBalance">{t.crit3}</option>
                 </select>
               </label>
+              {/* 盤面の表示モード。ミニ盤面は小さくタイルが判別しづらいため、
+                  番号＋向きだけの模式表示に切り替えられる（2026-07-25 要望）。 */}
+              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span>{t.tileModeLabel}</span>
+                <select
+                  value={tileMode}
+                  onChange={(e) => {
+                    const v = e.target.value as "image" | "schematic";
+                    setTileMode(v);
+                    try { localStorage.setItem(LS_TILE_MODE, v); } catch {}
+                  }}
+                  style={{ maxWidth: 150 }}
+                >
+                  <option value="image">{t.tileImage}</option>
+                  <option value="schematic">{t.tileSchematic}</option>
+                </select>
+              </label>
               <button onClick={handleGenerate} style={{ padding: "3px 12px", fontWeight: 700 }}>
                 {rec ? t.regenerate : t.generate}
               </button>
@@ -1187,6 +1215,8 @@ export default function ListView() {
                           showToolbar={false}
                           disablePan
                           bgColor="transparent"
+                          fitRotation
+                          tileMode={tileMode}
                         />
                       </div>
                     ) : (
@@ -1324,6 +1354,8 @@ export default function ListView() {
                                 showToolbar={false}
                                 disablePan
                                 bgColor="transparent"
+                          fitRotation
+                          tileMode={tileMode}
                               />
                             </div>
                           </div>
@@ -1445,6 +1477,8 @@ export default function ListView() {
                           showToolbar={false}
                           disablePan
                           bgColor="transparent"
+                          fitRotation
+                          tileMode={tileMode}
                         />
                       </div>
                     ) : null}
@@ -1513,6 +1547,8 @@ export default function ListView() {
                           showToolbar={false}
                           disablePan
                           bgColor="transparent"
+                          fitRotation
+                          tileMode={tileMode}
                         />
                       </div>
                     </Link>

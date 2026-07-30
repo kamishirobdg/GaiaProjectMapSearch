@@ -258,10 +258,14 @@ React.useEffect(() => {
   // 基本版の配置方法（p19 方法1/2/3）。検索キーに含める（base のみ）。
   // localStorage 書込みはハンドラのみ（復元effectとの併用禁止ルール）。
   const [placementMethod, setPlacementMethod] = React.useState<1 | 2 | 3>(1);
+  // 盤面の表示モード（画像／番号+向き）。List と localStorage キーを共有する。
+  const [tileMode, setTileMode] = React.useState<"image" | "schematic">("image");
   React.useEffect(() => {
     try {
       const v = Number(localStorage.getItem("gaia_search_placement_method"));
       if (v === 1 || v === 2 || v === 3) setPlacementMethod(v);
+      const m = localStorage.getItem("gaia_tile_mode");
+      if (m === "image" || m === "schematic") setTileMode(m);
     } catch {}
   }, []);
 
@@ -2532,6 +2536,25 @@ const handleDeleteUsed = React.useCallback(
   <span>{t("savedConditions")}</span>
 </label>
 
+        {/* 盤面の表示モード: 画像／セクタ番号＋向きの模式表示（2026-07-25 要望）。
+            表示のみで検索・評価には影響しない。List と同じ localStorage キーを共有。 */}
+        <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
+          <span>{t("tileModeLabel")}</span>
+          <select
+            value={tileMode}
+            onChange={(e) => {
+              const v = e.target.value === "schematic" ? "schematic" : "image";
+              setTileMode(v);
+              try {
+                localStorage.setItem("gaia_tile_mode", v);
+              } catch {}
+            }}
+          >
+            <option value="image">{t("tileImage")}</option>
+            <option value="schematic">{t("tileSchematic")}</option>
+          </select>
+        </label>
+
 
         {/* 基本版のみ: 配置方法（検索キーに影響する設定。上段からの移動は
             基本版/LF切替でボタン位置がズレないようにするため、2026-07-24） */}
@@ -2846,6 +2869,7 @@ const handleDeleteUsed = React.useCallback(
               // マップは固定表示（ドラッグ/パン無効、ツールバー廃止、2026-07-24 ユーザー要望）。
               disablePan
               markers={markers}
+              tileMode={tileMode}
             />
           </div>
 
