@@ -35,6 +35,21 @@ type Axial = { q: number; r: number };
 export type PlacementItem = { slotId: string; sectorId: string; rot: number; rot30?: number };
 
 /**
+ * マーカー位置の較正係数（タイル中心からの距離に掛ける倍率）。
+ *
+ * タイル画像は preserveAspectRatio="meet" で枠に収められており、画像内で
+ * ヘクスがどこにあるかはコード上モデル化されていない（実測: 枠 406x341 に対し
+ * 画像実寸 650x705。画像アスペクト 0.922 は幾何モデル 1.0825 の逆数で、
+ * アートワークは flat-top・モデルは pointy-top。高さ基準で縮小され左右に
+ * 約46px の余白が出る）。そのため厳密値は第一原理から出せず、目視で合わせる。
+ *
+ * 1.0 = タイル中心からの距離をそのまま使う（＝この係数を入れる前の挙動）。
+ * 小さくすると内側（タイル中心寄り）、大きくすると外側へ動く。
+ * ズレが残る場合はこの数値だけを調整すればよい。
+ */
+const MARKER_RADIAL_CALIBRATION = 0.96;
+
+/**
  * 模式表示（tileMode="schematic"）用の船タイルの略称（2文字）。
  * 正式名（トワイライト等）は六角枠に収まらないため（2026-07-25 要望）。
  */
@@ -569,9 +584,10 @@ export function MapBoardViewer(props: {
               const q = rotatePoint(p.x * t.scale, p.y * t.scale, t.tileDeg);
               return { x: q.x + t.boxOffX, y: q.y + t.boxOffY };
             })();
+      // タイル中心からの距離に較正係数を掛ける（アートワークの実寸差の吸収）。
       return {
-        x: t.imgX + t.w / 2 + rp.x,
-        y: t.imgY + t.h / 2 + rp.y,
+        x: t.imgX + t.w / 2 + rp.x * MARKER_RADIAL_CALIBRATION,
+        y: t.imgY + t.h / 2 + rp.y * MARKER_RADIAL_CALIBRATION,
       };
     },
     [tileBySlotId, sectorById, hexSize]
