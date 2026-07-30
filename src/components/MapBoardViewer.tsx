@@ -600,6 +600,36 @@ export function MapBoardViewer(props: {
     [tileBySlotId, sectorById, hexSize]
   );
 
+  /**
+   * 画像表示用: マーカーを載っているタイルごとにまとめる。
+   * slotId が無い（論理マップを引けなかった）場合は最寄りタイルへ寄せる。
+   */
+  const markersByTile = React.useMemo(() => {
+    const m = new Map<string, typeof markers>();
+    for (const mk of markers) {
+      let slotId = mk.slotId;
+      if (!slotId) {
+        const { q, r } = parseKey(mk.key);
+        if (!Number.isFinite(q) || !Number.isFinite(r)) continue;
+        const pr = axialRotateCCW({ q, r } as any, viewRot);
+        const pure = axialToPixelPointy(pr, hexSize);
+        let bestD = Infinity;
+        for (const t of tileItems) {
+          const d = (pure.x - t.slotPureX) ** 2 + (pure.y - t.slotPureY) ** 2;
+          if (d < bestD) {
+            bestD = d;
+            slotId = t.slotId;
+          }
+        }
+      }
+      if (!slotId) continue;
+      const arr = m.get(slotId) ?? [];
+      arr.push(mk);
+      m.set(slotId, arr);
+    }
+    return m;
+  }, [markers, tileItems, viewRot, hexSize]);
+
   const markerPos = React.useCallback(
     (q: number, r: number) => {
       const pr = axialRotateCCW({ q, r } as any, viewRot);
@@ -969,46 +999,90 @@ export function MapBoardViewer(props: {
               );
             })}
 
-          {/* Markers (#9 詳細表/評価指数クリック連動): セル座標にリングを点滅表示 */}
+          {/* Markers (#9 詳細表/評価指数クリック連動)
+              画像表示ではタイル単位で強調する。描画側にセル単位の正確な座標モデルが
+              無く（テンプレのスロット格子とセクタのセル格子が別系。24通りの回転規則を
+              総当たりしても盤面が成立せず＝203セルに対し最良186で衝突）、セルにリングを
+              置くとタイルによってズレるため（2026-07-30）。
+              模式表示は自前で六角を描いているので、そちらではセル単位で正確に出せる。 */}
           {markers.length > 0 ? (
             <>
               <style>{`@keyframes mbvBlink{0%,100%{opacity:1}50%{opacity:.32}} .mbv-marker{animation:mbvBlink 1.1s ease-in-out infinite}`}</style>
-              {markers.map((m, i) => {
-                const { q, r } = parseKey(m.key);
-                if (!Number.isFinite(q) || !Number.isFinite(r)) return null;
-                // slotId/localKey があればタイル画像と同じ変換で正確に置く。
-                const exact =
-                  m.slotId && m.localKey ? markerPosLocal(m.slotId, m.localKey) : null;
-                const { x, y } = exact ?? markerPos(q, r);
-                return (
-                  <circle
-                    key={`mk_${m.key}_${i}`}
-                    className="mbv-marker"
-                    cx={fmtNum(x)}
-                    cy={fmtNum(y)}
-                    r={fmtNum(hexSize * 0.82)}
-                    fill="none"
-                    stroke={m.color}
-                    strokeWidth={fmtNum(hexSize * 0.16)}
-                    style={{
-                      pointerEvents: "stroke",
-                      cursor: m.label ? "help" : undefined,
-                      filter: "drop-shadow(0 0 1.2px rgba(0,0,0,0.85))",
-                    }}
-                    onMouseEnter={
-                      m.label
-                        ? (e) => setHoverMarker({ label: m.label!, x: e.clientX, y: e.clientY })
-                        : undefined
-                    }
-                    onMouseMove={
-                      m.label
-                        ? (e) => setHoverMarker({ label: m.label!, x: e.clientX, y: e.clientY })
-                        : undefined
-                    }
-                    onMouseLeave={m.label ? () => setHoverMarker(null) : undefined}
-                  />
-                );
-              })}
+              {tileMode === "schematic"
+                ? markers.map((m, i) => {
+                    const { q, r } = parseKey(m.key);
+                    if (!Number.isFinite(q) || !Number.isFinite(r)) return null;
+                    const exact =
+                      m.slotId && m.localKey ? markerPosLocal(m.slotId, m.localKey) : null;
+                    const { x, y } = exact ?? markerPos(q, r);
+                    return (
+                      <circle
+                        key={`mk_${m.key}_${i}`}
+                        className="mbv-marker"
+                        cx={fmtNum(x)}
+                        cy={fmtNum(y)}
+                        r={fmtNum(hexSize * 0.82)}
+                        fill="none"
+                        stroke={m.color}
+                        strokeWidth={fmtNum(hexSize * 0.16)}
+                        style={{
+                          pointerEvents: "stroke",
+                          cursor: m.label ? "help" : undefined,
+                          filter: "drop-shadow(0 0 1.2px rgba(0,0,0,0.85))",
+                        }}
+                        onMouseEnter={
+                          m.label
+                            ? (e) => setHoverMarker({ label: m.label!, x: e.clientX, y: e.clientY })
+                            : undefined
+                        }
+                        onMouseMove={
+                          m.label
+                            ? (e) => setHoverMarker({ label: m.label!, x: e.clientX, y: e.clientY })
+                            : undefined
+                        }
+                        onMouseLeave={m.label ? () => setHoverMarker(null) : undefined}
+                      />
+                    );
+                  })
+                : // 画像表示: 同じタイルに載るマーカーをまとめ、タイル外周を強調する。
+                  // 色は最初のマーカーの色、ラベルはそのタイル分をまとめて出す。
+                  [...markersByTile.entries()].map(([slotId, ms]) => {
+                    const t = tileBySlotId.get(slotId);
+                    if (!t) return null;
+                    const cx = t.imgX + t.w / 2;
+                    const cy = t.imgY + t.h / 2;
+                    const rr = Math.min(t.w, t.h) * 0.5;
+                    const pts = [0, 1, 2, 3, 4, 5]
+                      .map((k) => {
+                        const a = (Math.PI / 180) * (60 * k + 30 - viewAngleDeg);
+                        return `${fmtNum(cx + rr * Math.cos(a), 3)},${fmtNum(cy + rr * Math.sin(a), 3)}`;
+                      })
+                      .join(" ");
+                    const label = ms.map((m) => m.label).filter(Boolean).join("\n");
+                    return (
+                      <polygon
+                        key={`mk_tile_${slotId}`}
+                        className="mbv-marker"
+                        points={pts}
+                        fill={ms[0].color}
+                        fillOpacity={0.16}
+                        stroke={ms[0].color}
+                        strokeWidth={fmtNum(hexSize * 0.16)}
+                        style={{
+                          pointerEvents: "all",
+                          cursor: label ? "help" : undefined,
+                          filter: "drop-shadow(0 0 1.2px rgba(0,0,0,0.85))",
+                        }}
+                        onMouseEnter={
+                          label ? (e) => setHoverMarker({ label, x: e.clientX, y: e.clientY }) : undefined
+                        }
+                        onMouseMove={
+                          label ? (e) => setHoverMarker({ label, x: e.clientX, y: e.clientY }) : undefined
+                        }
+                        onMouseLeave={label ? () => setHoverMarker(null) : undefined}
+                      />
+                    );
+                  })}
             </>
           ) : null}
         </svg>
