@@ -99,6 +99,7 @@ const UI = {
     setupSourceLabel: "セットアップの探し方",
     srcRandom: "ランダム生成",
     srcSaved: "保存済みから選ぶ",
+    srcDisabledHint: "セットアップ→マップの向きでは使いません",
     pairSetup: "セットアップ",
     needSetup: "起点にするセットアップを選んでください",
     needSetupPool: "条件に合う保存済みセットアップがありません",
@@ -162,6 +163,7 @@ const UI = {
     setupSourceLabel: "Setup source",
     srcRandom: "Random rolls",
     srcSaved: "From saved",
+    srcDisabledHint: "Not used in the Setup → Map direction",
     pairSetup: "Setup",
     needSetup: "Pick a setup to start from",
     needSetupPool: "No saved setup matches the current players/expansion",
@@ -972,8 +974,12 @@ export default function ListView() {
         left={
           <>
           <Panel title={t.pairTitle} note={t.pairNote}>
-            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 12 }}>
-              {/* 探索の向き（2026-07-25 要望） */}
+            {/* コントロールは「幅が変わらないもの」を1行目に固定順で置き、選択肢の
+                ラベル長で幅が変わる起点セレクトは最後の行に単独で置く（探索の向きで
+                並びや位置がズレないようにする。2026-07-25 要望）。探し方は向きに
+                関わらず常に同じ位置に出し、使えないときは無効化する。 */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 12 }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 <span>{t.pairDirLabel}</span>
                 <select
@@ -985,19 +991,21 @@ export default function ListView() {
                     clearPair();
                     setPairMsg(null);
                   }}
-                  style={{ maxWidth: 200 }}
+                  style={{ width: 190 }}
                 >
                   <option value="mapToSetup">{t.dirMapToSetup}</option>
                   <option value="setupToMap">{t.dirSetupToMap}</option>
                 </select>
               </label>
-    
-              {/* マップ→セットアップ時のみ: 相手の探し方 */}
-              {pairDir === "mapToSetup" ? (
-                <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+
+                <label
+                  style={{ display: "flex", gap: 6, alignItems: "center", opacity: pairDir === "mapToSetup" ? 1 : 0.45 }}
+                  title={pairDir === "mapToSetup" ? undefined : t.srcDisabledHint}
+                >
                   <span>{t.setupSourceLabel}</span>
                   <select
                     value={setupSource}
+                    disabled={pairDir !== "mapToSetup"}
                     onChange={(e) => {
                       const v = e.target.value as SetupSource;
                       setSetupSource(v);
@@ -1005,15 +1013,55 @@ export default function ListView() {
                       clearPair();
                       setPairMsg(null);
                     }}
-                    style={{ maxWidth: 170 }}
+                    style={{ width: 150 }}
                   >
                     <option value="random">{t.srcRandom}</option>
                     <option value="saved">{t.srcSaved}</option>
                   </select>
                 </label>
-              ) : null}
-    
-              {/* セットアップ→マップ時のみ: 起点セットアップ */}
+
+              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span>{t.pairCriterion}</span>
+                <select
+                  value={criterion}
+                  onChange={(e) => {
+                    setCriterion(e.target.value as RecommendCriterion);
+                    try { localStorage.setItem(LS_LIST_CRITERION, e.target.value); } catch {}
+                    clearPair();
+                    setPairMsg(null);
+                  }}
+                  style={{ width: 260 }}
+                >
+                  <option value="opposeMap">{t.crit1}</option>
+                  <option value="topBalance">{t.crit2}</option>
+                  <option value="neutralBalance">{t.crit3}</option>
+                </select>
+              </label>
+              {/* 盤面の表示モード。ミニ盤面は小さくタイルが判別しづらいため、
+                  番号＋向きだけの模式表示に切り替えられる（2026-07-25 要望）。 */}
+              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span>{t.tileModeLabel}</span>
+                <select
+                  value={tileMode}
+                  onChange={(e) => {
+                    const v = e.target.value as "image" | "schematic";
+                    setTileMode(v);
+                    try { localStorage.setItem(LS_TILE_MODE, v); } catch {}
+                  }}
+                  style={{ width: 130 }}
+                >
+                  <option value="image">{t.tileImage}</option>
+                  <option value="schematic">{t.tileSchematic}</option>
+                </select>
+              </label>
+              <button onClick={handleGenerate} style={{ padding: "3px 12px", fontWeight: 700 }}>
+                {rec ? t.regenerate : t.generate}
+              </button>
+              </div>
+
+              {/* 可変長の起点セレクト。この行の後ろには何も置かない（幅が変わっても
+                  他のコントロールの位置がズレないようにするため）。 */}
+              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
               {pairDir === "setupToMap" ? (
                 <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   <span>{t.pairSetup}</span>
@@ -1073,43 +1121,7 @@ export default function ListView() {
                 </select>
               </label>
               ) : null}
-              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <span>{t.pairCriterion}</span>
-                <select
-                  value={criterion}
-                  onChange={(e) => {
-                    setCriterion(e.target.value as RecommendCriterion);
-                    try { localStorage.setItem(LS_LIST_CRITERION, e.target.value); } catch {}
-                    clearPair();
-                    setPairMsg(null);
-                  }}
-                  style={{ maxWidth: 280 }}
-                >
-                  <option value="opposeMap">{t.crit1}</option>
-                  <option value="topBalance">{t.crit2}</option>
-                  <option value="neutralBalance">{t.crit3}</option>
-                </select>
-              </label>
-              {/* 盤面の表示モード。ミニ盤面は小さくタイルが判別しづらいため、
-                  番号＋向きだけの模式表示に切り替えられる（2026-07-25 要望）。 */}
-              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <span>{t.tileModeLabel}</span>
-                <select
-                  value={tileMode}
-                  onChange={(e) => {
-                    const v = e.target.value as "image" | "schematic";
-                    setTileMode(v);
-                    try { localStorage.setItem(LS_TILE_MODE, v); } catch {}
-                  }}
-                  style={{ maxWidth: 150 }}
-                >
-                  <option value="image">{t.tileImage}</option>
-                  <option value="schematic">{t.tileSchematic}</option>
-                </select>
-              </label>
-              <button onClick={handleGenerate} style={{ padding: "3px 12px", fontWeight: 700 }}>
-                {rec ? t.regenerate : t.generate}
-              </button>
+              </div>
               {pairMsg ? <span style={{ color: "#b3261e" }}>{pairMsg}</span> : null}
             </div>
           </Panel>
@@ -1215,7 +1227,7 @@ export default function ListView() {
                           showToolbar={false}
                           disablePan
                           bgColor="transparent"
-                          fitRotation
+                          nudgeYpx={10}
                           tileMode={tileMode}
                         />
                       </div>
@@ -1354,7 +1366,7 @@ export default function ListView() {
                                 showToolbar={false}
                                 disablePan
                                 bgColor="transparent"
-                          fitRotation
+                          nudgeYpx={10}
                           tileMode={tileMode}
                               />
                             </div>
@@ -1477,7 +1489,7 @@ export default function ListView() {
                           showToolbar={false}
                           disablePan
                           bgColor="transparent"
-                          fitRotation
+                          nudgeYpx={10}
                           tileMode={tileMode}
                         />
                       </div>
@@ -1547,7 +1559,7 @@ export default function ListView() {
                           showToolbar={false}
                           disablePan
                           bgColor="transparent"
-                          fitRotation
+                          nudgeYpx={10}
                           tileMode={tileMode}
                         />
                       </div>
