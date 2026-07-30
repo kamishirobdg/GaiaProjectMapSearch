@@ -450,6 +450,12 @@ export function MapBoardViewer(props: {
           h,
           tileDeg,
           rot6,
+          // マーカー配置用: 「素の軸座標で見たスロット中心」と、実際に描画された
+          // タイル中心・内容の縮小率。セルの位置はタイル画像と同じ変換で出す必要が
+          // あるため（手動オフセット/縮小を無視すると船接触などでズレる）。
+          slotPureX: x,
+          slotPureY: y,
+          scale,
         };
       })
       .filter(Boolean) as Array<{
@@ -464,6 +470,9 @@ export function MapBoardViewer(props: {
       h: number;
       tileDeg: number;
       rot6: number;
+      slotPureX: number;
+      slotPureY: number;
+      scale: number;
     }>;
   }, [placementList,
     slotById,
@@ -502,6 +511,39 @@ export function MapBoardViewer(props: {
   }, [template.slots, tileItems, viewRot, hexSize]);
 
   const baseBounds = React.useMemo(() => computeBounds(basePoints, effectivePad), [basePoints, effectivePad]);
+
+  /**
+   * マーカー（#9）のセル座標 → 実際の描画位置。
+   *
+   * 素の軸座標をそのままピクセル化すると、タイル画像に掛かっている
+   * 「中心補正 + accepts別の縮小 + スロット別の手動オフセット」が反映されず、
+   * タイル中心から離れたセルほどズレる（船接触のマーカーで顕在化。2026-07-30）。
+   * セルが属するタイルを最近傍のスロット中心で特定し、タイル中心からの相対位置を
+   * 画像と同じ縮小率で拡げてから、描画済みのタイル中心に足す。
+   */
+  const markerPos = React.useCallback(
+    (q: number, r: number) => {
+      const pr = axialRotateCCW({ q, r } as any, viewRot);
+      const pure = axialToPixelPointy(pr, hexSize);
+      let best: (typeof tileItems)[number] | null = null;
+      let bestD = Infinity;
+      for (const t of tileItems) {
+        const dx = pure.x - t.slotPureX;
+        const dy = pure.y - t.slotPureY;
+        const d = dx * dx + dy * dy;
+        if (d < bestD) {
+          bestD = d;
+          best = t;
+        }
+      }
+      if (!best) return pure;
+      return {
+        x: best.imgX + best.w / 2 + (pure.x - best.slotPureX) * best.scale,
+        y: best.imgY + best.h / 2 + (pure.y - best.slotPureY) * best.scale,
+      };
+    },
+    [tileItems, viewRot, hexSize]
+  );
 
   // ===== UI Zoom/Pan via viewBox manipulation =====
   const svgRef = React.useRef<SVGSVGElement | null>(null);
@@ -855,8 +897,7 @@ export function MapBoardViewer(props: {
               {markers.map((m, i) => {
                 const { q, r } = parseKey(m.key);
                 if (!Number.isFinite(q) || !Number.isFinite(r)) return null;
-                const pr = axialRotateCCW({ q, r } as any, viewRot);
-                const { x, y } = axialToPixelPointy(pr, hexSize);
+                const { x, y } = markerPos(q, r);
                 return (
                   <circle
                     key={`mk_${m.key}_${i}`}

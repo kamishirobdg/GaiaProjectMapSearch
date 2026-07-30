@@ -95,12 +95,15 @@ export function topFactions(scores: FactionScores, n: number): FactionId[] {
   return [...FACTION_IDS].sort((a, b) => scores[b] - scores[a]).slice(0, n);
 }
 
-export type RecommendCriterion = "opposeMap" | "topBalance" | "neutralBalance";
+export type RecommendCriterion = "opposeMap" | "alignMap" | "topBalance" | "neutralBalance";
 
 /**
  * 基準ごとの「このセットアップの良さ」（大きいほど良い）。DRAFT の式:
  * - opposeMap: マップ上位3種族のセットアップスコア合計が小さいほど良い
  *   （タイブレークに全体バランス）。
+ * - alignMap（優位）: マップ上位 K=プレイ人数+2 種族がセットアップでも強いほど良い
+ *   （順張り。opposeMap の逆で、マップで強い種族をさらに後押しする）。
+ *   K種族の平均を主項、K内の散らばりを軽い減点にして1種族だけ突出するのを避ける。
  * - topBalance: 上位 K=プレイ人数+2 種族が拮抗して強いほど良い
  *   （上位Kの散らばりを罰し、上位Kと残りの差を少し好む）。
  * - neutralBalance: 全14種族の散らばりが小さいほど良い（マップ非依存）。
@@ -108,7 +111,7 @@ export type RecommendCriterion = "opposeMap" | "topBalance" | "neutralBalance";
 export function criterionScore(
   criterion: RecommendCriterion,
   setupScores: FactionScores,
-  opts: { playerCount: number; mapTop3?: FactionId[] }
+  opts: { playerCount: number; mapTop3?: FactionId[]; mapTopK?: FactionId[] }
 ): number {
   const all = sortedDesc(setupScores);
   switch (criterion) {
@@ -116,6 +119,13 @@ export function criterionScore(
       const top3 = opts.mapTop3 ?? [];
       const sum = top3.reduce((a, f) => a + setupScores[f], 0);
       return -sum - 0.2 * std(all);
+    }
+    case "alignMap": {
+      // マップ上位 K=人数+2 種族。呼び出し側が K を渡さなければ上位3で代用する。
+      const topK = opts.mapTopK ?? opts.mapTop3 ?? [];
+      if (topK.length === 0) return 0;
+      const vals = topK.map((f) => setupScores[f]);
+      return mean(vals) - 0.2 * std(vals);
     }
     case "topBalance": {
       const k = Math.min(all.length, Math.max(2, opts.playerCount + 2));
@@ -148,6 +158,7 @@ export function recommendSetup(args: {
   playerCount: number;
   lostFleet: boolean;
   mapTop3?: FactionId[];
+  mapTopK?: FactionId[];
 }): Recommendation | null {
   return recommendSetups({ ...args, topN: 1 })[0] ?? null;
 }
@@ -162,9 +173,10 @@ export function recommendSetups(args: {
   playerCount: number;
   lostFleet: boolean;
   mapTop3?: FactionId[];
+  mapTopK?: FactionId[];
   topN: number;
 }): Recommendation[] {
-  const { criterion, seeds, playerCount, lostFleet, mapTop3, topN } = args;
+  const { criterion, seeds, playerCount, lostFleet, mapTop3, mapTopK, topN } = args;
   if (topN <= 0) return [];
   const all: Recommendation[] = [];
   for (const seed of seeds) {
@@ -175,7 +187,7 @@ export function recommendSetups(args: {
     };
     const result = buildSetupFromSeed(input);
     const setupScores = scoreSetupFactions(result);
-    const score = criterionScore(criterion, setupScores, { playerCount, mapTop3 });
+    const score = criterionScore(criterion, setupScores, { playerCount, mapTop3, mapTopK });
     all.push({ input, result, setupScores, criterion, score, trials: seeds.length });
   }
   // 安定ソート（Array#sort は安定）なので同着は seeds の順を保つ。

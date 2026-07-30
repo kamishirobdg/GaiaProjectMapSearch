@@ -81,6 +81,7 @@ const UI = {
     crit1: "1: 逆優位（マップ上位種族が弱い）",
     crit2: "2: 上位バランス（人数+2種族が拮抗）",
     crit3: "3: マップ非依存の全体バランス",
+    crit4: "4: 優位（マップ上位の人数+2種族が強い）",
     generate: "提案を生成",
     regenerate: "再生成",
     needMap: "基準1にはマップの選択が必要です",
@@ -104,7 +105,7 @@ const UI = {
     needSetup: "起点にするセットアップを選んでください",
     needSetupPool: "条件に合う保存済みセットアップがありません",
     needMapPool: "条件に合うマップがありません（ピン留めかランキングが必要）",
-    mapIndependentNote: "※基準2・3はマップに依存しないため、マップは条件が合う先頭のものになります",
+    mapIndependentNote: "※基準2・3はマップに依存しないため、マップは条件が合う先頭のものになります（マップで選びたいときは基準1か4）",
     mapStrong: "マップ優位",
     setupStrong: "セットアップ優位（上位5）",
     trialsNote: "候補から上位5件",
@@ -145,6 +146,7 @@ const UI = {
     crit1: "1: Oppose map (map's top factions weak)",
     crit2: "2: Top balance (players+2 factions close)",
     crit3: "3: Map-independent overall balance",
+    crit4: "4: Align (map top players+2 factions are strong)",
     generate: "Generate",
     regenerate: "Regenerate",
     needMap: "Criterion 1 requires a selected map",
@@ -168,7 +170,7 @@ const UI = {
     needSetup: "Pick a setup to start from",
     needSetupPool: "No saved setup matches the current players/expansion",
     needMapPool: "No map matches (pin one or run a search first)",
-    mapIndependentNote: "Note: criteria 2 and 3 do not depend on the map, so the first matching map is used",
+    mapIndependentNote: "Note: criteria 2 and 3 do not depend on the map, so the first matching map is used (use criterion 1 or 4 to rank maps)",
     mapStrong: "Map favors",
     setupStrong: "Setup favors (top 5)",
     trialsNote: "top 5 of candidates",
@@ -187,7 +189,8 @@ const UI = {
 
 /** 基準の短縮表示（提案ログ用）。 */
 function criterionShort(c: RecommendCriterion, t: (typeof UI)["ja" | "en"]): string {
-  const full = c === "opposeMap" ? t.crit1 : c === "topBalance" ? t.crit2 : t.crit3;
+  const full =
+    c === "opposeMap" ? t.crit1 : c === "alignMap" ? t.crit4 : c === "topBalance" ? t.crit2 : t.crit3;
   return full.split("（")[0].split(" (")[0];
 }
 
@@ -433,7 +436,12 @@ export default function ListView() {
       const savedMapLabel = localStorage.getItem(LS_LIST_MAP_LABEL);
       if (savedMapLabel) setPendingMapLabel(savedMapLabel);
       const savedCrit = localStorage.getItem(LS_LIST_CRITERION);
-      if (savedCrit === "opposeMap" || savedCrit === "topBalance" || savedCrit === "neutralBalance") {
+      if (
+        savedCrit === "opposeMap" ||
+        savedCrit === "alignMap" ||
+        savedCrit === "topBalance" ||
+        savedCrit === "neutralBalance"
+      ) {
         setCriterion(savedCrit as RecommendCriterion);
       }
       const savedDir = localStorage.getItem(LS_LIST_DIR);
@@ -552,15 +560,19 @@ export default function ListView() {
     []
   );
 
-  /** マップの上位種族（テンプレ不明・計算不能なら null）。生成とログ復元で共用。 */
+  /**
+   * マップの上位種族（テンプレ不明・計算不能なら null）。生成とログ復元で共用。
+   * top3 は基準1（逆優位）用、topK は基準4（優位）用で K=人数+2。
+   */
   const mapTopOf = React.useCallback(
-    (c: PersistedCandidate) => {
+    (c: PersistedCandidate, playersForK?: number) => {
       const tid = templateIdBySearchKey[c.searchKey] ?? null;
       if (!tid) return null;
       try {
         const ms = mapFactionScores(tid, c.placement ?? []);
         const top3 = topFactions(ms, 3);
-        return { tid, top3, detail: top3.map((f) => ({ id: f, score: ms[f] })) };
+        const topK = topFactions(ms, Math.max(2, (playersForK ?? deriveSetupSettings(tid).players) + 2));
+        return { tid, top3, topK, detail: top3.map((f) => ({ id: f, score: ms[f] })) };
       } catch {
         return null;
       }
@@ -689,7 +701,7 @@ export default function ListView() {
         return;
       }
       scored.sort((a, b) => b.score - a.score);
-      setPairMsg(criterion === "opposeMap" ? null : UI[lang].mapIndependentNote);
+      setPairMsg(criterion === "opposeMap" || criterion === "alignMap" ? null : UI[lang].mapIndependentNote);
       setPairOptions(
         scored.slice(0, PAIR_TOP_N).map((x) => ({
           key: `m:${x.c.id}`,
@@ -731,20 +743,23 @@ export default function ListView() {
     // --- マップ→セットアップ ---
     const selected = selectableMaps.find((c) => c.id === pairMapId) ?? null;
     const tid = selected ? (templateIdBySearchKey[selected.searchKey] ?? null) : null;
-    if (criterion === "opposeMap" && (!selected || !tid)) {
+    const mapDependent = criterion === "opposeMap" || criterion === "alignMap";
+    if (mapDependent && (!selected || !tid)) {
       setPairMsg(UI[lang].needMap);
       clearPair();
       return;
     }
     setPairMsg(null);
     let mapTop3: FactionId[] | undefined;
+    let mapTopK: FactionId[] | undefined;
     let mapTopDetail: Array<{ id: FactionId; score: number }> | null = null;
     if (selected && tid) {
       const top = mapTopOf(selected);
       if (top) {
         mapTop3 = top.top3;
+        mapTopK = top.topK;
         mapTopDetail = top.detail;
-      } else if (criterion === "opposeMap") {
+      } else if (mapDependent) {
         setPairMsg(UI[lang].needMap);
         clearPair();
         return;
@@ -768,6 +783,7 @@ export default function ListView() {
           score: criterionScore(criterion, scores, {
             playerCount: settings.players,
             ...(mapTop3 ? { mapTop3 } : {}),
+            ...(mapTopK ? { mapTopK } : {}),
           }),
         };
       });
@@ -825,6 +841,7 @@ export default function ListView() {
       playerCount: settings.players,
       lostFleet: settings.lf,
       ...(mapTop3 ? { mapTop3 } : {}),
+      ...(mapTopK ? { mapTopK } : {}),
       topN: PAIR_TOP_N,
     });
     setPairOptions(
@@ -949,7 +966,8 @@ export default function ListView() {
   }, []);
 
   const criterionLabel = React.useCallback(
-    (c: RecommendCriterion) => (c === "opposeMap" ? t.crit1 : c === "topBalance" ? t.crit2 : t.crit3),
+    (c: RecommendCriterion) =>
+      c === "opposeMap" ? t.crit1 : c === "alignMap" ? t.crit4 : c === "topBalance" ? t.crit2 : t.crit3,
     [t]
   );
 
@@ -1035,6 +1053,7 @@ export default function ListView() {
                   <option value="opposeMap">{t.crit1}</option>
                   <option value="topBalance">{t.crit2}</option>
                   <option value="neutralBalance">{t.crit3}</option>
+                  <option value="alignMap">{t.crit4}</option>
                 </select>
               </label>
               {/* 盤面の表示モード。ミニ盤面は小さくタイルが判別しづらいため、

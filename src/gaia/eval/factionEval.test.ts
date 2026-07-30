@@ -109,6 +109,31 @@ describe("criterionScore", () => {
     expect(a).toBeGreaterThan(b);
   });
 
+  it("alignMap: opposeMap と逆に、マップ上位K種族が強いセットアップを好む", () => {
+    const mapTopK = ["terrans", "gleens", "balTaks", "ivits", "firaks"] as const;
+    const opts = { playerCount: 3, mapTopK: [...mapTopK] };
+    // spiky は上位K のうち3種族が高い → align では高評価、oppose では低評価
+    const a = criterionScore("alignMap", spiky, opts);
+    const b = criterionScore("alignMap", flat, opts);
+    expect(a).toBeGreaterThan(b);
+    // 同じ入力で opposeMap とは逆向きになること（順張り/逆張りの関係）
+    const oppA = criterionScore("opposeMap", spiky, { playerCount: 3, mapTop3: [...mapTopK].slice(0, 3) });
+    const oppB = criterionScore("opposeMap", flat, { playerCount: 3, mapTop3: [...mapTopK].slice(0, 3) });
+    expect(oppA).toBeLessThan(oppB);
+  });
+
+  it("alignMap: K種族が均等に強い方が、1種族だけ突出より良い", () => {
+    const mapTopK = ["terrans", "gleens", "balTaks"] as const;
+    const opts = { playerCount: 1, mapTopK: [...mapTopK] };
+    const even = { ...flat, terrans: 6, gleens: 6, balTaks: 6 } as FactionScores;
+    const spike = { ...flat, terrans: 16, gleens: 1, balTaks: 1 } as FactionScores;
+    expect(criterionScore("alignMap", even, opts)).toBeGreaterThan(criterionScore("alignMap", spike, opts));
+  });
+
+  it("alignMap: マップ上位が無ければ 0（マップ未選択でも壊れない）", () => {
+    expect(criterionScore("alignMap", flat, { playerCount: 4 })).toBe(0);
+  });
+
   it("neutralBalance: flat scores beat spiky scores", () => {
     const a = criterionScore("neutralBalance", flat, { playerCount: 4 });
     const b = criterionScore("neutralBalance", spiky, { playerCount: 4 });
