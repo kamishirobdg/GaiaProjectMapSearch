@@ -86,6 +86,9 @@ const UI = {
     candidates: "候補:",
     pairLog: "提案ログ",
     clearLog: "ログを消去",
+    logRestoreHint: "クリックでこの提案を再表示",
+    logNoRestore: "この行は再表示できません（旧形式のログ）",
+    logMapMissing: "このログのマップは候補に見つかりません（ピン解除/削除済み）。セットアップのみ再表示しました",
     pairDirLabel: "探索の向き",
     dirMapToSetup: "マップ → セットアップ",
     dirSetupToMap: "セットアップ → マップ",
@@ -143,6 +146,9 @@ const UI = {
     candidates: "Candidates:",
     pairLog: "Proposal log",
     clearLog: "Clear log",
+    logRestoreHint: "Click to re-display this proposal",
+    logNoRestore: "This row cannot be restored (older log format)",
+    logMapMissing: "The map for this log entry is no longer among the candidates; showing the setup only",
     pairDirLabel: "Direction",
     dirMapToSetup: "Map → Setup",
     dirSetupToMap: "Setup → Map",
@@ -311,6 +317,13 @@ type PairLogEntry = {
   mapHash: string;
   mapScore: number;
   score: number;
+  /**
+   * クリックで再表示するための候補一覧。セットアップは入力そのものを持つ
+   * （保存済み由来の回避/強制ルールまで忠実に復元するため。シードだけでは
+   * ルール付きセットアップを再現できない）。マップは盤面ハッシュで引き当てる。
+   * 旧バージョンのログには無いので optional。
+   */
+  opts?: Array<{ input: BuildSetupInput; mapHash: string; mapScore: number; score: number }>;
 };
 function loadPairLog(): PairLogEntry[] {
   try {
@@ -520,6 +533,22 @@ export default function ListView() {
     []
   );
 
+  /** マップの上位種族（テンプレ不明・計算不能なら null）。生成とログ復元で共用。 */
+  const mapTopOf = React.useCallback(
+    (c: PersistedCandidate) => {
+      const tid = templateIdBySearchKey[c.searchKey] ?? null;
+      if (!tid) return null;
+      try {
+        const ms = mapFactionScores(tid, c.placement ?? []);
+        const top3 = topFactions(ms, 3);
+        return { tid, top3, detail: top3.map((f) => ({ id: f, score: ms[f] })) };
+      } catch {
+        return null;
+      }
+    },
+    [templateIdBySearchKey]
+  );
+
   // List を開いた時点のデフォルト選択（最優先=ピン留め最上位→無ければ全体最上位）。
   // 復元した pairMapId が選択候補に無い場合（ピン解除後など）もデフォルトへフォールバック。
   React.useEffect(() => {
@@ -604,18 +633,6 @@ export default function ListView() {
   const handleGenerate = React.useCallback(() => {
     setRecorded(false);
     // マップの上位種族を出す小ヘルパ（テンプレ不整合は null）。
-    const mapTopOf = (c: PersistedCandidate) => {
-      const tid = templateIdBySearchKey[c.searchKey] ?? null;
-      if (!tid) return null;
-      try {
-        const ms = mapFactionScores(tid, c.placement ?? []);
-        const top3 = topFactions(ms, 3);
-        return { tid, top3, detail: top3.map((f) => ({ id: f, score: ms[f] })) };
-      } catch {
-        return null;
-      }
-    };
-
     // --- セットアップ→マップ: 起点のセットアップに最も合うマップを探す ---
     if (pairDir === "setupToMap") {
       const src = selectableSetups.find((r) => r.id === pairSetupId) ?? null;
@@ -682,6 +699,12 @@ export default function ListView() {
         mapHash: String(scored[0].c.placementHash ?? ""),
         mapScore: Number(scored[0].c.score ?? 0),
         score: scored[0].score,
+        opts: scored.slice(0, PAIR_TOP_N).map((x) => ({
+          input: src.input,
+          mapHash: String(x.c.placementHash ?? ""),
+          mapScore: Number(x.c.score ?? 0),
+          score: x.score,
+        })),
       });
       return;
     }
@@ -763,6 +786,12 @@ export default function ListView() {
         mapHash: String(selected?.placementHash ?? ""),
         mapScore: Number(selected?.score ?? 0),
         score: scored[0].score,
+        opts: scored.slice(0, PAIR_TOP_N).map((x) => ({
+          input: x.r.input,
+          mapHash: String(selected?.placementHash ?? ""),
+          mapScore: Number(selected?.score ?? 0),
+          score: x.score,
+        })),
       });
       return;
     }
@@ -796,6 +825,12 @@ export default function ListView() {
         mapHash: String(selected?.placementHash ?? ""),
         mapScore: Number(selected?.score ?? 0),
         score: rs[0].score,
+        opts: rs.map((r) => ({
+          input: r.input,
+          mapHash: String(selected?.placementHash ?? ""),
+          mapScore: Number(selected?.score ?? 0),
+          score: r.score,
+        })),
       });
     }
   }, [
@@ -812,6 +847,47 @@ export default function ListView() {
     clearPair,
     lang,
   ]);
+
+  /**
+   * 提案ログのクリックで、その時の候補一覧を再表示する。
+   * セットアップは保存した入力から決定論的に再構築、マップは盤面ハッシュで
+   * 現在の候補から引き当てる（ピン解除やDB整理で失われていればマップなし表示）。
+   */
+  const restoreFromLog = React.useCallback(
+    (e: PairLogEntry) => {
+      if (!e.opts || e.opts.length === 0) return;
+      const opts: PairOption[] = e.opts.map((o, i) => {
+        const map = o.mapHash
+          ? (selectableMaps.find((c) => String(c.placementHash ?? "") === o.mapHash) ?? null)
+          : null;
+        const result = buildSetupFromSeed(o.input);
+        return {
+          key: `log:${e.id}:${i}`,
+          mapId: map?.id ?? "",
+          mapTop: map ? (mapTopOf(map)?.detail ?? null) : null,
+          rec: {
+            input: o.input,
+            result,
+            setupScores: scoreSetupFactions(result),
+            criterion: e.criterion,
+            score: o.score,
+            trials: e.count,
+          },
+        };
+      });
+      // 操作側の選択もログの条件に合わせる（表示と条件がズレないように）。
+      setPairDir(e.dir);
+      setSetupSource(e.source);
+      setCriterion(e.criterion);
+      setPairOptions(opts);
+      setPairIndex(0);
+      setRecSettings({ players: e.players, lf: e.lf });
+      setRecorded(false);
+      const lostMap = !!e.mapHash && !opts.some((o) => o.mapId);
+      setPairMsg(lostMap ? UI[lang].logMapMissing : null);
+    },
+    [selectableMaps, mapTopOf, lang]
+  );
 
   const handleRecordRec = React.useCallback(() => {
     if (!rec) return;
@@ -1020,9 +1096,13 @@ export default function ListView() {
               }
             >
               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                {pairLog.map((e) => (
+                {pairLog.map((e) => {
+                  const canRestore = !!e.opts && e.opts.length > 0;
+                  return (
                   <div
                     key={e.id}
+                    onClick={canRestore ? () => restoreFromLog(e) : undefined}
+                    title={canRestore ? t.logRestoreHint : t.logNoRestore}
                     style={{
                       display: "flex",
                       gap: 8,
@@ -1031,6 +1111,8 @@ export default function ListView() {
                       fontSize: 11,
                       borderBottom: "1px solid rgba(0,0,0,0.06)",
                       padding: "3px 0",
+                      cursor: canRestore ? "pointer" : "default",
+                      opacity: canRestore ? 1 : 0.55,
                     }}
                   >
                     <span style={{ opacity: 0.55, minWidth: 74 }}>{fmtWhen(e.at, lang)}</span>
@@ -1054,7 +1136,8 @@ export default function ListView() {
                       {e.count}
                     </span>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </Panel>
           ) : null}
