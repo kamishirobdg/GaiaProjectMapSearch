@@ -32,6 +32,11 @@ import type { TemplateDef } from "@/gaia/data/templates/types";
 type Axial = { q: number; r: number };
 
 // rot30（30度単位の追加回転）
+import {
+  ARTWORK_CALIB_BY_ACCEPTS,
+  artworkCellOffsetUnit,
+} from "@/gaia/viewer/artworkCalib";
+
 export type PlacementItem = { slotId: string; sectorId: string; rot: number; rot30?: number };
 
 /**
@@ -574,6 +579,37 @@ export function MapBoardViewer(props: {
    * グローバル軸座標を経由するとタイルごとに回転の食い違いが出てズレる
    * （2026-07-30: マップによってズレる位置が違う、という報告の原因）。
    */
+  /**
+   * 画像表示用のセル中心。タイル画像そのものの中に定規を当てて出す。
+   *
+   * `<image>` は幅 iw / 高さ ih の枠に preserveAspectRatio="xMidYMid meet" で
+   * 収まり、枠の中心まわりに tileDeg だけ回る。アートワーク内のセル格子の
+   * 間隔と向きは実測済み（artworkCalib.ts）なので、
+   *   セルのずれ(hex) × pitch × 実描画倍率 → tileDeg で回す → タイル中心へ足す
+   * だけで画面座標が出る。モデル側の外接計算（calcTilePixelBox / boxOff /
+   * scaleByAccepts）は一切経由しないので、それらの誤差の影響を受けない。
+   */
+  const markerPosArtwork = React.useCallback(
+    (slotId: string, localKey: string) => {
+      const t = tileBySlotId.get(slotId);
+      if (!t) return null;
+      const sector = dictGet(sectorById as any, t.sectorId);
+      const cellKeys = Object.keys((sector as any)?.cells ?? {});
+      if (cellKeys.length === 0) return null;
+      const cal = ARTWORK_CALIB_BY_ACCEPTS[t.accepts0];
+      const off = artworkCellOffsetUnit(cellKeys, localKey, cal.deg);
+      if (!off) return null;
+      // meet で実際に描かれる倍率（画像ピクセル → 画面ピクセル）
+      const iw = t.w * imageShrink;
+      const ih = t.h * imageShrink;
+      const k = Math.min(iw / cal.imgW, ih / cal.imgH);
+      const hex = cal.pitch * k; // 画面上での hex 1つ分
+      const p = rotatePoint(off.x * hex, off.y * hex, t.tileDeg);
+      return { x: t.imgX + t.w / 2 + p.x, y: t.imgY + t.h / 2 + p.y, hex };
+    },
+    [tileBySlotId, sectorById, imageShrink]
+  );
+
   const markerPosLocal = React.useCallback(
     (slotId: string, localKey: string) => {
       const t = tileBySlotId.get(slotId);
@@ -601,12 +637,14 @@ export function MapBoardViewer(props: {
   );
 
   /**
-   * 画像表示用: マーカーを載っているタイルごとにまとめる。
+   * 画像表示のフォールバック: セル位置を出せなかったマーカーだけを
+   * 載っているタイルごとにまとめ、タイル単位で強調する。
    * slotId が無い（論理マップを引けなかった）場合は最寄りタイルへ寄せる。
    */
-  const markersByTile = React.useMemo(() => {
+  const markersByTileFallback = React.useMemo(() => {
     const m = new Map<string, typeof markers>();
     for (const mk of markers) {
+      if (mk.slotId && mk.localKey && markerPosArtwork(mk.slotId, mk.localKey)) continue;
       let slotId = mk.slotId;
       if (!slotId) {
         const { q, r } = parseKey(mk.key);
@@ -628,7 +666,7 @@ export function MapBoardViewer(props: {
       m.set(slotId, arr);
     }
     return m;
-  }, [markers, tileItems, viewRot, hexSize]);
+  }, [markers, tileItems, viewRot, hexSize, markerPosArtwork]);
 
   const markerPos = React.useCallback(
     (q: number, r: number) => {
@@ -1000,11 +1038,11 @@ export function MapBoardViewer(props: {
             })}
 
           {/* Markers (#9 詳細表/評価指数クリック連動)
-              画像表示ではタイル単位で強調する。描画側にセル単位の正確な座標モデルが
-              無く（テンプレのスロット格子とセクタのセル格子が別系。24通りの回転規則を
-              総当たりしても盤面が成立せず＝203セルに対し最良186で衝突）、セルにリングを
-              置くとタイルによってズレるため（2026-07-30）。
-              模式表示は自前で六角を描いているので、そちらではセル単位で正確に出せる。 */}
+              画像表示・模式表示ともセル単位で出す。画像表示は artworkCalib.ts の
+              実測値（アートワーク内のセル格子の間隔と向き）でタイル画像に直接
+              定規を当てるので、グローバルなセル格子（テンプレのスロット格子と
+              セクタのセル格子が別系で再構成できない）を経由しない。
+              計測できないタイルだけ、従来どおりタイル単位の強調へ落とす。 */}
           {markers.length > 0 ? (
             <>
               <style>{`@keyframes mbvBlink{0%,100%{opacity:1}50%{opacity:.32}} .mbv-marker{animation:mbvBlink 1.1s ease-in-out infinite}`}</style>
@@ -1044,45 +1082,93 @@ export function MapBoardViewer(props: {
                       />
                     );
                   })
-                : // 画像表示: 同じタイルに載るマーカーをまとめ、タイル外周を強調する。
-                  // 色は最初のマーカーの色、ラベルはそのタイル分をまとめて出す。
-                  [...markersByTile.entries()].map(([slotId, ms]) => {
+                : // 画像表示: セル単位のリング。位置が出せたものはそのセルに、
+                  // 出せなかったもの（slotId/localKey が引けない・未計測のタイル）
+                  // だけタイル単位の強調へフォールバックする。
+                  [
+                    ...markers.map((m, i) => {
+                      const exact =
+                        m.slotId && m.localKey ? markerPosArtwork(m.slotId, m.localKey) : null;
+                      if (!exact) return null;
+                      return (
+                        <circle
+                          key={`mka_${m.key}_${i}`}
+                          className="mbv-marker"
+                          cx={fmtNum(exact.x)}
+                          cy={fmtNum(exact.y)}
+                          r={fmtNum(exact.hex * 0.74)}
+                          fill="none"
+                          stroke={m.color}
+                          strokeWidth={fmtNum(exact.hex * 0.15)}
+                          style={{
+                            pointerEvents: "stroke",
+                            cursor: m.label ? "help" : undefined,
+                            filter: "drop-shadow(0 0 1.2px rgba(0,0,0,0.85))",
+                          }}
+                          onMouseEnter={
+                            m.label
+                              ? (e) => setHoverMarker({ label: m.label!, x: e.clientX, y: e.clientY })
+                              : undefined
+                          }
+                          onMouseMove={
+                            m.label
+                              ? (e) => setHoverMarker({ label: m.label!, x: e.clientX, y: e.clientY })
+                              : undefined
+                          }
+                          onMouseLeave={m.label ? () => setHoverMarker(null) : undefined}
+                        />
+                      );
+                    }),
+                  ].concat(
+                  [...markersByTileFallback.entries()].flatMap(([slotId, ms]) => {
                     const t = tileBySlotId.get(slotId);
-                    if (!t) return null;
+                    if (!t) return [];
                     const cx = t.imgX + t.w / 2;
                     const cy = t.imgY + t.h / 2;
-                    const rr = Math.min(t.w, t.h) * 0.5;
-                    const pts = [0, 1, 2, 3, 4, 5]
-                      .map((k) => {
-                        const a = (Math.PI / 180) * (60 * k + 30 - viewAngleDeg);
-                        return `${fmtNum(cx + rr * Math.cos(a), 3)},${fmtNum(cy + rr * Math.sin(a), 3)}`;
-                      })
-                      .join(" ");
-                    const label = ms.map((m) => m.label).filter(Boolean).join("\n");
-                    return (
-                      <polygon
-                        key={`mk_tile_${slotId}`}
-                        className="mbv-marker"
-                        points={pts}
-                        fill={ms[0].color}
-                        fillOpacity={0.16}
-                        stroke={ms[0].color}
-                        strokeWidth={fmtNum(hexSize * 0.16)}
-                        style={{
-                          pointerEvents: "all",
-                          cursor: label ? "help" : undefined,
-                          filter: "drop-shadow(0 0 1.2px rgba(0,0,0,0.85))",
-                        }}
-                        onMouseEnter={
-                          label ? (e) => setHoverMarker({ label, x: e.clientX, y: e.clientY }) : undefined
-                        }
-                        onMouseMove={
-                          label ? (e) => setHoverMarker({ label, x: e.clientX, y: e.clientY }) : undefined
-                        }
-                        onMouseLeave={label ? () => setHoverMarker(null) : undefined}
-                      />
-                    );
-                  })}
+                    const base = Math.min(t.w, t.h) * 0.5;
+                    // 1タイルに複数の色が載ることがあるので、色ごとに一回り小さい
+                    // 六角を重ねて全色見えるようにする（先頭の色だけ描くと
+                    // 「該当色が複数あるのに1色しか出ない」ことになる）。
+                    const colors = [...new Set(ms.map((m) => m.color))];
+                    return colors.map((color, ci) => {
+                      const rr = base * (1 - ci * 0.12);
+                      const pts = [0, 1, 2, 3, 4, 5]
+                        .map((k) => {
+                          const a = (Math.PI / 180) * (60 * k + 30 - viewAngleDeg);
+                          return `${fmtNum(cx + rr * Math.cos(a), 3)},${fmtNum(cy + rr * Math.sin(a), 3)}`;
+                        })
+                        .join(" ");
+                      const label = ms
+                        .filter((m) => m.color === color)
+                        .map((m) => m.label)
+                        .filter(Boolean)
+                        .join("\n");
+                      return (
+                        <polygon
+                          key={`mk_tile_${slotId}_${color}`}
+                          className="mbv-marker"
+                          points={pts}
+                          fill={color}
+                          fillOpacity={ci === 0 ? 0.16 : 0}
+                          stroke={color}
+                          strokeWidth={fmtNum(hexSize * 0.16)}
+                          style={{
+                            pointerEvents: "all",
+                            cursor: label ? "help" : undefined,
+                            filter: "drop-shadow(0 0 1.2px rgba(0,0,0,0.85))",
+                          }}
+                          onMouseEnter={
+                            label ? (e) => setHoverMarker({ label, x: e.clientX, y: e.clientY }) : undefined
+                          }
+                          onMouseMove={
+                            label ? (e) => setHoverMarker({ label, x: e.clientX, y: e.clientY }) : undefined
+                          }
+                          onMouseLeave={label ? () => setHoverMarker(null) : undefined}
+                        />
+                      );
+                    });
+                  })
+                  )}
             </>
           ) : null}
         </svg>
