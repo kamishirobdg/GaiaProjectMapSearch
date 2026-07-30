@@ -34,6 +34,12 @@ export type BreakdownMarker = { key: string; color: string; label?: string };
 export type MarkAxis = "total" | "scout" | "scoutCore" | "outer" | "touch";
 
 // 地図リング用の彩度高めの惑星色（ストロークとして視認できる濃さ）。
+//
+// PROTO/ASTEROID はタイル画像から採った（2026-07-30）。惑星ディスクの彩度上位20%の
+// 平均色相が PROTO=201度（暗い青）／ASTEROID=318度（黒っぽい紫）。そのままだと
+// 暗すぎて宇宙背景のストロークとして見えないので、色相は保ったまま明度だけ上げてある。
+// PROTO は BLUE と色相が近い（201 vs 211度）が、彩度を落として暗めにすることで
+// 区別できる（CIE Lab の色差 34.7。ひと目で別色と分かる水準）。
 const RING_COLOR: Record<string, string> = {
   BLACK: "#444444",
   BLUE: "#2b7fe0",
@@ -42,13 +48,22 @@ const RING_COLOR: Record<string, string> = {
   RED: "#e23b3b",
   WHITE: "#d9d9d9",
   YELLOW: "#e8c400",
+  PROTO: "#3d8cb5",
+  ASTEROID: "#9c4a8f",
+};
+
+// 惑星以外（LFの原始惑星・小惑星）の表示名。内訳表の追加行とマーカーのホバーで共用。
+export const EXTRA_LABEL_JA: Record<string, string> = {
+  PROTO: "原始",
+  ASTEROID: "小惑星",
 };
 
 // クリック対象にする軸（gaia/cluster は座標付きヒットが audit に無いので除外）。
 export const MARKABLE_AXES = new Set<string>(["total", "scout", "scoutCore", "outer", "touch"]);
 
 function markerColorLabel(pt: string, lang: Lang): string {
-  return lang === "ja" ? (PLANET_LABEL_JA[pt as PlanetTypeKey] ?? pt) : pt;
+  if (lang !== "ja") return pt;
+  return PLANET_LABEL_JA[pt as PlanetTypeKey] ?? EXTRA_LABEL_JA[pt] ?? pt;
 }
 
 /**
@@ -201,8 +216,9 @@ const ROW_BG: Record<string, string> = {
   RED: "#ffd2d2",
   WHITE: "#ffffff",
   YELLOW: "#fff9c4",
+  // 追加行の背景はリング色と同じ色相の薄い版に揃える（PROTO 201度 / ASTEROID 310度）
   PROTO: "#cdeffd",
-  ASTEROID: "#e6d1ff",
+  ASTEROID: "#f2d7ec",
 };
 
 const thStyle: React.CSSProperties = {
@@ -381,8 +397,6 @@ return (
 
           if (!hasAny) return null;
 
-          const labelJa: Record<string, string> = { PROTO: "原始", ASTEROID: "小惑星" };
-
           return kinds.map((k) => {
             const vScout = Number((scoutExtra as any)?.[k] ?? 0) || 0;
             const vCore = Number((scoutCoreExtra as any)?.[k] ?? 0) || 0;
@@ -390,7 +404,7 @@ return (
             const vTouch = 0;
             const vTotal = vScout + vCore;
 
-            const label = lang === "ja" ? labelJa[k] : k;
+            const label = lang === "ja" ? EXTRA_LABEL_JA[k] : k;
 
             const cellForExtra = (colKey: keyof typeof cols) => {
               if (!cols[colKey]) return null;
