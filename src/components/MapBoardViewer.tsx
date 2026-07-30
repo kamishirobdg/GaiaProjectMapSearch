@@ -47,7 +47,7 @@ export type PlacementItem = { slotId: string; sectorId: string; rot: number; rot
  * 小さくすると内側（タイル中心寄り）、大きくすると外側へ動く。
  * ズレが残る場合はこの数値だけを調整すればよい。
  */
-const MARKER_RADIAL_CALIBRATION = 0.96;
+const MARKER_RADIAL_CALIBRATION = 1.0;
 
 /**
  * 模式表示（tileMode="schematic"）用の船タイルの略称（2文字）。
@@ -487,6 +487,12 @@ export function MapBoardViewer(props: {
           // 中心補正をどのフレームで測ったか。0 なら未回転フレーム（回転前に足す）、
           // tileDeg なら回転後フレームで測っているので回転後に足す。
           bboxRotDeg,
+          // セル座標に使う回転。tileDeg から offsetDeg を除いた値。
+          // offsetDeg（LARGE の -30°）は「アートワークが flat-top なのを
+          // pointy-top に合わせる」ための画像向き補正であって、数学モデル側の
+          // ローカル座標には掛けてはいけない（掛けるとタイル中心まわりに
+          // 30°回った位置になり、セルごとにズレの向きが変わる。2026-07-30 報告）。
+          contentRotDeg: -(p.rot * 60) + extra30,
         };
       })
       .filter(Boolean) as Array<{
@@ -507,6 +513,7 @@ export function MapBoardViewer(props: {
       boxOffX: number;
       boxOffY: number;
       bboxRotDeg: number;
+      contentRotDeg: number;
     }>;
   }, [placementList,
     slotById,
@@ -579,9 +586,9 @@ export function MapBoardViewer(props: {
       // （未回転フレームなら回転前、回転後フレームなら回転後）。
       const rp =
         t.bboxRotDeg === 0
-          ? rotatePoint(p.x * t.scale + t.boxOffX, p.y * t.scale + t.boxOffY, t.tileDeg)
+          ? rotatePoint(p.x * t.scale + t.boxOffX, p.y * t.scale + t.boxOffY, t.contentRotDeg)
           : (() => {
-              const q = rotatePoint(p.x * t.scale, p.y * t.scale, t.tileDeg);
+              const q = rotatePoint(p.x * t.scale, p.y * t.scale, t.contentRotDeg);
               return { x: q.x + t.boxOffX, y: q.y + t.boxOffY };
             })();
       // タイル中心からの距離に較正係数を掛ける（アートワークの実寸差の吸収）。
