@@ -44,6 +44,19 @@ function zeroScores(): FactionScores {
 }
 
 /**
+ * ラウンド得点タイル1枚ぶんの寄与（2026-08-01）。
+ *
+ * 倍率は10分率なので、係数が10の倍数でないと `重み × 倍率 × 係数 / 10` は
+ * 小数になる（既定の係数は 4 = ROUND_SCORING_SCALE）。評価値に小数を出さない
+ * ため、**タイル1枚ごとに丸める**。合計してから丸めるのではなくこの順にするのは、
+ * 内訳表の合計（setupFactionBreakdown）とタイルの強調表示
+ * （setupFactionTileHits）を必ず一致させるため —— 両方がこの関数を通る。
+ */
+function roundScoringContrib(weight: number, timing: number, scale: number): number {
+  return Math.round((weight * timing * scale) / ROUND_TIMING_BASE);
+}
+
+/**
  * 標準技術の寄与（2026-07-25 案1）。トラック下の6枚は編集用テーブル
  * TECH_TRACK_WEIGHTS[タイル][研究列] を引く。自由列3枚はタイル有用度のみ
  * （低係数）。係数は評価指数（stdTrack / stdFree）で、既定は従来の定数と同値。
@@ -102,11 +115,11 @@ export function setupFactionTileHits(
   result.roundScoring.forEach((id, i) => {
     const src = TILE_FACTION_WEIGHTS[id];
     if (!src) return;
-    const scale = (w.roundScoring * roundTimingOf(id, i)) / ROUND_TIMING_BASE;
+    const timing = roundTimingOf(id, i);
     const byFaction: Partial<Record<FactionId, number>> = {};
     let any = false;
     for (const [f, v] of Object.entries(src)) {
-      const val = (v ?? 0) * scale;
+      const val = roundScoringContrib(v ?? 0, timing, w.roundScoring);
       if (val === 0) continue;
       byFaction[f as FactionId] = val;
       any = true;
@@ -170,16 +183,15 @@ export function setupFactionBreakdown(
   add("advExtension", result.advancedTech.extension);
   for (const id of result.boosters.available) add("booster", id);
   // ラウンド得点は ×2タイルが2回出るので枚数分加算しつつ、**何ラウンド目に出たかで
-  // 倍率を掛ける**（2026-07-31 要望）。
-  // 倍率は10分率のまま足しておき、10で割るのは最後の係数掛けと同時に行う
-  // —— ここで先に割ると 2×1.4=2.8000000000000003 のような誤差が出て、
-  // 係数を掛けても整数に戻らない。
+  // 倍率を掛ける**（2026-07-31 要望）。倍率は10分率なので、係数まで掛けてから
+  // タイル1枚ごとに丸める（roundScoringContrib）。**このカテゴリだけ係数の適用が
+  // ここで完結している**ので、下の一括スケールでは飛ばすこと。
   result.roundScoring.forEach((id, i) => {
     const tw = TILE_FACTION_WEIGHTS[id];
     if (!tw) return;
     const timing = roundTimingOf(id, i);
     for (const [f, v] of Object.entries(tw)) {
-      byCategory.roundScoring[f as FactionId] += (v ?? 0) * timing;
+      byCategory.roundScoring[f as FactionId] += roundScoringContrib(v ?? 0, timing, w.roundScoring);
     }
   });
   for (const id of result.finalScoring) add("finalScoring", id);
@@ -206,8 +218,8 @@ export function setupFactionBreakdown(
   // 係数を掛けてから合算する（表示の内訳と合計が必ず一致するようにする）。
   const total = zeroScores();
   for (const k of SETUP_WEIGHT_KEYS) {
-    // ラウンド得点だけは10分率の倍率が入ったままなので、ここで戻す（上のコメント参照）。
-    const scale = k === "roundScoring" ? w[k] / ROUND_TIMING_BASE : w[k];
+    // ラウンド得点は上で係数まで適用済み（タイルごとに丸めるため）。二重に掛けない。
+    const scale = k === "roundScoring" ? 1 : w[k];
     for (const f of FACTION_IDS) {
       byCategory[k][f] *= scale;
       total[f] += byCategory[k][f];
@@ -262,14 +274,17 @@ export type SetupColorPref = {
 /**
  * Setup 側の色優遇の係数（2026-07-31）。pref の目盛りを Map と同じ意味にするための値。
  *
- * 実測（scripts/measure_setup_color_pref.ts、4人LF 300件）:
- *   基準値の振れ幅（上位10%と下位10%の差） topBalance 13.7 / neutralBalance 16.0
- *   母星色ごとの値の振れ幅（平均） 53.1
- * 0.25 にすると pref=1 で基準の振れ幅と×1.0（topBalance）／×0.8（neutralBalance）。
+ * 実測（scripts/measure_setup_color_pref.ts、4人LF 300件。2026-08-01 に再測）:
+ *   基準値の振れ幅（上位10%と下位10%の差） topBalance 12.9 / neutralBalance 11.3
+ *   母星色ごとの値の振れ幅（平均） 37.7
+ * 0.3 にすると pref=1 で基準の振れ幅と×0.9（topBalance）／×1.0（neutralBalance）。
  * Map と揃えて「1=互角 / 2=主導 / 5=ほぼ全て」と読める。
  * Map の wColorPref と違いユーザーには出さない（入力するのは色ごとの ± だけ）。
+ *
+ * **重みを変えたらこのスクリプトを再実行して係数と文言を合わせ直すこと。**
+ * 2026-08-01 の全タイル見直しで 0.25 → 0.3（掛け先の振れ幅が 53.1 → 37.7 に縮んだ）。
  */
-export const SETUP_COLOR_PREF_W = 0.25;
+export const SETUP_COLOR_PREF_W = 0.3;
 
 /**
  * List の種族優遇の係数（2026-07-31）。掛け先が「Map評価＋Setup評価」で

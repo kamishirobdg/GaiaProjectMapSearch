@@ -84,7 +84,14 @@ export const IDB_NAME = "gaia_map_cache";
 //     古いスケールの重みを持っていて、適用すると評価の桁がズレる。
 // v9: 同日にもう一度スケールを変えた（桁をゲームの得点へ揃えるため 1/10）。
 //     同じ理由で全部捨てる。以後もスケールを変えるときはバージョンを上げること。
-export const IDB_VERSION = 9;
+// v10: Setup の種族別重みを全タイル見直し、評価指数の既定値も変えた（2026-08-01）。
+//     **今回は Map 側の重みを触っていないので、消すのは Setup/List 側だけ**
+//     （candidates / profiles は残す。v8・v9 と違うのはここ）。捨てるのは
+//     ①setup_ranking＝旧い重みで「上位20件」を選んだ結果 ②setup_profiles /
+//     list_profiles＝条件プロファイルのキーが評価指数を含むので、既定値が動くと
+//     今日計算するキーと合わず迷子になる。setups（保存リスト）は条件キーが
+//     評価指数を含まず、スコアは表示時に計算し直すので**残す**。
+export const IDB_VERSION = 10;
 export const STORE_CANDIDATES = "candidates";
 export const STORE_PROFILES = "profiles";
 // Setup-side saved list shares this DB (one DB per origin keeps the version
@@ -201,6 +208,20 @@ export function openDb(): Promise<IDBDatabase> {
           STORE_LIST_PROFILES,
           STORE_SETUP_RANKING,
         ]) {
+          try {
+            if (db.objectStoreNames.contains(name)) tx.objectStore(name).clear();
+          } catch {}
+        }
+      }
+
+      // ----- v10: Setup の重みと評価指数の既定値を変えたので Setup/List 側だけ捨てる -----
+      // Map 側（candidates / profiles）は重みを触っていないので残す。
+      // setups（保存リスト）も残す —— 行はシードと条件だけを持ち、スコアは
+      // 表示のたびに計算し直すので新しい重みで正しく出る。
+      // 判定は必ず oldVersion で（db.version は upgrade 中「新しい方」を返す。
+      // v7 追加時にこれで保存リストを消した実績あり）。
+      if (oldVersion >= 9 && oldVersion < 10) {
+        for (const name of [STORE_SETUP_PROFILES, STORE_LIST_PROFILES, STORE_SETUP_RANKING]) {
           try {
             if (db.objectStoreNames.contains(name)) tx.objectStore(name).clear();
           } catch {}

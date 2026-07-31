@@ -1,31 +1,46 @@
 // src/gaia/eval/factionWeights.ts
 //
-// ⚠️ DRAFT — 種族別重みの素案（2026-07-24、ユーザーレビュー待ち）。
-// 一覧タブの「推奨セットアップ」用データ。値はすべて -2..+2 の粗い整数で、
+// 種別重みテーブル。一覧タブの「推奨セットアップ」用データ。値はすべて粗い整数で、
 // 「そのタイル/マップ特徴が その種族をどれだけ有利にするか」の相対値。
 // 非ゼロのみ記載（記載なし＝0）。数値を直すだけで挙動が変わる純データ。
 //
+// 2026-08-01: **18種族 × 全タイルを1つずつ見直した**（ユーザー指示）。
+// 根拠はルールブックの実文:
+//   - 基本14種族の能力／惑星首府 = 基本版ルールブック p20-21「別表Ⅰ：勢力」
+//     （画像ページ。pypdfium2 でレンダリングして読む）
+//   - LF4種族 = web_GP_LostFleet_JPN.pdf p13「別表Ⅰ：新たな勢力」
+//   - 原始惑星／小惑星の入植コスト = 同 p10「1) 鉱山の建設」
+//     原始惑星＝全勢力とも3段階（入植で6VP、開始惑星からは得られない）／
+//     小惑星＝ガイアフォーマー1個を使い捨て（改造段階は不要・建設コストも不要）
+// **各勢力ボードの初期研究レベルだけは今も未確認**（ルールブックの別表になく、
+// 勢力ボードの画像にしかない）。研究列の親和度はそのぶん能力からの推定を含む。
+//
 // 設計メモ:
 // - 標準技術タイル9種は毎ゲーム全部場に出るが、「どの研究トラックの下に付くか」
-//   はセットアップごとに変わる。2026-07-25 のレビューを受け、トラック配置を
+//   はセットアップごとに変わる。トラック配置を
 //   TRACK_AFFINITY × TECH_PREF の積で評価する（下部の「標準技術のトラック別評価」）。
 // - 同盟タイル（惑星改造Lv5）は到達者1人が取る単発の賞。VP量は共通なので
-//   付随資源の相性のみ弱め（1）に見る（2026-07-25 に 全0 から変更）。
+//   付随資源の相性のみ弱め（1）に見る。
 // - LFの金枠同盟・アーティファクトは全員が取り合う共有物なので原則0、
 //   明確なアーキタイプ相性のみ非ゼロ（原則1）。
+// - カテゴリの重さ（1枚あたりの影響力）は評価指数 DEFAULT_SETUP_WEIGHTS 側で表す。
+//   ここの値は「そのタイルとその種族の噛み合い」だけを見る。
 //
-// 2026-07-31: LF4種族の値を追加（DRAFT、要レビュー）。根拠は LF ルールブック
-// （web_GP_LostFleet_JPN.pdf「別表Ⅰ：新たな勢力」13ページ）の能力のみ。
-// 各勢力ボードの初期資源・初期研究レベルは画像ページで読めていないので、
-// 研究列の親和度は能力から推定した仮置き（下の TECH_TRACK_WEIGHTS 冒頭に明記）。
-//   モウェイド人   : 惑星首府でパワーリング設置＝建造物のパワー値+2。初期から
-//                    T.F.マーズに探査シャトル。→ パワー経済・同盟形成が主役。
-//   スペースジャイアント: 通常惑星は常に惑星改造2段階。探査ボードに無料2段階改造
-//                    付き鉱山建設。惑星首府で任意の技術タイル1枚。→ 改造・惑星種類。
-//   ティンカーロイド: 初期配置で惑星首府を置く（＝以後は首府を建設できない）。
-//                    応用研究タイルを毎ラウンド1枚。→ 早期の追加アクション。
-//   ダルカニア人   : 通常惑星は全色が惑星改造1段階。惑星首府で未入植の宙域／
-//                    深宇宙宙域に鉱山を建てると 2クレ+1知識。→ 広域展開。
+// LF4種族（p13 の原文どおり）:
+//   モウェイド人   : 開始は原始惑星、鉱山1個。初期から T.F.マーズに探査シャトル。
+//                    通常惑星は3種類が3段階・他は1段階の改造。惑星首府＝ラウンド1回、
+//                    自分の建造物のある惑星にパワーリングを置き、その惑星の建造物の
+//                    パワー値を+2。→ パワー経済・同盟形成。ガイアのQIC倍加は無い。
+//   スペースジャイアント: 開始は原始惑星、鉱山1個。通常惑星は**常に2段階**改造。
+//                    探査ボードに**ラウンドごとに1回**使える「無料2段階改造＋鉱山建設」
+//                    特別アクション（p10）。惑星首府＝**1回だけ**任意の技術タイル1枚。
+//                    → 毎ラウンド鉱山が増える＝鉱山数・惑星種類・改造段階の主役。
+//   ティンカーロイド: 開始は小惑星、鉱山2個の代わりに**惑星首府**を置く。通常惑星は
+//                    3種類が3段階・他は1段階。応用研究タイルを毎ラウンド1枚選び、
+//                    惑星首府でそのアクションを実行。→ 早期の追加アクション。
+//   ダルカニア人   : 開始は小惑星、鉱山1個。通常惑星は**全色が1段階**改造（全勢力中最安）。
+//                    惑星首府＝未入植の宙域／深宇宙宙域に鉱山を建てると 2クレ+1知識。
+//                    → 広域展開。
 // 共通: モウェイド人以外の3種族はガイア惑星の入植コストが Q.I.C.2個（標準の倍）。
 
 import type { ResearchTrackId } from "@/gaia/setup/types";
@@ -169,20 +184,22 @@ export const MAP_AFFINITY: Partial<Record<FactionId, { gaia?: number; transdim?:
 //   free 列の効き具合は相対的に上がっている**（トラック比 0.2 → 0.4 相当）。
 //   値の見直しは「評価値を1つずつ精査」のタスクで行う。
 //
-// 初期値は「トラック親和度(0..2) × タイル有用度(-1..2)」で機械生成したもの。
-// 参考にした親和度（＝その種族が登りたい列）:
-//   terrans:ガイア2/改造1/科学1  lantids:科学2/航行1/改造1  xenos:AI2/改造1/航行1
-//   gleens:改造2/ガイア1/航行1（科学0＝研究苦手）  taklons:経済2/航行2
-//   ambas:航行2/改造1/経済1  hadschHallas:経済2/改造1  ivits:AI2/航行1/改造1
-//   geodens:改造2/AI1  balTaks:ガイア2/改造1（航行0＝登れない）
-//   firaks:科学2/AI1/経済1  bescods:科学2/AI1/経済1  nevlas:科学2/経済2
+// 値は「トラック親和度(0..2) × タイル有用度(-2..2)」の積。
+// 親和度（＝その種族が登りたい列。2026-08-01 に見直し。**初期研究レベルは未確認**なので
+// 能力からの推定を含む）:
+//   terrans:ガイア2/改造1/科学1     lantids:科学2/航行1/改造1   xenos:AI2/改造1/航行1
+//   gleens:改造2/ガイア2/航行1（科学0＝研究苦手）              taklons:経済2/航行2
+//   ambas:航行2/改造1/経済1         hadschHallas:経済2/改造1    ivits:AI2/航行1/改造1
+//   geodens:改造2/AI1               balTaks:ガイア2/改造1（航行0＝そもそも登れない）
+//   firaks:科学2/AI1/経済1          bescods:科学2/AI1/経済1     nevlas:科学2/経済2
 //   itars:ガイア2/科学1
-// LF4種族の親和度（2026-07-31 DRAFT）。勢力ボードの初期研究レベルが読めていないので、
-// 能力から推定した仮置き —— ここが今回いちばん弱い部分で、要レビュー:
+// LF4種族:
 //   moweyds:経済2/航行1/改造1（パワー収入がパワーリング能力と相乗、LF船探査に距離）
 //   spaceGiants:改造2/航行1（通常惑星が常に2段階＝改造トラックが直に効く）
 //   tinkerroids:改造2/AI1/科学1（3種類の惑星が3段階、ガイアと距離に QIC が要る）
 //   darkanians:航行2/経済1（未入植の宙域へ広げるのが得点源。改造は1段階で足りるので0）
+// 2026-08-01 の変更点: グリーン人のガイアを 1→2（ガイア惑星の鉱山が自前の+2VPと重なる
+// のが勝ち筋なので、ガイア列を登りたい度合いは改造と同格）。
 /** 標準技術の置き場所: 研究列6つ、または列に紐付かないフリー枠。 */
 export type TechPosition = ResearchTrackId | "free";
 
@@ -191,34 +208,39 @@ export const TECH_POSITION_WEIGHTS: Record<
   Partial<Record<TechPosition, Partial<Record<FactionId, number>>>>
 > = {
   // TS1 即時:鉱石1+QIC1
+  // ダー・シュワーム人は衛星をQICで払う唯一の勢力＝QICが直接得点になる。
+  // グリーン人はQICを得られず鉱石に化けるので、QIC付きのタイルは1枚ぶん損。
   TS1: {
-    terra: { xenos: 1, ivits: 1, geodens: 2, spaceGiants: 2, tinkerroids: 2 }, // 惑星改造
-    nav:   { xenos: 1, ivits: 1, spaceGiants: 1, darkanians: 2 }, // 航行
-    ai:    { xenos: 2, ivits: 2, geodens: 1, tinkerroids: 1 }, // 人工知能
-    gaia:  {}, // ガイア計画
+    terra: { ivits: 2, geodens: 2, spaceGiants: 2, tinkerroids: 2, xenos: 1, balTaks: 1, gleens: -2 }, // 惑星改造
+    nav:   { ivits: 2, darkanians: 2, xenos: 1, spaceGiants: 1, gleens: -1 }, // 航行
+    ai:    { ivits: 4, xenos: 2, geodens: 1, tinkerroids: 1 }, // 人工知能
+    gaia:  { balTaks: 2, gleens: -2 }, // ガイア計画
     eco:   { darkanians: 1 }, // 経済
     sci:   { tinkerroids: 1 }, // 科学
-    free:  { xenos: 1, ivits: 1, geodens: 1, spaceGiants: 1, tinkerroids: 1, darkanians: 1 },
+    free:  { ivits: 2, xenos: 1, geodens: 1, balTaks: 1, spaceGiants: 1, tinkerroids: 1, darkanians: 1, gleens: -1 },
   },
   // TS2 即時:惑星種類×知識1
+  // ランティダ人の「他プレイヤーの惑星に置く鉱山」は惑星の種類に数えないので対象外。
   TS2: {
-    terra: { lantids: 1, xenos: 1, gleens: 2, geodens: 4, spaceGiants: 4 }, // 惑星改造
-    nav:   { lantids: 1, xenos: 1, gleens: 1, spaceGiants: 2, darkanians: 2 }, // 航行
-    ai:    { xenos: 2, geodens: 2 }, // 人工知能
-    gaia:  { gleens: 1 }, // ガイア計画
-    eco:   { darkanians: 1 }, // 経済
-    sci:   { lantids: 2 }, // 科学
-    free:  { geodens: 2, xenos: 1, lantids: 1, gleens: 1, spaceGiants: 2, darkanians: 1 },
+    terra: { geodens: 4, spaceGiants: 4, gleens: 2, tinkerroids: 2, xenos: 1 }, // 惑星改造
+    nav:   { darkanians: 4, spaceGiants: 2, gleens: 1, xenos: 1 }, // 航行
+    ai:    { xenos: 2, geodens: 2, tinkerroids: 1 }, // 人工知能
+    gaia:  { gleens: 2 }, // ガイア計画
+    eco:   { darkanians: 2 }, // 経済
+    sci:   { tinkerroids: 1 }, // 科学
+    free:  { geodens: 2, spaceGiants: 2, darkanians: 2, xenos: 1, gleens: 1, tinkerroids: 1 },
   },
   // TS3 首府学院のパワー値4
+  // パワー値は「受動的にチャージする量」と「同盟のパワー値合計」の両方に効く。
+  // ティンカーロイドは初期配置で首府が出ているので1ラウンド目から乗る。
   TS3: {
-    terra: { ambas: 1, moweyds: 2, tinkerroids: 4 }, // 惑星改造
-    nav:   { taklons: 4, ambas: 2, moweyds: 2 }, // 航行
-    ai:    { bescods: 1, tinkerroids: 2 }, // 人工知能
+    terra: { tinkerroids: 4, moweyds: 2, ambas: 1, ivits: 1, xenos: 1 }, // 惑星改造
+    nav:   { taklons: 4, ambas: 2, moweyds: 2, ivits: 1, xenos: 1 }, // 航行
+    ai:    { ivits: 2, xenos: 2, tinkerroids: 2, bescods: 1 }, // 人工知能
     gaia:  { itars: 2 }, // ガイア計画
-    eco:   { taklons: 4, ambas: 1, bescods: 1, nevlas: 4, moweyds: 4 }, // 経済
-    sci:   { bescods: 2, nevlas: 4, itars: 1, tinkerroids: 2 }, // 科学
-    free:  { nevlas: 2, taklons: 2, ambas: 1, bescods: 1, itars: 1, moweyds: 2, tinkerroids: 2 },
+    eco:   { taklons: 4, nevlas: 4, moweyds: 4, ambas: 1, bescods: 1 }, // 経済
+    sci:   { nevlas: 4, bescods: 2, tinkerroids: 2, itars: 1 }, // 科学
+    free:  { taklons: 2, nevlas: 2, moweyds: 2, tinkerroids: 2, ambas: 1, bescods: 1, itars: 1, ivits: 1, xenos: 1 },
   },
   // TS4 即時:7VP（純粋な点数＝相性なし）
   TS4: {
@@ -231,66 +253,75 @@ export const TECH_POSITION_WEIGHTS: Record<
     free:  {},
   },
   // TS5 収入:鉱石1+パワー1
+  // スペースジャイアントは通常惑星が常に2段階改造＝鉱石の消費がいちばん重い。
   TS5: {
-    terra: { gleens: 2, geodens: 2, spaceGiants: 2, tinkerroids: 2, moweyds: 1 }, // 惑星改造
-    nav:   { gleens: 1, taklons: 2, spaceGiants: 1, moweyds: 1 }, // 航行
+    terra: { spaceGiants: 4, geodens: 2, gleens: 2, tinkerroids: 2, moweyds: 1 }, // 惑星改造
+    nav:   { taklons: 2, spaceGiants: 2, gleens: 1, moweyds: 1 }, // 航行
     ai:    { geodens: 1, tinkerroids: 1 }, // 人工知能
-    gaia:  { gleens: 1, itars: 2 }, // ガイア計画
-    eco:   { taklons: 2, moweyds: 2 }, // 経済
-    sci:   { itars: 1, tinkerroids: 1 }, // 科学
-    free:  { taklons: 1, itars: 1, geodens: 1, gleens: 1, spaceGiants: 1, tinkerroids: 1, moweyds: 1 },
+    gaia:  { gleens: 2, itars: 2 }, // ガイア計画
+    eco:   { taklons: 2, nevlas: 2, moweyds: 2 }, // 経済
+    sci:   { nevlas: 2, itars: 1, tinkerroids: 1 }, // 科学
+    free:  { spaceGiants: 2, taklons: 1, itars: 1, geodens: 1, gleens: 1, tinkerroids: 1, moweyds: 1, nevlas: 1 },
   },
   // TS6 収入:知識1+クレ1
   TS6: {
-    terra: { lantids: 1, gleens: -2, tinkerroids: 2 }, // 惑星改造
-    nav:   { lantids: 1, gleens: -1, darkanians: 2 }, // 航行
+    terra: { tinkerroids: 2, lantids: 1, gleens: -2 }, // 惑星改造
+    nav:   { darkanians: 2, lantids: 1, gleens: -1 }, // 航行
     ai:    { firaks: 1, bescods: 1, tinkerroids: 1 }, // 人工知能
-    gaia:  { gleens: -1 }, // ガイア計画
-    eco:   { firaks: 1, bescods: 1, nevlas: 2, darkanians: 1 }, // 経済
+    gaia:  { gleens: -2 }, // ガイア計画
+    eco:   { nevlas: 2, firaks: 1, bescods: 1, darkanians: 1 }, // 経済
     sci:   { lantids: 2, firaks: 2, bescods: 2, nevlas: 2, tinkerroids: 1 }, // 科学
-    free:  { firaks: 1, bescods: 1, nevlas: 1, lantids: 1, gleens: -1, tinkerroids: 1, darkanians: 1 },
+    free:  { firaks: 1, bescods: 1, nevlas: 1, lantids: 1, tinkerroids: 1, darkanians: 1, gleens: -1 },
   },
-  // TS7 ガイア鉱山+3VP（LF3種族はガイア惑星が Q.I.C.2個で割高＝逆風）
+  // TS7 ガイア鉱山+3VP
+  // グリーン人は自前の「ガイア惑星に鉱山で+2VP」と重なって1つの鉱山が5VPになる。
+  // LF3種族はガイア惑星の入植が Q.I.C.2個で割高＝逆風。
   TS7: {
-    terra: { terrans: 2, gleens: 4, balTaks: 1, spaceGiants: -2, tinkerroids: -2 }, // 惑星改造
+    terra: { gleens: 4, terrans: 2, balTaks: 1, spaceGiants: -2, tinkerroids: -2 }, // 惑星改造
     nav:   { gleens: 2, spaceGiants: -1, darkanians: -2 }, // 航行
     ai:    { tinkerroids: -1 }, // 人工知能
-    gaia:  { terrans: 4, gleens: 2, balTaks: 2, itars: 4 }, // ガイア計画
+    gaia:  { terrans: 4, gleens: 4, itars: 4, balTaks: 2 }, // ガイア計画
     eco:   { darkanians: -1 }, // 経済
     sci:   { terrans: 2, itars: 2, tinkerroids: -1 }, // 科学
     free:  { terrans: 2, gleens: 2, itars: 2, balTaks: 1, spaceGiants: -1, tinkerroids: -1, darkanians: -1 },
   },
   // TS8 収入:クレ4
+  // ハッシュ・ホラ人のPIは「パワーの代わりにクレジットを払う」＝クレジットが第2のパワー。
   TS8: {
-    terra: { ambas: 1, hadschHallas: 2 }, // 惑星改造
-    nav:   { taklons: 2, ambas: 2, darkanians: 4 }, // 航行
+    terra: { hadschHallas: 2, ambas: 1 }, // 惑星改造
+    nav:   { darkanians: 4, taklons: 2, ambas: 2 }, // 航行
     ai:    {}, // 人工知能
     gaia:  {}, // ガイア計画
-    eco:   { taklons: 2, ambas: 1, hadschHallas: 4, nevlas: 2, darkanians: 2 }, // 経済
+    eco:   { hadschHallas: 4, taklons: 2, nevlas: 2, darkanians: 2, ambas: 1 }, // 経済
     sci:   { nevlas: 2 }, // 科学
-    free:  { hadschHallas: 2, taklons: 1, nevlas: 1, ambas: 1, darkanians: 2 },
+    free:  { hadschHallas: 2, darkanians: 2, taklons: 1, nevlas: 1, ambas: 1 },
   },
   // TS9 アクション:パワー4
+  // ネヴラ人はエリアⅢのトークンが2パワー、モウェイド人はパワーリングで建造物の
+  // パワー値+2、タクロン族はブレインストーンと受動チャージ＝どれもパワー総量が主資源。
   TS9: {
     terra: { moweyds: 2 }, // 惑星改造
     nav:   { taklons: 4, moweyds: 2 }, // 航行
     ai:    { bescods: 1 }, // 人工知能
     gaia:  { itars: 2 }, // ガイア計画
-    eco:   { taklons: 4, bescods: 1, nevlas: 4, moweyds: 4 }, // 経済
-    sci:   { bescods: 2, nevlas: 4, itars: 1 }, // 科学
-    free:  { taklons: 2, nevlas: 2, itars: 1, bescods: 1, moweyds: 2 },
+    eco:   { taklons: 4, nevlas: 4, moweyds: 4, bescods: 1 }, // 経済
+    sci:   { nevlas: 4, bescods: 2, itars: 1 }, // 科学
+    free:  { taklons: 2, nevlas: 2, moweyds: 2, itars: 1, bescods: 1 },
   },
 };
 
 /**
- * 標準技術の寄与スケール。他タイル（-2..+2 の素点合計）に対して
- * 支配的にならないよう、積（最大4）を圧縮する。DRAFT。
+ * 標準技術の寄与スケール（＝評価指数 standardTech の既定値）。
  *
- * 2026-07-31: 評価値から小数を消しつつ、桁をゲームの得点に揃える
- * （カテゴリ係数の基準は 10。SETUP_WEIGHT_BASE 参照）。
- * ここが Setup 側の小数の唯一の発生源だった（タイルの重みはすべて整数）。
+ * 2026-08-01: 他カテゴリの基準（SETUP_WEIGHT_BASE = 5）に対して **1.2倍の 6**。
+ * 狙いの影響力の順（技術が最上位）に合わせるため。標準技術は9枚が毎ゲーム必ず出て
+ * 最後まで場に残るので、実プレイでの影響力はどのカテゴリより大きい、という
+ * ユーザーの評価に合わせた。
+ * 実測（scripts/_probe_category_influence.ts、4人LF 300件の種族間SD）:
+ *   基準と同じ係数だと8カテゴリ中3位 → 1.2倍で1位（LF船・上級を上回る）。
+ * 整数のままなので評価値に小数は出ない。
  */
-export const STD_TECH_SCALE = 5;
+export const STD_TECH_SCALE = 6;
 
 /**
  * ラウンド得点の「何ラウンド目か」による価値の上下（2026-07-31 要望）。
@@ -359,114 +390,149 @@ export function roundTimingOf(tileId: string, roundIndex: number): number {
  */
 export const TILE_FACTION_WEIGHTS: Record<string, Partial<Record<FactionId, number>>> = {
   // ===== 上級技術（15＋LF6） =====
-  AT01: { ivits: 2, xenos: 1, ambas: 1, gleens: 1, moweyds: 2 }, // パス時：同盟タイル×3VP
-  AT02: { firaks: 2, bescods: 1, nevlas: 1, lantids: 1, gleens: -1, tinkerroids: 1 }, // 研究を進めるたび＋2VP
-  AT03: { hadschHallas: 1, nevlas: 1, taklons: 1 }, // アクション：QIC1＋クレジット5
-  AT04: { lantids: 2, xenos: 1, geodens: 1, spaceGiants: 1 }, // 取得時：鉱山×2VP
+  // 一度取れば最後まで効く。ラウンド得点（1ラウンドだけ）より1枚の重みは大きい。
+  AT01: { ivits: 2, xenos: 2, moweyds: 2, ambas: 1, gleens: 1 }, // パス時：同盟タイル×3VP
+  // AT02/RS07: 技術タイルの獲得には研究1レベルが付くので、技術タイルを多く取る
+  // 勢力（イタル人=PIで反復、フィラク族=研究所の建て直し、マッドアンドロイド=毎ラウンド無料の1レベル）が伸びる。
+  AT02: { bescods: 2, firaks: 2, itars: 2, nevlas: 1, lantids: 1, gleens: -1 }, // 研究を進めるたび＋2VP
+  AT03: { hadschHallas: 2, ivits: 1, balTaks: 1, taklons: 1, gleens: -1 }, // アクション：QIC1＋クレジット5
+  AT04: { lantids: 2, xenos: 2, spaceGiants: 2, geodens: 1, darkanians: 1 }, // 取得時：鉱山×2VP
   AT05: { firaks: 2, bescods: 1, lantids: 1, gleens: -1 }, // パス時：研究所×3VP
-  AT06: { lantids: 1, ambas: 1, taklons: 1, darkanians: 1 }, // 取得時：宙域×鉱石1
-  AT07: { geodens: 1, spaceGiants: 1 }, // アクション：鉱石3
+  AT06: { darkanians: 2, lantids: 1, ambas: 1, taklons: 1, balTaks: -1 }, // 取得時：宙域×鉱石1
+  AT07: { spaceGiants: 2, geodens: 1, gleens: 1, tinkerroids: 1 }, // アクション：鉱石3
   AT08: { terrans: 2, gleens: 2, itars: 2, balTaks: 1, spaceGiants: -1, tinkerroids: -1, darkanians: -1 }, // 取得時：ガイア惑星×2VP
-  AT09: { hadschHallas: 1, taklons: 1 }, // 取得時：交易所×4VP
-  AT10: { lantids: 1, ambas: 1, xenos: 1, taklons: 1, darkanians: 2 }, // 取得時：宙域×2VP
-  AT11: { hadschHallas: 1, nevlas: 1 }, // 交易所を建設するたび＋3VP
-  AT12: { ivits: 2, ambas: 1, xenos: 1, gleens: 1, moweyds: 2 }, // 取得時：同盟タイル×5VP
-  AT13: { bescods: 1, firaks: 1, tinkerroids: 1 }, // アクション：知識3
-  AT14: { lantids: 2, geodens: 1, xenos: 1, spaceGiants: 1, darkanians: 1 }, // 鉱山を建設するたび＋3VP
-  AT15: { geodens: 2, lantids: 1, xenos: 1, gleens: 1, spaceGiants: 2, darkanians: 1 }, // パス時：惑星種類×1VP
-  // AT16: ティンカーロイドは初期配置で惑星首府を置いているので取得時点で即6VP。
-  AT16: { nevlas: 1, ambas: 1, itars: 1, tinkerroids: 2, moweyds: 1 }, // 取得時：首府・学院×6VP
-  AT17: { lantids: 1, xenos: 1, taklons: 1, darkanians: 1 }, // 取得時：深宇宙宙域×4VP
-  AT18: { balTaks: -1, tinkerroids: 1, darkanians: 1 }, // パス時：小惑星×2VP
-  // AT19/RS09: ダルカニア人は通常惑星が全色1段階なので改造段階数が積み上がらない＝逆風。
-  AT19: { geodens: 2, xenos: 1, lantids: 1, moweyds: 1, tinkerroids: 1, spaceGiants: 1, darkanians: -1 }, // 惑星改造1段階ごと＋2VP
-  AT20: { hadschHallas: 1, xenos: 1 }, // QICアクションのたび＋4VP
-  AT21: { lantids: 1, xenos: 1, taklons: 1, darkanians: 1 }, // パス時：深宇宙宙域×2VP
+  // AT09/AT11/RS02/RS03/RB08: フィラク族はPIで研究所→交易所の格下げが「交易所への改良」
+  // と見なされるので、毎ラウンド交易所を建て直せる。
+  AT09: { hadschHallas: 2, firaks: 1, taklons: 1, nevlas: 1 }, // 取得時：交易所×4VP
+  AT10: { darkanians: 2, lantids: 1, ambas: 1, xenos: 1, taklons: 1, balTaks: -1 }, // 取得時：宙域×2VP
+  AT11: { firaks: 2, hadschHallas: 1, nevlas: 1 }, // 交易所を建設するたび＋3VP
+  AT12: { ivits: 2, xenos: 2, moweyds: 2, ambas: 1, gleens: 1 }, // 取得時：同盟タイル×5VP
+  AT13: { firaks: 1, bescods: 1, nevlas: 1, lantids: 1, tinkerroids: 1 }, // アクション：知識3
+  AT14: { lantids: 2, spaceGiants: 2, darkanians: 2, xenos: 1, geodens: 1 }, // 鉱山を建設するたび＋3VP
+  // AT15/FS03/RB12/RS11/TS2/ART07: ランティダ人の「他プレイヤーの惑星に置く鉱山」は
+  // 惑星の種類にもガイア惑星の数にも数えないので、種類系のタイルには乗らない（別表Ⅰ）。
+  AT15: { geodens: 2, spaceGiants: 2, darkanians: 2, tinkerroids: 1, xenos: 1, gleens: 1 }, // パス時：惑星種類×1VP
+  // AT16/RB09: 「建設済みの首府・学院1つごと」の数え上げなので、初期配置で首府を
+  // 置いているティンカーロイドは最初から1つぶん確定している（RS04 の「建設したとき」とは別）。
+  AT16: { tinkerroids: 2, nevlas: 1, ambas: 1, itars: 1, bescods: 1 }, // 取得時：首府・学院×6VP
+  // AT17/AT21/FS09/RB13/RS10/ART06: バル・タック人は航法を進められないので
+  // 到達距離が伸びず、深宇宙・宙域の広がりを要求するタイルは全部逆風（別表Ⅰ）。
+  AT17: { darkanians: 2, lantids: 1, xenos: 1, taklons: 1, balTaks: -2 }, // 取得時：深宇宙宙域×4VP
+  // AT18/FS07: 小惑星の入植はガイアフォーマー1個を使い捨てる（10ページ）。
+  // バル・タック人はガイアフォーマーをQICに換えるので取り合いになる。
+  AT18: { tinkerroids: 2, darkanians: 2, balTaks: -1 }, // パス時：小惑星×2VP
+  // AT19/RS09: 改造の段階数は スペースジャイアント(常に2段階) が最大。
+  // モウェイド人／ティンカーロイドは3種類だけ3段階（他は1段階）でムラがある。
+  // ダルカニア人は通常惑星が全色1段階なので段階数が積み上がらない＝逆風。
+  AT19: { spaceGiants: 2, geodens: 2, moweyds: 1, tinkerroids: 1, xenos: 1, darkanians: -1 }, // 惑星改造1段階ごと＋2VP
+  // AT20: バル・タック人はガイアフォーマー→QIC のフリーアクションを持つ唯一のQIC源。
+  // グリーン人はQICを得られない（代わりに鉱石）ので、QICアクションを実行できない。
+  AT20: { balTaks: 2, hadschHallas: 1, ivits: 1, gleens: -2 }, // QICアクションのたび＋4VP
+  AT21: { darkanians: 2, lantids: 1, xenos: 1, taklons: 1, balTaks: -2 }, // パス時：深宇宙宙域×2VP
 
   // ===== ラウンドブースター（10＋LF4） =====
-  RB01: { geodens: 1, gleens: 1, firaks: 1, bescods: 1, spaceGiants: 1, tinkerroids: 1 }, // 収入：鉱石1・知識1（改造勢の鉱石＋研究勢の知識）
-  RB02: { xenos: 1, ivits: 1, hadschHallas: 1, tinkerroids: 1 }, // 収入：クレジット2・QIC1（QIC勢＋クレ経済）
-  RB03: { itars: 1, taklons: 1, moweyds: 1 }, // 収入：パワートークン2・鉱石1
-  RB04: { geodens: 1, xenos: 1, spaceGiants: 1, darkanians: 1 }, // 収入：クレジット2／特別：鉱山建設（改造1無料）
-  RB05: { balTaks: 2, terrans: 1, itars: 1, darkanians: 1 }, // 収入：パワー2／特別：鉱山建設orガイア計画（距離+3）
-  RB06: { lantids: 1, xenos: 1 }, // 収入：鉱石1／パス：鉱山×1VP
-  RB07: { firaks: 2, bescods: 1 }, // 収入：知識1／パス：研究所×3VP
-  RB08: { hadschHallas: 1 }, // 収入：鉱石1／パス：交易所×2VP
-  // RB09/RS04: ティンカーロイドは初期配置で首府を置くので「首府を建設」では得点できない。
-  RB09: { nevlas: 1, ambas: 1, moweyds: 1, tinkerroids: -1 }, // 収入：パワー4／パス：学院・首府×4VP
-  RB10: { gleens: 2, terrans: 1, hadschHallas: 1 }, // 収入：クレジット4／パス：ガイア惑星×1VP
-  RB11: { balTaks: 2, terrans: 1, itars: 1 }, // 収入：鉱石1／パス：ガイアフォーマー×3VP
-  RB12: { geodens: 1, lantids: 1, gleens: 1, spaceGiants: 1, darkanians: 1 }, // 収入：鉱石1／パス：惑星種類×1VP
-  RB13: { lantids: 1, xenos: 1, darkanians: 2 }, // 収入：クレジット3／パス：深宇宙×2VP
-  RB14: { terrans: 1, balTaks: 1, itars: 1 }, // 収入：パワー2／特別：ガイア計画（即変換）
+  // 交換できるので1枚の拘束力は上級技術より弱いが、収入は毎ラウンド効く。
+  RB01: { geodens: 1, gleens: 1, firaks: 1, bescods: 1, nevlas: 1, spaceGiants: 1, tinkerroids: 1 }, // 収入：鉱石1・知識1
+  RB02: { ivits: 2, hadschHallas: 1, xenos: 1, spaceGiants: 1, tinkerroids: 1, darkanians: 1, gleens: -1 }, // 収入：クレジット2・QIC1
+  RB03: { itars: 2, taklons: 2, nevlas: 1, moweyds: 1 }, // 収入：パワートークン2・鉱石1
+  // RB04: 無料の1段階はダルカニア人の通常惑星のコストちょうど＝毎ラウンド無料で鉱山1つ。
+  RB04: { darkanians: 2, geodens: 1, xenos: 1, spaceGiants: 1, lantids: 1 }, // 収入：クレジット2／特別：鉱山建設（改造1無料）
+  RB05: { balTaks: 2, terrans: 1, itars: 1, gleens: 1, darkanians: 1 }, // 収入：パワー2／特別：鉱山建設orガイア計画（距離+3）
+  RB06: { lantids: 2, xenos: 1, spaceGiants: 1, darkanians: 1 }, // 収入：鉱石1／パス：鉱山×1VP
+  RB07: { firaks: 2, bescods: 1, lantids: 1, gleens: -1 }, // 収入：知識1／パス：研究所×3VP
+  RB08: { hadschHallas: 2, firaks: 1, taklons: 1, nevlas: 1 }, // 収入：鉱石1／パス：交易所×2VP
+  RB09: { tinkerroids: 2, nevlas: 2, ambas: 1, itars: 1, bescods: 1, moweyds: 1 }, // 収入：パワー4／パス：学院・首府×4VP
+  RB10: { gleens: 2, terrans: 1, itars: 1, balTaks: 1, hadschHallas: 1 }, // 収入：クレジット4／パス：ガイア惑星×1VP
+  RB11: { balTaks: 2, terrans: 2, itars: 1, gleens: 1 }, // 収入：鉱石1／パス：ガイアフォーマー×3VP
+  RB12: { geodens: 2, spaceGiants: 2, darkanians: 2, tinkerroids: 1, gleens: 1 }, // 収入：鉱石1／パス：惑星種類×1VP
+  RB13: { darkanians: 2, lantids: 1, xenos: 1, taklons: 1, balTaks: -2 }, // 収入：クレジット3／パス：深宇宙×2VP
+  RB14: { terrans: 2, balTaks: 2, itars: 1, gleens: 1 }, // 収入：パワー2／特別：ガイア計画（即変換）
 
   // ===== ラウンド得点（9＋LF3、copies>1は枚数分加算） =====
-  RS01: { lantids: 1, xenos: 1, geodens: 1, spaceGiants: 1, darkanians: 1 }, // 鉱山建設 +2VP
-  RS02: { hadschHallas: 1, nevlas: 1, taklons: 1 }, // 交易所建設 +3VP
-  RS03: { hadschHallas: 1, nevlas: 1, taklons: 1 }, // 交易所建設 +4VP
+  // 効くのは6ラウンドのうち1つだけなので、上級技術より1枚の重みは軽い。
+  // ROUND_SCORING_TIMING で「何ラウンド目に出たか」の倍率が別に掛かる。
+  RS01: { lantids: 2, spaceGiants: 2, darkanians: 2, xenos: 1, geodens: 1 }, // 鉱山建設 +2VP
+  RS02: { firaks: 2, hadschHallas: 1, nevlas: 1, taklons: 1 }, // 交易所建設 +3VP
+  RS03: { firaks: 2, hadschHallas: 1, nevlas: 1, taklons: 1 }, // 交易所建設 +4VP
+  // RS04: 「建設したとき」の誘発なので、初期配置で首府を置いているティンカーロイドは
+  // 首府ぶんを取り逃す（学院ぶんだけ）。×2タイルなので取り逃しも2枚ぶん。
   RS04: { ambas: 1, nevlas: 1, itars: 1, bescods: 1, tinkerroids: -1 }, // 学院・惑星首府建設 +5VP ×2
   RS05: { terrans: 2, gleens: 2, itars: 2, balTaks: 1, spaceGiants: -1, tinkerroids: -1, darkanians: -1 }, // ガイア惑星に鉱山建設 +3VP
   RS06: { terrans: 2, gleens: 2, itars: 2, balTaks: 1, spaceGiants: -1, tinkerroids: -1, darkanians: -1 }, // ガイア惑星に鉱山建設 +4VP
-  RS07: { firaks: 2, bescods: 1, nevlas: 1, lantids: 1, gleens: -1, tinkerroids: 1 }, // 研究1レベル +2VP
-  RS08: { ivits: 2, ambas: 1, xenos: 1, moweyds: 2 }, // 同盟タイル獲得 +5VP
-  RS09: { geodens: 2, xenos: 1, moweyds: 1, tinkerroids: 1, spaceGiants: 1, darkanians: -1 }, // 惑星改造1段階 +2VP
-  RS10: { lantids: 1, ambas: 1, xenos: 1, taklons: 1, darkanians: 2 }, // 未入植の宙域で鉱山建設 +3VP
-  RS11: { geodens: 2, lantids: 1, gleens: 1, spaceGiants: 2, darkanians: 2 }, // 未入植の種類の惑星に鉱山建設 +3VP
+  RS07: { bescods: 2, firaks: 2, itars: 2, nevlas: 1, lantids: 1, gleens: -1 }, // 研究1レベル +2VP
+  RS08: { ivits: 2, xenos: 2, moweyds: 1, ambas: 1, gleens: 1 }, // 同盟タイル獲得 +5VP
+  RS09: { spaceGiants: 2, geodens: 2, moweyds: 1, tinkerroids: 1, xenos: 1, darkanians: -1 }, // 惑星改造1段階 +2VP
+  // RS10: ダルカニア人のPIは「未入植の宙域で鉱山建設」で 2クレ+1知識。誘発条件が完全一致。
+  RS10: { darkanians: 2, lantids: 1, ambas: 1, xenos: 1, taklons: 1, balTaks: -2 }, // 未入植の宙域で鉱山建設 +3VP
+  // RS11: ジオデン人のPIは「新たな種類の惑星に初めて鉱山建設」で3知識。誘発条件が完全一致。
+  RS11: { geodens: 2, spaceGiants: 2, darkanians: 2, tinkerroids: 1, gleens: 1 }, // 未入植の種類の惑星に鉱山建設 +3VP
   RS12: { firaks: 2, bescods: 1, lantids: 1, gleens: -1 }, // 研究所建設 +4VP
 
   // ===== 最終得点（6＋LF3） =====
-  FS01: { ivits: 2, ambas: 1, xenos: 1, moweyds: 1 }, // 同盟内の建造物 最多
-  FS02: { lantids: 2, xenos: 1, taklons: 1, darkanians: 1 }, // 建造物 最多
-  FS03: { geodens: 2, lantids: 1, gleens: 1, xenos: 1, spaceGiants: 2, darkanians: 2 }, // 惑星の種類 最多
+  FS01: { ivits: 2, xenos: 2, ambas: 1, moweyds: 1 }, // 同盟内の建造物 最多
+  FS02: { lantids: 2, xenos: 1, taklons: 1, spaceGiants: 1, darkanians: 1 }, // 建造物 最多
+  FS03: { geodens: 2, spaceGiants: 2, darkanians: 2, tinkerroids: 1, xenos: 1, gleens: 1 }, // 惑星の種類 最多
   FS04: { terrans: 2, gleens: 2, itars: 2, balTaks: 1, spaceGiants: -1, tinkerroids: -1, darkanians: -1 }, // ガイア惑星 最多
-  FS05: { lantids: 1, ambas: 1, taklons: 1, ivits: -1, darkanians: 2 }, // 入植宙域 最多
-  FS06: { ivits: 2 }, // 衛星 最多
+  // FS05: ダー・シュワーム人の宇宙ステーションは外宇宙スペースなので宙域入植にならない。
+  FS05: { darkanians: 2, lantids: 1, ambas: 1, taklons: 1, ivits: -1, balTaks: -2 }, // 入植宙域 最多
+  FS06: { ivits: 2 }, // 衛星 最多（宇宙ステーションも衛星として数える）
   // FS07: ティンカーロイド／ダルカニア人は小惑星から開始するので1つ先行している。
-  FS07: { balTaks: -1, tinkerroids: 1, darkanians: 1 }, // 小惑星 最多
-  FS08: { ambas: 2, tinkerroids: 1 }, // 首府⇔学院の距離 最長
-  FS09: { lantids: 1, xenos: 1, taklons: 1, darkanians: 2 }, // 深宇宙宙域 最多
+  FS07: { tinkerroids: 1, darkanians: 1, balTaks: -1 }, // 小惑星 最多
+  // FS08: アンバス人はPIと鉱山を入れ替えられるので、学院から最も遠い場所へPIを動かせる。
+  FS08: { ambas: 2, darkanians: 1, tinkerroids: 1, balTaks: -1 }, // 首府⇔学院の距離 最長
+  FS09: { darkanians: 2, lantids: 1, xenos: 1, taklons: 1, balTaks: -2 }, // 深宇宙宙域 最多
 
   // ===== 同盟タイル（惑星改造Lv5） =====
   // 改造Lv5に到達した1人だけが取る単発の賞。VP量は同じなので、
   // 付随資源の相性だけを弱め（1）に見る。12VP は純粋な点数＝相性なし。
   FED12: {}, // 同盟：12VP
-  FED8Q: { xenos: 1, ivits: 1, spaceGiants: 1, tinkerroids: 1, darkanians: 1 }, // 同盟：8VP＋QIC1
+  // FED8Q/RB02/FEDG5/ART09: グリーン人はQICを得られない（代わりに鉱石1）。
+  // ダー・シュワーム人は衛星をパワートークンでなくQICで払うのでQICが直に効く。
+  FED8Q: { ivits: 1, xenos: 1, spaceGiants: 1, tinkerroids: 1, darkanians: 1, gleens: -1 }, // 同盟：8VP＋QIC1
   FED8PT: { taklons: 1, nevlas: 1, itars: 1, moweyds: 1 }, // 同盟：8VP＋パワートークン2
-  FED7O: { geodens: 1, gleens: 1, spaceGiants: 1 }, // 同盟：7VP＋鉱石2
+  FED7O: { geodens: 1, gleens: 1, spaceGiants: 1, tinkerroids: 1 }, // 同盟：7VP＋鉱石2
   FED7C: { hadschHallas: 1, darkanians: 1 }, // 同盟：7VP＋クレジット6
-  FED6K: { firaks: 1, bescods: 1, nevlas: 1, tinkerroids: 1 }, // 同盟：6VP＋知識2
+  FED6K: { firaks: 1, bescods: 1, nevlas: 1, lantids: 1 }, // 同盟：6VP＋知識2
 
   // ===== LF 船の基本技術 =====
-  TSL1: { geodens: 1, spaceGiants: 1, moweyds: 1, tinkerroids: 1 }, // 即時：2段階無料改造＋鉱山建設
-  TSL2: { balTaks: 2, gleens: 1, darkanians: 2, moweyds: 1 }, // 基本到達距離＋1
+  // TSL1: 無料2段階はスペースジャイアントの通常惑星コストちょうど＝完全に無料の鉱山。
+  // 鉱石を足せば3段階＝原始惑星（入植で6VP）にも届く。
+  TSL1: { spaceGiants: 2, geodens: 1, moweyds: 1, tinkerroids: 1, darkanians: 1 }, // 即時：2段階無料改造＋鉱山建設
+  TSL2: { balTaks: 2, darkanians: 2, gleens: 1, taklons: 1, xenos: 1, lantids: 1 }, // 基本到達距離＋1
   TSL3: { firaks: 1, bescods: 1, nevlas: 1, lantids: 1, tinkerroids: 1 }, // 即時：鉱石1＋知識3
 
   // ===== LF 金枠同盟 =====
   FEDG1: {}, // 金枠同盟：12VP（緑面あり）＝純粋な点数
   FEDG2: { firaks: 1, bescods: 1, itars: 1, spaceGiants: 1 }, // 金枠同盟：任意の技術タイル1枚
-  FEDG3: { balTaks: 1, darkanians: 2 }, // 金枠同盟：距離無限の鉱山建設
-  // FEDG4: モウェイド人／ティンカーロイドは3種類の惑星が3段階改造なので3段階無料が刺さる。
-  FEDG4: { geodens: 2, gleens: 1, lantids: 1, moweyds: 2, tinkerroids: 2, spaceGiants: 1 }, // 金枠同盟：3段階無料改造＋鉱山建設
-  FEDG5: { xenos: 1, geodens: 1, spaceGiants: 1 }, // 金枠同盟：4VP＋鉱石2＋QIC1
-  FEDG6: { firaks: 1, bescods: 1, nevlas: 1, tinkerroids: 1 }, // 金枠同盟：4VP＋知識4
-  FEDG7: { taklons: 1, nevlas: 1, itars: 1, moweyds: 1 }, // 金枠同盟：7VP＋パワートークン2
-  FEDG8: { hadschHallas: 1, darkanians: 1 }, // 金枠同盟：8VP＋クレジット8
+  FEDG3: { balTaks: 2, darkanians: 2, taklons: 1, lantids: 1 }, // 金枠同盟：距離無限の鉱山建設
+  // FEDG4: 3段階無料はモウェイド人／ティンカーロイドの重い3種類ちょうど。
+  // 誰にとっても原始惑星（3段階・入植で6VP）に無料で届く。
+  FEDG4: { moweyds: 2, tinkerroids: 2, geodens: 2, spaceGiants: 1, gleens: 1, lantids: 1 }, // 金枠同盟：3段階無料改造＋鉱山建設
+  FEDG5: { xenos: 1, geodens: 1, spaceGiants: 1, tinkerroids: 1, gleens: -1 }, // 金枠同盟：4VP＋鉱石2＋QIC1
+  FEDG6: { firaks: 1, bescods: 1, nevlas: 1, lantids: 1, tinkerroids: 1 }, // 金枠同盟：4VP＋知識4
+  // FEDG7/ART12: ネヴラ人のPIはエリアⅢのパワートークンを2パワーとして扱う。
+  FEDG7: { nevlas: 2, taklons: 1, itars: 1, moweyds: 1 }, // 金枠同盟：7VP＋パワートークン2
+  FEDG8: { hadschHallas: 2, darkanians: 1 }, // 金枠同盟：8VP＋クレジット8
 
   // ===== LF アーティファクト =====
   // 全員で取り合う共有物なので、明確なアーキタイプ相性のみ非ゼロ（原則1）。
   // ART01/ART02 は小惑星／原始惑星の鉱山として数えるが、原始惑星入植の6VPは対象外
   // （ルールブック15ページ）。小惑星最多への寄与は全勢力共通なので0のままにしてある。
-  ART01: {}, // 7VP（小惑星鉱山扱い）＝純粋な点数
-  ART02: {}, // 7VP（原始惑星鉱山扱い）＝純粋な点数
-  ART03: { bescods: 1, firaks: 1, tinkerroids: 1 }, // 科学レベル×3VP
-  ART04: { terrans: 1, balTaks: 1, itars: 1 }, // ガイア計画レベル×3VP
-  ART05: { firaks: 1 }, // Lv3以上の研究×3VP
-  ART06: { lantids: 1, xenos: 1, taklons: 1, darkanians: 1 }, // 深宇宙宙域×3VP
-  ART07: { geodens: 1, lantids: 1, gleens: 1, spaceGiants: 1, darkanians: 1 }, // 3VP＋惑星種類×1VP
-  ART08: { ivits: 1, ambas: 1, xenos: 1, moweyds: 1 }, // 同盟タイル1枚の恩恵を再取得
-  ART09: { firaks: 1, bescods: 1, nevlas: 1, tinkerroids: 1 }, // 即時：知識3＋QIC1
-  ART10: { hadschHallas: 1, geodens: 1 }, // 即時：クレジット5＋鉱石2
-  ART11: { geodens: 1, gleens: 1, spaceGiants: 1 }, // 即時：クレジット3＋鉱石3
-  ART12: { taklons: 1, nevlas: 1, itars: 1, moweyds: 1 }, // 収入：パワー駒2個（エリアIII）
+  // ただし「入植している惑星の種類」は1つ増えるので、新たな種類で3知識のジオデン人だけ
+  // 明確な追加利益がある（すでにその種類から始めている4勢力には増分がない）。
+  ART01: { geodens: 1 }, // 7VP（小惑星鉱山扱い）
+  ART02: { geodens: 1 }, // 7VP（原始惑星鉱山扱い）
+  ART03: { bescods: 2, firaks: 1, nevlas: 1, tinkerroids: 1 }, // 科学レベル×3VP
+  ART04: { terrans: 2, itars: 2, balTaks: 2, gleens: 1 }, // ガイア計画レベル×3VP
+  // ART05: マッドアンドロイドは毎ラウンド「一番下のマーカー」を無料で進められるので、
+  // 研究エリアが横に広がる＝レベル3以上の本数がいちばん増える。
+  ART05: { bescods: 2, firaks: 1, nevlas: 1 }, // Lv3以上の研究×3VP
+  ART06: { darkanians: 2, lantids: 1, xenos: 1, taklons: 1, balTaks: -2 }, // 深宇宙宙域×3VP
+  ART07: { geodens: 2, spaceGiants: 1, darkanians: 1, tinkerroids: 1, gleens: 1 }, // 3VP＋惑星種類×1VP
+  ART08: { ivits: 2, xenos: 1, ambas: 1, moweyds: 1 }, // 同盟タイル1枚の恩恵を再取得
+  ART09: { firaks: 1, bescods: 1, nevlas: 1, ivits: 1, tinkerroids: 1, gleens: -1 }, // 即時：知識3＋QIC1
+  ART10: { hadschHallas: 1, geodens: 1, spaceGiants: 1 }, // 即時：クレジット5＋鉱石2
+  ART11: { geodens: 1, gleens: 1, spaceGiants: 1, tinkerroids: 1 }, // 即時：クレジット3＋鉱石3
+  ART12: { nevlas: 2, taklons: 1, itars: 1, moweyds: 1 }, // 収入：パワー駒2個（エリアIII）
   ART13: { firaks: 1, bescods: 1, geodens: 1, spaceGiants: 1, tinkerroids: 1 }, // 収入：知識1＋鉱石1
 };

@@ -13,6 +13,7 @@ import {
   recommendSetups,
   scoreSetupFactions,
   scoreStandardTech,
+  setupFactionBreakdown,
   topFactions,
   type FactionScores,
 } from "./factionEval";
@@ -20,6 +21,7 @@ import {
   FACTION_IDS,
   factionIdsForMode,
   STD_TECH_SCALE,
+  TECH_POSITION_WEIGHTS,
   TILE_FACTION_WEIGHTS,
   type FactionId,
 } from "./factionWeights";
@@ -51,21 +53,26 @@ describe("scoreSetupFactions", () => {
   it("sums draft weights over drawn tiles (round scoring counts copies)", () => {
     const s = syntheticSetup();
     const scores = scoreSetupFactions(s);
-    // 係数の基準は100（2026-07-31 に 1 から変更。評価値から小数を消すため）。
-    // firaks: AT02(+2) + AT13(+1) + RS07×2(+2×2) + RB01(+1) = 8、
-    // ＋標準技術: sci列のTS6 → 2*50 = 100 ⇒ 計 9×100
-    expect(scores.firaks).toBe(9 * SETUP_WEIGHT_BASE);
-    // ivits: FS06(+2) + RB02(+1) = 3、＋標準技術: terra列のTS1 → 1*50 ⇒ 計 3.5×100
-    expect(scores.ivits).toBe(3.5 * SETUP_WEIGHT_BASE);
-    // タイル由来と標準技術由来の合計になっていること（terrans で確認）
-    const terransTiles =
-      (TILE_FACTION_WEIGHTS.AT02?.terrans ?? 0) +
-      (TILE_FACTION_WEIGHTS.AT03?.terrans ?? 0) +
-      (TILE_FACTION_WEIGHTS.AT13?.terrans ?? 0) +
-      (TILE_FACTION_WEIGHTS.AT06?.terrans ?? 0) +
-      (TILE_FACTION_WEIGHTS.AT07?.terrans ?? 0) +
-      (TILE_FACTION_WEIGHTS.AT09?.terrans ?? 0);
-    expect(scores.terrans).toBe(terransTiles + scoreStandardTech(s).terrans);
+    // 期待値は**テーブルから組み立てる**。重みの値は見直しで動くので、
+    // ベタ書きすると値を直すたびにテストが落ちる（2026-08-01 に書き換え）。
+    const advTiles = ["AT02", "AT03", "AT13", "AT06", "AT07", "AT09"] as const;
+    const sumOf = (ids: readonly string[], f: FactionId) =>
+      ids.reduce((a, id) => a + (TILE_FACTION_WEIGHTS[id]?.[f] ?? 0), 0);
+
+    // 上級6枚＋ブースター2枚＋最終2枚は素の合計×基準係数。
+    const flatPart = (f: FactionId) =>
+      (sumOf(advTiles, f) + sumOf(["RB01", "RB02"], f) + sumOf(["FS02", "FS06"], f)) *
+      SETUP_WEIGHT_BASE;
+    for (const f of ["firaks", "ivits", "terrans"] as const) {
+      const rounds = setupFactionBreakdown(s).byCategory.roundScoring[f];
+      expect(scores[f]).toBe(flatPart(f) + rounds + scoreStandardTech(s)[f]);
+    }
+
+    // ×2 タイルは枚数分入る: RS07 が2枚あるぶんと1枚のぶんの差が1枚ぶんに等しい。
+    const twice = setupFactionBreakdown(syntheticSetup({ roundScoring: ["RS07", "RS07"] }));
+    const once = setupFactionBreakdown(syntheticSetup({ roundScoring: ["RS07"] }));
+    expect(twice.byCategory.roundScoring.firaks).toBe(2 * once.byCategory.roundScoring.firaks);
+    expect(once.byCategory.roundScoring.firaks).toBeGreaterThan(0);
   });
 
   it("standard tech: 同じ9枚でもトラック配置が変われば評価が変わる", () => {
@@ -83,14 +90,17 @@ describe("scoreSetupFactions", () => {
         free: ["TS4", "TS8", "TS9"],
       },
     });
-    // terrans: gaia aff2 × TS7 pref2 × 50 = 200 / eco は aff0 なので 0
+    // terrans はガイア列の親和度が高く、経済列は0。期待値はテーブルから引く。
     expect(scoreStandardTech(onGaia).terrans).toBeGreaterThan(scoreStandardTech(onEco).terrans);
-    expect(scoreStandardTech(onGaia).terrans).toBe(2 * SETUP_WEIGHT_BASE);
+    expect(scoreStandardTech(onGaia).terrans).toBe(
+      (TECH_POSITION_WEIGHTS.TS7?.gaia?.terrans ?? 0) * STD_TECH_SCALE
+    );
+    expect(TECH_POSITION_WEIGHTS.TS7?.eco?.terrans ?? 0).toBe(0);
     expect(scoreStandardTech(onEco).terrans).toBe(0);
   });
 
-  it("standard tech: 自由列はトラック非依存に低係数で効く", () => {
-    // hadschHallas は TS8 の free 列が pref2 なので 2*STD_TECH_SCALE。
+  it("standard tech: 自由列はトラック非依存に同じ係数で効く", () => {
+    // hadschHallas に効くのは free の TS8 だけ（TS1..TS6 のトラック列は全部0）。
     // 2026-07-31: フリー枠も同じ表・同じ係数で評価する（旧: 専用の低い係数）。
     const s = syntheticSetup({
       standardTech: {
@@ -98,7 +108,25 @@ describe("scoreSetupFactions", () => {
         free: ["TS7", "TS8", "TS9"],
       },
     });
-    expect(scoreStandardTech(s).hadschHallas).toBe(2 * STD_TECH_SCALE);
+    const free = (["TS7", "TS8", "TS9"] as const).reduce(
+      (a, id) => a + (TECH_POSITION_WEIGHTS[id]?.free?.hadschHallas ?? 0),
+      0
+    );
+    // トラックに置かれた6枚は、この配置では hadschHallas に効かない
+    const placed = [
+      ["TS1", "terra"],
+      ["TS2", "nav"],
+      ["TS3", "ai"],
+      ["TS4", "gaia"],
+      ["TS5", "eco"],
+      ["TS6", "sci"],
+    ] as const;
+    const tracks = placed.reduce(
+      (a, [id, pos]) => a + (TECH_POSITION_WEIGHTS[id]?.[pos]?.hadschHallas ?? 0),
+      0
+    );
+    expect(tracks).toBe(0);
+    expect(scoreStandardTech(s).hadschHallas).toBe(free * STD_TECH_SCALE);
   });
 
   it("returns a finite score for every faction", () => {

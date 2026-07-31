@@ -58,16 +58,19 @@ export function writeSharedExpansion(expansion: Expansion): void {
 // 対象は「評価値そのもの、または評価値から作った結果」だけ。人数・拡張・言語・
 // タイル指定など、スケールと関係のない設定は残す。
 // v3: 桁をゲームの得点へ揃えるため、Map/Setup とも 1/10 にした（2026-07-31）。
-// スケールを変えるたびにこのキーを上げる（＝もう一度だけ掃除が走る）。
-const KEY_SCALE_MIGRATION = "gaia_eval_scale_v3";
+// v4: Setup の種族別重みを全タイル見直し、評価指数の既定値も変えた（2026-08-01）。
+//     **Map 側の重みは触っていないので、Map のポインタ
+//     （gaia_last_applied_searchKey_v1）は消さない**。消すのは Setup/List 側だけ。
+//     gaia_setup_eval_weights は「既定値との差分」しか持たないので、既定値が動くと
+//     残っている値の意味が変わってしまう＝捨てる必要がある。
+// スケールや既定値を変えるたびにこのキーを上げる（＝もう一度だけ掃除が走る）。
+const KEY_SCALE_MIGRATION = "gaia_eval_scale_v4";
 const STALE_ON_SCALE_CHANGE = [
-  // Setup/List 共有の評価指数（旧: 1 / 0.5 / 0.25 基準）
+  // Setup/List 共有の評価指数（既定値との差分だけを持つので、既定が動くと意味が変わる）
   "gaia_setup_eval_weights",
   // List のセット提案とログ（旧スケールの評価値を持っている）
   "gaia_list_proposals_v2",
   "gaia_list_pair_log_v2",
-  // 消えた検索条件プロファイルを指しているポインタ
-  "gaia_last_applied_searchKey_v1",
 ];
 
 /**

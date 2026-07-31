@@ -58,17 +58,34 @@ export const SETUP_WEIGHT_DISPLAY_ORDER: readonly SetupWeightKey[] = [
 ];
 
 /**
- * 既定値。基準は 10（2026-07-31）。タイルの重みはすべて整数なので、
- * 係数を整数にすると評価値から小数が消える。基準を10にしたのは、
- * 評価値の桁をゲームの得点に揃えるため（種族ごとの評価値が100前後、
- * Map の色ごとの評価値と足して200前後）。
+ * 既定値。タイルの重みはすべて整数なので、係数を整数にすると評価値から小数が消える。
+ * 桁はゲームの得点に揃える（種族ごとの評価値が100前後、Map の色ごとの評価値と
+ * 足して200前後。2026-07-31 の設計）。
+ *
+ * 2026-08-01 に2つ変えた:
+ * 1. **基準を 10 → 5**。全タイルの見直しで非ゼロのセルが増え、10 のままだと
+ *    種族スコアが220前後まで膨らんで「ゲームの得点と同じ桁」から外れたため。
+ * 2. **既定値が一律ではなくなった**。タイルの重み
+ *    （TILE_FACTION_WEIGHTS / TECH_POSITION_WEIGHTS）は「そのタイルとその種族の
+ *    噛み合い」だけを表し、**「そのカテゴリの1枚がゲーム全体にどれだけ効くか」は
+ *    この係数で表す**、と役割を分けた。基準から外れるのは2つだけ:
+ *      - standardTech = 6（STD_TECH_SCALE、基準の1.2倍）… 9枚が必ず出て最後まで残る
+ *      - roundScoring = 4（ROUND_SCORING_SCALE、基準の0.8倍）… 効くのは1ラウンドだけ
+ * これで実測の影響力が狙いの順（技術 > LF船 > 上級 > ブースター > ラウンド >
+ * 最終 > 追加上級 > 同盟）になる。検算は scripts/_probe_category_influence.ts。
  */
-export const SETUP_WEIGHT_BASE = 10;
+export const SETUP_WEIGHT_BASE = 5;
+/**
+ * ラウンド得点の既定係数。上級技術やブースターと違い、そのタイルが効くのは
+ * 6ラウンドのうち1ラウンドだけなので、1枚あたりの影響力を基準より軽くする
+ * （基準の 0.8 倍）。何ラウンド目に出たかの倍率は ROUND_SCORING_TIMING が別に掛ける。
+ */
+export const ROUND_SCORING_SCALE = 4;
 export const DEFAULT_SETUP_WEIGHTS: SetupWeights = {
   advanced: SETUP_WEIGHT_BASE,
   advExtension: SETUP_WEIGHT_BASE,
   booster: SETUP_WEIGHT_BASE,
-  roundScoring: SETUP_WEIGHT_BASE,
+  roundScoring: ROUND_SCORING_SCALE,
   finalScoring: SETUP_WEIGHT_BASE,
   federation: SETUP_WEIGHT_BASE,
   standardTech: STD_TECH_SCALE,

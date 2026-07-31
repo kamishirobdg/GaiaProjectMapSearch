@@ -13,6 +13,7 @@ import { scoreSetupFactions, setupFactionBreakdown, setupFactionTileHits } from 
 import {
   DEFAULT_SETUP_WEIGHTS,
   LF_ONLY_WEIGHT_KEYS,
+  ROUND_SCORING_SCALE,
   SETUP_WEIGHT_BASE,
   SETUP_WEIGHT_DISPLAY_ORDER,
   SETUP_WEIGHT_KEYS,
@@ -23,7 +24,13 @@ import {
   serializeSetupWeights,
   type SetupWeights,
 } from "./setupWeights";
-import { FACTION_IDS, STD_TECH_SCALE } from "./factionWeights";
+import {
+  FACTION_IDS,
+  ROUND_SCORING_TIMING,
+  ROUND_TIMING_BASE,
+  STD_TECH_SCALE,
+  TILE_FACTION_WEIGHTS,
+} from "./factionWeights";
 
 function syntheticSetup(partial?: Partial<SetupResult>): SetupResult {
   return {
@@ -50,13 +57,17 @@ function withWeight(k: keyof SetupWeights, v: number): SetupWeights {
 }
 
 describe("DEFAULT_SETUP_WEIGHTS", () => {
-  it("既定は基準どおり（標準技術だけ専用の係数が入る）", () => {
+  it("既定は基準どおり（技術は重く、ラウンド得点は軽い）", () => {
+    // 2026-08-01: カテゴリの「1枚あたりの効き具合」を係数で表すことにしたので、
+    // 既定値が一律ではなくなった。基準から外れるのはこの2つだけ。
     expect(DEFAULT_SETUP_WEIGHTS.standardTech).toBe(STD_TECH_SCALE);
+    expect(DEFAULT_SETUP_WEIGHTS.roundScoring).toBe(ROUND_SCORING_SCALE);
+    expect(STD_TECH_SCALE).toBeGreaterThan(SETUP_WEIGHT_BASE);
+    expect(ROUND_SCORING_SCALE).toBeLessThan(SETUP_WEIGHT_BASE);
     for (const k of [
       "advanced",
       "advExtension",
       "booster",
-      "roundScoring",
       "finalScoring",
       "federation",
       "lfShip",
@@ -103,20 +114,27 @@ describe("setupFactionBreakdown", () => {
     }
   });
 
-  it("係数はそのカテゴリだけに線形に効く", () => {
+  it("係数はそのカテゴリだけに効き、他のカテゴリは動かない", () => {
     const s = syntheticSetup();
     const base = setupFactionBreakdown(s, DEFAULT_SETUP_WEIGHTS);
-    const doubled = setupFactionBreakdown(s, withWeight("roundScoring", SETUP_WEIGHT_BASE * 2));
+    const doubled = setupFactionBreakdown(s, withWeight("roundScoring", ROUND_SCORING_SCALE * 2));
     for (const f of FACTION_IDS) {
-      expect(doubled.byCategory.roundScoring[f]).toBeCloseTo(base.byCategory.roundScoring[f] * 2, 10);
-      // 他のカテゴリは動かない
+      // ラウンド得点だけはタイル1枚ごとに整数へ丸めるので、係数2倍でもぴったり
+      // 2倍にはならない（ズレは1タイルあたり最大0.5、6タイルで±3）。
+      expect(doubled.byCategory.roundScoring[f]).toBeCloseTo(
+        base.byCategory.roundScoring[f] * 2,
+        -0.5
+      );
       for (const k of SETUP_WEIGHT_KEYS) {
         if (k === "roundScoring") continue;
         expect(doubled.byCategory[k][f]).toBeCloseTo(base.byCategory[k][f], 10);
       }
     }
-    // firaks は RS07（+2）が2枚で +4 効いているので、係数2倍で総合が +4×基準 されるはず
-    expect(doubled.total.firaks).toBeCloseTo(base.total.firaks + 4 * SETUP_WEIGHT_BASE, 10);
+    // RS07 は一定曲線（倍率10＝素通し）なので、firaks のぶんは丸め誤差なく2倍になる。
+    const only07 = syntheticSetup({ roundScoring: ["RS07", "RS07"] });
+    const a = setupFactionBreakdown(only07, DEFAULT_SETUP_WEIGHTS);
+    const b = setupFactionBreakdown(only07, withWeight("roundScoring", ROUND_SCORING_SCALE * 2));
+    expect(b.byCategory.roundScoring.firaks).toBe(a.byCategory.roundScoring.firaks * 2);
   });
 
   it("係数0でそのカテゴリの寄与が消える", () => {
@@ -218,12 +236,21 @@ describe("ラウンド得点の並び順", () => {
     expect(a.byCategory.roundScoring.firaks).toBe(b.byCategory.roundScoring.firaks);
   });
 
-  it("6ラウンド全部に同じタイルが出れば倍率の合計は素通しと同じ", () => {
-    // どの曲線も6ラウンドの合計が60（＝平均10）になるよう作ってある。
-    const early = setupFactionBreakdown(withRounds(Array(6).fill("RS01"))); // 序盤曲線
-    const flat = setupFactionBreakdown(withRounds(Array(6).fill("RS07"))); // 一定
-    // lantids は RS01・RS07 とも +1。曲線が違っても6ラウンド合計は同じになる。
-    expect(early.byCategory.roundScoring.lantids).toBe(flat.byCategory.roundScoring.lantids);
+  it("どの曲線も6ラウンドの合計が同じ（＝並び順は平均では得も損もしない）", () => {
+    // 曲線そのものの不変条件を見る。スコア経由だとタイルごとの重みの違いが混ざる
+    // （2026-08-01 に書き換え。以前は「RS01 と RS07 が同じ重み」に依存していた）。
+    for (const [id, curve] of Object.entries(ROUND_SCORING_TIMING)) {
+      expect(curve).toHaveLength(6);
+      expect(`${id}:${curve.reduce((a, b) => a + b, 0)}`).toBe(`${id}:${6 * ROUND_TIMING_BASE}`);
+    }
+    // 同じタイルを6ラウンド並べたぶんは、素通し（倍率10）を6枚並べたのと同じになる。
+    const early = setupFactionBreakdown(withRounds(Array(6).fill("RS01")));
+    const w = DEFAULT_SETUP_WEIGHTS.roundScoring;
+    for (const f of FACTION_IDS) {
+      const flatSum = 6 * (TILE_FACTION_WEIGHTS.RS01?.[f] ?? 0) * w;
+      // タイル1枚ごとの丸めぶんだけズレうる（6枚で最大±3）。
+      expect(Math.abs(early.byCategory.roundScoring[f] - flatSum)).toBeLessThanOrEqual(3);
+    }
   });
 
   it("評価値に小数を出さない（倍率は10分率で最後にまとめて割る）", () => {
