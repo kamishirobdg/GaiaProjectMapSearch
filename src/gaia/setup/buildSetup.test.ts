@@ -583,11 +583,11 @@ const GOLDEN_SNAP_0001 = {
   seed: "snap-0001",
   playerCount: 4,
   standardTech: {
-    byTrack: { terra: "TS5", nav: "TS1", ai: "TS6", gaia: "TS9", eco: "TS7", sci: "TS4" },
-    free: ["TS3", "TS8", "TS2"],
+    byTrack: { terra: "TS2", nav: "TS5", ai: "TS4", gaia: "TS3", eco: "TS9", sci: "TS1" },
+    free: ["TS8", "TS7", "TS6"],
   },
   advancedTech: {
-    byTrack: { terra: "AT04", nav: "AT06", ai: "AT02", gaia: "AT09", eco: "AT12", sci: "AT03" },
+    byTrack: { terra: "AT09", nav: "AT12", ai: "AT06", gaia: "AT13", eco: "AT15", sci: "AT08" },
   },
   boosters: {
     available: ["RB07", "RB10", "RB03", "RB05", "RB09", "RB08", "RB02"],
@@ -606,12 +606,12 @@ const GOLDEN_LF_SNAP_0001 = {
   seed: "snap-0001",
   playerCount: 4,
   standardTech: {
-    byTrack: { terra: "TS5", nav: "TS1", ai: "TS6", gaia: "TS9", eco: "TS7", sci: "TS4" },
-    free: ["TS3", "TS8", "TS2"],
+    byTrack: { terra: "TS2", nav: "TS5", ai: "TS4", gaia: "TS3", eco: "TS9", sci: "TS1" },
+    free: ["TS8", "TS7", "TS6"],
   },
   advancedTech: {
-    byTrack: { terra: "AT21", nav: "AT17", ai: "AT16", gaia: "AT03", eco: "AT04", sci: "AT08" },
-    extension: "AT10",
+    byTrack: { terra: "AT20", nav: "AT17", ai: "AT16", gaia: "AT08", eco: "AT09", sci: "AT07" },
+    extension: "AT01",
   },
   boosters: {
     available: ["RB12", "RB11", "RB10", "RB09", "RB04", "RB14", "RB07"],
@@ -623,8 +623,8 @@ const GOLDEN_LF_SNAP_0001 = {
   planetSatellites: ["RED", "BROWN", "BLUE", "BLACK", "YELLOW", "WHITE", "ORANGE"],
   mode: "lostFleet",
   ships: ["twilight", "eclipse", "rebellion", "tfmars"],
-  shipTech: { eclipse: "TSL1", rebellion: "TSL3", tfmars: "TSL2" },
-  artifacts: ["ART10", "ART05", "ART03", "ART07"],
+  shipTech: { eclipse: "TSL1", rebellion: "TSL2", tfmars: "TSL3" },
+  artifacts: ["ART05", "ART11", "ART09", "ART02"],
   goldFederations: { twilight: "FEDG8", eclipse: "FEDG4", rebellion: "FEDG5", tfmars: "FEDG2" },
   econTileFace: "B",
   extensionFace: "shuttle",

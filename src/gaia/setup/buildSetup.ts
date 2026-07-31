@@ -119,6 +119,9 @@ export function defaultAdvancedTileRules(): TileRules {
     const slot = out[slotId] ?? (out[slotId] = {});
     for (const tileId of rule.tileIds) slot[tileId] = "exclude";
   }
+  // リベリオンの金枠同盟に「任意の技術タイル1枚」を置かない（2026-07-30 ユーザー確定。
+  // 専用プルダウンで指定していたものを既定の除外へ移した）。
+  out["goldFed:rebellion"] = { [REBELLION_GOLD_TECH_FED]: "exclude" };
   return out;
 }
 

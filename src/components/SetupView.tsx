@@ -445,15 +445,9 @@ type EconFaceMode = "random" | "A" | "B";
 const LS = {
   extFace: "gaia_setup_extface",
   econFace: "gaia_setup_econface",
-  shipRules: "gaia_setup_shiprules",
   tileRules: "gaia_setup_tilerules",
 } as const;
 
-/** LF船ルールのUI状態（off はキー省略 / gold は "" が off）。 */
-type ShipRulesState = {
-  dist: Partial<Record<ShipId, "avoid" | "force">>;
-  gold: "" | "avoid" | "force";
-};
 
 function lsGet(key: string): string | null {
   try {
@@ -565,13 +559,13 @@ export default function SetupView() {
   const [seed, setSeed] = React.useState<string>("1");
   const [players, setPlayers] = React.useState<number>(4);
   const [mode, setMode] = React.useState<SetupMode>("base");
-  const [extFaceMode, setExtFaceMode] = React.useState<ExtFaceMode>("auto");
+  const [extFaceMode, setExtFaceMode] = React.useState<ExtFaceMode>("random");
   const [econFaceMode, setEconFaceMode] = React.useState<EconFaceMode>("random");
-  // LF船ルール（距離タイルの船別 回避/強制＋リベリオン金枠同盟）
-  const [shipRules, setShipRules] = React.useState<ShipRulesState>({ dist: {}, gold: "" });
   // 全スロット共通のタイル指定（固定/除外/候補）。2026-07-30。
   // 既定は「上級技術のキュレーション済み除外」入り（2026-07-30 ユーザー確定）。
   const [tileRules, setTileRules] = React.useState<TileRules>(() => defaultAdvancedTileRules());
+  /** 面（経済調整タイル・得点ボード拡張部）の選択パネル。 */
+  const [facePicker, setFacePicker] = React.useState<"econ" | "ext" | null>(null);
   /** どのスロットの指定パネルを開いているか。 */
   const [picker, setPicker] = React.useState<{
     slotId: string;
@@ -592,22 +586,16 @@ export default function SetupView() {
     const p = Math.max(m === "lostFleet" ? 2 : 1, Math.min(4, input.playerCount ?? 4));
     setMode(m);
     setPlayers(p);
-    setExtFaceMode(input.extensionFaceMode ?? "auto");
+    setExtFaceMode(input.extensionFaceMode ?? "random");
     setEconFaceMode(input.econFaceMode ?? "random");
-    const dist: ShipRulesState["dist"] = {};
-    for (const sh of input.shipDistanceAvoid ?? []) dist[sh] = "avoid";
-    for (const sh of input.shipDistanceForce ?? []) dist[sh] = "force";
-    const sr: ShipRulesState = { dist, gold: input.rebellionGoldFed ?? "" };
-    setShipRules(sr);
     const tr = (input as any).tileRules ?? {};
     setTileRules(tr);
     setSeed(input.seed);
     if (persist) {
       writeSharedExpansion(m);
       writeSharedPlayers(p);
-      lsSet(LS.extFace, input.extensionFaceMode ?? "auto");
+      lsSet(LS.extFace, input.extensionFaceMode ?? "random");
       lsSet(LS.econFace, input.econFaceMode ?? "random");
-      lsSet(LS.shipRules, JSON.stringify(sr));
       lsSet(LS.tileRules, JSON.stringify(tr));
     }
   }, []);
@@ -625,22 +613,6 @@ export default function SetupView() {
     if (ef === "auto" || ef === "random" || ef === "vp25" || ef === "shuttle") setExtFaceMode(ef);
     const ec = lsGet(LS.econFace);
     if (ec === "random" || ec === "A" || ec === "B") setEconFaceMode(ec);
-    try {
-      const raw = lsGet(LS.shipRules);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const dist: ShipRulesState["dist"] = {};
-        for (const s of TECH_SHIP_IDS) {
-          const v = parsed?.dist?.[s];
-          if (v === "avoid" || v === "force") dist[s] = v;
-        }
-        const gold = parsed?.gold === "avoid" || parsed?.gold === "force" ? parsed.gold : "";
-        setShipRules({ dist, gold });
-      }
-    } catch {
-      // ignore
-    }
-
     // 共有リンク（?s=）: マップの ?h= と同じ作法。初回にトークンを ref へ捕捉して
     // アドレスバーから除去し（Strict Mode の2回目実行でも ref から再適用）、
     // 上の localStorage 復元より後に view-only で上書きする。
@@ -679,27 +651,6 @@ export default function SetupView() {
     setEconFaceMode(v);
     lsSet(LS.econFace, v);
   }, []);
-  const changeShipDist = React.useCallback((ship: ShipId, mode: string) => {
-    setShipRules((prev) => {
-      const dist = { ...prev.dist };
-      if (mode === "avoid" || mode === "force") dist[ship] = mode;
-      else delete dist[ship];
-      const next = { ...prev, dist };
-      lsSet(LS.shipRules, JSON.stringify(next));
-      return next;
-    });
-  }, []);
-  const changeRebGold = React.useCallback((mode: string) => {
-    setShipRules((prev) => {
-      const next: ShipRulesState = {
-        ...prev,
-        gold: mode === "avoid" || mode === "force" ? mode : "",
-      };
-      lsSet(LS.shipRules, JSON.stringify(next));
-      return next;
-    });
-  }, []);
-
   const setLangPersist = React.useCallback((l: Lang) => {
     setLang(l);
     lsSet("gaia_ui_lang", l);
@@ -712,21 +663,16 @@ export default function SetupView() {
   const buildInput = React.useCallback(
     (s: string): BuildSetupInput => {
       // 船ルールは TECH_SHIP_IDS 順で安定化（キーの一部になるため）
-      const distAvoid = TECH_SHIP_IDS.filter((sh) => shipRules.dist[sh] === "avoid");
-      const distForce = TECH_SHIP_IDS.filter((sh) => shipRules.dist[sh] === "force");
       return {
         seed: s,
         playerCount: players,
         ...(lf ? { mode: "lostFleet" as const } : {}),
         ...(lf && extFaceMode !== "auto" ? { extensionFaceMode: extFaceMode } : {}),
         ...(lf && econFaceMode !== "random" ? { econFaceMode } : {}),
-        ...(lf && distAvoid.length > 0 ? { shipDistanceAvoid: distAvoid } : {}),
-        ...(lf && distForce.length > 0 ? { shipDistanceForce: distForce } : {}),
-        ...(lf && shipRules.gold ? { rebellionGoldFed: shipRules.gold } : {}),
         ...(Object.keys(tileRules).length > 0 ? { tileRules } : {}),
       };
     },
-    [players, lf, extFaceMode, econFaceMode, shipRules, tileRules]
+    [players, lf, extFaceMode, econFaceMode, tileRules]
   );
 
   const result = React.useMemo(() => buildSetupFromSeed(buildInput(seed)), [seed, buildInput]);
@@ -840,13 +786,10 @@ export default function SetupView() {
 
   /** 条件を既定値へ戻す（結果は消さない）。Map の「既定値で新規」と同じ役割。 */
   const resetConditions = React.useCallback(() => {
-    setExtFaceMode("auto");
-    lsSet(LS.extFace, "auto");
+    setExtFaceMode("random");
+    lsSet(LS.extFace, "random");
     setEconFaceMode("random");
     lsSet(LS.econFace, "random");
-    const sr: ShipRulesState = { dist: {}, gold: "" };
-    setShipRules(sr);
-    lsSet(LS.shipRules, JSON.stringify(sr));
     const dtr = defaultAdvancedTileRules();
     setTileRules(dtr);
     lsSet(LS.tileRules, JSON.stringify(dtr));
@@ -933,16 +876,6 @@ export default function SetupView() {
   }, [currentId]);
 
   // 船ルールの充足不能な組み合わせはエラーにせず警告表示（2026-07-23 要望）。
-  const shipRuleWarnings = React.useMemo(() => {
-    if (!lf) return [];
-    const warns: string[] = [];
-    const forceCount = TECH_SHIP_IDS.filter((sh) => shipRules.dist[sh] === "force").length;
-    if (forceCount > 1) warns.push(UI[lang].warnDistForceDup);
-    if (TECH_SHIP_IDS.every((sh) => shipRules.dist[sh] === "avoid") && players >= 3) {
-      warns.push(UI[lang].warnDistAvoidAll);
-    }
-    return warns;
-  }, [lf, shipRules, players, lang]);
 
   const t = UI[lang];
 
@@ -1042,6 +975,84 @@ export default function SetupView() {
 
   return (
     <>
+      {/* 面の選択（経済調整タイル・得点ボード拡張部）。既定はどちらもランダム。 */}
+      {facePicker ? (
+        <div
+          onClick={() => setFacePicker(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.35)",
+            zIndex: 60,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "white",
+              borderRadius: T.radius,
+              padding: T.pad,
+              maxWidth: 420,
+              width: "100%",
+              boxShadow: "0 8px 30px rgba(0,0,0,0.3)",
+            }}
+          >
+            <div style={{ fontWeight: 700, fontSize: T.fontHead, marginBottom: 8 }}>
+              {facePicker === "econ" ? t.econFaceModeLabel : t.scoringExtension}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {(facePicker === "econ"
+                ? ([
+                    { v: "random", label: t.econFaceRandom, img: null },
+                    { v: "A", label: t.faceA, img: "FACE_ECON_A" },
+                    { v: "B", label: t.faceB, img: "FACE_ECON_B" },
+                  ] as const)
+                : ([
+                    { v: "random", label: t.extFaceRandom, img: null },
+                    { v: "vp25", label: t.faceVp25, img: "FACE_EXT_VP25" },
+                    { v: "shuttle", label: t.faceShuttle, img: "FACE_EXT_SHUTTLE" },
+                  ] as const)
+              ).map((o) => {
+                const cur = facePicker === "econ" ? econFaceMode : extFaceMode;
+                const active = cur === o.v;
+                return (
+                  <button
+                    key={o.v}
+                    onClick={() => {
+                      if (facePicker === "econ") changeEconFace(o.v as EconFaceMode);
+                      else changeExtFace(o.v as ExtFaceMode);
+                    }}
+                    style={{
+                      display: "flex",
+                      gap: 10,
+                      alignItems: "center",
+                      padding: "6px 8px",
+                      borderRadius: 6,
+                      border: active ? "2px solid #1b6b2f" : T.borderSoft,
+                      background: active ? "#e7f6ea" : "white",
+                      fontWeight: active ? 700 : 400,
+                      textAlign: "left",
+                    }}
+                  >
+                    {o.img ? <TileImage imageId={o.img} alt={o.label} /> : null}
+                    <span style={{ fontSize: 12 }}>{o.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ display: "flex", marginTop: 8 }}>
+              <button onClick={() => setFacePicker(null)} style={{ marginLeft: "auto", fontSize: 11, padding: "3px 8px" }}>
+                {t.pickClose}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* タイル指定パネル（クリックしたスロットの候補一覧）。2026-07-30。 */}
       {picker ? (
         <div
@@ -1195,13 +1206,16 @@ export default function SetupView() {
                   {track === "terra" ? tileCell(result.federationLv5, t.fedTag, false, { slotId: "fed", title: t.federationLv5, kind: "fed" }) : null}
                   {showEconTop && result.mode === "lostFleet" ? (
                     <div
-                      title={result.econTileFace === "A" ? t.econFaceA : t.econFaceB}
+                      title={`${result.econTileFace === "A" ? t.econFaceA : t.econFaceB}
+${pickHint}`}
+                      onClick={() => setFacePicker("econ")}
                       style={{
-                        border: "1px solid #ddd",
+                        cursor: "pointer",
+                        border: econFaceMode !== "random" ? "1px solid #8fc79f" : "1px solid #ddd",
                         borderRadius: 8,
                         padding: "6px 8px",
                         fontSize: 12,
-                        background: "#fafafa",
+                        background: econFaceMode !== "random" ? "#e7f6ea" : "#fafafa",
                         width: "fit-content",
                         display: "flex",
                         flexDirection: "column",
@@ -1209,7 +1223,12 @@ export default function SetupView() {
                         gap: 4,
                       }}
                     >
-                      <span style={{ fontSize: 11, opacity: 0.6 }}>{`${t.econTag} ${econFaceLabel}`}</span>
+                      <span style={{ fontSize: 11, opacity: 0.7 }}>
+                        {`${t.econTag} ${econFaceLabel}`}
+                        {econFaceMode !== "random" ? (
+                          <span style={{ color: "#1b6b2f", fontWeight: 700, marginLeft: 4 }}>指定</span>
+                        ) : null}
+                      </span>
                       <TileImage
                         imageId={result.econTileFace === "A" ? "FACE_ECON_A" : "FACE_ECON_B"}
                         alt="econ face"
@@ -1258,12 +1277,30 @@ export default function SetupView() {
             <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.scoringExtension}</div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
               {tileCell(result.advancedTech.extension!, t.extensionAdv, false, { slotId: "advExt", title: t.extensionAdv, kind: "adv" })}
-              <div style={{ fontSize: 12, opacity: 0.85, display: "flex", flexDirection: "column", gap: 4 }}>
+              <div
+                title={pickHint}
+                onClick={() => setFacePicker("ext")}
+                style={{
+                  fontSize: 12,
+                  opacity: 0.85,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4,
+                  cursor: "pointer",
+                  border: extFaceMode !== "random" ? "1px solid #8fc79f" : "1px solid transparent",
+                  background: extFaceMode !== "random" ? "#e7f6ea" : undefined,
+                  borderRadius: 8,
+                  padding: "4px 6px",
+                }}
+              >
                 <TileImage
                   imageId={result.extensionFace === "vp25" ? "FACE_EXT_VP25" : "FACE_EXT_SHUTTLE"}
                   alt="extension face"
                 />
                 {t.extensionFaceLabel}: {result.extensionFace === "vp25" ? t.faceVp25 : t.faceShuttle}
+                {extFaceMode !== "random" ? (
+                  <span style={{ color: "#1b6b2f", fontWeight: 700 }}>指定</span>
+                ) : null}
               </div>
               {/* 経済調整タイルは研究トラック（経済列上部）へ移動済み */}
             </div>
@@ -1271,16 +1308,8 @@ export default function SetupView() {
 
           <section>
             <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.ships}</div>
-            {shipRuleWarnings.length > 0 ? (
-              <div style={{ fontSize: 12, color: "#b3261e", marginBottom: 6 }}>
-                {shipRuleWarnings.map((w) => (
-                  <div key={w}>⚠ {w}</div>
-                ))}
-              </div>
-            ) : null}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 8 }}>
               {result.ships!.map((ship) => {
-                const techShip = (TECH_SHIP_IDS as readonly ShipId[]).includes(ship);
                 return (
                   <div key={ship} style={{ border: "1px solid #ddd", borderRadius: 8, padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.8 }}>
@@ -1292,40 +1321,6 @@ export default function SetupView() {
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                         <div style={{ fontSize: 11, opacity: 0.65 }}>{t.artifactsLabel}</div>
                         {result.artifacts!.map((id) => tileCell(id, undefined, false, { slotId: "artifacts", title: t.artifactsLabel, kind: "artifacts", singleFix: false }))}
-                      </div>
-                    ) : null}
-                    {techShip ? (
-                      <div
-                        title={effectOf(SHIP_DISTANCE_TECH, lang)}
-                        style={{ fontSize: 11, display: "flex", flexDirection: "column", gap: 2 }}
-                      >
-                        <span style={{ opacity: 0.7 }}>{labelOf(SHIP_DISTANCE_TECH, lang)}</span>
-                        <select
-                          value={shipRules.dist[ship] ?? "off"}
-                          onChange={(e) => changeShipDist(ship, e.target.value)}
-                          style={{ maxWidth: 170 }}
-                        >
-                          <option value="off">{t.ruleOff}</option>
-                          <option value="avoid">{t.ruleAvoid}</option>
-                          <option value="force">{t.ruleForce}</option>
-                        </select>
-                      </div>
-                    ) : null}
-                    {ship === "rebellion" ? (
-                      <div
-                        title={effectOf(REBELLION_GOLD_TECH_FED, lang)}
-                        style={{ fontSize: 11, display: "flex", flexDirection: "column", gap: 2 }}
-                      >
-                        <span style={{ opacity: 0.7 }}>{labelOf(REBELLION_GOLD_TECH_FED, lang)}</span>
-                        <select
-                          value={shipRules.gold || "off"}
-                          onChange={(e) => changeRebGold(e.target.value)}
-                          style={{ maxWidth: 170 }}
-                        >
-                          <option value="off">{t.ruleOff}</option>
-                          <option value="avoid">{t.ruleAvoid}</option>
-                          <option value="force">{t.ruleForce}</option>
-                        </select>
                       </div>
                     ) : null}
                   </div>
@@ -1399,27 +1394,6 @@ export default function SetupView() {
             <button onClick={handleRecordCurrent} style={{ padding: "4px 10px", fontSize: 12 }}>
               {t.recordCurrent}
             </button>
-            {lf ? (
-              <>
-                <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
-                  <span>{t.extFaceModeLabel}</span>
-                  <select value={extFaceMode} onChange={(e) => changeExtFace(e.target.value as ExtFaceMode)}>
-                    <option value="auto">{t.extFaceAuto}</option>
-                    <option value="random">{t.extFaceRandom}</option>
-                    <option value="vp25">{t.faceVp25}</option>
-                    <option value="shuttle">{t.faceShuttle}</option>
-                  </select>
-                </label>
-                <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
-                  <span>{t.econFaceModeLabel}</span>
-                  <select value={econFaceMode} onChange={(e) => changeEconFace(e.target.value as EconFaceMode)}>
-                    <option value="random">{t.econFaceRandom}</option>
-                    <option value="A">{t.econFaceA}</option>
-                    <option value="B">{t.econFaceB}</option>
-                  </select>
-                </label>
-              </>
-            ) : null}
           </div>
 
       {/* 保存済み条件（Map と同じ操作。条件ごとに保存リストが分かれる） */}

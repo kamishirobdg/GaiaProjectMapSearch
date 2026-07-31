@@ -38,20 +38,25 @@
 
 import type { SetupCatalog } from "./types";
 
+// 各グループの並びは「似た挙動」でまとまるよう整理してある（2026-07-30 ユーザー要望）:
+//   収入 → 即時獲得 → アクション → パス時 → 条件トリガー → 順位 → その他。
+// この配列順はシャッフルの入力なので、並べ替えると同じシードの出目が変わる。
+// 実際 2026-07-30 の整理で全シードの出目が変わり、buildSetup.test の golden 値を
+// 更新した（保存済みセットアップが変わるのはユーザー了承済み）。
 export const SETUP_CATALOG: SetupCatalog = {
   // --- 9 standard tech tile types (x4 identical copies each) ----------------
   // ✅ Read from the p2 component photo (2026-07-22); TS1..TS9 follow the
   // photo's row order (top-left to bottom-right).
   standardTech: [
-    { id: "TS1", label: "即時：鉱石1＋QIC1", labelEn: "Immediate: 1 ore + 1 QIC", effect: "このタイルを取ったとき、即座に鉱石1とQ.I.C.駒1個を得る。", effectEn: "When you take this tile, immediately gain 1 ore and 1 QIC." },
-    { id: "TS2", label: "即時：惑星種類×知識1", labelEn: "Immediate: 1 knowledge per planet type", effect: "このタイルを取ったとき、即座に入植している惑星の種類1つごとに知識1を得る。", effectEn: "When you take this tile, immediately gain 1 knowledge per planet type you have settled." },
-    { id: "TS3", label: "首府・学院のパワー値4", labelEn: "PI & academies have power value 4", effect: "自分の惑星首府と学院のパワー値は4になる（上級技術タイルで覆われた場合は3に戻る）。", effectEn: "Your planetary institute and academies have power value 4 (reverts to 3 if this tile is covered by an advanced tech tile)." },
-    { id: "TS4", label: "即時：7VP", labelEn: "Immediate: 7 VP", effect: "このタイルを取ったとき、即座に7勝利点を得る。", effectEn: "When you take this tile, immediately gain 7 VP." },
     { id: "TS5", label: "収入：鉱石1・パワー1", labelEn: "Income: 1 ore, charge 1 power", effect: "各収入フェイズ中、鉱石1を得てパワー1をチャージする。", effectEn: "During each income phase, gain 1 ore and charge 1 power." },
     { id: "TS6", label: "収入：知識1・クレジット1", labelEn: "Income: 1 knowledge, 1 credit", effect: "各収入フェイズ中、知識1とクレジット1を得る。", effectEn: "During each income phase, gain 1 knowledge and 1 credit." },
-    { id: "TS7", label: "ガイア惑星に鉱山建設で＋3VP", labelEn: "+3 VP per mine built on Gaia planet", effect: "ガイア惑星上に鉱山を建設するたびに、追加の3勝利点を得る。", effectEn: "Each time you build a mine on a Gaia planet, gain 3 additional VP." },
     { id: "TS8", label: "収入：クレジット4", labelEn: "Income: 4 credits", effect: "各収入フェイズ中、クレジット4を得る。", effectEn: "During each income phase, gain 4 credits." },
+    { id: "TS1", label: "即時：鉱石1＋QIC1", labelEn: "Immediate: 1 ore + 1 QIC", effect: "このタイルを取ったとき、即座に鉱石1とQ.I.C.駒1個を得る。", effectEn: "When you take this tile, immediately gain 1 ore and 1 QIC." },
+    { id: "TS2", label: "即時：惑星種類×知識1", labelEn: "Immediate: 1 knowledge per planet type", effect: "このタイルを取ったとき、即座に入植している惑星の種類1つごとに知識1を得る。", effectEn: "When you take this tile, immediately gain 1 knowledge per planet type you have settled." },
+    { id: "TS4", label: "即時：7VP", labelEn: "Immediate: 7 VP", effect: "このタイルを取ったとき、即座に7勝利点を得る。", effectEn: "When you take this tile, immediately gain 7 VP." },
     { id: "TS9", label: "アクション：パワー4", labelEn: "Action: charge 4 power", effect: "ラウンドごとに1回、アクションとしてパワー4をチャージできる。", effectEn: "Once per round, as an action, charge 4 power." },
+    { id: "TS7", label: "ガイア惑星に鉱山建設で＋3VP", labelEn: "+3 VP per mine built on Gaia planet", effect: "ガイア惑星上に鉱山を建設するたびに、追加の3勝利点を得る。", effectEn: "Each time you build a mine on a Gaia planet, gain 3 additional VP." },
+    { id: "TS3", label: "首府・学院のパワー値4", labelEn: "PI & academies have power value 4", effect: "自分の惑星首府と学院のパワー値は4になる（上級技術タイルで覆われた場合は3に戻る）。", effectEn: "Your planetary institute and academies have power value 4 (reverts to 3 if this tile is covered by an advanced tech tile)." },
   ],
 
   // --- 15 advanced tech tiles (6 drawn per game) ----------------------------
@@ -60,21 +65,21 @@ export const SETUP_CATALOG: SetupCatalog = {
   // taken, orange octagon = once-per-round action). AT01..AT15 follow the
   // photo's row order. Awaiting the user's B-check.
   advancedTech: [
-    { id: "AT01", label: "パス時：同盟タイル×3VP", labelEn: "Pass: 3 VP per federation tile", effect: "パス時、持っている同盟タイル1枚ごとに3勝利点を得る。", effectEn: "When passing, gain 3 VP per federation tile you own." },
-    { id: "AT02", label: "研究を進めるたび＋2VP", labelEn: "+2 VP per research advance", effect: "研究エリアでマーカーを進めるたびに、追加の2勝利点を得る。", effectEn: "Each time you advance in a research area, gain 2 additional VP." },
-    { id: "AT03", label: "アクション：QIC1＋クレジット5", labelEn: "Action: 1 QIC + 5 credits", effect: "ラウンドごとに1回、アクションとしてQ.I.C.駒1個と5クレジットを得る。", effectEn: "Once per round, as an action, gain 1 QIC and 5 credits." },
     { id: "AT04", label: "取得時：鉱山×2VP", labelEn: "Immediate: 2 VP per mine", effect: "このタイルを取ったとき、即座に建設済みの鉱山1つごとに2勝利点を得る。", effectEn: "When taken, immediately gain 2 VP per mine you have built." },
-    { id: "AT05", label: "パス時：研究所×3VP", labelEn: "Pass: 3 VP per research lab", effect: "パス時、建設済みの研究所1つごとに3勝利点を得る。", effectEn: "When passing, gain 3 VP per research lab you have built." },
     { id: "AT06", label: "取得時：宙域×鉱石1", labelEn: "Immediate: 1 ore per sector", effect: "このタイルを取ったとき、即座に自分の建造物がある宙域1つごとに鉱石1を得る。", effectEn: "When taken, immediately gain 1 ore per sector containing your structures." },
-    { id: "AT07", label: "アクション：鉱石3", labelEn: "Action: 3 ore", effect: "ラウンドごとに1回、アクションとして鉱石3を得る。", effectEn: "Once per round, as an action, gain 3 ore." },
     { id: "AT08", label: "取得時：ガイア惑星×2VP", labelEn: "Immediate: 2 VP per Gaia planet", effect: "このタイルを取ったとき、即座に入植しているガイア惑星1つごとに2勝利点を得る。", effectEn: "When taken, immediately gain 2 VP per Gaia planet you have settled." },
     { id: "AT09", label: "取得時：交易所×4VP", labelEn: "Immediate: 4 VP per trading station", effect: "このタイルを取ったとき、即座に建設済みの交易所1つごとに4勝利点を得る。", effectEn: "When taken, immediately gain 4 VP per trading station you have built." },
     { id: "AT10", label: "取得時：宙域×2VP", labelEn: "Immediate: 2 VP per sector", effect: "このタイルを取ったとき、即座に自分の建造物がある宙域1つごとに2勝利点を得る。", effectEn: "When taken, immediately gain 2 VP per sector containing your structures." },
-    { id: "AT11", label: "交易所を建設するたび＋3VP", labelEn: "+3 VP per trading station built", effect: "交易所を建設するたびに、追加の3勝利点を得る。", effectEn: "Each time you build a trading station, gain 3 additional VP." },
     { id: "AT12", label: "取得時：同盟タイル×5VP", labelEn: "Immediate: 5 VP per federation tile", effect: "このタイルを取ったとき、即座に持っている同盟タイル1枚ごとに5勝利点を得る。", effectEn: "When taken, immediately gain 5 VP per federation tile you own." },
+    { id: "AT03", label: "アクション：QIC1＋クレジット5", labelEn: "Action: 1 QIC + 5 credits", effect: "ラウンドごとに1回、アクションとしてQ.I.C.駒1個と5クレジットを得る。", effectEn: "Once per round, as an action, gain 1 QIC and 5 credits." },
+    { id: "AT07", label: "アクション：鉱石3", labelEn: "Action: 3 ore", effect: "ラウンドごとに1回、アクションとして鉱石3を得る。", effectEn: "Once per round, as an action, gain 3 ore." },
     { id: "AT13", label: "アクション：知識3", labelEn: "Action: 3 knowledge", effect: "ラウンドごとに1回、アクションとして知識3を得る。", effectEn: "Once per round, as an action, gain 3 knowledge." },
-    { id: "AT14", label: "鉱山を建設するたび＋3VP", labelEn: "+3 VP per mine built", effect: "鉱山を建設するたびに、追加の3勝利点を得る。", effectEn: "Each time you build a mine, gain 3 additional VP." },
+    { id: "AT01", label: "パス時：同盟タイル×3VP", labelEn: "Pass: 3 VP per federation tile", effect: "パス時、持っている同盟タイル1枚ごとに3勝利点を得る。", effectEn: "When passing, gain 3 VP per federation tile you own." },
+    { id: "AT05", label: "パス時：研究所×3VP", labelEn: "Pass: 3 VP per research lab", effect: "パス時、建設済みの研究所1つごとに3勝利点を得る。", effectEn: "When passing, gain 3 VP per research lab you have built." },
     { id: "AT15", label: "パス時：惑星種類×1VP", labelEn: "Pass: 1 VP per planet type", effect: "パス時、入植している惑星の種類1つごとに1勝利点を得る。", effectEn: "When passing, gain 1 VP per planet type you have settled." },
+    { id: "AT02", label: "研究を進めるたび＋2VP", labelEn: "+2 VP per research advance", effect: "研究エリアでマーカーを進めるたびに、追加の2勝利点を得る。", effectEn: "Each time you advance in a research area, gain 2 additional VP." },
+    { id: "AT11", label: "交易所を建設するたび＋3VP", labelEn: "+3 VP per trading station built", effect: "交易所を建設するたびに、追加の3勝利点を得る。", effectEn: "Each time you build a trading station, gain 3 additional VP." },
+    { id: "AT14", label: "鉱山を建設するたび＋3VP", labelEn: "+3 VP per mine built", effect: "鉱山を建設するたびに、追加の3勝利点を得る。", effectEn: "Each time you build a mine, gain 3 additional VP." },
   ],
 
   // --- 10 round boosters ----------------------------------------------------
@@ -335,9 +340,9 @@ export const SETUP_CATALOG: SetupCatalog = {
     { id: "AT16", label: "取得時：首府・学院×6VP", labelEn: "Immediate: 6 VP per PI & academy", effect: "このタイルを取ったとき、即座に自分の惑星首府駒と学院駒1個ごとに6勝利点を得る。", effectEn: "When taken, immediately gain 6 VP per planetary institute and academy you have built." },
     { id: "AT17", label: "取得時：深宇宙宙域×4VP", labelEn: "Immediate: 4 VP per deep-space sector", effect: "このタイルを取ったとき、即座に最低1つの惑星に入植している深宇宙宙域1つごとに4勝利点を得る。", effectEn: "When taken, immediately gain 4 VP per deep-space sector where you have settled at least one planet." },
     { id: "AT18", label: "パス時：小惑星×2VP", labelEn: "Pass: 2 VP per asteroid", effect: "パス時、入植している小惑星1つごとに2勝利点を得る。", effectEn: "When passing, gain 2 VP per asteroid you have settled." },
+    { id: "AT21", label: "パス時：深宇宙宙域×2VP", labelEn: "Pass: 2 VP per deep-space sector", effect: "パス時、最低1つの惑星に入植している深宇宙宙域1つごとに2勝利点を得る。", effectEn: "When passing, gain 2 VP per deep-space sector where you have settled at least one planet." },
     { id: "AT19", label: "惑星改造1段階ごと＋2VP", labelEn: "+2 VP per terraforming step", effect: "惑星改造を実行するたび、実行した1段階ごとに2勝利点を得る。", effectEn: "Each time you terraform, gain 2 VP per terraforming step performed." },
     { id: "AT20", label: "QICアクションのたび＋4VP", labelEn: "+4 VP per QIC action", effect: "発展ボードのQICアクションスペースを実行するたび、4勝利点を得る（フリーアクションでのQIC消費は含まない）。", effectEn: "Each time you take a QIC action space, gain 4 VP (free-action QIC spending does not count)." },
-    { id: "AT21", label: "パス時：深宇宙宙域×2VP", labelEn: "Pass: 2 VP per deep-space sector", effect: "パス時、最低1つの惑星に入植している深宇宙宙域1つごとに2勝利点を得る。", effectEn: "When passing, gain 2 VP per deep-space sector where you have settled at least one planet." },
   ],
 
   // --- 3 new standard tech types (NOT mixed; ship tech spaces) --------------
@@ -350,18 +355,18 @@ export const SETUP_CATALOG: SetupCatalog = {
       effectEn: "Immediately (once): build a mine without paying its cost, with up to 2 free terraforming steps; you may pay ore for a 3rd step and QIC to extend range.",
     },
     {
-      id: "TSL2",
-      label: "基本到達距離＋1",
-      labelEn: "Base range +1",
-      effect: "このタイルが上級技術タイルに覆われない限り、ゲーム終了まで基本到達可能距離が1増える。",
-      effectEn: "While this tile is not covered by an advanced tech tile, your base range is increased by 1 until game end.",
-    },
-    {
       id: "TSL3",
       label: "即時：鉱石1＋知識3",
       labelEn: "Immediate: 1 ore + 3 knowledge",
       effect: "このタイルを取ったとき、即座に鉱石1と知識3を得る。",
       effectEn: "When you take this tile, immediately gain 1 ore and 3 knowledge.",
+    },
+    {
+      id: "TSL2",
+      label: "基本到達距離＋1",
+      labelEn: "Base range +1",
+      effect: "このタイルが上級技術タイルに覆われない限り、ゲーム終了まで基本到達可能距離が1増える。",
+      effectEn: "While this tile is not covered by an advanced tech tile, your base range is increased by 1 until game end.",
     },
   ],
 
@@ -386,6 +391,11 @@ export const SETUP_CATALOG: SetupCatalog = {
 
   // --- 13 artifact tokens (playerCount drawn onto Twilight) -----------------
   artifacts: [
+    { id: "ART12", label: "収入：パワー駒2個（エリアIII）", labelEn: "Income: 2 power tokens (area III)", effect: "収入として、パワー駒を2個得てパワーエリアIIIに置く。", effectEn: "As income, gain 2 power tokens placed in power area III." },
+    { id: "ART13", label: "収入：知識1＋鉱石1", labelEn: "Income: 1 knowledge + 1 ore", effect: "収入として、知識1と鉱石1を得る。", effectEn: "As income, gain 1 knowledge and 1 ore." },
+    { id: "ART09", label: "即時：知識3＋QIC1", labelEn: "Immediate: 3 knowledge + 1 QIC", effect: "即時（1回）：知識3とQ.I.C.駒1個を得る。", effectEn: "Immediately (once): gain 3 knowledge and 1 QIC." },
+    { id: "ART10", label: "即時：クレジット5＋鉱石2", labelEn: "Immediate: 5 credits + 2 ore", effect: "即時（1回）：クレジット5と鉱石2を得る。", effectEn: "Immediately (once): gain 5 credits and 2 ore." },
+    { id: "ART11", label: "即時：クレジット3＋鉱石3", labelEn: "Immediate: 3 credits + 3 ore", effect: "即時（1回）：クレジット3と鉱石3を得る。", effectEn: "Immediately (once): gain 3 credits and 3 ore." },
     { id: "ART01", label: "7VP（小惑星鉱山扱い）", labelEn: "7 VP (counts as asteroid mine)", effect: "即時（1回）：7勝利点。獲得は小惑星に入植して鉱山を1つ建設したと見なされる（宙域には割り当てられない。原始惑星入植の6VPは得られない）。", effectEn: "Immediately (once): 7 VP. Gaining it counts as settling an asteroid with one mine (assigned to no sector)." },
     { id: "ART02", label: "7VP（原始惑星鉱山扱い）", labelEn: "7 VP (counts as proto-planet mine)", effect: "即時（1回）：7勝利点。獲得は原始惑星に入植して鉱山を1つ建設したと見なされる（宙域には割り当てられない）。", effectEn: "Immediately (once): 7 VP. Gaining it counts as settling a proto planet with one mine (assigned to no sector)." },
     { id: "ART03", label: "科学レベル×3VP", labelEn: "3 VP per Science level", effect: "即時（1回）：科学（知識）研究エリアで進んでいる1レベルごとに3勝利点を得る。", effectEn: "Immediately (once): gain 3 VP per level you have advanced in the Science research area." },
@@ -394,10 +404,5 @@ export const SETUP_CATALOG: SetupCatalog = {
     { id: "ART06", label: "深宇宙宙域×3VP", labelEn: "3 VP per deep-space sector", effect: "即時（1回）：最低1つの惑星に入植している深宇宙宙域1つごとに3勝利点を得る。", effectEn: "Immediately (once): gain 3 VP per deep-space sector where you have settled at least one planet." },
     { id: "ART07", label: "3VP＋惑星種類×1VP", labelEn: "3 VP + 1 VP per planet type", effect: "即時（1回）：3勝利点と、入植している惑星の種類1つごとに1勝利点を得る。", effectEn: "Immediately (once): gain 3 VP plus 1 VP per planet type you have settled." },
     { id: "ART08", label: "同盟タイル1枚の恩恵を再取得", labelEn: "Re-gain one federation tile's benefits", effect: "即時（1回）：獲得済みの同盟タイル1枚の勝利点・資源・即時効果を再び得る。", effectEn: "Immediately (once): re-gain the VP, resources and immediate effects of one federation tile you own." },
-    { id: "ART09", label: "即時：知識3＋QIC1", labelEn: "Immediate: 3 knowledge + 1 QIC", effect: "即時（1回）：知識3とQ.I.C.駒1個を得る。", effectEn: "Immediately (once): gain 3 knowledge and 1 QIC." },
-    { id: "ART10", label: "即時：クレジット5＋鉱石2", labelEn: "Immediate: 5 credits + 2 ore", effect: "即時（1回）：クレジット5と鉱石2を得る。", effectEn: "Immediately (once): gain 5 credits and 2 ore." },
-    { id: "ART11", label: "即時：クレジット3＋鉱石3", labelEn: "Immediate: 3 credits + 3 ore", effect: "即時（1回）：クレジット3と鉱石3を得る。", effectEn: "Immediately (once): gain 3 credits and 3 ore." },
-    { id: "ART12", label: "収入：パワー駒2個（エリアIII）", labelEn: "Income: 2 power tokens (area III)", effect: "収入として、パワー駒を2個得てパワーエリアIIIに置く。", effectEn: "As income, gain 2 power tokens placed in power area III." },
-    { id: "ART13", label: "収入：知識1＋鉱石1", labelEn: "Income: 1 knowledge + 1 ore", effect: "収入として、知識1と鉱石1を得る。", effectEn: "As income, gain 1 knowledge and 1 ore." },
   ],
 };
