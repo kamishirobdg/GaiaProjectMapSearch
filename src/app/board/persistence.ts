@@ -74,6 +74,8 @@ export const IDB_NAME = "gaia_map_cache";
 // v6: Setup/List も Map と同じ「条件プロファイル + 条件ごとの結果バケツ」構造へ
 //     （2026-07-30 ユーザー確定）。旧 setups は条件とシードが1行に同居していて
 //     移行できないため、アップグレード時に破棄する（旧データ破棄もユーザー確定）。
+//     List の結果（提案・ログ）は件数が小さいので localStorage のまま、
+//     各行に条件キーを持たせて分ける。
 export const IDB_VERSION = 6;
 export const STORE_CANDIDATES = "candidates";
 export const STORE_PROFILES = "profiles";
@@ -84,8 +86,6 @@ export const STORE_SETUPS = "setups";
 export const STORE_SETUP_PROFILES = "setup_profiles";
 /** List の条件プロファイル。 */
 export const STORE_LIST_PROFILES = "list_profiles";
-/** List の結果（セット提案・提案ログ）。条件キーごとのバケツ。 */
-export const STORE_LIST_RESULTS = "list_results";
 export const LAST_APPLIED_SEARCHKEY = "gaia_last_applied_searchKey_v1";
 
 
@@ -163,9 +163,6 @@ export function openDb(): Promise<IDBDatabase> {
         if (!db.objectStoreNames.contains(name)) {
           db.createObjectStore(name, { keyPath: "key" });
         }
-      }
-      if (!db.objectStoreNames.contains(STORE_LIST_RESULTS)) {
-        db.createObjectStore(STORE_LIST_RESULTS, { keyPath: "id" });
       }
 
       // ----- migrations / backfills -----

@@ -50,6 +50,16 @@ import { FACTIONS, type FactionId } from "@/gaia/eval/factionWeights";
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
 import { SetupBoard } from "@/components/SetupView";
 import FactionEvalPanel, { useSetupWeights } from "@/components/FactionEvalPanel";
+import ConditionProfilesPanel from "@/components/ConditionProfilesPanel";
+import {
+  conditionKeyOf,
+  deleteConditionProfile,
+  listConditionProfiles,
+  upsertConditionProfile,
+  type ConditionProfile,
+} from "@/lib/conditionProfiles";
+import { STORE_LIST_PROFILES } from "@/app/board/persistence";
+import { DEFAULT_SETUP_WEIGHTS, type SetupWeights } from "@/gaia/eval/setupWeights";
 import { PageBody, Panel, TwoCol } from "@/components/ui/layout";
 import { buildMapPool } from "@/lib/mapCandidates";
 
@@ -281,10 +291,14 @@ const LS_LIST_CRITERION = "gaia_list_criterion";
 
 // 保存した提案（マップ配置＋基準＋セットアップ入力の自己完結スナップショット）。
 // DBマイグレーションを避け localStorage に保持し、画面上から即再表示する。2026-07-24。
-const LS_LIST_PROPOSALS = "gaia_list_proposals";
+// v2: 条件バケツ（conditionKey）で分けるため形が変わった。旧キーは読まない
+// ＝旧データ破棄（2026-07-30 ユーザー確定）。
+const LS_LIST_PROPOSALS = "gaia_list_proposals_v2";
 const PROPOSALS_CAP = 50;
 type SavedProposal = {
   id: string;
+  /** どの条件で作った提案か（条件バケツのキー） */
+  conditionKey: string;
   createdAt: number;
   criterion: RecommendCriterion;
   tid: string;
@@ -314,10 +328,12 @@ function writeProposals(list: SavedProposal[]): void {
 // --- 提案ログ（生成のたびに自動で残す履歴、2026-07-25 要望） -----------------
 // 「保存した提案」（明示保存・スナップショット）とは別物で、こちらは
 // 何をどの条件で提案したかの記録。左ペインの空きスペースに出す。
-const LS_LIST_PAIRLOG = "gaia_list_pair_log";
+const LS_LIST_PAIRLOG = "gaia_list_pair_log_v2";
 const PAIRLOG_CAP = 30;
 type PairLogEntry = {
   id: string;
+  /** どの条件で生成したログか（条件バケツのキー） */
+  conditionKey: string;
   at: number;
   dir: PairDir;
   source: SetupSource;
@@ -390,7 +406,18 @@ export default function ListView() {
   const [recSettings, setRecSettings] = React.useState<{ players: number; lf: boolean } | null>(null);
   // 評価指数（カテゴリ別係数）。Setup タブと localStorage を共有し、
   // 表示だけでなくセット提案の選定（criterionScore に渡すスコア）にも効かせる。
-  const [evalWeights, changeEvalWeight, resetEvalWeights] = useSetupWeights();
+  const [evalWeights, changeEvalWeight, resetEvalWeights, setAllEvalWeights] = useSetupWeights();
+
+  /**
+   * いまの「条件」（2026-07-30）。Map の searchKey と同じ考え方で、この内容から
+   * 決まるキーごとに提案・提案ログが分かれて貯まる。
+   */
+  const conditionParams = React.useMemo(
+    () => ({ players, lf: expansion === "lostFleet", pairDir, setupSource, criterion, evalWeights }),
+    [players, expansion, pairDir, setupSource, criterion, evalWeights]
+  );
+  const conditionKey = React.useMemo(() => conditionKeyOf(conditionParams), [conditionParams]);
+  const [profiles, setProfiles] = React.useState<Array<ConditionProfile<typeof conditionParams>>>([]);
   const current = pairOptions[pairIndex] ?? null;
   const rec = current?.rec ?? null;
   const recMapTop = current?.mapTop ?? null;
@@ -400,8 +427,93 @@ export default function ListView() {
     setPairOptions([]);
     setPairIndex(0);
   }, []);
+
+  const refreshProfiles = React.useCallback(async () => {
+    const rows = await listConditionProfiles<typeof conditionParams>(STORE_LIST_PROFILES);
+    setProfiles(rows);
+  }, []);
+  React.useEffect(() => {
+    void refreshProfiles();
+  }, [refreshProfiles]);
+
+  /** 条件プロファイルを画面へ戻す。 */
+  const applyProfile = React.useCallback(
+    (p: ConditionProfile<typeof conditionParams>) => {
+      const q: any = p.params ?? {};
+      if (q.pairDir === "mapToSetup" || q.pairDir === "setupToMap") {
+        setPairDir(q.pairDir);
+        try { localStorage.setItem(LS_LIST_DIR, q.pairDir); } catch {}
+      }
+      if (q.setupSource === "random" || q.setupSource === "saved") {
+        setSetupSource(q.setupSource);
+        try { localStorage.setItem(LS_LIST_SRC, q.setupSource); } catch {}
+      }
+      if (typeof q.criterion === "string") {
+        setCriterion(q.criterion as RecommendCriterion);
+        try { localStorage.setItem(LS_LIST_CRITERION, q.criterion); } catch {}
+      }
+      setAllEvalWeights({ ...DEFAULT_SETUP_WEIGHTS, ...((q.evalWeights ?? {}) as SetupWeights) });
+      clearPair();
+    },
+    [setAllEvalWeights, clearPair]
+  );
+
+  /** 条件を既定値へ戻す（結果は消さない）。 */
+  const resetConditions = React.useCallback(() => {
+    setPairDir("mapToSetup");
+    try { localStorage.setItem(LS_LIST_DIR, "mapToSetup"); } catch {}
+    setSetupSource("random");
+    try { localStorage.setItem(LS_LIST_SRC, "random"); } catch {}
+    setCriterion("opposeMap");
+    try { localStorage.setItem(LS_LIST_CRITERION, "opposeMap"); } catch {}
+    resetEvalWeights();
+    clearPair();
+  }, [resetEvalWeights, clearPair]);
+
+  const summarizeCondition = React.useCallback(
+    (params: typeof conditionParams) => {
+      const q: any = params ?? {};
+      const t2 = UI[lang];
+      const parts: string[] = [];
+      parts.push(q.lf ? t2.modeLF : t2.modeBase);
+      parts.push(`${q.players ?? 4}p`);
+      parts.push(q.pairDir === "setupToMap" ? t2.dirSetupToMap : t2.dirMapToSetup);
+      if (q.pairDir === "mapToSetup") parts.push(q.setupSource === "saved" ? t2.srcSaved : t2.srcRandom);
+      parts.push(criterionShort(q.criterion, t2));
+      const w = q.evalWeights ?? {};
+      const diff = Object.keys(w).filter((k) => (w as any)[k] !== (DEFAULT_SETUP_WEIGHTS as any)[k]).length;
+      if (diff > 0) parts.push(`指数${diff}`);
+      return parts.join(" / ");
+    },
+    [lang]
+  );
+
   const [savedProposals, setSavedProposals] = React.useState<SavedProposal[]>([]);
   const [pairLog, setPairLog] = React.useState<PairLogEntry[]>([]);
+
+  /** いまの条件バケツの提案ログ／保存提案だけを見せる。 */
+  const pairLogHere = React.useMemo(
+    () => pairLog.filter((e) => e.conditionKey === conditionKey),
+    [pairLog, conditionKey]
+  );
+  const proposalsHere = React.useMemo(
+    () => savedProposals.filter((p) => p.conditionKey === conditionKey),
+    [savedProposals, conditionKey]
+  );
+
+  /**
+   * 条件プロファイルの作成／件数の追従。結果が増えたあとに走らせたいので
+   * effect にしてある（生成ハンドラ内で呼ぶと1回ぶん古い件数が入る）。
+   * 結果が0件のうちは作らない＝空の条件が並ばない。
+   */
+  React.useEffect(() => {
+    const n = pairLogHere.length + proposalsHere.length;
+    if (n === 0) return;
+    void upsertConditionProfile(STORE_LIST_PROFILES, conditionParams, { resultCount: n }).then(
+      refreshProfiles
+    );
+  }, [pairLogHere.length, proposalsHere.length, conditionParams, refreshProfiles]);
+
   // 盤面の表示モード（画像／番号+向きの模式表示）。2026-07-25 要望。
   const [tileMode, setTileMode] = React.useState<"image" | "schematic">("image");
   const [pairMsg, setPairMsg] = React.useState<string | null>(null);
@@ -652,16 +764,16 @@ export default function ListView() {
 
   /** 生成のたびに提案ログへ1件積む（先頭候補の内容を記録）。 */
   const pushPairLog = React.useCallback(
-    (e: Omit<PairLogEntry, "id" | "at">) => {
+    (e: Omit<PairLogEntry, "id" | "at" | "conditionKey">) => {
       const at = Date.now();
-      const entry: PairLogEntry = { ...e, at, id: `${at}-${e.seed}-${e.mapHash}` };
+      const entry: PairLogEntry = { ...e, conditionKey, at, id: `${at}-${e.seed}-${e.mapHash}` };
       setPairLog((prev) => {
         const next = [entry, ...prev].slice(0, PAIRLOG_CAP);
         writePairLog(next);
         return next;
       });
     },
-    []
+    [conditionKey]
   );
 
   // セット提案の生成（上位 PAIR_TOP_N 件を提示。要望 2026-07-25）
@@ -946,6 +1058,7 @@ export default function ListView() {
     const tid = selected ? (templateIdBySearchKey[selected.searchKey] ?? "") : "";
     const prop: SavedProposal = {
       id: `${pairResultMapId}|${criterion}|${rec.input.seed}|${Date.now()}`,
+      conditionKey,
       createdAt: Date.now(),
       criterion,
       tid,
@@ -961,7 +1074,7 @@ export default function ListView() {
       writeProposals(next);
       return next;
     });
-  }, [rec, recSettings, selectableMaps, pairResultMapId, criterion, templateIdBySearchKey]);
+  }, [rec, recSettings, selectableMaps, pairResultMapId, criterion, templateIdBySearchKey, conditionKey]);
 
   const handleDeleteProposal = React.useCallback((id: string) => {
     setSavedProposals((prev) => {
@@ -1150,6 +1263,37 @@ export default function ListView() {
               {pairMsg ? <span style={{ color: "#b3261e" }}>{pairMsg}</span> : null}
             </div>
           </Panel>
+          {/* 保存済み条件（Map/Setup と同じ操作。条件ごとに提案・ログが分かれる） */}
+          <ConditionProfilesPanel
+            profiles={profiles}
+            currentKey={conditionKey}
+            lang={lang}
+            summarize={summarizeCondition}
+            onApply={applyProfile}
+            onRename={(key, name) => {
+              const p = profiles.find((x) => x.key === key);
+              if (!p) return;
+              void upsertConditionProfile(STORE_LIST_PROFILES, p.params, { name }).then(refreshProfiles);
+            }}
+            onDeleteMeta={(key) => {
+              void deleteConditionProfile(STORE_LIST_PROFILES, key).then(refreshProfiles);
+            }}
+            onDeleteAll={(key) => {
+              setPairLog((prev) => {
+                const next = prev.filter((e) => e.conditionKey !== key);
+                writePairLog(next);
+                return next;
+              });
+              setSavedProposals((prev) => {
+                const next = prev.filter((p) => p.conditionKey !== key);
+                writeProposals(next);
+                return next;
+              });
+              void deleteConditionProfile(STORE_LIST_PROFILES, key).then(refreshProfiles);
+            }}
+            onResetDefaults={resetConditions}
+          />
+
           {/* 評価（種族別）＋評価指数。表示中の提案セットアップを評価する。
               提案未生成のときは表を空にして評価指数だけ出す（先に指数を決めて
               から生成する使い方ができるように）。 */}
@@ -1165,9 +1309,9 @@ export default function ListView() {
             />
           </Panel>
           {/* 提案ログ: 生成のたびに自動で積む履歴（左ペインの空きスペース）。 */}
-          {pairLog.length > 0 ? (
+          {pairLogHere.length > 0 ? (
             <Panel
-              title={`${t.pairLog} (${pairLog.length})`}
+              title={`${t.pairLog} (${pairLogHere.length})`}
               note={
                 <button
                   onClick={() => {
@@ -1181,7 +1325,7 @@ export default function ListView() {
               }
             >
               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                {pairLog.map((e) => {
+                {pairLogHere.map((e) => {
                   const canRestore = !!e.opts && e.opts.length > 0;
                   return (
                   <div
@@ -1473,13 +1617,13 @@ export default function ListView() {
       </section>
 
       {/* 保存した提案（自己完結スナップショット。マップが後でピン解除されても再表示可能）。2026-07-24 */}
-      {savedProposals.length > 0 ? (
+      {proposalsHere.length > 0 ? (
         <section>
           <div style={{ fontWeight: 700, marginBottom: 6 }}>
-            {t.savedProposals} ({savedProposals.length})
+            {t.savedProposals} ({proposalsHere.length})
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {savedProposals.map((p) => {
+            {proposalsHere.map((p) => {
               const template = TEMPLATE_BY_ID[p.tid];
               const setupResult = buildSetupFromSeed(p.setupInput);
               let bToken = "";
