@@ -37,6 +37,23 @@
 - 埋め込みブラウザのコンソールは**過去のビルドエラーを再生し続ける**ことがある。
   行番号が現在のファイルと合わない場合は無視してよい（tscが通っていれば実体は正常）。
 
+## Setup/List の構造（2026-07-30 に整理）
+
+- **3タブとも「条件プロファイル ＋ 条件ごとの結果バケツ」**で揃えてある。
+  Map=`profiles`/`candidates`、Setup=`setup_profiles`/`setups`、
+  List=`list_profiles`＋localStorage。共通部品は `src/lib/conditionProfiles.ts` と
+  `src/components/ConditionProfilesPanel.tsx`。
+- **条件プロファイルのキーは評価指数まで含む**が、**結果バケツのキーは
+  セットアップの設定だけ**。生成される中身は評価指数に依存しないので、
+  指数をいじっただけで貯めた結果が見えなくならないようにしてある。
+- **Setup の条件指定はタイル/面のクリックに一本化**（`src/gaia/setup/tileRules.ts`）。
+  固定/除外/候補/デフォルト。満たし方は「シャッフル済み配列の入れ替え」で構成的
+  （シードを引き直す探索はしない）。既定の除外は `defaultAdvancedTileRules()`。
+- **SETUP_CATALOG の配列順はシャッフルの入力**。並べ替えると全シードの出目が変わり、
+  `buildSetup.test` の golden 値も変わる。順番は「似た挙動」でまとめてある。
+- IndexedDB は v6。**別タブが古い接続を握ると upgrade が止まる**ので、
+  `openDb` に `onversionchange`（接続を手放す）と `onblocked`（即失敗）を入れてある。
+
 ## 描画とセル座標（2026-07-30 に整理）
 
 - **グローバルなセル格子は再構成できない**。テンプレのスロット格子とセクタのセル格子は
