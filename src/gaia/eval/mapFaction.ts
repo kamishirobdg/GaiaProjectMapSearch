@@ -56,5 +56,30 @@ export function mapFactionScores(templateId: string, placement: any[]): FactionS
   return mapFactionScoresFromCounts(countMapPlanets(templateId, placement));
 }
 
+/**
+ * 種族ごとの「Map タブの評価値」（2026-07-31）。母星色の評価値をそのまま割り当てる。
+ *
+ * 上の mapFactionScores（惑星数ベースの親和スコア、4〜12 程度）とは別物で、こちらは
+ * Map の内訳表に出ている評価値（色ごと 100 前後）。List の種族優遇は
+ * 「Map と Setup の合計スコア」を掛け先にするので、Setup 側（種族ごと 100 前後）と
+ * 桁が揃うこちらを使う。
+ *
+ * breakdown は保存済み候補が持っている評価内訳。原始・小惑星は軸を持たないので、
+ * 内訳表と同じく extraBest（最良の1惑星×補正値）を読む。
+ * 内訳が無い／読めないときは全種族0（優遇が効かないだけで壊れない）。
+ */
+export function mapValueByFaction(breakdown: any): FactionScores {
+  const out = {} as FactionScores;
+  const totals = breakdown?.planetTypeTotals ?? null;
+  const extraBest = breakdown?.audit?.extraBest ?? null;
+  for (const f of FACTIONS) {
+    const v = LF_HOME_COLORS.has(f.color)
+      ? Number(extraBest?.[f.color]?.total ?? 0)
+      : Number(totals?.[f.color] ?? 0);
+    out[f.id] = Number.isFinite(v) ? v : 0;
+  }
+  return out;
+}
+
 export { FACTION_IDS };
 export type { FactionId };

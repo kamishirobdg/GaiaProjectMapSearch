@@ -31,12 +31,15 @@ import {
   SETUP_WEIGHT_STEP,
   isDefaultWeights,
   readColorPref,
+  readFactionPref,
   readSetupWeights,
   sanitizeColorPref,
   writeColorPref,
+  writeFactionPref,
   writeSetupWeights,
   type ColorPrefByColor,
   type ColorPrefKey,
+  type FactionPrefByFaction,
   type SetupWeightKey,
   type SetupWeights,
 } from "@/gaia/eval/setupWeights";
@@ -160,6 +163,19 @@ const UI = {
       "  5 = 実質この色だけで決まる（基準はほぼ無視される）",
       "マイナスは逆向きに同じだけ効く（この色が弱いセットアップを選ぶ）。",
     ].join("\n"),
+    factionPrefTitle: "種族優遇/冷遇",
+    factionPrefNote: "種族ごとの ±。掛け先は「Mapの評価値＋Setupの評価値」の合計",
+    tipFactionPrefScale: [
+      "その種族をどれだけ優遇（+）／冷遇（-）するか。",
+      "掛け先は Map の評価値（母星色ぶん）と Setup の評価値の合計（200前後）。",
+      "同じ母星色の2種族は Map ぶんが同じで、Setup ぶんで差がつく。",
+      "  0 = 効かない",
+      "  1 = 基準（バランス）とほぼ互角。同程度ならこの種族に向く方を選ぶ",
+      "  2 = 優遇が主導。選ばれる組み合わせはほぼこの種族に向いている",
+      "  3 = さらに強く寄る",
+      "  5 = 実質この種族だけで決まる（基準はほぼ無視される）",
+      "マイナスは逆向きに同じだけ効く。",
+    ].join("\n"),
   },
   en: {
     evalTitle: "Evaluation (by faction)",
@@ -189,6 +205,19 @@ const UI = {
       "  2 = preference leads; the chosen setup almost always has this colour strong",
       "  3 = stronger still",
       "  5 = practically decided by this colour alone (criterion ignored)",
+      "Negative values do the same in reverse.",
+    ].join("\n"),
+    factionPrefTitle: "Faction preference",
+    factionPrefNote: "Per faction; applied to (map value + setup value)",
+    tipFactionPrefScale: [
+      "How strongly this faction is favoured (+) or avoided (-).",
+      "Applied to the map value of its home colour plus its setup value (~200).",
+      "Two factions of the same home colour share the map part and differ in the setup part.",
+      "  0 = off",
+      "  1 = about even with the criterion; breaks ties toward this faction",
+      "  2 = preference leads; the chosen pair almost always suits this faction",
+      "  3 = stronger still",
+      "  5 = practically decided by this faction alone (criterion ignored)",
       "Negative values do the same in reverse.",
     ].join("\n"),
   },
@@ -671,6 +700,96 @@ export function ColorPrefInputs({
       </div>
     </div>
   );
+}
+
+/**
+ * 種族ごとの優遇/冷遇の入力欄（List 専用。2026-07-31）。
+ * 色ではなく種族単位で、掛け先は「Map の評価値＋Setup の評価値」。
+ */
+export function FactionPrefInputs({
+  pref,
+  onChange,
+  onReset,
+  lang,
+  lf,
+}: {
+  pref: FactionPrefByFaction;
+  onChange: (id: string, v: number) => void;
+  onReset: () => void;
+  lang: Lang;
+  lf: boolean;
+}) {
+  const t = UI[lang];
+  const defs = factionsForMode(lf);
+  const atDefault = defs.every((f) => !pref[f.id]);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+        <span style={{ fontWeight: 700, fontSize: T.fontBody }}>{t.factionPrefTitle}</span>
+        <span style={{ fontSize: T.fontNote, color: T.fgMuted }}>{t.factionPrefNote}</span>
+        <button onClick={onReset} disabled={atDefault} style={{ marginLeft: "auto", fontSize: 11 }}>
+          {atDefault ? t.isDefault : t.reset}
+        </button>
+      </div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {defs.map((f) => (
+          <label
+            key={f.id}
+            title={t.tipFactionPrefScale}
+            style={{
+              display: "flex",
+              gap: 4,
+              alignItems: "center",
+              fontSize: T.fontNote,
+              border: "1px solid rgba(0,0,0,0.15)",
+              borderRadius: 6,
+              padding: "2px 5px",
+              background: factionHomeBg(f.color),
+            }}
+          >
+            <span style={{ fontWeight: 700 }}>{lang === "ja" ? f.labelJa : f.labelEn}</span>
+            <input
+              type="number"
+              min={COLOR_PREF_MIN}
+              max={COLOR_PREF_MAX}
+              value={pref[f.id] ?? 0}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                onChange(f.id, Number.isFinite(v) ? Math.max(COLOR_PREF_MIN, Math.min(COLOR_PREF_MAX, v)) : 0);
+              }}
+              style={{ width: 46, padding: "2px 4px", fontSize: T.fontNote }}
+            />
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** 種族優遇の状態（List 専用）。useColorPref と同じ作法。 */
+export function useFactionPref(): [
+  FactionPrefByFaction,
+  (id: string, v: number) => void,
+  () => void,
+] {
+  const [pref, setPref] = React.useState<FactionPrefByFaction>({});
+  React.useEffect(() => {
+    setPref(readFactionPref());
+  }, []);
+  const change = React.useCallback((id: string, v: number) => {
+    setPref((prev) => {
+      const next = { ...prev };
+      if (!Number.isFinite(v) || v === 0) delete next[id];
+      else next[id] = v;
+      writeFactionPref(next);
+      return next;
+    });
+  }, []);
+  const reset = React.useCallback(() => {
+    writeFactionPref({});
+    setPref({});
+  }, []);
+  return [pref, change, reset];
 }
 
 /**

@@ -294,6 +294,75 @@ describe("色優遇/冷遇（Setup）", () => {
   });
 });
 
+// List の種族優遇（2026-07-31）。掛け先は「Map の評価値＋Setup の評価値」。
+describe("種族優遇/冷遇（List）", () => {
+  const flat = () => Object.fromEntries(FACTION_IDS.map((f) => [f, 10])) as FactionScores;
+  const opts = { playerCount: 4, lostFleet: true };
+
+  it("掛け先は Map ぶんと Setup ぶんの合計", () => {
+    const s = flat();
+    const mapVal = Object.fromEntries(FACTION_IDS.map((f) => [f, 0])) as FactionScores;
+    mapVal.terrans = 90;
+    const bare = criterionScore("neutralBalance", s, opts);
+    // terrans: Map 90 + Setup 10 = 100 に w=1 × pref=1
+    const withPref = criterionScore("neutralBalance", s, {
+      ...opts,
+      factionPref: { w: 1, byFaction: { terrans: 1 }, mapValueByFaction: mapVal },
+    });
+    expect(withPref - bare).toBeCloseTo(100, 9);
+  });
+
+  it("Map ぶんを渡さなければ Setup ぶんだけで効く", () => {
+    const s = flat();
+    const bare = criterionScore("neutralBalance", s, opts);
+    const withPref = criterionScore("neutralBalance", s, {
+      ...opts,
+      factionPref: { w: 1, byFaction: { terrans: 2 } },
+    });
+    expect(withPref - bare).toBeCloseTo(20, 9); // 10 × 2
+  });
+
+  it("同じ母星色でも種族ごとに別々に効く", () => {
+    const s = flat();
+    s.terrans = 30; // BLUE
+    s.lantids = 5; // BLUE
+    const bare = criterionScore("neutralBalance", s, opts);
+    const onTerrans = criterionScore("neutralBalance", s, {
+      ...opts,
+      factionPref: { w: 1, byFaction: { terrans: 1 } },
+    });
+    const onLantids = criterionScore("neutralBalance", s, {
+      ...opts,
+      factionPref: { w: 1, byFaction: { lantids: 1 } },
+    });
+    expect(onTerrans - bare).toBeCloseTo(30, 9);
+    expect(onLantids - bare).toBeCloseTo(5, 9);
+  });
+
+  it("基本版では LF4種族の指定が効かない", () => {
+    const s = flat();
+    const bare = criterionScore("neutralBalance", s, { ...opts, lostFleet: false });
+    const withPref = criterionScore("neutralBalance", s, {
+      ...opts,
+      lostFleet: false,
+      factionPref: { w: 1, byFaction: { moweyds: 5 } },
+    });
+    expect(withPref).toBe(bare);
+  });
+
+  it("色優遇と種族優遇は併用できる", () => {
+    const s = flat();
+    const opt = {
+      ...opts,
+      colorPref: { w: 1, byColor: { BLUE: 1 } },
+      factionPref: { w: 1, byFaction: { terrans: 1 } } as const,
+    };
+    const bare = criterionScore("neutralBalance", s, opts);
+    // BLUE の最大10（色）＋ terrans 10（種族）
+    expect(criterionScore("neutralBalance", s, opt) - bare).toBeCloseTo(20, 9);
+  });
+});
+
 // Setup タブの一括探索（2026-07-31）。「いまの条件で」大量生成するのが要件なので、
 // baseInput のタイル指定が探索結果の全件で守られていることを固定する。
 describe("recommendSetups の baseInput", () => {

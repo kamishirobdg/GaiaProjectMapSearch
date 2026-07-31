@@ -235,6 +235,13 @@ export type SetupColorPref = {
  */
 export const SETUP_COLOR_PREF_W = 0.25;
 
+/**
+ * List の種族優遇の係数（2026-07-31）。掛け先が「Map評価＋Setup評価」で
+ * Setup 単体（色優遇の掛け先）のおよそ2倍の大きさになるので、目盛りを揃えるため
+ * SETUP_COLOR_PREF_W の半分にしてある。
+ */
+export const LIST_FACTION_PREF_W = SETUP_COLOR_PREF_W / 2;
+
 /** 母星色ごとの「その色でいちばん強い種族のスコア」。色優遇の掛け先。 */
 export function colorValueOf(
   scores: FactionScores,
@@ -246,6 +253,42 @@ export function colorValueOf(
     if (out[f.color] == null || v > out[f.color]) out[f.color] = v;
   }
   return out;
+}
+
+/**
+ * List の種族優遇/冷遇（2026-07-31）。色ではなく種族ごとに ± を付ける。
+ * 掛け先は **Map と Setup の合計スコア**（ユーザー確定）。Map 側は色単位・
+ * Setup 側は種族単位なので、合成は呼び出し側（List）が作って valueByFaction で渡す。
+ * 同じ母星色の2種族は Map ぶんが同じで、Setup ぶんで差がつく。
+ */
+export type FactionPref = {
+  /** 係数。pref の目盛りの意味を決める。 */
+  w: number;
+  /** 種族 → ±。0 や未指定は効かない。 */
+  byFaction: Partial<Record<FactionId, number>>;
+  /**
+   * 種族ごとの Map 側の評価値（母星色ぶん）。マップ1枚で決まるので呼び出し側が作る。
+   * Setup 側は criterionScore が採点中の setupScores から足すので渡さなくてよい
+   * ―― これで「候補ごとにセットアップが変わる」探索でも同じ形で使える。
+   */
+  mapValueByFaction?: FactionScores;
+};
+
+/** 種族優遇ぶんの加点（指定が無ければ 0）。掛け先は Map評価＋Setup評価。 */
+function factionPrefBonus(
+  setupScores: FactionScores,
+  lostFleet: boolean,
+  pref?: FactionPref
+): number {
+  if (!pref || !pref.w) return 0;
+  let s = 0;
+  for (const f of factionIdsForMode(lostFleet)) {
+    const p = pref.byFaction[f];
+    if (!p) continue;
+    const value = (pref.mapValueByFaction?.[f] ?? 0) + (setupScores[f] ?? 0);
+    s += pref.w * p * value;
+  }
+  return s;
 }
 
 /** 色優遇ぶんの加点（指定が無ければ 0）。 */
@@ -289,12 +332,16 @@ export function criterionScore(
     lostFleet?: boolean;
     /** 色優遇/冷遇（2026-07-31）。どの基準にも同じ形で足す。 */
     colorPref?: SetupColorPref;
+    /** 種族優遇/冷遇（List 用。2026-07-31）。色優遇と併用できる。 */
+    factionPref?: FactionPref;
   }
 ): number {
   const lf = opts.lostFleet !== false;
   const all = sortedDesc(setupScores, factionIdsForMode(lf));
   // 基準そのものとは独立に足す（Map で偏り項に色優遇を足しているのと同じ形）。
-  const bonus = colorPrefBonus(setupScores, lf, opts.colorPref);
+  const bonus =
+    colorPrefBonus(setupScores, lf, opts.colorPref) +
+    factionPrefBonus(setupScores, lf, opts.factionPref);
   const base = (() => {
     switch (criterion) {
       case "opposeMap": {
@@ -369,6 +416,8 @@ export function recommendSetups(args: {
   baseInput?: Omit<BuildSetupInput, "seed">;
   /** 色優遇/冷遇（2026-07-31）。 */
   colorPref?: SetupColorPref;
+  /** 種族優遇/冷遇（List 用。2026-07-31）。 */
+  factionPref?: FactionPref;
 }): Recommendation[] {
   const {
     criterion,
@@ -381,6 +430,7 @@ export function recommendSetups(args: {
     topN,
     baseInput,
     colorPref,
+    factionPref,
   } = args;
   if (topN <= 0) return [];
   const all: Recommendation[] = [];
@@ -400,6 +450,7 @@ export function recommendSetups(args: {
       mapTopK,
       lostFleet,
       colorPref,
+      factionPref,
     });
     all.push({ input, result, setupScores, criterion, score, trials: seeds.length });
   }

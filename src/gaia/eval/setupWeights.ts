@@ -199,3 +199,42 @@ export function writeColorPref(p: ColorPrefByColor): void {
     // ignore
   }
 }
+
+// --- 種族優遇/冷遇（List 専用。2026-07-31）------------------------------------
+//
+// List は色ではなく種族ごとに ± を付ける（ユーザー確定）。掛け先は
+// 「Map の評価値（母星色ぶん）＋ Setup の評価値」。色優遇と同じく 0 は持たない。
+
+export type FactionPrefByFaction = Record<string, number>;
+export const LS_LIST_FACTION_PREF = "gaia_list_faction_pref";
+
+export function sanitizeFactionPref(raw: unknown): FactionPrefByFaction {
+  const src = (raw ?? {}) as Record<string, unknown>;
+  const out: FactionPrefByFaction = {};
+  for (const [k, v] of Object.entries(src)) {
+    const n = Number(v);
+    if (!Number.isFinite(n) || n === 0) continue;
+    out[k] = Math.max(COLOR_PREF_MIN, Math.min(COLOR_PREF_MAX, n));
+  }
+  return out;
+}
+
+export function readFactionPref(): FactionPrefByFaction {
+  try {
+    const raw = localStorage.getItem(LS_LIST_FACTION_PREF);
+    if (!raw) return {};
+    return sanitizeFactionPref(JSON.parse(raw));
+  } catch {
+    return {};
+  }
+}
+
+export function writeFactionPref(p: FactionPrefByFaction): void {
+  try {
+    const clean = sanitizeFactionPref(p);
+    if (Object.keys(clean).length === 0) localStorage.removeItem(LS_LIST_FACTION_PREF);
+    else localStorage.setItem(LS_LIST_FACTION_PREF, JSON.stringify(clean));
+  } catch {
+    // ignore
+  }
+}

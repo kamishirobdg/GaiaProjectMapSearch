@@ -42,15 +42,20 @@ import {
   recommendSetups,
   scoreSetupFactions,
   topFactions,
+  LIST_FACTION_PREF_W,
   type FactionScores,
   type RecommendCriterion,
   type Recommendation,
 } from "@/gaia/eval/factionEval";
-import { mapFactionScores } from "@/gaia/eval/mapFaction";
+import { mapFactionScores, mapValueByFaction } from "@/gaia/eval/mapFaction";
 import { FACTIONS, type FactionId } from "@/gaia/eval/factionWeights";
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
 import { SetupBoard } from "@/components/SetupView";
-import FactionEvalPanel, { useSetupWeights } from "@/components/FactionEvalPanel";
+import FactionEvalPanel, {
+  FactionPrefInputs,
+  useFactionPref,
+  useSetupWeights,
+} from "@/components/FactionEvalPanel";
 import ConditionProfilesPanel from "@/components/ConditionProfilesPanel";
 import {
   conditionKeyOf,
@@ -408,6 +413,25 @@ export default function ListView() {
   // 評価指数（カテゴリ別係数）。Setup タブと localStorage を共有し、
   // 表示だけでなくセット提案の選定（criterionScore に渡すスコア）にも効かせる。
   const [evalWeights, changeEvalWeight, resetEvalWeights, setAllEvalWeights] = useSetupWeights();
+  // 種族優遇/冷遇（2026-07-31）。掛け先は「Mapの評価値＋Setupの評価値」の合計。
+  const [factionPref, changeFactionPref, resetFactionPref] = useFactionPref();
+
+  /**
+   * criterionScore へ渡す種族優遇。Map ぶんはマップ1枚で決まるのでここで作り、
+   * Setup ぶんは criterionScore が採点中のスコアから足す。
+   * 指定が無ければ undefined＝素通り。
+   */
+  const factionPrefArg = React.useCallback(
+    (mapBreakdown: any) =>
+      Object.keys(factionPref).length > 0
+        ? {
+            w: LIST_FACTION_PREF_W,
+            byFaction: factionPref as Partial<Record<FactionId, number>>,
+            mapValueByFaction: mapValueByFaction(mapBreakdown),
+          }
+        : undefined,
+    [factionPref]
+  );
 
   /**
    * いまの「条件」（2026-07-30）。Map の searchKey と同じ考え方で、この内容から
@@ -828,7 +852,9 @@ export default function ListView() {
           top,
           score: criterionScore(criterion, setupScores, {
             playerCount: settings.players,
+            lostFleet: settings.lf,
             mapTop3: top.top3,
+            factionPref: factionPrefArg((c as any)?.evaluation?.breakdown),
           }),
         });
       }
@@ -903,6 +929,8 @@ export default function ListView() {
       }
     }
     const settings = deriveSetupSettings(tid);
+    // 種族優遇の Map ぶんは、選んだマップ候補の評価内訳から引く（2026-07-31）。
+    const selectedMapBreakdown = (selected as any)?.evaluation?.breakdown ?? null;
 
     // 保存済みセットアップから選ぶ（2026-07-25 要望）。
     if (setupSource === "saved") {
@@ -919,8 +947,10 @@ export default function ListView() {
           scores,
           score: criterionScore(criterion, scores, {
             playerCount: settings.players,
+            lostFleet: settings.lf,
             ...(mapTop3 ? { mapTop3 } : {}),
             ...(mapTopK ? { mapTopK } : {}),
+            factionPref: factionPrefArg(selectedMapBreakdown),
           }),
         };
       });
@@ -980,6 +1010,7 @@ export default function ListView() {
       ...(mapTop3 ? { mapTop3 } : {}),
       ...(mapTopK ? { mapTopK } : {}),
       weights: evalWeights,
+      factionPref: factionPrefArg(selectedMapBreakdown),
       topN: PAIR_TOP_N,
     });
     setPairOptions(
@@ -1330,6 +1361,17 @@ export default function ListView() {
               lf={recSettings?.lf ?? expansion === "lostFleet"}
               players={recSettings?.players ?? players}
             />
+            {/* 種族優遇/冷遇（2026-07-31）。List は色ではなく種族ごとで、
+                掛け先は「Map の評価値＋Setup の評価値」の合計。 */}
+            <div style={{ marginTop: 10 }}>
+              <FactionPrefInputs
+                pref={factionPref}
+                onChange={changeFactionPref}
+                onReset={resetFactionPref}
+                lang={lang}
+                lf={recSettings?.lf ?? expansion === "lostFleet"}
+              />
+            </div>
           </Panel>
           {/* 提案ログ: 生成のたびに自動で積む履歴（左ペインの空きスペース）。 */}
           {pairLogHere.length > 0 ? (
