@@ -30,8 +30,8 @@ import {
   upsertConditionProfile,
   type ConditionProfile,
 } from "@/lib/conditionProfiles";
-import { STORE_SETUP_PROFILES } from "@/app/board/persistence";
-import { DEFAULT_SETUP_WEIGHTS, type SetupWeights } from "@/gaia/eval/setupWeights";
+import { STORE_SETUP_PROFILES, isDbUpgradeBlocked } from "@/app/board/persistence";
+import { DEFAULT_SETUP_WEIGHTS, isDefaultWeights, type SetupWeights } from "@/gaia/eval/setupWeights";
 import { copyText, decodeSetupToken, setupShareUrl } from "@/lib/setupShare";
 import GlobalBar from "@/components/GlobalBar";
 import FactionEvalPanel, { useSetupWeights } from "@/components/FactionEvalPanel";
@@ -741,12 +741,36 @@ export default function SetupView() {
   const [savedView, setSavedView] = React.useState<"active" | "used">("active");
   const [profiles, setProfiles] = React.useState<Array<ConditionProfile<typeof conditionParams>>>([]);
 
+  const [dbBlocked, setDbBlocked] = React.useState(false);
+
+  /**
+   * 「既定値のままの条件」か。人数・拡張は使う人の選択なので判定に含めず、
+   * ルール類と評価指数だけを見る。既定値を変えたら自動的に追随する
+   * （固定の名前を保存しない＝今の既定と比べる。2026-07-30 要望）。
+   */
+  const isDefaultParams = React.useCallback((params: typeof conditionParams) => {
+    const su: any = (params as any)?.setup ?? {};
+    const noRules =
+      !su.avoidRules?.length &&
+      !su.forceRules?.length &&
+      Object.keys(su.forceTileRules ?? {}).length === 0 &&
+      Object.keys(su.allowTileRules ?? {}).length === 0 &&
+      !su.shipDistanceAvoid?.length &&
+      !su.shipDistanceForce?.length &&
+      !su.rebellionGoldFed &&
+      su.extensionFaceMode === undefined &&
+      su.econFaceMode === undefined;
+    const w = (params as any)?.evalWeights;
+    return noRules && (!w || isDefaultWeights({ ...DEFAULT_SETUP_WEIGHTS, ...w }));
+  }, []);
+
   const refreshProfiles = React.useCallback(async () => {
     const [rows, counts] = await Promise.all([
       listConditionProfiles<typeof conditionParams>(STORE_SETUP_PROFILES),
       countSetupsByCondition(),
     ]);
     // 件数は「その条件の設定が指す結果バケツ」から引く（キーの粒度が違うため）。
+    setDbBlocked(isDbUpgradeBlocked());
     setProfiles(
       rows.map((r) => {
         const su = (r.params as any)?.setup ?? {};
@@ -1194,6 +1218,8 @@ export default function SetupView() {
         currentKey={conditionKey}
         lang={lang}
         summarize={summarizeCondition}
+        isDefaultParams={isDefaultParams}
+        blocked={dbBlocked}
         onApply={applyProfile}
         onRename={(key, name) => {
           const p = profiles.find((x) => x.key === key);

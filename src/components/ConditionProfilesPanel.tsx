@@ -26,6 +26,9 @@ const UI = {
     save: "保存",
     cancel: "取消",
     unnamed: "(名前なし)",
+    recommended: "推奨条件",
+    recommendedTip: "評価指数もルールも既定値のままの条件です",
+    blocked: "他のタブでこのアプリを開いたままだと保存領域を更新できません。他のタブを閉じて再読み込みしてください。",
     deleteMeta: "条件だけ削除",
     deleteAll: "結果ごと削除",
     reset: "既定値で新規",
@@ -48,6 +51,9 @@ const UI = {
     save: "Save",
     cancel: "Cancel",
     unnamed: "(unnamed)",
+    recommended: "Recommended",
+    recommendedTip: "Every rule and eval weight is still at its default",
+    blocked: "Another tab has this app open, so the storage cannot be upgraded. Close the other tabs and reload.",
     deleteMeta: "Delete condition only",
     deleteAll: "Delete with results",
     reset: "Start fresh (defaults)",
@@ -67,6 +73,8 @@ export default function ConditionProfilesPanel<P>({
   currentKey,
   lang,
   summarize,
+  isDefaultParams,
+  blocked,
   onApply,
   onRename,
   onDeleteMeta,
@@ -79,6 +87,13 @@ export default function ConditionProfilesPanel<P>({
   lang: Lang;
   /** 1行ぶんの条件の要約テキスト */
   summarize: (params: P) => string;
+  /**
+   * その条件が「既定値のまま」かを返す。true の行は名前が無くても
+   * 「推奨条件」と出す（既定値を変えても常に今の既定と比べる）。
+   */
+  isDefaultParams?: (params: P) => boolean;
+  /** 別タブに阻まれて保存領域を更新できない状態か */
+  blocked?: boolean;
   onApply: (p: ConditionProfile<P>) => void;
   onRename: (key: string, name: string | null) => void;
   onDeleteMeta: (key: string) => void;
@@ -130,6 +145,22 @@ export default function ConditionProfilesPanel<P>({
         </div>
       </div>
 
+      {blocked ? (
+        <div
+          style={{
+            fontSize: T.fontBody,
+            color: "#b3261e",
+            background: "#fff2f0",
+            border: "1px solid #f3c8c2",
+            borderRadius: 6,
+            padding: "6px 8px",
+            marginBottom: 8,
+          }}
+        >
+          {t.blocked}
+        </div>
+      ) : null}
+
       {rows.length === 0 ? (
         <div style={{ fontSize: T.fontBody, color: T.fgMuted }}>{t.empty}</div>
       ) : (
@@ -176,7 +207,26 @@ export default function ConditionProfilesPanel<P>({
                       </>
                     ) : (
                       <>
-                        <span style={{ fontSize: 12, fontWeight: 700 }}>{p.name || t.unnamed}</span>
+                        {p.name ? (
+                          <span style={{ fontSize: 12, fontWeight: 700 }}>{p.name}</span>
+                        ) : isDefaultParams?.(p.params) ? (
+                          <span
+                            title={t.recommendedTip}
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 700,
+                              color: "#1b6b2f",
+                              background: "#e7f6ea",
+                              border: "1px solid #b8e0c2",
+                              borderRadius: 5,
+                              padding: "1px 6px",
+                            }}
+                          >
+                            {t.recommended}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 12, fontWeight: 700 }}>{t.unnamed}</span>
+                        )}
                         <button
                           onClick={() => {
                             setEditingKey(p.key);

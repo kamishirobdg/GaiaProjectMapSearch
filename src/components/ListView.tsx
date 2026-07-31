@@ -58,8 +58,8 @@ import {
   upsertConditionProfile,
   type ConditionProfile,
 } from "@/lib/conditionProfiles";
-import { STORE_LIST_PROFILES } from "@/app/board/persistence";
-import { DEFAULT_SETUP_WEIGHTS, type SetupWeights } from "@/gaia/eval/setupWeights";
+import { STORE_LIST_PROFILES, isDbUpgradeBlocked } from "@/app/board/persistence";
+import { DEFAULT_SETUP_WEIGHTS, isDefaultWeights, type SetupWeights } from "@/gaia/eval/setupWeights";
 import { PageBody, Panel, TwoCol } from "@/components/ui/layout";
 import { buildMapPool } from "@/lib/mapCandidates";
 
@@ -428,9 +428,26 @@ export default function ListView() {
     setPairIndex(0);
   }, []);
 
+  const [dbBlocked, setDbBlocked] = React.useState(false);
   const refreshProfiles = React.useCallback(async () => {
     const rows = await listConditionProfiles<typeof conditionParams>(STORE_LIST_PROFILES);
+    setDbBlocked(isDbUpgradeBlocked());
     setProfiles(rows);
+  }, []);
+
+  /**
+   * 「既定値のままの条件」か。人数・拡張は使う人の選択なので判定に含めない。
+   * 既定値を変えたら自動的に追随する（2026-07-30 要望）。
+   */
+  const isDefaultParams = React.useCallback((params: typeof conditionParams) => {
+    const q: any = params ?? {};
+    const w = q.evalWeights;
+    return (
+      q.pairDir === "mapToSetup" &&
+      q.setupSource === "random" &&
+      q.criterion === "opposeMap" &&
+      (!w || isDefaultWeights({ ...DEFAULT_SETUP_WEIGHTS, ...w }))
+    );
   }, []);
   React.useEffect(() => {
     void refreshProfiles();
@@ -1269,6 +1286,8 @@ export default function ListView() {
             currentKey={conditionKey}
             lang={lang}
             summarize={summarizeCondition}
+            isDefaultParams={isDefaultParams}
+            blocked={dbBlocked}
             onApply={applyProfile}
             onRename={(key, name) => {
               const p = profiles.find((x) => x.key === key);

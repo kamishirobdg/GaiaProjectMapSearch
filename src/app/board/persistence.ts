@@ -102,6 +102,8 @@ export function openDb(): Promise<IDBDatabase> {
     // 何も言わずに固まる（保存・読み出しが全部止まる）。待ち続けずに失敗させ、
     // 呼び出し側の catch で「空扱い」に落とす（2026-07-30）。
     req.onblocked = () => {
+      _upgradeBlocked = true;
+      _dbPromise = null;
       reject(
         new Error(
           "IndexedDB upgrade blocked: 別のタブでこのアプリを開いたままにすると更新できません。他のタブを閉じて再読み込みしてください。"
@@ -214,11 +216,42 @@ export function openDb(): Promise<IDBDatabase> {
       } catch {}
     };
 
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const db = req.result;
+      // 別タブが新しいバージョンで開こうとしたら、こちらの接続を手放す。
+      // これをやらないと相手側の upgrade が始まらず、相手のタブで保存・読み出しが
+      // 全部止まる（2026-07-30 に実際に踏んだ）。次に使うときは開き直す。
+      db.onversionchange = () => {
+        try {
+          db.close();
+        } catch {}
+        _dbPromise = null;
+      };
+      // タブが閉じられた等で接続が切れたら、キャッシュを捨てて次回開き直せるようにする。
+      db.onclose = () => {
+        _dbPromise = null;
+      };
+      resolve(db);
+    };
+    req.onerror = () => {
+      _dbPromise = null; // 失敗を握り続けない（次の呼び出しで再試行できる）
+      reject(req.error);
+    };
   });
 
   return _dbPromise;
+}
+
+/**
+ * 「他のタブが握っていて更新できない」状態になったかどうか。
+ * 画面側で案内を出すために使う（openDb は待ち続けずに失敗する）。
+ */
+let _upgradeBlocked = false;
+export function isDbUpgradeBlocked(): boolean {
+  return _upgradeBlocked;
+}
+export function markDbUpgradeBlocked(): void {
+  _upgradeBlocked = true;
 }
 
 
