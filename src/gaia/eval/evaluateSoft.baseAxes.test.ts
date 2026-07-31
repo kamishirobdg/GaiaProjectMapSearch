@@ -130,16 +130,46 @@ describe("cluster axis (base)", () => {
   });
 
   it("次元横断惑星は星系の大きさを半分だけ増やす（2026-07-30 確定）", () => {
-    // RED-TRANSDIM の2連結: 大きさは 1 + 0.5 = 1.5 => RED+1.5
+    // RED-TRANSDIM の2連結: 大きさは 1 + 0.5 = 1.5。
+    // 監査には 1.5 がそのまま残り、軸の値だけ丸める（2026-07-31。評価値から
+    // 小数を消すため。丸めは色ごとの合計に対して行うので、0.5 が2つあれば
+    // 打ち消し合う ―― 下の「2つの星系」のケース参照）。
     const e = extractedOf([
       cell({ q: 0, r: 0, color: "RED" }),
       cell({ q: 1, r: 0, kind: "TRANSDIM" }),
     ]);
     const r = evaluateSoft(e, { ...BASE_SOFT, wClusterSize: 1 });
-    expect(r.breakdown.axesByType.cluster!.RED).toBeCloseTo(1.5, 9);
     expect(r.breakdown.audit.cluster?.clusters).toEqual([
       { size: 2, weightedSize: 1.5, colors: ["RED"] },
     ]);
+    expect(r.breakdown.axesByType.cluster!.RED).toBe(2); // Math.round(1.5)
+  });
+
+  it("軸の丸めは色ごとの合計に効く（0.5が2つあれば打ち消し合う）", () => {
+    // RED-TRANSDIM が2組（それぞれ 1.5）。合計3で丸め不要になる。
+    const e = extractedOf([
+      cell({ q: 0, r: 0, color: "RED" }),
+      cell({ q: 1, r: 0, kind: "TRANSDIM" }),
+      cell({ q: 5, r: 0, color: "RED" }),
+      cell({ q: 6, r: 0, kind: "TRANSDIM" }),
+    ]);
+    const r = evaluateSoft(e, { ...BASE_SOFT, wClusterSize: 1 });
+    expect(r.breakdown.axesByType.cluster!.RED).toBe(3); // 1.5 + 1.5
+  });
+
+  it("星系の軸に小数を出さない", () => {
+    const e = extractedOf([
+      cell({ q: 0, r: 0, color: "RED" }),
+      cell({ q: 1, r: 0, kind: "TRANSDIM" }),
+      cell({ q: 2, r: 0, color: "BLUE" }),
+    ]);
+    const r = evaluateSoft(e, { ...BASE_SOFT, wClusterSize: 1 });
+    for (const v of Object.values(r.breakdown.axesByType.cluster!)) {
+      expect(Number.isInteger(v)).toBe(true);
+    }
+    for (const v of Object.values(r.breakdown.planetTypeTotals)) {
+      expect(Number.isInteger(v)).toBe(true);
+    }
   });
 
   it("ガイア惑星は従来どおり1つ分で数える（半減は次元横断だけ）", () => {

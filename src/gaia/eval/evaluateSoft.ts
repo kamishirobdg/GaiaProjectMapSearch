@@ -334,13 +334,13 @@ function toPlanetType(kind?: PlanetKind, colorKey?: string): PlanetType | null {
 /**
  * 距離が1伸びるごとに引く量（2026-07-31）。
  *
- * 船接触・船星系の寄与は「重み −（距離−1）」で、引く量が**絶対値**なので、
- * 重みだけ10倍にすると減衰の効き方そのものが変わってしまう
- * （旧 wScout=10 は 10→9→8 と1割ずつ落ちるが、100 のままだと 100→99→98 で
- * ほとんど落ちない）。重みを10倍にしたぶん、ここも10にして形を保つ。
- * 重みのスケールを変えるときは必ずこの値も一緒に変えること。
+ * 船接触・船星系の寄与は「重み −（距離−1）×これ」で、引く量が**絶対値**なので、
+ * **重みのスケールを変えるときは必ずこの値も一緒に変えること。**
+ * 重みだけ10倍にすると、旧 wScout=10 の 10→9→8（1割ずつ落ちる）が
+ * 100→99→98 になってほとんど落ちなくなり、評価の意味そのものが変わる。
+ * いまは重みが1桁〜2桁（wScout=10）なので 1。
  */
-export const DISTANCE_FALLOFF = 10;
+export const DISTANCE_FALLOFF = 1;
 
 function scoutValue(d: number, wScout: number, R: number): number {
   if (d < 1 || d > R) return 0;
@@ -837,6 +837,14 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
     clusterHits.sort((a, b) => String(a.cellKey).localeCompare(String(b.cellKey)));
     // deterministic ordering for audit
     clusterList.sort((a, b) => b.size - a.size || a.colors.join(",").localeCompare(b.colors.join(",")));
+
+    // 星系の大きさは次元横断を 0.5 で数えるので、色ごとの合計に 0.5 が残ることがある。
+    // 評価値に小数を出さないため、ここで丸める（2026-07-31）。クラスタ1つずつ丸めるより
+    // 誤差が小さい —— 0.5 が2つあれば合計の時点で打ち消し合う。
+    for (const t of PLANET_TYPES) clusterAxis[t] = Math.round(clusterAxis[t]);
+    for (const k of Object.keys(clusterExtraByKind)) {
+      clusterExtraByKind[k] = Math.round(clusterExtraByKind[k]);
+    }
   }
 
   // ===== 原始・小惑星の「最良の1つ×補正値」（2026-07-31）=====

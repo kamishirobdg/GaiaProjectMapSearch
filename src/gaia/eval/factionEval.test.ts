@@ -15,7 +15,13 @@ import {
   topFactions,
   type FactionScores,
 } from "./factionEval";
-import { FACTION_IDS, factionIdsForMode, TILE_FACTION_WEIGHTS, type FactionId } from "./factionWeights";
+import {
+  FACTION_IDS,
+  factionIdsForMode,
+  STD_TECH_FREE_SCALE,
+  TILE_FACTION_WEIGHTS,
+  type FactionId,
+} from "./factionWeights";
 import { SETUP_WEIGHT_BASE } from "./setupWeights";
 import { countMapPlanets, mapFactionScoresFromCounts } from "./mapFaction";
 import { makeSearchPlacementFromSeed } from "@/gaia/ssot/searchPlacementConfig";
@@ -83,14 +89,14 @@ describe("scoreSetupFactions", () => {
   });
 
   it("standard tech: 自由列はトラック非依存に低係数で効く", () => {
-    // hadschHallas は TS8（クレ4収入、pref2）を自由列に持つと 2*25 = 50。
+    // hadschHallas は TS8（クレ4収入、pref2）を自由列に持つと 2*STD_TECH_FREE_SCALE。
     const s = syntheticSetup({
       standardTech: {
         byTrack: { terra: "TS1", nav: "TS2", ai: "TS3", gaia: "TS4", eco: "TS5", sci: "TS6" },
         free: ["TS7", "TS8", "TS9"],
       },
     });
-    expect(scoreStandardTech(s).hadschHallas).toBe(0.5 * SETUP_WEIGHT_BASE);
+    expect(scoreStandardTech(s).hadschHallas).toBe(2 * STD_TECH_FREE_SCALE);
   });
 
   it("returns a finite score for every faction", () => {

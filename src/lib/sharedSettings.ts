@@ -57,7 +57,9 @@ export function writeSharedExpansion(expansion: Expansion): void {
 // 古いスケールの値は捨てる。IndexedDB 側は persistence.ts の v8 upgrade が消す。
 // 対象は「評価値そのもの、または評価値から作った結果」だけ。人数・拡張・言語・
 // タイル指定など、スケールと関係のない設定は残す。
-const KEY_SCALE_MIGRATION = "gaia_eval_scale_v2";
+// v3: 桁をゲームの得点へ揃えるため、Map/Setup とも 1/10 にした（2026-07-31）。
+// スケールを変えるたびにこのキーを上げる（＝もう一度だけ掃除が走る）。
+const KEY_SCALE_MIGRATION = "gaia_eval_scale_v3";
 const STALE_ON_SCALE_CHANGE = [
   // Setup/List 共有の評価指数（旧: 1 / 0.5 / 0.25 基準）
   "gaia_setup_eval_weights",

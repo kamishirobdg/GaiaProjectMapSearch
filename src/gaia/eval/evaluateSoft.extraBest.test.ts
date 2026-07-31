@@ -88,19 +88,19 @@ const sumOf = (r: ReturnType<typeof evaluateSoft>, kind: string) => {
 
 describe("extraBest（原始・小惑星の最良の1つ）", () => {
   it("船に近いほうの1惑星だけを採り、合算はしない", () => {
-    // 距離が1伸びるごとに DISTANCE_FALLOFF(10) 引く。wScout=100 なら
-    // 距離1の PROTO は +100、距離3の PROTO は +80。単純合算なら 180。
+    // 距離が1伸びるごとに DISTANCE_FALLOFF(1) 引く。wScout=10 なら
+    // 距離1の PROTO は +10、距離3の PROTO は +8。単純合算なら 18。
     const e = extractedOf(
       [cell({ q: 1, r: 0, kind: "PROTO" }), cell({ q: 3, r: 0, kind: "PROTO" })],
       [scout(0, 0, "twilight")]
     );
-    const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 100 });
+    const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 10 });
 
-    expect(sumOf(r, "PROTO")).toBe(180);
+    expect(sumOf(r, "PROTO")).toBe(18);
     const best = bestOf(r, "PROTO");
     expect(best.cellKey).toBe("1,0");
-    expect(best.raw).toBe(100);
-    expect(best.total).toBe(Math.round(100 * EXTRA_BEST_FACTOR));
+    expect(best.raw).toBe(10);
+    expect(best.total).toBe(Math.round(10 * EXTRA_BEST_FACTOR));
     expect(best.factor).toBe(EXTRA_BEST_FACTOR);
   });
 
@@ -145,11 +145,11 @@ describe("extraBest（原始・小惑星の最良の1つ）", () => {
       ],
       [scout(0, 0, "twilight")]
     );
-    const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 100 });
+    const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 10 });
     expect(bestOf(r, "PROTO").cellKey).toBe("1,0");
     expect(bestOf(r, "ASTEROID").cellKey).toBe("2,0");
-    expect(bestOf(r, "PROTO").raw).toBe(100);
-    expect(bestOf(r, "ASTEROID").raw).toBe(90);
+    expect(bestOf(r, "PROTO").raw).toBe(10);
+    expect(bestOf(r, "ASTEROID").raw).toBe(9);
   });
 
   it("最良の1つは種別ごとの単純合算を超えない", () => {

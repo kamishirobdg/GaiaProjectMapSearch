@@ -56,11 +56,12 @@ export const SETUP_WEIGHT_DISPLAY_ORDER: readonly SetupWeightKey[] = [
 ];
 
 /**
- * 既定値。基準は 100（2026-07-31 に 1 から変更）。
- * タイルの重みはすべて整数なので、係数を100倍にすると評価値から小数が消える。
- * 比率は変えていないのでカテゴリどうしの効き具合は従来と同じ。
+ * 既定値。基準は 10（2026-07-31）。タイルの重みはすべて整数なので、
+ * 係数を整数にすると評価値から小数が消える。基準を10にしたのは、
+ * 評価値の桁をゲームの得点に揃えるため（種族ごとの評価値が100前後、
+ * Map の色ごとの評価値と足して200前後）。
  */
-export const SETUP_WEIGHT_BASE = 100;
+export const SETUP_WEIGHT_BASE = 10;
 export const DEFAULT_SETUP_WEIGHTS: SetupWeights = {
   advanced: SETUP_WEIGHT_BASE,
   advExtension: SETUP_WEIGHT_BASE,
@@ -73,11 +74,11 @@ export const DEFAULT_SETUP_WEIGHTS: SetupWeights = {
   lfShip: SETUP_WEIGHT_BASE,
 };
 
-/** 評価指数の入力範囲（基準100に合わせて -900..900）。 */
-export const SETUP_WEIGHT_MIN = -900;
-export const SETUP_WEIGHT_MAX = 900;
-/** 入力欄の刻み。旧 0.25 相当（基準の 1/4）。 */
-export const SETUP_WEIGHT_STEP = 25;
+/** 評価指数の入力範囲（基準10に合わせて -90..90）。 */
+export const SETUP_WEIGHT_MIN = -90;
+export const SETUP_WEIGHT_MAX = 90;
+/** 入力欄の刻み。整数のまま動かせるように1。 */
+export const SETUP_WEIGHT_STEP = 1;
 
 /** LF でしか効かないカテゴリ（基本版では列も入力欄も出さない）。 */
 export const LF_ONLY_WEIGHT_KEYS: ReadonlySet<SetupWeightKey> = new Set<SetupWeightKey>([

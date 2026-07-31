@@ -538,12 +538,24 @@ return (
               return null;
             };
 
+            // 行の値が「その種別のいちばん良い惑星1つぶん」であることは数字だけでは
+            // 分からないので、行名にホバーで出す（2026-07-31 要望）。
+            const bestNote = best
+              ? lang === "ja"
+                ? `${label}は最高スコアの惑星1つだけを表示しています` +
+                  `（船接触＋船星系＋ガイア＋星系の合計が最大のもの。補正値×${best.factor}）。` +
+                  `\n最外周・外周は評価に使いません。`
+                : `Shows only the single best ${k} planet (highest scout+core+gaia+cluster total, ` +
+                  `scaled by ${best.factor}). Outer/touch are not counted.`
+              : "";
+
             return (
               <tr key={`EXTRA_${k}`} style={rowStyleFor(k)}>
                 {(() => {
                   const m = markExtra("total", "left");
+                  const title = [bestNote, m.title].filter(Boolean).join("\n");
                   return (
-                    <td onClick={m.onClick} title={m.title} style={{ ...tdLeftStyle, ...m.style }}>
+                    <td onClick={m.onClick} title={title || undefined} style={{ ...tdLeftStyle, ...m.style }}>
                       {label}
                     </td>
                   );

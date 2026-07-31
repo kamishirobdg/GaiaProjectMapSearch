@@ -156,8 +156,8 @@ describe("setupFactionBreakdown", () => {
 
 describe("sanitizeSetupWeights", () => {
   it("欠けたキー・非数値は既定へ、範囲外はクランプ", () => {
-    const w = sanitizeSetupWeights({ advanced: 200, booster: "x", roundScoring: 9999, finalScoring: -9999 });
-    expect(w.advanced).toBe(200);
+    const w = sanitizeSetupWeights({ advanced: 20, booster: "x", roundScoring: 9999, finalScoring: -9999 });
+    expect(w.advanced).toBe(20);
     expect(w.booster).toBe(DEFAULT_SETUP_WEIGHTS.booster);
     expect(w.roundScoring).toBe(SETUP_WEIGHT_MAX);
     expect(w.finalScoring).toBe(SETUP_WEIGHT_MIN);

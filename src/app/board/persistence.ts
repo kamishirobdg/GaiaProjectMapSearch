@@ -78,11 +78,13 @@ export const IDB_NAME = "gaia_map_cache";
 //     各行に条件キーを持たせて分ける。
 // v7: Setup の一括探索のランキングを条件×基準ごとに貯める setup_ranking を追加
 //     （2026-07-31。Map の candidates と同じで、次の探索は前回の上位とマージする）。
-// v8: 評価値の重みを Map 10倍 / Setup 100倍にしたので、貯めてある結果と条件を全部捨てる
+// v8: 評価値の重みのスケールを変えたので、貯めてある結果と条件を全部捨てる
 //     （2026-07-31 ユーザー確定「再生成可能なものは全て消して良い」）。
 //     スコアの桁が変わるので古い候補と混ぜて並べられず、保存済みの条件プロファイルは
-//     古いスケールの重みを持っていて、適用すると評価が桁ひとつ小さくなる。
-export const IDB_VERSION = 8;
+//     古いスケールの重みを持っていて、適用すると評価の桁がズレる。
+// v9: 同日にもう一度スケールを変えた（桁をゲームの得点へ揃えるため 1/10）。
+//     同じ理由で全部捨てる。以後もスケールを変えるときはバージョンを上げること。
+export const IDB_VERSION = 9;
 export const STORE_CANDIDATES = "candidates";
 export const STORE_PROFILES = "profiles";
 // Setup-side saved list shares this DB (one DB per origin keeps the version
@@ -186,11 +188,11 @@ export function openDb(): Promise<IDBDatabase> {
         db.createObjectStore(STORE_SETUP_RANKING, { keyPath: "id" });
       }
 
-      // ----- v8: 重みのスケール変更にともなう全消し -----
-      // 評価値の重みを Map 10倍 / Setup 100倍にしたので、貯めてある結果と条件は
-      // 古いスケールのままで新しい値と比べられない。どれもシードと条件から
-      // 作り直せるものなので捨てる（2026-07-31 ユーザー確定）。
-      if (oldVersion > 0 && oldVersion < 8) {
+      // ----- v8 / v9: 重みのスケール変更にともなう全消し -----
+      // 評価値の重みのスケールを変えたので、貯めてある結果と条件は古いスケールの
+      // ままで新しい値と比べられない。どれもシードと条件から作り直せるものなので
+      // 捨てる（2026-07-31 ユーザー確定）。スケールを変えたら上限を上げること。
+      if (oldVersion > 0 && oldVersion < 9) {
         for (const name of [
           STORE_CANDIDATES,
           STORE_PROFILES,
