@@ -35,12 +35,15 @@ type Lang = "ja" | "en";
 
 /**
  * LF4種族の母星（原始惑星・小惑星）の行背景。
- * Map のマーカー（リング）とまったく同じ色を使う（2026-07-31 ユーザー指定）。
- * 基本7色の行背景（PLANET_INPUT_BG）は薄い色だが、この2色は濃いので文字は白にする。
+ * Map のマーカー（リング）の色 PROTO #3d8cb5 / ASTEROID #9c4a8f を白と 6:4 で
+ * 混ぜた濃さ。マーカー色そのままだと文字を白抜きにするしかなく、表の中では
+ * 赤字＝最小・青字＝最大に意味があるので、白抜きが別の意味に見えてしまう
+ * （2026-07-31 ユーザー指摘）。黒文字のまま読める明度に落としてある
+ * （コントラスト比 9.9:1 / 8.2:1。基本7色でいちばん濃い BLACK #adadad と同程度）。
  */
 const EXTRA_HOME_BG: Record<string, string> = {
-  PROTO: "#3d8cb5",
-  ASTEROID: "#9c4a8f",
+  PROTO: "#8bbad3",
+  ASTEROID: "#c492bc",
 };
 
 /** 種族の母星色（タイルを縁取るので、背景色ではなく濃い方を使う）。 */
@@ -357,13 +360,7 @@ ${m.title}` : "")
             const colorName =
               lang === "ja" ? (PLANET_LABEL_JA[colorKey] ?? EXTRA_LABEL_JA[f.color] ?? f.color) : f.color;
             return (
-              <tr
-                key={f.id}
-                style={{
-                  background: extraBg ?? PLANET_INPUT_BG[colorKey],
-                  ...(extraBg ? { color: "#ffffff" } : {}),
-                }}
-              >
+              <tr key={f.id} style={{ background: extraBg ?? PLANET_INPUT_BG[colorKey] }}>
                 {(() => {
                   const c = HOME_COLOR_VIVID[f.color] ?? NEUTRAL_MARK_COLOR;
                   const m = markProps(`total:${f.id}`, f.id, null, c, "left");
