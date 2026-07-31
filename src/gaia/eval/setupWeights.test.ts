@@ -23,7 +23,7 @@ import {
   serializeSetupWeights,
   type SetupWeights,
 } from "./setupWeights";
-import { FACTION_IDS, STD_TECH_FREE_SCALE, STD_TECH_TRACK_SCALE } from "./factionWeights";
+import { FACTION_IDS, STD_TECH_SCALE } from "./factionWeights";
 
 function syntheticSetup(partial?: Partial<SetupResult>): SetupResult {
   return {
@@ -50,9 +50,8 @@ function withWeight(k: keyof SetupWeights, v: number): SetupWeights {
 }
 
 describe("DEFAULT_SETUP_WEIGHTS", () => {
-  it("既定は基準100（標準技術の2定数がそのまま入る）", () => {
-    expect(DEFAULT_SETUP_WEIGHTS.stdTrack).toBe(STD_TECH_TRACK_SCALE);
-    expect(DEFAULT_SETUP_WEIGHTS.stdFree).toBe(STD_TECH_FREE_SCALE);
+  it("既定は基準どおり（標準技術だけ専用の係数が入る）", () => {
+    expect(DEFAULT_SETUP_WEIGHTS.standardTech).toBe(STD_TECH_SCALE);
     for (const k of [
       "advanced",
       "advExtension",
@@ -161,7 +160,7 @@ describe("sanitizeSetupWeights", () => {
     expect(w.booster).toBe(DEFAULT_SETUP_WEIGHTS.booster);
     expect(w.roundScoring).toBe(SETUP_WEIGHT_MAX);
     expect(w.finalScoring).toBe(SETUP_WEIGHT_MIN);
-    expect(w.stdTrack).toBe(DEFAULT_SETUP_WEIGHTS.stdTrack);
+    expect(w.standardTech).toBe(DEFAULT_SETUP_WEIGHTS.standardTech);
   });
 
   it("null/undefined でも既定一式になる", () => {
@@ -182,15 +181,62 @@ describe("serializeSetupWeights", () => {
   });
 
   it("書いた内容を読み戻すと元へ戻る", () => {
-    const w = { ...DEFAULT_SETUP_WEIGHTS, advanced: 2, stdFree: 0 };
+    const w = { ...DEFAULT_SETUP_WEIGHTS, advanced: 2, standardTech: 0 };
     expect(sanitizeSetupWeights(JSON.parse(serializeSetupWeights(w)!))).toEqual(w);
+  });
+});
+
+// ラウンド得点の「何ラウンド目か」（2026-07-31 要望）。序盤向きのタイルは早い
+// ラウンドほど、終盤向きのタイルは遅いラウンドほど高く評価する。
+describe("ラウンド得点の並び順", () => {
+  /** 指定タイルだけを6ラウンドに並べたセットアップ（他カテゴリは同じ）。 */
+  const withRounds = (ids: string[]) => syntheticSetup({ roundScoring: ids });
+
+  it("序盤向き（RS01 鉱山建設）は早いラウンドほど高い", () => {
+    const early = setupFactionBreakdown(withRounds(["RS01", "TS4x", "TS4x", "TS4x", "TS4x", "TS4x"]));
+    const late = setupFactionBreakdown(withRounds(["TS4x", "TS4x", "TS4x", "TS4x", "TS4x", "RS01"]));
+    // RS01 は lantids/xenos/geodens に +1
+    expect(early.byCategory.roundScoring.lantids).toBeGreaterThan(
+      late.byCategory.roundScoring.lantids
+    );
+  });
+
+  it("終盤向き（RS08 同盟タイル獲得）は遅いラウンドほど高い", () => {
+    const early = setupFactionBreakdown(withRounds(["RS08", "TS4x", "TS4x", "TS4x", "TS4x", "TS4x"]));
+    const late = setupFactionBreakdown(withRounds(["TS4x", "TS4x", "TS4x", "TS4x", "TS4x", "RS08"]));
+    // RS08 は ivits に +2
+    expect(late.byCategory.roundScoring.ivits).toBeGreaterThan(
+      early.byCategory.roundScoring.ivits
+    );
+  });
+
+  it("一定（RS07 研究1レベル）はどのラウンドでも同じ", () => {
+    const a = setupFactionBreakdown(withRounds(["RS07", "TS4x", "TS4x", "TS4x", "TS4x", "TS4x"]));
+    const b = setupFactionBreakdown(withRounds(["TS4x", "TS4x", "TS4x", "TS4x", "TS4x", "RS07"]));
+    expect(a.byCategory.roundScoring.firaks).toBe(b.byCategory.roundScoring.firaks);
+  });
+
+  it("6ラウンド全部に同じタイルが出れば倍率の合計は素通しと同じ", () => {
+    // どの曲線も6ラウンドの合計が60（＝平均10）になるよう作ってある。
+    const early = setupFactionBreakdown(withRounds(Array(6).fill("RS01"))); // 序盤曲線
+    const flat = setupFactionBreakdown(withRounds(Array(6).fill("RS07"))); // 一定
+    // lantids は RS01・RS07 とも +1。曲線が違っても6ラウンド合計は同じになる。
+    expect(early.byCategory.roundScoring.lantids).toBe(flat.byCategory.roundScoring.lantids);
+  });
+
+  it("評価値に小数を出さない（倍率は10分率で最後にまとめて割る）", () => {
+    const b = setupFactionBreakdown(withRounds(["RS01", "RS08", "RS07", "RS04", "RS09", "RS02"]));
+    for (const f of FACTION_IDS) {
+      expect(Number.isInteger(b.byCategory.roundScoring[f])).toBe(true);
+      expect(Number.isInteger(b.total[f])).toBe(true);
+    }
   });
 });
 
 describe("setupFactionTileHits（マーカー用のタイル単位の寄与）", () => {
   it("タイル単位の合計が内訳表の合計と一致する", () => {
     const s = syntheticSetup();
-    for (const w of [DEFAULT_SETUP_WEIGHTS, withWeight("roundScoring", 2), withWeight("stdTrack", 1)]) {
+    for (const w of [DEFAULT_SETUP_WEIGHTS, withWeight("roundScoring", 20), withWeight("standardTech", 10)]) {
       const total = scoreSetupFactions(s, w);
       const sum: Record<string, number> = {};
       for (const h of setupFactionTileHits(s, w)) {

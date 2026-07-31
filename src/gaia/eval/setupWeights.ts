@@ -4,11 +4,10 @@
 // Map の評価指数（軸ごとの重み）に対応する Setup/List 側の入力で、
 // 種族スコアをカテゴリ単位でスケールする純データ。
 //
-// 既定値は導入前の計算と完全に一致させてある（stdTrack=0.5 / stdFree=0.25 は
-// これまで factionWeights.ts の定数だった値、他は 1.0＝素通し）。したがって
-// 未設定のユーザーのスコア・提案結果は変わらない。
+// 2026-07-31: 標準技術を「どこに配置されたか」で1つの表にまとめたので、
+// stdTrack / stdFree の2カテゴリを standardTech 1つへ統合した。
 
-import { STD_TECH_FREE_SCALE, STD_TECH_TRACK_SCALE } from "./factionWeights";
+import { STD_TECH_SCALE } from "./factionWeights";
 
 /**
  * 係数のカテゴリ。タイルの出どころで分けてある:
@@ -16,11 +15,11 @@ import { STD_TECH_FREE_SCALE, STD_TECH_TRACK_SCALE } from "./factionWeights";
  * - advExtension  得点ボード拡張部の追加上級技術（取得条件が通常の上級と違うため別枠。
  *                 2026-07-30 ユーザー要望）
  * - booster       ラウンドブースター（使用分のみ）
- * - roundScoring  ラウンド得点（×2タイルは枚数分入る）
+ * - roundScoring  ラウンド得点（×2タイルは枚数分入る。何ラウンド目かで倍率が変わる）
  * - finalScoring  最終得点計算
  * - federation    同盟タイル（惑星改造 研究レベル5）
- * - stdTrack      標準技術のうちトラック下の6枚（TECH_TRACK_WEIGHTS 経由）
- * - stdFree       標準技術のうちフリー枠3枚（TECH_PREF 経由）
+ * - standardTech  標準技術9枚（TECH_POSITION_WEIGHTS 経由。トラック下もフリー枠も
+ *                 「配置」の違いとして同じ表で評価する。2026-07-31）
  * - lfShip        LFの船関連（船の基本技術・金枠同盟・アーティファクト）
  */
 export const SETUP_WEIGHT_KEYS = [
@@ -30,8 +29,7 @@ export const SETUP_WEIGHT_KEYS = [
   "roundScoring",
   "finalScoring",
   "federation",
-  "stdTrack",
-  "stdFree",
+  "standardTech",
   "lfShip",
 ] as const;
 
@@ -48,8 +46,7 @@ export const SETUP_WEIGHT_DISPLAY_ORDER: readonly SetupWeightKey[] = [
   "advExtension",
   "finalScoring",
   "federation",
-  "stdTrack",
-  "stdFree",
+  "standardTech",
   "lfShip",
   "roundScoring",
   "booster",
@@ -69,8 +66,7 @@ export const DEFAULT_SETUP_WEIGHTS: SetupWeights = {
   roundScoring: SETUP_WEIGHT_BASE,
   finalScoring: SETUP_WEIGHT_BASE,
   federation: SETUP_WEIGHT_BASE,
-  stdTrack: STD_TECH_TRACK_SCALE,
-  stdFree: STD_TECH_FREE_SCALE,
+  standardTech: STD_TECH_SCALE,
   lfShip: SETUP_WEIGHT_BASE,
 };
 

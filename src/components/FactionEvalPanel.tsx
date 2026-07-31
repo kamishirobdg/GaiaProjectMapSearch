@@ -112,17 +112,14 @@ const CAT_LABEL: Record<SetupWeightKey, { ja: string; en: string; tipJa: string;
     tipJa: "同盟タイル（惑星改造 研究レベル5）",
     tipEn: "Federation tile (Terraforming level 5)",
   },
-  stdTrack: {
-    ja: "トラック",
-    en: "track",
-    tipJa: "標準技術タイルのうち、研究トラックの下に付く6枚（どの列に付くかで価値が変わる）",
-    tipEn: "Standard tech placed under a research track (value depends on the track)",
-  },
-  stdFree: {
-    ja: "フリー",
-    en: "free",
-    tipJa: "標準技術タイルのうち、フリー枠の3枚（トラック非依存）",
-    tipEn: "Standard tech in the free row (track-independent)",
+  standardTech: {
+    ja: "標準技術",
+    en: "std tech",
+    tipJa:
+      "標準技術タイル9枚。どこに置かれたか（研究列6つ／フリー枠）で価値が変わる。\n" +
+      "フリー枠はどの列も登らずに取れるので、そのタイル自体の有用度だけで見る。",
+    tipEn:
+      "The 9 standard tech tiles. Value depends on where each one sits (6 research tracks / free row).",
   },
   lfShip: {
     ja: "LF船",

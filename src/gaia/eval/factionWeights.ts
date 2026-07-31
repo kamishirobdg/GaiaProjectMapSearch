@@ -155,10 +155,19 @@ export const MAP_AFFINITY: Partial<Record<FactionId, { gaia?: number; transdim?:
 // ついでに手に入る ので、価値は「そのトラックを登りたいか」×「そのタイルが
 // 有用か」で決まる。
 //
-// ★ここが編集用の正本テーブル（研究列 × 技術タイル）。
-//   セルに「そのタイルがその研究列に置かれたとき ± がある種族と値」を書く。
+// ★ここが編集用の正本テーブル（配置 × 技術タイル）。
+//   セルに「そのタイルがその場所に置かれたとき ± がある種族と値」を書く。
 //   記載なし＝0。値の目安: 4=主役級 / 2=得意 / 1=噛み合う / -1..-2=噛み合わない。
-//   寄与 = TECH_TRACK_WEIGHTS[タイル][研究列][種族] × STD_TECH_TRACK_SCALE
+//   寄与 = TECH_POSITION_WEIGHTS[タイル][配置][種族] × STD_TECH_SCALE
+//
+// 2026-07-31: トラック下6枚とフリー枠3枚を1つの表にまとめた（ユーザー要望
+// 「どのタイルがどこに配置されるかで評価値を計算して合計する」）。
+// 配置は研究列6つ＋"free"（トラックに紐付かない3枚）の7通り。
+// free 列は「どの列も登らずに取れるぶん、そのタイル自体の有用度だけ」で、
+// 旧 TECH_PREF の値をそのまま持ってきてある。
+// **旧実装ではフリー枠に別係数（トラックの 2/5）を掛けていたので、
+//   free 列の効き具合は相対的に上がっている**（トラック比 0.2 → 0.4 相当）。
+//   値の見直しは「評価値を1つずつ精査」のタスクで行う。
 //
 // 初期値は「トラック親和度(0..2) × タイル有用度(-1..2)」で機械生成したもの。
 // 参考にした親和度（＝その種族が登りたい列）:
@@ -174,9 +183,12 @@ export const MAP_AFFINITY: Partial<Record<FactionId, { gaia?: number; transdim?:
 //   spaceGiants:改造2/航行1（通常惑星が常に2段階＝改造トラックが直に効く）
 //   tinkerroids:改造2/AI1/科学1（3種類の惑星が3段階、ガイアと距離に QIC が要る）
 //   darkanians:航行2/経済1（未入植の宙域へ広げるのが得点源。改造は1段階で足りるので0）
-export const TECH_TRACK_WEIGHTS: Record<
+/** 標準技術の置き場所: 研究列6つ、または列に紐付かないフリー枠。 */
+export type TechPosition = ResearchTrackId | "free";
+
+export const TECH_POSITION_WEIGHTS: Record<
   string,
-  Partial<Record<ResearchTrackId, Partial<Record<FactionId, number>>>>
+  Partial<Record<TechPosition, Partial<Record<FactionId, number>>>>
 > = {
   // TS1 即時:鉱石1+QIC1
   TS1: {
@@ -186,6 +198,7 @@ export const TECH_TRACK_WEIGHTS: Record<
     gaia:  {}, // ガイア計画
     eco:   { darkanians: 1 }, // 経済
     sci:   { tinkerroids: 1 }, // 科学
+    free:  { xenos: 1, ivits: 1, geodens: 1, spaceGiants: 1, tinkerroids: 1, darkanians: 1 },
   },
   // TS2 即時:惑星種類×知識1
   TS2: {
@@ -195,6 +208,7 @@ export const TECH_TRACK_WEIGHTS: Record<
     gaia:  { gleens: 1 }, // ガイア計画
     eco:   { darkanians: 1 }, // 経済
     sci:   { lantids: 2 }, // 科学
+    free:  { geodens: 2, xenos: 1, lantids: 1, gleens: 1, spaceGiants: 2, darkanians: 1 },
   },
   // TS3 首府学院のパワー値4
   TS3: {
@@ -204,6 +218,7 @@ export const TECH_TRACK_WEIGHTS: Record<
     gaia:  { itars: 2 }, // ガイア計画
     eco:   { taklons: 4, ambas: 1, bescods: 1, nevlas: 4, moweyds: 4 }, // 経済
     sci:   { bescods: 2, nevlas: 4, itars: 1, tinkerroids: 2 }, // 科学
+    free:  { nevlas: 2, taklons: 2, ambas: 1, bescods: 1, itars: 1, moweyds: 2, tinkerroids: 2 },
   },
   // TS4 即時:7VP（純粋な点数＝相性なし）
   TS4: {
@@ -213,6 +228,7 @@ export const TECH_TRACK_WEIGHTS: Record<
     gaia:  {}, // ガイア計画
     eco:   {}, // 経済
     sci:   {}, // 科学
+    free:  {},
   },
   // TS5 収入:鉱石1+パワー1
   TS5: {
@@ -222,6 +238,7 @@ export const TECH_TRACK_WEIGHTS: Record<
     gaia:  { gleens: 1, itars: 2 }, // ガイア計画
     eco:   { taklons: 2, moweyds: 2 }, // 経済
     sci:   { itars: 1, tinkerroids: 1 }, // 科学
+    free:  { taklons: 1, itars: 1, geodens: 1, gleens: 1, spaceGiants: 1, tinkerroids: 1, moweyds: 1 },
   },
   // TS6 収入:知識1+クレ1
   TS6: {
@@ -231,6 +248,7 @@ export const TECH_TRACK_WEIGHTS: Record<
     gaia:  { gleens: -1 }, // ガイア計画
     eco:   { firaks: 1, bescods: 1, nevlas: 2, darkanians: 1 }, // 経済
     sci:   { lantids: 2, firaks: 2, bescods: 2, nevlas: 2, tinkerroids: 1 }, // 科学
+    free:  { firaks: 1, bescods: 1, nevlas: 1, lantids: 1, gleens: -1, tinkerroids: 1, darkanians: 1 },
   },
   // TS7 ガイア鉱山+3VP（LF3種族はガイア惑星が Q.I.C.2個で割高＝逆風）
   TS7: {
@@ -240,6 +258,7 @@ export const TECH_TRACK_WEIGHTS: Record<
     gaia:  { terrans: 4, gleens: 2, balTaks: 2, itars: 4 }, // ガイア計画
     eco:   { darkanians: -1 }, // 経済
     sci:   { terrans: 2, itars: 2, tinkerroids: -1 }, // 科学
+    free:  { terrans: 2, gleens: 2, itars: 2, balTaks: 1, spaceGiants: -1, tinkerroids: -1, darkanians: -1 },
   },
   // TS8 収入:クレ4
   TS8: {
@@ -249,6 +268,7 @@ export const TECH_TRACK_WEIGHTS: Record<
     gaia:  {}, // ガイア計画
     eco:   { taklons: 2, ambas: 1, hadschHallas: 4, nevlas: 2, darkanians: 2 }, // 経済
     sci:   { nevlas: 2 }, // 科学
+    free:  { hadschHallas: 2, taklons: 1, nevlas: 1, ambas: 1, darkanians: 2 },
   },
   // TS9 アクション:パワー4
   TS9: {
@@ -258,23 +278,8 @@ export const TECH_TRACK_WEIGHTS: Record<
     gaia:  { itars: 2 }, // ガイア計画
     eco:   { taklons: 4, bescods: 1, nevlas: 4, moweyds: 4 }, // 経済
     sci:   { bescods: 2, nevlas: 4, itars: 1 }, // 科学
+    free:  { taklons: 2, nevlas: 2, itars: 1, bescods: 1, moweyds: 2 },
   },
-};
-
-/**
- * 自由列（トラックに紐付かない3枚）用のタイル別有用度（-1..2、非ゼロのみ）。
- * 研究列に関係なく取れるぶん、上のテーブルより低い係数で効かせる。DRAFT。
- */
-export const TECH_PREF: Record<string, Partial<Record<FactionId, number>>> = {
-  TS1: { xenos: 1, ivits: 1, geodens: 1, spaceGiants: 1, tinkerroids: 1, darkanians: 1 }, // 即時：鉱石1＋QIC1
-  TS2: { geodens: 2, xenos: 1, lantids: 1, gleens: 1, spaceGiants: 2, darkanians: 1 }, // 即時：惑星種類×知識1
-  TS3: { nevlas: 2, taklons: 2, ambas: 1, bescods: 1, itars: 1, moweyds: 2, tinkerroids: 2 }, // 首府・学院のパワー値4
-  TS4: {}, // 即時：7VP（純粋な点数＝相性なし）
-  TS5: { taklons: 1, itars: 1, geodens: 1, gleens: 1, spaceGiants: 1, tinkerroids: 1, moweyds: 1 }, // 収入：鉱石1・パワー1
-  TS6: { firaks: 1, bescods: 1, nevlas: 1, lantids: 1, gleens: -1, tinkerroids: 1, darkanians: 1 }, // 収入：知識1・クレジット1
-  TS7: { terrans: 2, gleens: 2, itars: 2, balTaks: 1, spaceGiants: -1, tinkerroids: -1, darkanians: -1 }, // ガイア惑星に鉱山建設で＋3VP
-  TS8: { hadschHallas: 2, taklons: 1, nevlas: 1, ambas: 1, darkanians: 2 }, // 収入：クレジット4
-  TS9: { taklons: 2, nevlas: 2, itars: 1, bescods: 1, moweyds: 2 }, // アクション：パワー4
 };
 
 /**
@@ -285,13 +290,54 @@ export const TECH_PREF: Record<string, Partial<Record<FactionId, number>>> = {
  * （カテゴリ係数の基準は 10。SETUP_WEIGHT_BASE 参照）。
  * ここが Setup 側の小数の唯一の発生源だった（タイルの重みはすべて整数）。
  */
-export const STD_TECH_TRACK_SCALE = 5;
+export const STD_TECH_SCALE = 5;
+
 /**
- * 自由列3枚（トラック制約なし）の係数。トラック分より軽くする。
- * 基準10では 1/4（2.5）が整数にならないので 2（＝1/5）にしてある。
- * 「トラック分より軽い」という意図は保っているが、比率は 0.25 → 0.2 へ動いた。
+ * ラウンド得点の「何ラウンド目か」による価値の上下（2026-07-31 要望）。
+ *
+ * 同じタイルでも、序盤にしかできない行動（鉱山を建てる）と終盤にしかできない行動
+ * （学院を建てる・同盟を作る）では、何ラウンド目に出たかで実際に稼げる点が変わる。
+ * 種族ごとの相性（TILE_FACTION_WEIGHTS）とは独立なので、掛け算で分ける:
+ *   寄与 = TILE_FACTION_WEIGHTS[タイル][種族] × 倍率[ラウンド] × 係数 / 10
+ *
+ * 倍率は10分率（10＝素通り）。**どの曲線も6ラウンドの合計が60**（＝平均10）なので、
+ * 「どのラウンドに出るかは等確率」と見れば全体のスケールは従来と変わらない。
+ * 曲線の形も割り当ても DRAFT。
  */
-export const STD_TECH_FREE_SCALE = 2;
+const TIMING_EARLY = [14, 12, 11, 9, 8, 6];
+const TIMING_MID = [7, 9, 12, 13, 11, 8];
+const TIMING_LATE = [6, 8, 9, 11, 13, 13];
+const TIMING_FLAT = [10, 10, 10, 10, 10, 10];
+
+/** ラウンド得点タイル → ラウンド別倍率（10分率）。記載なし＝素通り（FLAT）。 */
+export const ROUND_SCORING_TIMING: Record<string, readonly number[]> = {
+  // 序盤: 鉱山を建てる・惑星改造を進めるのは序盤ほど数が出る
+  RS01: TIMING_EARLY, // 鉱山建設 +2VP
+  RS09: TIMING_EARLY, // 惑星改造1段階 +2VP
+  RS11: TIMING_EARLY, // 未入植の種類の惑星に鉱山建設 +3VP
+  // 中盤: 交易所・研究所への改良、ガイア化（ガイアフォーマーを置いて1ラウンド待つ）
+  RS02: TIMING_MID, // 交易所建設 +3VP
+  RS03: TIMING_MID, // 交易所建設 +4VP
+  RS05: TIMING_MID, // ガイア惑星に鉱山建設 +3VP
+  RS06: TIMING_MID, // ガイア惑星に鉱山建設 +4VP
+  RS10: TIMING_MID, // 未入植の宙域で鉱山建設 +3VP（航行を伸ばしてから）
+  RS12: TIMING_MID, // 研究所建設 +4VP
+  // 終盤: 学院・惑星首府は資源が要る。同盟はパワー値7ぶんの建造物が必要
+  RS04: TIMING_LATE, // 学院・惑星首府建設 +5VP
+  RS08: TIMING_LATE, // 同盟タイル獲得 +5VP
+  // 一定: 研究は毎ラウンド進める
+  RS07: TIMING_FLAT, // 研究1レベル +2VP
+};
+
+/** ラウンド別倍率の基準（10分率の 10）。 */
+export const ROUND_TIMING_BASE = 10;
+
+/** そのタイルが n ラウンド目（0始まり）に出たときの倍率。 */
+export function roundTimingOf(tileId: string, roundIndex: number): number {
+  const curve = ROUND_SCORING_TIMING[tileId];
+  if (!curve) return ROUND_TIMING_BASE;
+  return curve[roundIndex] ?? ROUND_TIMING_BASE;
+}
 
 /**
  * タイル id → 種族別重み。DRAFT — 全値レビュー対象（編集用の正本）。

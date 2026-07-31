@@ -19,7 +19,7 @@ import {
 import {
   FACTION_IDS,
   factionIdsForMode,
-  STD_TECH_FREE_SCALE,
+  STD_TECH_SCALE,
   TILE_FACTION_WEIGHTS,
   type FactionId,
 } from "./factionWeights";
@@ -90,14 +90,15 @@ describe("scoreSetupFactions", () => {
   });
 
   it("standard tech: 自由列はトラック非依存に低係数で効く", () => {
-    // hadschHallas は TS8（クレ4収入、pref2）を自由列に持つと 2*STD_TECH_FREE_SCALE。
+    // hadschHallas は TS8 の free 列が pref2 なので 2*STD_TECH_SCALE。
+    // 2026-07-31: フリー枠も同じ表・同じ係数で評価する（旧: 専用の低い係数）。
     const s = syntheticSetup({
       standardTech: {
         byTrack: { terra: "TS1", nav: "TS2", ai: "TS3", gaia: "TS4", eco: "TS5", sci: "TS6" },
         free: ["TS7", "TS8", "TS9"],
       },
     });
-    expect(scoreStandardTech(s).hadschHallas).toBe(2 * STD_TECH_FREE_SCALE);
+    expect(scoreStandardTech(s).hadschHallas).toBe(2 * STD_TECH_SCALE);
   });
 
   it("returns a finite score for every faction", () => {
