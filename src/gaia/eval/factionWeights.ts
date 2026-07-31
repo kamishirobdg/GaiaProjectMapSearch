@@ -16,7 +16,11 @@
 
 import type { ResearchTrackId } from "@/gaia/setup/types";
 
-/** 14種族（基本ゲーム。Lost Fleet は種族を追加しない）。 */
+/**
+ * 18種族。基本14＋Lost Fleet の4（2026-07-30 ユーザー訂正。
+ * 「LF は種族を追加しない」という以前の記述は誤りだった）。
+ * LF の4種族は母星が原始惑星／小惑星で、基本7色には属さない。
+ */
 export type FactionId =
   | "terrans"
   | "lantids"
@@ -31,12 +35,29 @@ export type FactionId =
   | "firaks"
   | "bescods"
   | "nevlas"
-  | "itars";
+  | "itars"
+  // --- Lost Fleet の4種族（母星＝原始惑星／小惑星） ---
+  | "moweyds"
+  | "spaceGiants"
+  | "tinkerroids"
+  | "darkanians";
 
 export type FactionDef = {
   id: FactionId;
-  /** 母星色（マップ評価の PLANET_ORDER と同じ語彙。BLACK=チタニウム/灰色） */
-  color: "BLACK" | "BLUE" | "BROWN" | "ORANGE" | "RED" | "WHITE" | "YELLOW";
+  /**
+   * 母星色（マップ評価の PLANET_ORDER と同じ語彙。BLACK=チタニウム/灰色）。
+   * LF の4種族は基本7色ではなく PROTO（原始惑星）/ ASTEROID（小惑星）。
+   */
+  color:
+    | "BLACK"
+    | "BLUE"
+    | "BROWN"
+    | "ORANGE"
+    | "RED"
+    | "WHITE"
+    | "YELLOW"
+    | "PROTO"
+    | "ASTEROID";
   labelJa: string;
   labelEn: string;
 };
@@ -56,6 +77,11 @@ export const FACTIONS: FactionDef[] = [
   { id: "bescods", color: "BLACK", labelJa: "マッドアンドロイド", labelEn: "Bescods" },
   { id: "nevlas", color: "WHITE", labelJa: "ネヴラ人", labelEn: "Nevlas" },
   { id: "itars", color: "WHITE", labelJa: "イタル人", labelEn: "Itars" },
+  // Lost Fleet（2026-07-30 追加）。重みは未設定（すべて0）＝要レビュー。
+  { id: "moweyds", color: "PROTO", labelJa: "モウェイド人", labelEn: "Moweyds" },
+  { id: "spaceGiants", color: "PROTO", labelJa: "スペースジャイアント", labelEn: "Space Giants" },
+  { id: "tinkerroids", color: "ASTEROID", labelJa: "ティンカーロイド", labelEn: "Tinkerroids" },
+  { id: "darkanians", color: "ASTEROID", labelJa: "ダルカニア人", labelEn: "Darkanians" },
 ];
 
 export const FACTION_IDS: readonly FactionId[] = FACTIONS.map((f) => f.id);

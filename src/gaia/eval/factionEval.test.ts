@@ -94,7 +94,7 @@ describe("scoreSetupFactions", () => {
   it("returns a finite score for every faction", () => {
     const scores = scoreSetupFactions(syntheticSetup());
     for (const f of FACTION_IDS) expect(Number.isFinite(scores[f])).toBe(true);
-    expect(Object.keys(scores)).toHaveLength(14);
+    expect(Object.keys(scores)).toHaveLength(18); // 基本14 + LF4
   });
 });
 
@@ -202,7 +202,8 @@ describe("mapFaction", () => {
     expect(counts.gaia).toBeGreaterThan(0);
     expect(counts.transdim).toBeGreaterThan(0);
     for (const k of Object.keys(counts.byColor)) {
-      expect(["BLACK", "BLUE", "BROWN", "ORANGE", "RED", "WHITE", "YELLOW"]).toContain(k);
+      // LF4種族の母星（PROTO/ASTEROID）も母星色として数える（2026-07-30）
+      expect(["BLACK", "BLUE", "BROWN", "ORANGE", "RED", "WHITE", "YELLOW", "PROTO", "ASTEROID"]).toContain(k);
     }
   });
 

@@ -12,6 +12,8 @@ import { FACTIONS, FACTION_IDS, MAP_AFFINITY, type FactionId } from "./factionWe
 import type { FactionScores } from "./factionEval";
 
 const BASE_COLORS = new Set(["BLACK", "BLUE", "BROWN", "ORANGE", "RED", "WHITE", "YELLOW"]);
+/** LF4種族の母星。基本7色ではないが母星色として数える（2026-07-30）。 */
+const LF_HOME_COLORS = new Set(["PROTO", "ASTEROID"]);
 
 export type MapPlanetCounts = {
   byColor: Record<string, number>; // 基本7色のみ（BLACK=チタニウム/灰色）
@@ -21,8 +23,7 @@ export type MapPlanetCounts = {
 
 /**
  * placement から色別・ガイア・次元横断の惑星数を数える。
- * PROTO/ASTEROID（LFの原始惑星・小惑星）は母星色でないため対象外
- * （小惑星系の相性は TILE_FACTION_WEIGHTS 側で表現する）。
+ * PROTO/ASTEROID は LF4種族の母星色なので数える（2026-07-30 に対象へ追加）。
  */
 export function countMapPlanets(templateId: string, placement: any[]): MapPlanetCounts {
   const lm = buildLogicalMapFromPlacement({ templateId, placement });
@@ -34,7 +35,7 @@ export function countMapPlanets(templateId: string, placement: any[]): MapPlanet
     const pt = String(cell.planetType ?? "");
     if (pt === "GAIA") gaia += 1;
     else if (pt === "TRANSDIM") transdim += 1;
-    else if (BASE_COLORS.has(pt)) byColor[pt] = (byColor[pt] ?? 0) + 1;
+    else if (BASE_COLORS.has(pt) || LF_HOME_COLORS.has(pt)) byColor[pt] = (byColor[pt] ?? 0) + 1;
   }
   return { byColor, gaia, transdim };
 }

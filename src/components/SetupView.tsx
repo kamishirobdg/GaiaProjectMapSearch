@@ -435,7 +435,8 @@ ${pickLabel ?? ""}` : tooltip}
   );
 }
 
-type ExtFaceMode = "auto" | "random" | "vp25" | "shuttle";
+// 既定はランダム。"auto"（人数依存）は面ピッカー導入時に廃止（2026-07-30）。
+type ExtFaceMode = "random" | "vp25" | "shuttle";
 type EconFaceMode = "random" | "A" | "B";
 
 
@@ -610,7 +611,7 @@ export default function SetupView() {
     const p = readSharedPlayers();
     if (p) setPlayers(m === "lostFleet" ? Math.max(2, p) : p);
     const ef = lsGet(LS.extFace);
-    if (ef === "auto" || ef === "random" || ef === "vp25" || ef === "shuttle") setExtFaceMode(ef);
+    if (ef === "random" || ef === "vp25" || ef === "shuttle") setExtFaceMode(ef);
     const ec = lsGet(LS.econFace);
     if (ec === "random" || ec === "A" || ec === "B") setEconFaceMode(ec);
     // 共有リンク（?s=）: マップの ?h= と同じ作法。初回にトークンを ref へ捕捉して
@@ -667,7 +668,9 @@ export default function SetupView() {
         seed: s,
         playerCount: players,
         ...(lf ? { mode: "lostFleet" as const } : {}),
-        ...(lf && extFaceMode !== "auto" ? { extensionFaceMode: extFaceMode } : {}),
+        // 既定（どちらも random）はフィールドごと省略する。既定のままの条件が
+        // 「推奨条件」と判定されるようにするため（2026-07-30 修正）。
+        ...(lf && extFaceMode !== "random" ? { extensionFaceMode: extFaceMode } : {}),
         ...(lf && econFaceMode !== "random" ? { econFaceMode } : {}),
         ...(Object.keys(tileRules).length > 0 ? { tileRules } : {}),
       };

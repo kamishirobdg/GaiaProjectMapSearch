@@ -40,6 +40,8 @@ const UI = {
     confirmDeleteMeta: "この条件（名前・設定）を削除します。結果は残ります。よろしいですか？",
     confirmDeleteAll: "この条件と、その条件で貯めた結果をすべて削除します。よろしいですか？",
     confirmReset: "条件を既定値に戻します。よろしいですか？",
+    collapse: "たたむ",
+    expand: "ひらく",
   },
   en: {
     title: "Saved conditions",
@@ -65,6 +67,8 @@ const UI = {
     confirmDeleteMeta: "Delete this condition (name and settings)? Its results are kept.",
     confirmDeleteAll: "Delete this condition AND every result saved under it?",
     confirmReset: "Reset the conditions to their defaults?",
+    collapse: "Collapse",
+    expand: "Expand",
   },
 } as const;
 
@@ -104,6 +108,8 @@ export default function ConditionProfilesPanel<P>({
   const [editingKey, setEditingKey] = React.useState<string | null>(null);
   const [editingName, setEditingName] = React.useState("");
   const [query, setQuery] = React.useState("");
+  // 縦に長くなって邪魔なので畳めるようにする（2026-07-30 要望）。既定は畳んだ状態。
+  const [open, setOpen] = React.useState(false);
 
   const rows = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -119,8 +125,28 @@ export default function ConditionProfilesPanel<P>({
   return (
     <section style={{ border: T.border, borderRadius: T.radius, padding: T.pad, background: "white" }}>
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
-        <div style={{ fontWeight: 700, fontSize: T.fontHead }}>{t.title}</div>
-        <div style={{ fontSize: T.fontNote, color: T.fgMuted }}>{t.note}</div>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          title={open ? t.collapse : t.expand}
+          style={{
+            fontWeight: 700,
+            fontSize: T.fontHead,
+            background: "none",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            display: "flex",
+            gap: 6,
+            alignItems: "center",
+          }}
+        >
+          <span style={{ fontSize: 11 }}>{open ? "▼" : "▶"}</span>
+          {t.title}
+          <span style={{ fontSize: T.fontNote, color: T.fgMuted, fontWeight: 400 }}>
+            ({profiles.length})
+          </span>
+        </button>
+        {open ? <div style={{ fontSize: T.fontNote, color: T.fgMuted }}>{t.note}</div> : null}
         <button
           onClick={() => {
             if (!confirm(t.confirmReset)) return;
@@ -131,7 +157,14 @@ export default function ConditionProfilesPanel<P>({
         >
           {t.reset}
         </button>
-        <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
+        <div
+          style={{
+            marginLeft: "auto",
+            display: open ? "flex" : "none",
+            gap: 6,
+            alignItems: "center",
+          }}
+        >
           <span style={{ fontSize: T.fontNote, color: T.fgMuted }}>{t.filter}</span>
           <input
             value={query}
@@ -145,7 +178,7 @@ export default function ConditionProfilesPanel<P>({
         </div>
       </div>
 
-      {blocked ? (
+      {open && blocked ? (
         <div
           style={{
             fontSize: T.fontBody,
@@ -161,7 +194,7 @@ export default function ConditionProfilesPanel<P>({
         </div>
       ) : null}
 
-      {rows.length === 0 ? (
+      {!open ? null : rows.length === 0 ? (
         <div style={{ fontSize: T.fontBody, color: T.fgMuted }}>{t.empty}</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

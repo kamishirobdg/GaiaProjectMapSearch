@@ -10,7 +10,7 @@
 "use client";
 
 import React from "react";
-import { PLANET_INPUT_BG, PLANET_LABEL_JA, type PlanetTypeKey } from "@/app/board/BreakdownTable";
+import { EXTRA_LABEL_JA, PLANET_INPUT_BG, PLANET_LABEL_JA, type PlanetTypeKey } from "@/app/board/BreakdownTable";
 import { setupFactionBreakdown, setupFactionTileHits, type FactionScores } from "@/gaia/eval/factionEval";
 import { FACTIONS, type FactionId } from "@/gaia/eval/factionWeights";
 import {
@@ -29,6 +29,12 @@ import { T } from "@/components/ui/layout";
 type Lang = "ja" | "en";
 
 /** 種族の母星色（タイルを縁取るので、背景色ではなく濃い方を使う）。 */
+/** LF4種族の母星（原始惑星・小惑星）の行背景。Map のリング色に合わせた薄い版。 */
+const EXTRA_HOME_BG: Record<string, string> = {
+  PROTO: "#cdeffd",
+  ASTEROID: "#f2d7ec",
+};
+
 const HOME_COLOR_VIVID: Record<string, string> = {
   BLACK: "#444444",
   BLUE: "#2b7fe0",
@@ -37,6 +43,8 @@ const HOME_COLOR_VIVID: Record<string, string> = {
   RED: "#e23b3b",
   WHITE: "#8d8d8d",
   YELLOW: "#e8c400",
+  PROTO: "#3d8cb5",
+  ASTEROID: "#9c4a8f",
 };
 /** 種族に紐づかない選択（列まるごと）のときの色。 */
 const NEUTRAL_MARK_COLOR = "#2b7fe0";

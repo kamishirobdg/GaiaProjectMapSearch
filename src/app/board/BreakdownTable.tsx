@@ -469,8 +469,6 @@ return (
             a?.scoutCore?.extraByKind,
             a?.gaiaProximity?.extraByKind,
             a?.cluster?.extraByKind,
-            a?.outerExtraByKind,
-            a?.touchExtraByKind,
           ];
           const hasAny = kinds.some((k) => sources.some((s) => ex(s, k) !== 0));
           if (!hasAny) return null;
@@ -480,11 +478,9 @@ return (
             const vCore = ex(a?.scoutCore?.extraByKind, k);
             const vGaia = ex(a?.gaiaProximity?.extraByKind, k);
             const vCluster = ex(a?.cluster?.extraByKind, k);
-            const vOuter = ex(a?.outerExtraByKind, k);
-            const vTouch = ex(a?.touchExtraByKind, k);
-            const cOuter = ex(a?.outerCountExtraByKind, k);
-            const cTouch = ex(a?.touchCountExtraByKind, k);
-            const vTotal = vScout + vCore + vGaia + vCluster + vOuter + vTouch;
+            // 最外周/外周は原始・小惑星の種族評価に効かないので計算対象外
+            // （表示は「-」。2026-07-30 ユーザー確定）。
+            const vTotal = vScout + vCore + vGaia + vCluster;
 
             const label = lang === "ja" ? EXTRA_LABEL_JA[k] : k;
 
@@ -510,10 +506,10 @@ return (
               if (colKey === "scoutCore") return val("scoutCore", vCore);
               if (colKey === "gaia") return val("gaia", vGaia);
               if (colKey === "cluster") return val("cluster", vCluster);
-              if (colKey === "outer") return val("outer", vOuter);
-              if (colKey === "touch") return val("touch", vTouch);
-              if (colKey === "cntOuter") return hasCounts ? <td style={tdStyle}>{cOuter}</td> : null;
-              if (colKey === "cntTouch") return hasCounts ? <td style={tdStyle}>{cTouch}</td> : null;
+              // 最外周/外周とその枚数は評価に使わないので「-」
+              if (colKey === "outer" || colKey === "touch") return <td style={tdStyle}>-</td>;
+              if (colKey === "cntOuter" || colKey === "cntTouch")
+                return hasCounts ? <td style={tdStyle}>-</td> : null;
               return null;
             };
 
