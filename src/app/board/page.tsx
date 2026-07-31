@@ -149,6 +149,42 @@ function sumCounts(obj: any): number {
 
 import { runSearchOffThread } from "./searchRunner";
 
+/**
+ * 検索条件の既定値（SSOT）。useState の初期値と「既定値で新規」で共用する。
+ * ここだけを直せば両方に効く（片方だけ古い値が残る事故を防ぐ）。2026-07-30。
+ */
+const DEFAULT_CONDITIONS = {
+  // hard
+  outerSameColorMax: 1,
+  centerMode: "NONE" as "NONE" | "CENTER_7_9" | "CENTER_8" | "CENTER_7_8",
+  maxConnectedPlanets: 0,
+  h5IncludeScouts: false,
+  // soft（各軸が全体に占める割合を実測して決めた。2026-07-30 ユーザー確定。
+  // 影響力の順は 船接触 > 船星系 > ガイア > 星系 > 最外周 > 外周。
+  // 実測 3p_lostFleet/24盤面: 31.2% / 27.0% / 23.4% / 13.9% / 3.3% / 1.2%）
+  wOuter: 3,
+  wTouch: 1,
+  wScout: 10,
+  wScoutCore: 4,
+  wScoutShips: [10, 10, 10, 10] as number[],
+  wScoutCoreShips: [3, 3, 3, 3] as number[],
+  scoutCoreAttribBest: false,
+  scoutRadius: 3,
+  // ガイア距離1は現行仕様では発生しない（惑星どうしは隣接しない）ので入力欄は非表示
+  wGaiaD1: 5,
+  wGaiaD2: 8,
+  wGaiaD3: 3,
+  wClusterSize: 1,
+  applyExtraAxesLF: false,
+  // 色優遇/冷遇
+  wColorPref: 3,
+  pref: 0,
+  // 保持件数
+  keepTop: 20,
+};
+
+
+
 // タブ遷移時の「デフォルト→復元」ちらつきを消すため、共有選択の復元は
 // paint 前に走る layout effect で行う（SSRでは useEffect にフォールバック）。2026-07-24。
 const useIsoLayoutEffect = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
@@ -960,12 +996,12 @@ return (savedProfiles ?? []).filter((p) => {
   const [selectedSeedLabel, setSelectedSeedLabel] = React.useState<string | null>(null);
 
   // Hard params
-  const [outerSameColorMax, setOuterSameColorMax] = React.useState(1);
-  const [centerMode, setCenterMode] = React.useState<"NONE" | "CENTER_7_9" | "CENTER_8" | "CENTER_7_8">("NONE");
+  const [outerSameColorMax, setOuterSameColorMax] = React.useState(DEFAULT_CONDITIONS.outerSameColorMax);
+  const [centerMode, setCenterMode] = React.useState<"NONE" | "CENTER_7_9" | "CENTER_8" | "CENTER_7_8">(DEFAULT_CONDITIONS.centerMode);
   // H5: max connected planet cluster cap. 0 = disabled (default).
-  const [maxConnectedPlanets, setMaxConnectedPlanets] = React.useState(0);
+  const [maxConnectedPlanets, setMaxConnectedPlanets] = React.useState(DEFAULT_CONDITIONS.maxConnectedPlanets);
   // H5: include scout cells as planets for the connected-cluster check. false = disabled (default).
-  const [h5IncludeScouts, setH5IncludeScouts] = React.useState(false);
+  const [h5IncludeScouts, setH5IncludeScouts] = React.useState(DEFAULT_CONDITIONS.h5IncludeScouts);
   
     React.useEffect(() => {
     const allowed = new Set(centerModeOptions.map((x) => x.value));
@@ -975,27 +1011,27 @@ return (savedProfiles ?? []).filter((p) => {
   }, [centerMode, centerModeOptions]);
   
   // Soft params
-  const [wOuter, setWOuter] = React.useState(3);
-  const [wTouch, setWTouch] = React.useState(1);
+  const [wOuter, setWOuter] = React.useState(DEFAULT_CONDITIONS.wOuter);
+  const [wTouch, setWTouch] = React.useState(DEFAULT_CONDITIONS.wTouch);
   // 既定値は「各軸が全体に占める割合」を実測して決めた（2026-07-30 ユーザー確定）。
   // 影響力の順を 船接触 > 船星系 > ガイア > 星系 > 最外周 > 外周 にしてある。
   // 実測(3p_lostFleet/24盤面): 31.2% / 27.0% / 23.4% / 13.9% / 3.3% / 1.2%
-  const [wScout, setWScout] = React.useState(10);
-  const [wScoutCore, setWScoutCore] = React.useState(4);
+  const [wScout, setWScout] = React.useState(DEFAULT_CONDITIONS.wScout);
+  const [wScoutCore, setWScoutCore] = React.useState(DEFAULT_CONDITIONS.wScoutCore);
 
-  const [wScoutS1, setWScoutS1] = React.useState(10);
-  const [wScoutS2, setWScoutS2] = React.useState(10);
-  const [wScoutS3, setWScoutS3] = React.useState(10);
-  const [wScoutS4, setWScoutS4] = React.useState(10);
+  const [wScoutS1, setWScoutS1] = React.useState(DEFAULT_CONDITIONS.wScoutShips[0]);
+  const [wScoutS2, setWScoutS2] = React.useState(DEFAULT_CONDITIONS.wScoutShips[1]);
+  const [wScoutS3, setWScoutS3] = React.useState(DEFAULT_CONDITIONS.wScoutShips[2]);
+  const [wScoutS4, setWScoutS4] = React.useState(DEFAULT_CONDITIONS.wScoutShips[3]);
 
-  const [wScoutCoreS1, setWScoutCoreS1] = React.useState(3);
-  const [wScoutCoreS2, setWScoutCoreS2] = React.useState(3);
-  const [wScoutCoreS3, setWScoutCoreS3] = React.useState(3);
-  const [wScoutCoreS4, setWScoutCoreS4] = React.useState(3);
+  const [wScoutCoreS1, setWScoutCoreS1] = React.useState(DEFAULT_CONDITIONS.wScoutCoreShips[0]);
+  const [wScoutCoreS2, setWScoutCoreS2] = React.useState(DEFAULT_CONDITIONS.wScoutCoreShips[1]);
+  const [wScoutCoreS3, setWScoutCoreS3] = React.useState(DEFAULT_CONDITIONS.wScoutCoreShips[2]);
+  const [wScoutCoreS4, setWScoutCoreS4] = React.useState(DEFAULT_CONDITIONS.wScoutCoreShips[3]);
 
-  const [scoutCoreAttribBest, setScoutCoreAttribBest] = React.useState(false);
+  const [scoutCoreAttribBest, setScoutCoreAttribBest] = React.useState(DEFAULT_CONDITIONS.scoutCoreAttribBest);
 
-  const [scoutRadius, setScoutRadius] = React.useState(3);
+  const [scoutRadius, setScoutRadius] = React.useState(DEFAULT_CONDITIONS.scoutRadius);
   const wImbalance = 100;
   // 指標(std/range)のドロップダウンは廃止し std 固定（ユーザー確定 2026-07-23。
   // キーには従来どおり imbalanceMetric:"std" が入り続けるので既存保存結果は不変。
@@ -1005,16 +1041,16 @@ return (savedProfiles ?? []).filter((p) => {
   // 基本版専用の新評価軸（2026-07-23）: ガイア近接（距離1/2/3の全ガイア合算）と
   // 星系クラスタ（サイズn>=2の各色に+n×重み）。LFではキー・実行時とも
   // フィールドごと省略（evaluateSoft側もフィールド不在で完全スキップ）。
-  const [wGaiaD1, setWGaiaD1] = React.useState(5);
-  const [wGaiaD2, setWGaiaD2] = React.useState(8);
-  const [wGaiaD3, setWGaiaD3] = React.useState(3);
-  const [wClusterSize, setWClusterSize] = React.useState(1);
+  const [wGaiaD1, setWGaiaD1] = React.useState(DEFAULT_CONDITIONS.wGaiaD1);
+  const [wGaiaD2, setWGaiaD2] = React.useState(DEFAULT_CONDITIONS.wGaiaD2);
+  const [wGaiaD3, setWGaiaD3] = React.useState(DEFAULT_CONDITIONS.wGaiaD3);
+  const [wClusterSize, setWClusterSize] = React.useState(DEFAULT_CONDITIONS.wClusterSize);
 
   // LF でガイア近接・星系軸を有効化するオプトイン（Phase A, 2026-07-25）。
   // 既定 OFF。OFF のときはキーからフィールドごと省略＝既存LFキーはバイト不変。
   // ON にすると base と同じ2軸を評価に加える（LFキーが変わり別バケット＝了承済み）。
   // base では常時有効なのでこのフラグは無視される。
-  const [applyExtraAxesLF, setApplyExtraAxesLF] = React.useState(false);
+  const [applyExtraAxesLF, setApplyExtraAxesLF] = React.useState(DEFAULT_CONDITIONS.applyExtraAxesLF);
   React.useEffect(() => {
     try {
       if (localStorage.getItem("gaia_lf_extra_axes") === "1") setApplyExtraAxesLF(true);
@@ -1030,17 +1066,17 @@ return (savedProfiles ?? []).filter((p) => {
   const extraAxesOn = isBase || applyExtraAxesLF;
 
   // Color preference (by planetTypeTotals)
-  const [wColorPref, setWColorPref] = React.useState(3);
-  const [prefBLACK, setPrefBLACK] = React.useState(0);
-  const [prefBLUE, setPrefBLUE] = React.useState(0);
-  const [prefBROWN, setPrefBROWN] = React.useState(0);
-  const [prefORANGE, setPrefORANGE] = React.useState(0);
-  const [prefRED, setPrefRED] = React.useState(0);
-  const [prefWHITE, setPrefWHITE] = React.useState(0);
-  const [prefYELLOW, setPrefYELLOW] = React.useState(0);
+  const [wColorPref, setWColorPref] = React.useState(DEFAULT_CONDITIONS.wColorPref);
+  const [prefBLACK, setPrefBLACK] = React.useState(DEFAULT_CONDITIONS.pref);
+  const [prefBLUE, setPrefBLUE] = React.useState(DEFAULT_CONDITIONS.pref);
+  const [prefBROWN, setPrefBROWN] = React.useState(DEFAULT_CONDITIONS.pref);
+  const [prefORANGE, setPrefORANGE] = React.useState(DEFAULT_CONDITIONS.pref);
+  const [prefRED, setPrefRED] = React.useState(DEFAULT_CONDITIONS.pref);
+  const [prefWHITE, setPrefWHITE] = React.useState(DEFAULT_CONDITIONS.pref);
+  const [prefYELLOW, setPrefYELLOW] = React.useState(DEFAULT_CONDITIONS.pref);
 
   const [trials, setTrials] = React.useState(30000);
-  const [keepTop, setKeepTop] = React.useState(20);
+  const [keepTop, setKeepTop] = React.useState(DEFAULT_CONDITIONS.keepTop);
 
   // trials is an execution setting (excluded from searchKeyParams / saved profiles),
   // so it needs its own persistence like seedMode. Read on mount to avoid hydration mismatch.
@@ -1350,6 +1386,62 @@ try {
     },
     [setWhich, setOuterSameColorMax, setCenterMode, setMaxConnectedPlanets, setH5IncludeScouts, setWOuter, setWTouch, setWScout, setWScoutCore, setScoutRadius, setWColorPref, setPrefBLACK, setPrefBLUE, setPrefBROWN, setPrefORANGE, setPrefRED, setPrefWHITE, setPrefYELLOW, setKeepTop, setShowSavedConditions, changeApplyExtraAxesLF]
   );
+
+  /**
+   * 検索条件を既定値へ戻して「新規」から始める（2026-07-30 要望）。
+   *
+   * 保存済み条件は起動時に自動適用されるので、既定値を変えても保存済みの値に
+   * 上書きされて新しい既定値が出てこない。ここで状態を既定へ戻し、あわせて
+   * 自動適用のポインタ（LAST_APPLIED_SEARCHKEY）も消して、次回起動でも
+   * 既定値から始まるようにする。
+   * 人数・拡張（テンプレート）は検索条件ではないので触らない。
+   * 保存済みのマップやプロファイルは消さない（条件を戻すだけ）。
+   */
+  const resetConditionsToDefaults = React.useCallback(() => {
+    const D = DEFAULT_CONDITIONS;
+    setOuterSameColorMax(D.outerSameColorMax);
+    setCenterMode(D.centerMode);
+    setMaxConnectedPlanets(D.maxConnectedPlanets);
+    setH5IncludeScouts(D.h5IncludeScouts);
+
+    setWOuter(D.wOuter);
+    setWTouch(D.wTouch);
+    setWScout(D.wScout);
+    setWScoutCore(D.wScoutCore);
+    setWScoutS1(D.wScoutShips[0]);
+    setWScoutS2(D.wScoutShips[1]);
+    setWScoutS3(D.wScoutShips[2]);
+    setWScoutS4(D.wScoutShips[3]);
+    setWScoutCoreS1(D.wScoutCoreShips[0]);
+    setWScoutCoreS2(D.wScoutCoreShips[1]);
+    setWScoutCoreS3(D.wScoutCoreShips[2]);
+    setWScoutCoreS4(D.wScoutCoreShips[3]);
+    setScoutCoreAttribBest(D.scoutCoreAttribBest);
+    setScoutRadius(D.scoutRadius);
+
+    setWGaiaD1(D.wGaiaD1);
+    setWGaiaD2(D.wGaiaD2);
+    setWGaiaD3(D.wGaiaD3);
+    setWClusterSize(D.wClusterSize);
+    changeApplyExtraAxesLF(D.applyExtraAxesLF);
+
+    setWColorPref(D.wColorPref);
+    setPrefBLACK(D.pref);
+    setPrefBLUE(D.pref);
+    setPrefBROWN(D.pref);
+    setPrefORANGE(D.pref);
+    setPrefRED(D.pref);
+    setPrefWHITE(D.pref);
+    setPrefYELLOW(D.pref);
+
+    setKeepTop(D.keepTop);
+
+    try {
+      localStorage.removeItem(LAST_APPLIED_SEARCHKEY);
+    } catch {
+      // ignore
+    }
+  }, [changeApplyExtraAxesLF]);
 
 
   const refreshProfiles = React.useCallback(async () => {
@@ -2723,6 +2815,18 @@ const handleDeleteUsed = React.useCallback(
         <div style={{ border: "1px solid #ddd", borderRadius: 10, padding: 10, margin: "0 12px 10px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
             <div style={{ fontWeight: 800 }}>{t("savedConditions")}</div>
+
+            {/* 保存済み条件は起動時に自動適用されるので、既定値から始め直す入口を置く */}
+            <button
+              onClick={() => {
+                if (!confirm(t("confirmResetConditions"))) return;
+                resetConditionsToDefaults();
+              }}
+              title={t("resetConditionsTip")}
+              style={{ padding: "4px 10px", fontSize: 12, fontWeight: 700 }}
+            >
+              {t("resetConditions")}
+            </button>
 
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <div style={{ fontSize: 12, opacity: 0.8 }}>{t("filter")}</div>
