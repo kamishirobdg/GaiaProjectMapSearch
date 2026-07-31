@@ -35,8 +35,21 @@ import { DEFAULT_SETUP_WEIGHTS, isDefaultWeights, type SetupWeights } from "@/ga
 import { copyText, decodeSetupToken, setupShareUrl } from "@/lib/setupShare";
 import GlobalBar from "@/components/GlobalBar";
 import FactionEvalPanel, { useSetupWeights, type SetupMarkRequest } from "@/components/FactionEvalPanel";
-import { recommendSetups, topFactions, type Recommendation } from "@/gaia/eval/factionEval";
+import {
+  recommendSetups,
+  scoreSetupFactions,
+  topFactions,
+  type Recommendation,
+} from "@/gaia/eval/factionEval";
 import { factionsForMode } from "@/gaia/eval/factionWeights";
+import {
+  clearRanking,
+  deleteRankingByCondition,
+  listRanking,
+  mergeRanking,
+  SETUP_RANKING_CAP,
+  type ScoredSetup,
+} from "@/lib/setupRanking";
 import { PageBody, SectionTitle, T, TwoCol } from "@/components/ui/layout";
 import {
   readSharedExpansion,
@@ -71,6 +84,19 @@ const PLANET_COLOR_STYLE: Record<PlanetColorKey, { bg: string; ja: string; en: s
   WHITE: { bg: "#ffffff", ja: "白", en: "White" },
   YELLOW: { bg: "#fff9c4", ja: "黄", en: "Yellow" },
 };
+
+/**
+ * 一括探索（2026-07-31）。いまの条件で大量に生成して基準の良い順に並べる。
+ * 基準はマップ非依存のものだけ（マップ依存の逆優位・優位は List タブの担当）。
+ */
+const BULK_CRITERIA = ["topBalance", "neutralBalance"] as const;
+type BulkCriterion = (typeof BULK_CRITERIA)[number];
+/** 条件×基準ごとに保存・表示する件数（setupRanking の保存上限と揃える）。 */
+const BULK_TOP_N = SETUP_RANKING_CAP;
+/** 1チャンクの生成数。0.25ms/件なので 250件≒60ms でUIを明け渡せる。 */
+const BULK_CHUNK = 250;
+const BULK_TRIALS_MAX = 5000;
+const BULK_TRIALS_DEFAULT = 1000;
 
 // Research track display names (labels only; ids are the source of truth).
 const TRACK_LABEL: Record<ResearchTrackId, { ja: string; en: string }> = {
@@ -149,7 +175,7 @@ const UI = {
     savedEmptyUsed: "使用済みはありません",
     recordCurrent: "この内容を記録",
     bulkTitle: "一括探索",
-    bulkNote: "いまの条件で大量に生成して、基準の良い順に並べる。行をクリックすると表示。",
+    bulkNote: `いまの条件で大量に生成して基準の良い順に上位${BULK_TOP_N}件を保存。次の探索は前回の上位とマージする。行をクリックすると表示`,
     bulkTrials: "件数",
     bulkCriterion: "基準",
     bulkRun: "探索",
@@ -245,7 +271,7 @@ const UI = {
     savedEmptyUsed: "No used entries",
     recordCurrent: "Record current",
     bulkTitle: "Bulk search",
-    bulkNote: "Generate many setups under the current conditions and rank them. Click a row to show it.",
+    bulkNote: `Generates many setups under the current conditions and keeps the best ${BULK_TOP_N}; the next search merges with them. Click a row to show it`,
     bulkTrials: "Trials",
     bulkCriterion: "Criterion",
     bulkRun: "Search",
@@ -359,15 +385,25 @@ const bulkTh: React.CSSProperties = {
 };
 const bulkTd: React.CSSProperties = { border: "1px solid #eee", padding: "3px 6px" };
 
-/** その行で強い種族トップ3。基本版では LF4種族を除く（選べないため）。 */
-function bulkTopText(r: Recommendation, lf: boolean, lang: Lang): string {
+/**
+ * その行で強い種族トップ3。基本版では LF4種族を除く（選べないため）。
+ * 保存済みランキングは入力しか持たないので、ここで組み立て直して評価する
+ * （生成は 0.25ms/件 なので20行でも数ミリ秒）。
+ */
+function bulkTopText(
+  row: ScoredSetup,
+  lf: boolean,
+  lang: Lang,
+  weights: SetupWeights
+): string {
   const defs = factionsForMode(lf);
   const label = (id: string) => {
     const f = defs.find((x) => x.id === id);
     return f ? (lang === "ja" ? f.labelJa : f.labelEn) : id;
   };
-  return topFactions(r.setupScores, 3, lf)
-    .map((id) => `${label(id)} ${Math.round(r.setupScores[id] * 10) / 10}`)
+  const scores = scoreSetupFactions(buildSetupFromSeed(row.input), weights);
+  return topFactions(scores, 3, lf)
+    .map((id) => `${label(id)} ${Math.round(scores[id] * 10) / 10}`)
     .join(" / ");
 }
 
@@ -505,20 +541,6 @@ const LS = {
   bulkCriterion: "gaia_setup_bulk_criterion",
 } as const;
 
-/**
- * 一括探索（2026-07-31）。いまの条件で大量に生成して基準の良い順に並べる。
- * 基準はマップ非依存のものだけ（マップ依存の逆優位・優位は List タブの担当）。
- */
-const BULK_CRITERIA = ["topBalance", "neutralBalance"] as const;
-type BulkCriterion = (typeof BULK_CRITERIA)[number];
-/** ランキングに残す件数。 */
-const BULK_TOP_N = 20;
-/** 1チャンクの生成数。0.25ms/件なので 250件≒60ms でUIを明け渡せる。 */
-const BULK_CHUNK = 250;
-const BULK_TRIALS_MAX = 5000;
-const BULK_TRIALS_DEFAULT = 1000;
-
-
 function lsGet(key: string): string | null {
   try {
     return localStorage.getItem(key);
@@ -646,12 +668,19 @@ export default function SetupView() {
   // 復元effect（下の useIsoLayoutEffect）から触るので、宣言はそれより前に置く。
   const [bulkTrials, setBulkTrials] = React.useState<number>(BULK_TRIALS_DEFAULT);
   const [bulkCriterion, setBulkCriterion] = React.useState<BulkCriterion>("topBalance");
-  const [bulkRows, setBulkRows] = React.useState<Recommendation[] | null>(null);
+  const [bulkRows, setBulkRows] = React.useState<ScoredSetup[]>([]);
   const [bulkBusy, setBulkBusy] = React.useState(false);
   const [bulkDone, setBulkDone] = React.useState(0);
   const [bulkTotal, setBulkTotal] = React.useState(0);
   const [bulkRecordedIds, setBulkRecordedIds] = React.useState<Set<string>>(() => new Set());
-  const bulkAbortRef = React.useRef(false);
+  /** 走っているチャンクループを止める（中止ボタン／条件変更）。 */
+  const bulkStopRef = React.useRef(false);
+  /**
+   * 表示コンテキストの世代。条件・基準・評価指数が変わるか「消去」した時点で進める。
+   * 走っている探索は結果の保存までは必ずやるが、世代がズレていたら画面は触らない
+   * （中止ボタンで止めた場合は世代が同じなので、そこまでの上位が画面に出る）。
+   */
+  const bulkGenRef = React.useRef(0);
   /** 面（経済調整タイル・得点ボード拡張部）の選択パネル。 */
   const [facePicker, setFacePicker] = React.useState<"econ" | "ext" | null>(null);
   /** どのスロットの指定パネルを開いているか。 */
@@ -956,45 +985,95 @@ export default function SetupView() {
     lsSet(LS.bulkCriterion, v);
   }, []);
 
-  // 条件を変えたら前回のランキングは別条件のものになるので捨てる。走っている探索も
-  // 止める（止めないと、次のチャンクが旧条件の結果で bulkRows を上書きしてしまう）。
+  /**
+   * 保存済みランキングを読み直す。条件・基準・評価指数のどれが変わっても引き直す
+   * （スコアは保存値ではなく、いまの評価指数で再計算される）。走っている探索は
+   * 止める —— 止めないと、次のチャンクが旧条件の結果で表を上書きしてしまう。
+   */
   React.useEffect(() => {
-    bulkAbortRef.current = true;
-    setBulkRows(null);
+    let alive = true;
+    bulkGenRef.current += 1;
+    bulkStopRef.current = true;
     setBulkRecordedIds(new Set());
-  }, [bucketKey]);
+    void listRanking({
+      conditionKey: bucketKey,
+      criterion: bulkCriterion,
+      playerCount: players,
+      lostFleet: lf,
+      weights: evalWeights,
+    }).then((rows) => {
+      if (alive) setBulkRows(rows);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [bucketKey, bulkCriterion, players, lf, evalWeights]);
 
   const handleBulkSearch = React.useCallback(() => {
     if (bulkBusy) {
-      bulkAbortRef.current = true;
+      // 中止。世代は進めないので、そこまでの上位はマージされて画面にも出る。
+      bulkStopRef.current = true;
       return;
     }
     const total = Math.max(1, Math.min(BULK_TRIALS_MAX, Math.floor(bulkTrials) || 1));
     const seeds = Array.from({ length: total }, () => randomSeedString());
     const baseInput = buildInput("") as any;
     delete baseInput.seed;
+    // 探索中に条件が変わってもこの回の結果は「開始時の条件」のバケツへ入れる。
+    const forKey = bucketKey;
+    const forCriterion = bulkCriterion;
+    const myGen = bulkGenRef.current;
 
-    bulkAbortRef.current = false;
+    bulkStopRef.current = false;
     setBulkBusy(true);
     setBulkDone(0);
     setBulkTotal(total);
     setBulkRecordedIds(new Set());
 
+    /** 今回の結果を保存済みランキングへマージして、残った上位を表示する。 */
+    const commit = (acc: Recommendation[]) => {
+      void mergeRanking({
+        conditionKey: forKey,
+        criterion: forCriterion,
+        playerCount: players,
+        lostFleet: lf,
+        weights: evalWeights,
+        fresh: acc.map((r) => ({ seed: String(r.input.seed), input: r.input, score: r.score })),
+        cap: BULK_TOP_N,
+      })
+        .then((rows) => {
+          // マージ中に条件・基準を変えられていたら、その表示を壊さない。
+          if (bulkGenRef.current !== myGen) return;
+          setBulkRows(rows);
+        })
+        .catch(() => {
+          // DB が使えないときは今回ぶんだけでも見せる（保存はされない）。
+          if (bulkGenRef.current !== myGen) return;
+          setBulkRows(
+            acc.map((r) => ({
+              id: `${forKey}:${forCriterion}:${String(r.input.seed)}`,
+              conditionKey: forKey,
+              criterion: forCriterion,
+              seed: String(r.input.seed),
+              input: r.input,
+              score: r.score,
+              createdAt: 0,
+            }))
+          );
+        })
+        .finally(() => setBulkBusy(false));
+    };
+
     const step = (from: number, acc: Recommendation[]) => {
-      // 中止時は結果を書かない。チャンクごとに書いてあるので「中止」なら途中経過が
-      // そのまま残り、条件変更で捨てた表を書き戻してしまうこともない。
-      if (bulkAbortRef.current) {
-        setBulkBusy(false);
-        return;
-      }
-      if (from >= seeds.length) {
-        setBulkRows(acc);
-        setBulkBusy(false);
+      // 中止（ボタン or 条件変更）なら、そこまでの結果を保存してから止める。
+      // Map の検索と同じで、途中で止めても見つけた上位は失わない。
+      if (bulkStopRef.current || from >= seeds.length) {
+        commit(acc);
         return;
       }
       const slice = seeds.slice(from, from + BULK_CHUNK);
       const rs = recommendSetups({
-        criterion: bulkCriterion,
+        criterion: forCriterion,
         seeds: slice,
         playerCount: players,
         lostFleet: lf,
@@ -1004,11 +1083,18 @@ export default function SetupView() {
       });
       const merged = [...acc, ...rs].sort((a, b) => b.score - a.score).slice(0, BULK_TOP_N);
       setBulkDone(from + slice.length);
-      setBulkRows(merged);
       window.setTimeout(() => step(from + BULK_CHUNK, merged), 0);
     };
     step(0, []);
-  }, [bulkBusy, bulkTrials, buildInput, bulkCriterion, players, lf, evalWeights]);
+  }, [bulkBusy, bulkTrials, buildInput, bucketKey, bulkCriterion, players, lf, evalWeights]);
+
+  const handleBulkClear = React.useCallback(() => {
+    bulkGenRef.current += 1;
+    bulkStopRef.current = true;
+    setBulkRows([]);
+    setBulkRecordedIds(new Set());
+    void clearRanking(bucketKey, bulkCriterion);
+  }, [bucketKey, bulkCriterion]);
 
   // 手入力シードなど、表示中の内容を明示的に記録する補助ボタン。
   const handleRecordCurrent = React.useCallback(() => {
@@ -1558,118 +1644,6 @@ ${pickHint}`}
             </button>
           </div>
 
-          {/* 一括探索（2026-07-31）: いまの条件で大量生成し、基準の良い順に並べる。 */}
-          <section style={{ marginTop: 10 }}>
-            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 4 }}>
-              <div style={{ fontWeight: 700 }}>{t.bulkTitle}</div>
-              <div style={{ fontSize: 11, opacity: 0.6 }}>{t.bulkNote}</div>
-            </div>
-            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 12 }}>
-              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <span>{t.bulkCriterion}</span>
-                <select
-                  value={bulkCriterion}
-                  onChange={(e) => changeBulkCriterion(e.target.value as BulkCriterion)}
-                  style={{ padding: "3px 6px" }}
-                >
-                  {BULK_CRITERIA.map((c) => (
-                    <option key={c} value={c}>
-                      {c === "topBalance" ? t.critTopBalance : t.critNeutralBalance}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <span>{t.bulkTrials}</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={BULK_TRIALS_MAX}
-                  value={bulkTrials}
-                  onChange={(e) => changeBulkTrials(Number(e.target.value))}
-                  style={{ width: 80, padding: "3px 6px" }}
-                />
-              </label>
-              <button onClick={handleBulkSearch} style={{ padding: "4px 12px", fontWeight: 700 }}>
-                {bulkBusy ? t.bulkStop : t.bulkRun}
-              </button>
-              {bulkBusy ? (
-                <span style={{ opacity: 0.7 }}>
-                  {bulkDone}/{bulkTotal}
-                </span>
-              ) : bulkRows && bulkRows.length > 0 ? (
-                <button
-                  onClick={() => {
-                    setBulkRows(null);
-                    setBulkRecordedIds(new Set());
-                  }}
-                  style={{ padding: "4px 10px", fontSize: 12 }}
-                >
-                  {t.bulkClear}
-                </button>
-              ) : null}
-            </div>
-
-            {bulkRows && bulkRows.length > 0 ? (
-              <div style={{ marginTop: 6, overflowX: "auto", border: T.borderSoft, borderRadius: T.radius }}>
-                <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 12 }}>
-                  <thead>
-                    <tr>
-                      <th style={bulkTh}>#</th>
-                      <th style={{ ...bulkTh, textAlign: "left" }}>{t.seed}</th>
-                      <th style={bulkTh}>{t.bulkScore}</th>
-                      <th style={{ ...bulkTh, textAlign: "left" }}>{t.bulkTopFactions}</th>
-                      <th style={bulkTh}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bulkRows.map((r, i) => {
-                      const s = String(r.input.seed);
-                      const isCurrent = s === seed;
-                      const recorded = bulkRecordedIds.has(s);
-                      return (
-                        <tr
-                          key={s}
-                          onClick={() => setSeed(s)}
-                          title={t.bulkNote}
-                          style={{
-                            cursor: "pointer",
-                            background: isCurrent ? "#eef6ff" : undefined,
-                            borderTop: "1px solid #eee",
-                          }}
-                        >
-                          <td style={{ ...bulkTd, textAlign: "center", opacity: 0.6 }}>{i + 1}</td>
-                          <td style={{ ...bulkTd, fontFamily: "monospace", fontWeight: isCurrent ? 700 : 400 }}>
-                            {s}
-                          </td>
-                          <td style={{ ...bulkTd, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                            {(Math.round(r.score * 100) / 100).toFixed(2)}
-                          </td>
-                          <td style={bulkTd}>{bulkTopText(r, lf, lang)}</td>
-                          <td style={{ ...bulkTd, textAlign: "right" }}>
-                            <button
-                              disabled={recorded}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                recordAndTrack(r.input);
-                                setBulkRecordedIds((prev) => new Set(prev).add(s));
-                              }}
-                              style={{ padding: "1px 8px", fontSize: 11 }}
-                            >
-                              {recorded ? t.bulkRecorded : t.bulkRecord}
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : bulkBusy ? null : (
-              <div style={{ marginTop: 6, fontSize: 12, opacity: 0.6 }}>{t.bulkEmpty}</div>
-            )}
-          </section>
-
       {/* 保存済み条件（Map と同じ操作。条件ごとに保存リストが分かれる） */}
       <ConditionProfilesPanel
         profiles={profiles}
@@ -1691,7 +1665,13 @@ ${pickHint}`}
           const p = profiles.find((x) => x.key === key);
           const su = (p?.params as any)?.setup ?? null;
           void (async () => {
-            if (su) await deleteSetupsByCondition(setupConditionKey({ ...su, seed: "" } as BuildSetupInput));
+            if (su) {
+              const ck = setupConditionKey({ ...su, seed: "" } as BuildSetupInput);
+              await deleteSetupsByCondition(ck);
+              // 一括探索のランキングも同じ条件バケツに属するので一緒に消す。
+              await deleteRankingByCondition(ck);
+              if (ck === bucketKey) setBulkRows([]);
+            }
             await deleteConditionProfile(STORE_SETUP_PROFILES, key);
             setSaved(await listSavedSetups());
             await refreshProfiles();
@@ -1713,6 +1693,114 @@ ${pickHint}`}
           onMark={onMark}
           activeSources={activeSources}
         />
+      </section>
+
+      {/* 一括探索（2026-07-31）: いまの条件で大量生成し、基準の良い順に並べる。
+          結果は条件×基準ごとに保存され、次の探索は前回の上位とマージされる。
+          置き場所は種族別評価の下（2026-07-31 ユーザー指定）。 */}
+      <section>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 4 }}>
+          <div style={{ fontWeight: 700 }}>{t.bulkTitle}</div>
+          <div style={{ fontSize: 11, opacity: 0.6 }}>{t.bulkNote}</div>
+        </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 12 }}>
+          <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <span>{t.bulkCriterion}</span>
+            <select
+              value={bulkCriterion}
+              onChange={(e) => changeBulkCriterion(e.target.value as BulkCriterion)}
+              style={{ padding: "3px 6px" }}
+            >
+              {BULK_CRITERIA.map((c) => (
+                <option key={c} value={c}>
+                  {c === "topBalance" ? t.critTopBalance : t.critNeutralBalance}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <span>{t.bulkTrials}</span>
+            <input
+              type="number"
+              min={1}
+              max={BULK_TRIALS_MAX}
+              value={bulkTrials}
+              onChange={(e) => changeBulkTrials(Number(e.target.value))}
+              style={{ width: 80, padding: "3px 6px" }}
+            />
+          </label>
+          <button onClick={handleBulkSearch} style={{ padding: "4px 12px", fontWeight: 700 }}>
+            {bulkBusy ? t.bulkStop : t.bulkRun}
+          </button>
+          {bulkBusy ? (
+            <span style={{ opacity: 0.7 }}>
+              {bulkDone}/{bulkTotal}
+            </span>
+          ) : bulkRows.length > 0 ? (
+            <button onClick={handleBulkClear} style={{ padding: "4px 10px", fontSize: 12 }}>
+              {t.bulkClear}
+            </button>
+          ) : null}
+        </div>
+
+        {bulkRows.length > 0 ? (
+          <div style={{ marginTop: 6, overflowX: "auto", border: T.borderSoft, borderRadius: T.radius }}>
+            <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 12 }}>
+              <thead>
+                <tr>
+                  <th style={bulkTh}>#</th>
+                  <th style={{ ...bulkTh, textAlign: "left" }}>{t.seed}</th>
+                  <th style={bulkTh}>{t.bulkScore}</th>
+                  <th style={{ ...bulkTh, textAlign: "left" }}>{t.bulkTopFactions}</th>
+                  <th style={bulkTh}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {bulkRows.map((r, i) => {
+                  const s = r.seed;
+                  const isCurrent = s === seed;
+                  const recorded = bulkRecordedIds.has(s);
+                  return (
+                    <tr
+                      key={r.id}
+                      onClick={() => setSeed(s)}
+                      title={t.bulkNote}
+                      style={{
+                        cursor: "pointer",
+                        background: isCurrent ? "#eef6ff" : undefined,
+                        borderTop: "1px solid #eee",
+                      }}
+                    >
+                      <td style={{ ...bulkTd, textAlign: "center", opacity: 0.6 }}>{i + 1}</td>
+                      <td style={{ ...bulkTd, fontFamily: "monospace", fontWeight: isCurrent ? 700 : 400 }}>
+                        {s}
+                      </td>
+                      <td style={{ ...bulkTd, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                        {(Math.round(r.score * 100) / 100).toFixed(2)}
+                      </td>
+                      <td style={bulkTd}>{bulkTopText(r, lf, lang, evalWeights)}</td>
+                      <td style={{ ...bulkTd, textAlign: "right" }}>
+                        <button
+                          disabled={recorded}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            recordAndTrack(r.input);
+                            setBulkRecordedIds((prev) => new Set(prev).add(s));
+                          }}
+                          style={{ padding: "1px 8px", fontSize: 11 }}
+                        >
+                          {recorded ? t.bulkRecorded : t.bulkRecord}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : bulkBusy ? null : (
+          <div style={{ marginTop: 6, fontSize: 12, opacity: 0.6 }}>{t.bulkEmpty}</div>
+        )}
       </section>
 
       {/* Saved setups (ranking skeleton: pinned first -> newest; used in a separate view) */}

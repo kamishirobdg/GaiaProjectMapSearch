@@ -76,7 +76,9 @@ export const IDB_NAME = "gaia_map_cache";
 //     移行できないため、アップグレード時に破棄する（旧データ破棄もユーザー確定）。
 //     List の結果（提案・ログ）は件数が小さいので localStorage のまま、
 //     各行に条件キーを持たせて分ける。
-export const IDB_VERSION = 6;
+// v7: Setup の一括探索のランキングを条件×基準ごとに貯める setup_ranking を追加
+//     （2026-07-31。Map の candidates と同じで、次の探索は前回の上位とマージする）。
+export const IDB_VERSION = 7;
 export const STORE_CANDIDATES = "candidates";
 export const STORE_PROFILES = "profiles";
 // Setup-side saved list shares this DB (one DB per origin keeps the version
@@ -86,6 +88,8 @@ export const STORE_SETUPS = "setups";
 export const STORE_SETUP_PROFILES = "setup_profiles";
 /** List の条件プロファイル。 */
 export const STORE_LIST_PROFILES = "list_profiles";
+/** Setup の一括探索ランキング（条件×基準ごと）。CRUD は src/lib/setupRanking.ts。 */
+export const STORE_SETUP_RANKING = "setup_ranking";
 export const LAST_APPLIED_SEARCHKEY = "gaia_last_applied_searchKey_v1";
 
 
@@ -111,9 +115,11 @@ export function openDb(): Promise<IDBDatabase> {
       );
     };
 
-    req.onupgradeneeded = () => {
+    req.onupgradeneeded = (ev) => {
       const db = req.result;
       const tx = req.transaction as IDBTransaction;
+      // 新規作成は 0。「この upgrade で初めて通る移行」を判定するのに使う。
+      const oldVersion = Number((ev as IDBVersionChangeEvent).oldVersion ?? 0);
 
       // ----- candidates -----
       const candidates =
@@ -155,8 +161,11 @@ export function openDb(): Promise<IDBDatabase> {
       // listing does a full getAll + in-JS sort, so no indexes are needed.
       if (!db.objectStoreNames.contains(STORE_SETUPS)) {
         db.createObjectStore(STORE_SETUPS, { keyPath: "id" });
-      } else if ((req as any).transaction && db.version >= 6) {
+      } else if (oldVersion > 0 && oldVersion < 6) {
         // v6: 行の形（条件込みの入力 -> 条件キー+シード）が変わるので中身を捨てる。
+        // 判定は oldVersion で行う。db.version は upgrade 中「新しい方」なので、
+        // これを見ると v6 以降のどの upgrade でも保存リストを消してしまう
+        // （v7 追加時に発覚。2026-07-31）。
         try {
           tx.objectStore(STORE_SETUPS).clear();
         } catch {}
@@ -165,6 +174,12 @@ export function openDb(): Promise<IDBDatabase> {
         if (!db.objectStoreNames.contains(name)) {
           db.createObjectStore(name, { keyPath: "key" });
         }
+      }
+      // ----- setup_ranking (v7) -----
+      // 条件×基準ごとに上位N件だけを持つ小さなストア（keyPath は candidates/setups と
+      // 同じ "id"）。件数が小さいので getAll + JS 側で絞る。
+      if (!db.objectStoreNames.contains(STORE_SETUP_RANKING)) {
+        db.createObjectStore(STORE_SETUP_RANKING, { keyPath: "id" });
       }
 
       // ----- migrations / backfills -----

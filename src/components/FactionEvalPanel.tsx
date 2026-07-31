@@ -10,7 +10,12 @@
 "use client";
 
 import React from "react";
-import { EXTRA_LABEL_JA, PLANET_INPUT_BG, PLANET_LABEL_JA, type PlanetTypeKey } from "@/app/board/BreakdownTable";
+import {
+  EXTRA_LABEL_JA,
+  PLANET_INPUT_BG,
+  PLANET_LABEL_JA,
+  type PlanetTypeKey,
+} from "@/app/board/BreakdownTable";
 import { setupFactionBreakdown, setupFactionTileHits, type FactionScores } from "@/gaia/eval/factionEval";
 import { factionsForMode, type FactionId } from "@/gaia/eval/factionWeights";
 import {
@@ -28,13 +33,17 @@ import { T } from "@/components/ui/layout";
 
 type Lang = "ja" | "en";
 
-/** 種族の母星色（タイルを縁取るので、背景色ではなく濃い方を使う）。 */
-/** LF4種族の母星（原始惑星・小惑星）の行背景。Map のリング色に合わせた薄い版。 */
+/**
+ * LF4種族の母星（原始惑星・小惑星）の行背景。
+ * Map のマーカー（リング）とまったく同じ色を使う（2026-07-31 ユーザー指定）。
+ * 基本7色の行背景（PLANET_INPUT_BG）は薄い色だが、この2色は濃いので文字は白にする。
+ */
 const EXTRA_HOME_BG: Record<string, string> = {
-  PROTO: "#cdeffd",
-  ASTEROID: "#f2d7ec",
+  PROTO: "#3d8cb5",
+  ASTEROID: "#9c4a8f",
 };
 
+/** 種族の母星色（タイルを縁取るので、背景色ではなく濃い方を使う）。 */
 const HOME_COLOR_VIVID: Record<string, string> = {
   BLACK: "#444444",
   BLUE: "#2b7fe0",
@@ -343,9 +352,18 @@ ${m.title}` : "")
         <tbody>
           {rows.map((f) => {
             const colorKey = f.color as PlanetTypeKey;
-            const colorName = lang === "ja" ? PLANET_LABEL_JA[colorKey] : colorKey;
+            // 原始惑星・小惑星は基本7色の表に無いので、Map のマーカー色を使う。
+            const extraBg = EXTRA_HOME_BG[f.color];
+            const colorName =
+              lang === "ja" ? (PLANET_LABEL_JA[colorKey] ?? EXTRA_LABEL_JA[f.color] ?? f.color) : f.color;
             return (
-              <tr key={f.id} style={{ background: PLANET_INPUT_BG[colorKey] }}>
+              <tr
+                key={f.id}
+                style={{
+                  background: extraBg ?? PLANET_INPUT_BG[colorKey],
+                  ...(extraBg ? { color: "#ffffff" } : {}),
+                }}
+              >
                 {(() => {
                   const c = HOME_COLOR_VIVID[f.color] ?? NEUTRAL_MARK_COLOR;
                   const m = markProps(`total:${f.id}`, f.id, null, c, "left");
