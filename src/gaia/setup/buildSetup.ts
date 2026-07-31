@@ -106,6 +106,22 @@ export type BuildSetupInput = {
   tileRules?: TileRules;
 };
 
+/**
+ * 上級技術の既定の除外（2026-07-30 ユーザー確定）。
+ * これまで「上級技術の回避/強制」プルダウンでその都度指定していた
+ * キュレーション済みの組み合わせを、タイル指定の**既定値**として持つ。
+ * AVOID_RULES から生成するので、プリセットを足せば既定にも自動で入る。
+ */
+export function defaultAdvancedTileRules(): TileRules {
+  const out: TileRules = {};
+  for (const rule of AVOID_RULES) {
+    const slotId = `adv:${rule.track}`;
+    const slot = out[slotId] ?? (out[slotId] = {});
+    for (const tileId of rule.tileIds) slot[tileId] = "exclude";
+  }
+  return out;
+}
+
 /** LF船ルールの対象タイル（データカタログの id）。 */
 export const SHIP_DISTANCE_TECH = "TSL2"; // 基本到達距離＋1
 export const REBELLION_GOLD_TECH_FED = "FEDG2"; // 金枠同盟：任意の技術タイル1枚

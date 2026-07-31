@@ -4,7 +4,7 @@
 import React from "react";
 import {
   buildSetupFromSeed,
-  AVOID_RULES,
+  defaultAdvancedTileRules,
   SHIP_DISTANCE_TECH,
   REBELLION_GOLD_TECH_FED,
   type BuildSetupInput,
@@ -283,6 +283,36 @@ function effectOf(id: string, lang: Lang): string | undefined {
   return lang === "ja" ? t.effect : t.effectEn;
 }
 
+/**
+ * タイルを「似た挙動」でまとめるための並び順（2026-07-30 要望）。
+ * カタログの配列そのものは触らない —— 配列順はシャッフルの入力なので、
+ * 並べ替えると同じシードの出目が全部変わってしまう。表示だけを並べ替える。
+ *
+ * 判定はラベル（「収入：」「即時：」など規則的に付いている）を主、
+ * 無い場合は効果文のキーワードで補う。
+ */
+// 並び順: 収入 → 即時獲得 → アクション → パス時 → 条件トリガー → 順位 → その他
+function behaviorGroupIndex(tileId: string): number {
+  const t = BY_ID.get(tileId);
+  const label = (t?.label ?? "").replace(/^(金枠同盟|同盟)：/, "");
+  const text = `${label} ${t?.effect ?? ""}`;
+  if (/^収入/.test(label) || /各収入フェイズ/.test(text)) return 0;
+  if (/^(即時|取得時)/.test(label) || /このタイルを取ったとき|即座に/.test(text)) return 1;
+  if (/^アクション/.test(label) || /ラウンドごとに1回/.test(text)) return 2;
+  if (/^パス時/.test(label) || /パスしたとき/.test(text)) return 3;
+  if (/たび/.test(text)) return 4;
+  if (/最大|最低/.test(label)) return 5;
+  return 6;
+}
+
+/** 挙動グループ順に並べ替える（同グループ内はカタログ順で安定）。 */
+function sortTilesByBehavior(ids: string[]): string[] {
+  return ids
+    .map((id, i) => ({ id, i, g: behaviorGroupIndex(id) }))
+    .sort((a, b) => a.g - b.g || a.i - b.i)
+    .map((x) => x.id);
+}
+
 function randomSeedString(): string {
   return Math.floor(Math.random() * 2147483647 + 1).toString();
 }
@@ -359,11 +389,12 @@ ${pickLabel ?? ""}` : tooltip}
       className={mark ? "setup-tile-marked" : undefined}
       style={{
         cursor: onPick ? "pointer" : undefined,
-        border: mark ? `2px solid ${mark}` : "1px solid #ddd",
+        border: mark ? `2px solid ${mark}` : pinned ? "1px solid #8fc79f" : "1px solid #ddd",
         borderRadius: 8,
         padding: mark ? "5px 7px" : "6px 8px",
         fontSize: 12,
-        background: "#fafafa",
+        // 指定のある枠はひと目で分かるように背景を変える（2026-07-30 要望）
+        background: pinned ? "#e7f6ea" : "#fafafa",
         minWidth: 0,
         width: "fit-content",
         display: "flex",
@@ -407,18 +438,6 @@ ${pickLabel ?? ""}` : tooltip}
 type ExtFaceMode = "auto" | "random" | "vp25" | "shuttle";
 type EconFaceMode = "random" | "A" | "B";
 
-/**
- * 上級タイルルールのプルダウン値（"off" はキー削除で表現）:
- *   "avoid" | "force"(＝強制：ランダム) | `force:<tileId>` | `allow:<tileId>`
- */
-function isValidRuleMode(ruleId: string, v: unknown): v is string {
-  const rule = AVOID_RULES.find((r) => r.id === ruleId);
-  if (!rule || typeof v !== "string") return false;
-  if (v === "avoid" || v === "force") return true;
-  if (v.startsWith("force:")) return rule.tileIds.includes(v.slice("force:".length));
-  if (v.startsWith("allow:")) return (rule.allowTiles ?? []).includes(v.slice("allow:".length));
-  return false;
-}
 
 // Setup-only settings persisted across visits (the seed is deliberately NOT
 // remembered, same as the map page's fixed-seed field). Players and expansion
@@ -426,7 +445,6 @@ function isValidRuleMode(ruleId: string, v: unknown): v is string {
 const LS = {
   extFace: "gaia_setup_extface",
   econFace: "gaia_setup_econface",
-  avoid: "gaia_setup_avoid",
   shipRules: "gaia_setup_shiprules",
   tileRules: "gaia_setup_tilerules",
 } as const;
@@ -549,13 +567,11 @@ export default function SetupView() {
   const [mode, setMode] = React.useState<SetupMode>("base");
   const [extFaceMode, setExtFaceMode] = React.useState<ExtFaceMode>("auto");
   const [econFaceMode, setEconFaceMode] = React.useState<EconFaceMode>("random");
-  // ルールごとのモード（off はキー省略。値は isValidRuleMode 参照）。
-  // 旧形式（回避IDの配列）は読み込み時に移行。
-  const [ruleModes, setRuleModes] = React.useState<Record<string, string>>({});
   // LF船ルール（距離タイルの船別 回避/強制＋リベリオン金枠同盟）
   const [shipRules, setShipRules] = React.useState<ShipRulesState>({ dist: {}, gold: "" });
   // 全スロット共通のタイル指定（固定/除外/候補）。2026-07-30。
-  const [tileRules, setTileRules] = React.useState<TileRules>({});
+  // 既定は「上級技術のキュレーション済み除外」入り（2026-07-30 ユーザー確定）。
+  const [tileRules, setTileRules] = React.useState<TileRules>(() => defaultAdvancedTileRules());
   /** どのスロットの指定パネルを開いているか。 */
   const [picker, setPicker] = React.useState<{
     slotId: string;
@@ -578,12 +594,6 @@ export default function SetupView() {
     setPlayers(p);
     setExtFaceMode(input.extensionFaceMode ?? "auto");
     setEconFaceMode(input.econFaceMode ?? "random");
-    const modes: Record<string, string> = {};
-    for (const id of input.avoidRules ?? []) modes[id] = "avoid";
-    for (const id of input.forceRules ?? []) modes[id] = "force";
-    for (const [id, tid] of Object.entries(input.forceTileRules ?? {})) modes[id] = `force:${tid}`;
-    for (const [id, tid] of Object.entries(input.allowTileRules ?? {})) modes[id] = `allow:${tid}`;
-    setRuleModes(modes);
     const dist: ShipRulesState["dist"] = {};
     for (const sh of input.shipDistanceAvoid ?? []) dist[sh] = "avoid";
     for (const sh of input.shipDistanceForce ?? []) dist[sh] = "force";
@@ -597,7 +607,6 @@ export default function SetupView() {
       writeSharedPlayers(p);
       lsSet(LS.extFace, input.extensionFaceMode ?? "auto");
       lsSet(LS.econFace, input.econFaceMode ?? "random");
-      lsSet(LS.avoid, JSON.stringify(modes));
       lsSet(LS.shipRules, JSON.stringify(sr));
       lsSet(LS.tileRules, JSON.stringify(tr));
     }
@@ -616,37 +625,6 @@ export default function SetupView() {
     if (ef === "auto" || ef === "random" || ef === "vp25" || ef === "shuttle") setExtFaceMode(ef);
     const ec = lsGet(LS.econFace);
     if (ec === "random" || ec === "A" || ec === "B") setEconFaceMode(ec);
-    try {
-      const raw = lsGet(LS.avoid);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          // 旧形式（チェックボックス時代の回避ID配列）→ avoid として移行
-          const modes: Record<string, string> = {};
-          for (const id of parsed) {
-            if (AVOID_RULES.some((r) => r.id === id)) modes[String(id)] = "avoid";
-          }
-          setRuleModes(modes);
-        } else if (parsed && typeof parsed === "object") {
-          const modes: Record<string, string> = {};
-          for (const [id, m] of Object.entries(parsed)) {
-            if (isValidRuleMode(id, m)) modes[id] = m;
-          }
-          setRuleModes(modes);
-        }
-      }
-    } catch {
-      // ignore
-    }
-    try {
-      const raw = lsGet(LS.tileRules);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) setTileRules(parsed);
-      }
-    } catch {
-      // ignore
-    }
     try {
       const raw = lsGet(LS.shipRules);
       if (raw) {
@@ -722,16 +700,6 @@ export default function SetupView() {
     });
   }, []);
 
-  const changeRuleMode = React.useCallback((ruleId: string, mode: string) => {
-    setRuleModes((prev) => {
-      const next = { ...prev };
-      if (mode === "off") delete next[ruleId];
-      else next[ruleId] = mode;
-      lsSet(LS.avoid, JSON.stringify(next));
-      return next;
-    });
-  }, []);
-
   const setLangPersist = React.useCallback((l: Lang) => {
     setLang(l);
     lsSet("gaia_ui_lang", l);
@@ -743,17 +711,6 @@ export default function SetupView() {
   // 表示用 useMemo と保存リストへの記録（同じ入力を保存する）で共用する。
   const buildInput = React.useCallback(
     (s: string): BuildSetupInput => {
-      const avoidIds: string[] = [];
-      const forceIds: string[] = [];
-      const forceTiles: Record<string, string> = {};
-      const allowTiles: Record<string, string> = {};
-      // 配列はキーの一部になるため id 順で安定化（オブジェクトは stableStringify が整列）
-      for (const [id, m] of Object.entries(ruleModes).sort(([a], [b]) => (a < b ? -1 : 1))) {
-        if (m === "avoid") avoidIds.push(id);
-        else if (m === "force") forceIds.push(id);
-        else if (m.startsWith("force:")) forceTiles[id] = m.slice("force:".length);
-        else if (m.startsWith("allow:")) allowTiles[id] = m.slice("allow:".length);
-      }
       // 船ルールは TECH_SHIP_IDS 順で安定化（キーの一部になるため）
       const distAvoid = TECH_SHIP_IDS.filter((sh) => shipRules.dist[sh] === "avoid");
       const distForce = TECH_SHIP_IDS.filter((sh) => shipRules.dist[sh] === "force");
@@ -763,17 +720,13 @@ export default function SetupView() {
         ...(lf ? { mode: "lostFleet" as const } : {}),
         ...(lf && extFaceMode !== "auto" ? { extensionFaceMode: extFaceMode } : {}),
         ...(lf && econFaceMode !== "random" ? { econFaceMode } : {}),
-        ...(avoidIds.length > 0 ? { avoidRules: avoidIds } : {}),
-        ...(forceIds.length > 0 ? { forceRules: forceIds } : {}),
-        ...(Object.keys(forceTiles).length > 0 ? { forceTileRules: forceTiles } : {}),
-        ...(Object.keys(allowTiles).length > 0 ? { allowTileRules: allowTiles } : {}),
         ...(lf && distAvoid.length > 0 ? { shipDistanceAvoid: distAvoid } : {}),
         ...(lf && distForce.length > 0 ? { shipDistanceForce: distForce } : {}),
         ...(lf && shipRules.gold ? { rebellionGoldFed: shipRules.gold } : {}),
         ...(Object.keys(tileRules).length > 0 ? { tileRules } : {}),
       };
     },
-    [players, lf, extFaceMode, econFaceMode, ruleModes, shipRules, tileRules]
+    [players, lf, extFaceMode, econFaceMode, shipRules, tileRules]
   );
 
   const result = React.useMemo(() => buildSetupFromSeed(buildInput(seed)), [seed, buildInput]);
@@ -851,7 +804,9 @@ export default function SetupView() {
       !su.shipDistanceForce?.length &&
       !su.rebellionGoldFed &&
       su.extensionFaceMode === undefined &&
-      su.econFaceMode === undefined;
+      su.econFaceMode === undefined &&
+      JSON.stringify(su.tileRules ?? defaultAdvancedTileRules()) ===
+        JSON.stringify(defaultAdvancedTileRules());
     const w = (params as any)?.evalWeights;
     return noRules && (!w || isDefaultWeights({ ...DEFAULT_SETUP_WEIGHTS, ...w }));
   }, []);
@@ -889,13 +844,12 @@ export default function SetupView() {
     lsSet(LS.extFace, "auto");
     setEconFaceMode("random");
     lsSet(LS.econFace, "random");
-    setRuleModes({});
-    lsSet(LS.avoid, JSON.stringify({}));
     const sr: ShipRulesState = { dist: {}, gold: "" };
     setShipRules(sr);
     lsSet(LS.shipRules, JSON.stringify(sr));
-    setTileRules({});
-    lsSet(LS.tileRules, JSON.stringify({}));
+    const dtr = defaultAdvancedTileRules();
+    setTileRules(dtr);
+    lsSet(LS.tileRules, JSON.stringify(dtr));
     resetEvalWeights();
   }, [resetEvalWeights]);
 
@@ -1042,7 +996,7 @@ export default function SetupView() {
 
   const openPicker = React.useCallback(
     (slotId: string, title: string, kind: string, singleFix: boolean) => {
-      setPicker({ slotId, title, pool: poolFor(kind), singleFix });
+      setPicker({ slotId, title, pool: sortTilesByBehavior(poolFor(kind)), singleFix });
     },
     [poolFor]
   );
@@ -1217,12 +1171,13 @@ export default function SetupView() {
 
       {/* Research tracks: per column, top to bottom —
           [track-top tile (terra=federation Lv5 / eco=econ adjustment face)]
-          -> advanced -> standard -> placement rule pulldown (off/avoid/force) */}
+          -> advanced -> standard。
+          旧「回避/強制」プルダウンは全スロットのタイル指定へ統合したので廃止
+          （キュレーション済みの除外はタイル指定の既定値に入っている。2026-07-30）。 */}
       <section>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.researchTracks}</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
           {RESEARCH_TRACK_IDS.map((track) => {
-            const rule = AVOID_RULES.find((r) => r.track === track);
             const showEconTop = track === "eco" && lf && result.mode === "lostFleet";
             const econFaceLabel =
               showEconTop && result.mode === "lostFleet"
@@ -1264,39 +1219,6 @@ export default function SetupView() {
                 </div>
                 {tileCell(result.advancedTech.byTrack[track], t.advanced, false, { slotId: `adv:${track}`, title: `${t.advanced} / ${lang === "ja" ? TRACK_LABEL[track].ja : TRACK_LABEL[track].en}`, kind: "adv" })}
                 {tileCell(result.standardTech.byTrack[track], t.standard, false, { slotId: `std:${track}`, title: `${t.standard} / ${lang === "ja" ? TRACK_LABEL[track].ja : TRACK_LABEL[track].en}`, kind: "std" })}
-                {rule ? (
-                  <div
-                    title={lang === "ja" ? rule.label : rule.labelEn}
-                    style={{ fontSize: 11, display: "flex", flexDirection: "column", gap: 2 }}
-                  >
-                    <span style={{ opacity: 0.7 }}>{lang === "ja" ? rule.shortLabel : rule.shortLabelEn}</span>
-                    <select
-                      value={ruleModes[rule.id] ?? "off"}
-                      onChange={(e) => changeRuleMode(rule.id, e.target.value)}
-                      style={{ maxWidth: 170 }}
-                    >
-                      <option value="off">{t.ruleOff}</option>
-                      <option value="avoid">{t.ruleAvoid}</option>
-                      {rule.tileIds.length > 1 ? (
-                        <>
-                          <option value="force">{t.ruleForceRandom}</option>
-                          {rule.tileIds.map((tid) => (
-                            <option key={`f-${tid}`} value={`force:${tid}`}>
-                              {lang === "ja" ? `${t.ruleForce}：${labelOf(tid, lang)}` : `${t.ruleForce}: ${labelOf(tid, lang)}`}
-                            </option>
-                          ))}
-                          {(rule.allowTiles ?? []).map((tid) => (
-                            <option key={`a-${tid}`} value={`allow:${tid}`}>
-                              {lang === "ja" ? `${t.ruleAllow}：${labelOf(tid, lang)}` : `${t.ruleAllow}: ${labelOf(tid, lang)}`}
-                            </option>
-                          ))}
-                        </>
-                      ) : (
-                        <option value="force">{t.ruleForce}</option>
-                      )}
-                    </select>
-                  </div>
-                ) : null}
               </div>
             );
           })}
