@@ -11,6 +11,14 @@
 
 ## 不具合（未修正・要調査）
 
+- **船別の重み（`wScoutByScoutKey` / `wScoutCoreByScoutKey`）が効いていない**
+  （2026-07-30 発見）。UI は `{twilight, eclipse, rebellion, tfmars}` を渡すが、
+  evaluateSoft 側は `wScoutByScoutKey?.[s.key]` と **探査船セルの座標キー** で
+  引いているので必ず未ヒットになり、全船が既定の `wScout` / `wScoutCore` に
+  フォールバックする。現状は4隻とも同じ値なので影響が出ていないだけ。
+  直すと船ごとに重みを変えたときスコアが変わる（要ユーザー判断）。
+  監査には船IDを `scoutId` として載せてあるので、引き当てはそちらに寄せればよい。
+
 - **`?t=<templateId>` がテンプレ切替に効かないことがある**（2026-07-30 発見）。
   マウント時に「前回の検索条件プロファイル」を自動適用する処理が後勝ちして
   `which` を戻すため、`/board?h=...&t=base_34p` を開いても LF テンプレのまま

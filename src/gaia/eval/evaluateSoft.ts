@@ -152,7 +152,10 @@ scout: {
   excludedPlanetCounts?: Record<string, number>;
 
   scoutHits: Array<{
+    /** 探査船セルの座標キー（重み上書きの引き当てに使われている既存フィールド） */
     scoutKey: string;
+    /** 船の識別子（twilight/eclipse/rebellion/tfmars）。船で絞るときはこちら */
+    scoutId?: string;
     planetKey: string;
     planetType: string;
     distance: number;
@@ -165,6 +168,8 @@ scout: {
     // SSOT: breakdown.audit.scoutCore は必ず出す
 scoutCore: {
   radius: 2;
+  /** 船星系の成立に必要な「距離1〜2の船接触惑星の数」 */
+  minScoutPlanets?: number;
 
   // ★追加（optionalで安全）
   attributionMode?: "all" | "best";
@@ -185,6 +190,8 @@ scoutCore: {
   coreHits: Array<{
     /** どの船由来か（評価指数の船別セルからマークするため） */
     scoutKey: string;
+    /** 船の識別子（twilight/eclipse/rebellion/tfmars） */
+    scoutId?: string;
     scoutPlanetKey: string;
     corePlanetKey: string;
     corePlanetType: string;
@@ -414,6 +421,8 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
 // - byScoutKey: ScoutCore入力用（A=all / B=best）
 const scoutPlanetKeySet = new Set<string>();
 const scoutPlanetByKey = new Map<string, any>();
+// scoutKey（セル座標）から探査船セルを引く。船IDを監査へ載せるのに使う。
+const scoutCellByKey = new Map<string, any>(extracted.scoutCells.map((s) => [s.key, s]));
 
 const scoutPlanetKeySetByScoutKeyAll = new Map<string, Set<string>>();
 const bestScoutByPlanetKey = new Map<string, { scoutKey: string; value: number; distance: number }>();
@@ -474,6 +483,9 @@ for (const s of extracted.scoutCells) {
 
     scoutHits.push({
       scoutKey: s.key,
+      // 船の識別子（twilight/eclipse/rebellion/tfmars）。scoutKey はセル座標なので
+      // 「どの船か」で絞るにはこちらを使う（評価指数の船別セル用。2026-07-30）。
+      scoutId: (s as any).scoutId ?? "",
       scoutWeight: wScoutEff,
       planetKey: p.key,
       planetType: t ?? kindU ?? "UNKNOWN",
@@ -514,10 +526,41 @@ if (scoutCoreAttributionMode === "best") {
   // ===== scoutCore (Scout惑星集合 -> 距離1/2) =====
   const scoutCoreAxis: AxisByType = zeroAxis();
   const perScoutPlanet: Array<{ scoutPlanetKey: string; byType: AxisByType; total: number; extraByKind: Record<string, number> }> = [];
-  const scoutCoreHits: Array<{ scoutKey: string; scoutPlanetKey: string; corePlanetKey: string; corePlanetType: string; distance: 1 | 2; value: number }> = [];
+  const scoutCoreHits: Array<{ scoutKey: string; scoutId: string; scoutPlanetKey: string; corePlanetKey: string; corePlanetType: string; distance: 1 | 2; value: number }> = [];
 
   const scoutCoreExtraByKind: Record<string, number> = {};
   const scoutCoreDistanceHistogram: Record<number, number> = {};
+
+  /**
+   * 船星系の成立条件（2026-07-30 ユーザー確定で変更）。
+   *
+   * 旧: 船接触惑星が1つでも距離1〜2にあれば船星系として加点していた。
+   * 新: **距離1〜2に船接触惑星が2つ以上ある惑星だけ**を船星系とする。
+   *     1つだけ隣接している惑星まで拾うのは広すぎる、という判断。
+   *
+   * 数え方の対象は船接触惑星の集合（extracted.planetCells 由来）なので、
+   * ガイア惑星と次元横断惑星はそもそも含まれない（1ラウンド目に入植できず
+   * 価値が低いため除外する、というユーザーの意図と一致する）。
+   */
+  const MIN_SCOUT_PLANETS_FOR_CORE = 2;
+  const scoutPlanetsNearPlanet = new Map<string, Set<string>>();
+  for (const spKey of scoutPlanetKeySet) {
+    const sp = scoutPlanetByKey.get(spKey);
+    if (!sp) continue;
+    for (const p of extracted.planetCells) {
+      if (p.key === sp.key) continue;
+      const d0 = axialDistance(sp.q, sp.r, p.q, p.r);
+      if (d0 !== 1 && d0 !== 2) continue;
+      let set = scoutPlanetsNearPlanet.get(p.key);
+      if (!set) {
+        set = new Set<string>();
+        scoutPlanetsNearPlanet.set(p.key, set);
+      }
+      set.add(spKey);
+    }
+  }
+  const qualifiesAsCore = (planetKey: string) =>
+    (scoutPlanetsNearPlanet.get(planetKey)?.size ?? 0) >= MIN_SCOUT_PLANETS_FOR_CORE;
 
   // ScoutCore uses per-scout assigned Scout planets (mode A/B)
 if (scoutPlanetKeySetByScoutKey.size > 0) {
@@ -539,6 +582,9 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
 
         const d0 = axialDistance(sp.q, sp.r, p.q, p.r);
         if (d0 !== 1 && d0 !== 2) continue;
+
+        // 距離1〜2の船接触惑星が1つしかない惑星は船星系にしない（2026-07-30）
+        if (!qualifiesAsCore(p.key)) continue;
 
         const contrib = scoutCoreValue(d0, wScoutCoreEff);
         if (contrib <= 0) continue;
@@ -569,6 +615,7 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
         scoutCoreHits.push({
           // どの船由来かを残す（評価指数の船別セルからマークするため。2026-07-30）
           scoutKey,
+          scoutId: String((scoutCellByKey.get(scoutKey) as any)?.scoutId ?? ""),
           scoutPlanetKey: sp.key,
           corePlanetKey: p.key,
           corePlanetType: t ?? kindU ?? "UNKNOWN",
@@ -748,6 +795,8 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
         },
         scoutCore: {
           radius: 2,
+          // 船星系の成立に必要な「距離1〜2の船接触惑星の数」（2026-07-30 に 1 -> 2）
+          minScoutPlanets: MIN_SCOUT_PLANETS_FOR_CORE,
           attributionMode: scoutCoreAttributionMode,
           scoutCoreWeightByScoutKey: wScoutCoreByScoutKey ?? null,
           byType: scoutCoreAxis,

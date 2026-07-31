@@ -95,8 +95,11 @@ export function axisMarkers(
   opts?: {
     /** ガイア軸のみ: この距離のヒットだけに絞る（評価指数のガイア距離1/2/3 用） */
     gaiaDistance?: number;
-    /** scout/scoutCore のみ: この船由来のヒットだけに絞る（評価指数の船別セル用） */
-    scoutKey?: string;
+    /**
+     * scout/scoutCore のみ: この船だけに絞る（評価指数の船別セル用）。
+     * 監査の scoutKey は探査船セルの座標なので、船の識別は scoutId で行う。
+     */
+    scoutId?: string;
   }
 ): BreakdownMarker[] {
   if (!audit) return [];
@@ -112,7 +115,7 @@ export function axisMarkers(
     (audit.outerHits ?? []).forEach((h: any) => push(h.cellKey, h.planetType, lang === "ja" ? " / 最外周" : " / outer"));
   const doTouch = () =>
     (audit.touchHits ?? []).forEach((h: any) => push(h.cellKey, h.planetType, lang === "ja" ? " / 外周" : " / touch"));
-  const byShip = (h: any) => opts?.scoutKey == null || String(h.scoutKey) === opts.scoutKey;
+  const byShip = (h: any) => opts?.scoutId == null || String(h.scoutId ?? "") === opts.scoutId;
   const doScout = () =>
     (audit.scout?.scoutHits ?? [])
       .filter(byShip)
@@ -183,16 +186,32 @@ if (!breakdown) return null;
 
 const audit = breakdown?.audit ?? null;
 const isActiveSource = (id: string) => !!activeSources && activeSources.has(id);
-// (色, 軸) セル用のクリック属性＋アクティブ枠。
-const cellMark = (axis: MarkAxis, k: string): React.HTMLAttributes<HTMLTableCellElement> => {
+/**
+ * (色, 軸) セル用のクリック属性＋アクティブ枠。
+ * join="left"/"right" は「色名セル＋評価セル」を1つの範囲として見せるための指定で、
+ * 内側の辺だけ枠線を描かない（間に縦線が出ないようにする。2026-07-30 要望）。
+ */
+const cellMark = (
+  axis: MarkAxis,
+  k: string,
+  join?: "left" | "right"
+): React.HTMLAttributes<HTMLTableCellElement> => {
   if (!onMark) return {};
   const id = `${axis}:${k}`;
+  const ring = "#2b7fe0";
+  const outline =
+    join === "left"
+      ? // 右辺だけ描かない（右隣のセルと地続きに見せる）
+        `inset 2px 0 0 0 ${ring}, inset 0 2px 0 0 ${ring}, inset 0 -2px 0 0 ${ring}`
+      : join === "right"
+        ? `inset -2px 0 0 0 ${ring}, inset 0 2px 0 0 ${ring}, inset 0 -2px 0 0 ${ring}`
+        : `inset 0 0 0 2px ${ring}`;
   return {
     onClick: (e) => onMark(id, axisMarkers(audit, axis, k, lang), e.ctrlKey || e.metaKey),
     title: lang === "ja" ? "地図にマーク（Ctrlで複数選択）" : "Mark on map (Ctrl = multi-select)",
     style: {
       cursor: "pointer",
-      boxShadow: isActiveSource(id) ? "inset 0 0 0 2px #2b7fe0" : undefined,
+      boxShadow: isActiveSource(id) ? outline : undefined,
     },
   };
 };
@@ -338,7 +357,7 @@ const renderCell = (colKey: keyof typeof cols, k: string) => {
   if (!cols[colKey]) return null;
 
   if (colKey === "total") {
-    const m = cellMark("total", k);
+    const m = cellMark("total", k, "right");
     return <td onClick={m.onClick} title={m.title} style={{ ...tdStyle, fontWeight: 800, color: colorFor(exTotal.maxKeys, exTotal.minKeys, k), ...m.style }}>{axisGet(totals, k as any)}</td>;
   }
   if (colKey === "scout") {
@@ -423,7 +442,7 @@ return (
               {/* 色名も「評価」セルと同じクリック範囲にする（色名〜評価値までを
                   ひとつの当たり判定として扱う。2026-07-30 要望）。 */}
               {(() => {
-                const m = cellMark("total", k);
+                const m = cellMark("total", k, "left");
                 return (
                   <td onClick={m.onClick} title={m.title} style={{ ...tdLeftStyle, ...m.style }}>
                     {colorLabel}
@@ -470,12 +489,12 @@ return (
             const label = lang === "ja" ? EXTRA_LABEL_JA[k] : k;
 
             // 基本7色の行と同じクリック挙動（sourceId も同形式 `${axis}:${kind}`）
-            const markExtra = (axis: MarkAxis) => cellMark(axis, k);
+            const markExtra = (axis: MarkAxis, join?: "left" | "right") => cellMark(axis, k, join);
 
             const cellForExtra = (colKey: keyof typeof cols) => {
               if (!cols[colKey]) return null;
-              const val = (axis: MarkAxis, v: number, bold?: boolean) => {
-                const m = markExtra(axis);
+              const val = (axis: MarkAxis, v: number, bold?: boolean, join?: "left" | "right") => {
+                const m = markExtra(axis, join);
                 return (
                   <td
                     onClick={m.onClick}
@@ -486,7 +505,7 @@ return (
                   </td>
                 );
               };
-              if (colKey === "total") return val("total", vTotal, true);
+              if (colKey === "total") return val("total", vTotal, true, "right");
               if (colKey === "scout") return val("scout", vScout);
               if (colKey === "scoutCore") return val("scoutCore", vCore);
               if (colKey === "gaia") return val("gaia", vGaia);
@@ -501,7 +520,7 @@ return (
             return (
               <tr key={`EXTRA_${k}`} style={rowStyleFor(k)}>
                 {(() => {
-                  const m = markExtra("total");
+                  const m = markExtra("total", "left");
                   return (
                     <td onClick={m.onClick} title={m.title} style={{ ...tdLeftStyle, ...m.style }}>
                       {label}
