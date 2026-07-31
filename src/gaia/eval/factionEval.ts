@@ -51,6 +51,77 @@ export function scoreStandardTech(result: SetupResult, weights?: SetupWeights): 
   return out;
 }
 
+/** タイル1枚ぶんの寄与（マーカー表示用。2026-07-30）。 */
+export type SetupTileHit = {
+  /** タイルID（同じIDが複数枚出る場合は複数エントリになる） */
+  tileId: string;
+  category: SetupWeightKey;
+  /** どのスロットか（表示用。トラック名など） */
+  slot?: string;
+  /** 評価指数を掛けた後の種族別寄与（非ゼロのみ） */
+  byFaction: Partial<Record<FactionId, number>>;
+};
+
+/**
+ * セットアップの各タイルが、どの種族の評価値をいくつ動かしているかを返す。
+ * 内訳表のクリックから「効いているタイル」を光らせるために使う。
+ * 合計は setupFactionBreakdown と一致する（同じ経路で計算している）。
+ */
+export function setupFactionTileHits(
+  result: SetupResult,
+  weights?: SetupWeights
+): SetupTileHit[] {
+  const w = weights ?? DEFAULT_SETUP_WEIGHTS;
+  const out: SetupTileHit[] = [];
+  const push = (category: SetupWeightKey, tileId: string | undefined, table: any, slot?: string) => {
+    if (!tileId) return;
+    const src = table[tileId];
+    if (!src) return;
+    const scale = w[category];
+    const byFaction: Partial<Record<FactionId, number>> = {};
+    let any = false;
+    for (const [f, v] of Object.entries(src as Record<string, number | undefined>)) {
+      const val = (v ?? 0) * scale;
+      if (val === 0) continue;
+      byFaction[f as FactionId] = val;
+      any = true;
+    }
+    if (any) out.push({ tileId, category, slot, byFaction });
+  };
+
+  for (const [track, id] of Object.entries(result.advancedTech.byTrack)) {
+    push("advanced", id, TILE_FACTION_WEIGHTS, track);
+  }
+  push("advExtension", result.advancedTech.extension, TILE_FACTION_WEIGHTS);
+  for (const id of result.boosters.available) push("booster", id, TILE_FACTION_WEIGHTS);
+  for (const id of result.roundScoring) push("roundScoring", id, TILE_FACTION_WEIGHTS);
+  for (const id of result.finalScoring) push("finalScoring", id, TILE_FACTION_WEIGHTS);
+  push("federation", result.federationLv5, TILE_FACTION_WEIGHTS);
+  if (result.mode === "lostFleet") {
+    for (const id of Object.values(result.shipTech ?? {})) push("lfShip", id, TILE_FACTION_WEIGHTS);
+    for (const id of Object.values(result.goldFederations ?? {})) push("lfShip", id, TILE_FACTION_WEIGHTS);
+    for (const id of result.artifacts ?? []) push("lfShip", id, TILE_FACTION_WEIGHTS);
+  }
+  // 標準技術: トラック下はトラック別テーブル、フリー枠はタイル有用度
+  for (const track of RESEARCH_TRACK_IDS as readonly ResearchTrackId[]) {
+    const id = result.standardTech.byTrack[track];
+    const cell = TECH_TRACK_WEIGHTS[id]?.[track];
+    if (!cell) continue;
+    const scale = w.stdTrack;
+    const byFaction: Partial<Record<FactionId, number>> = {};
+    let any = false;
+    for (const [f, v] of Object.entries(cell)) {
+      const val = (v ?? 0) * scale;
+      if (val === 0) continue;
+      byFaction[f as FactionId] = val;
+      any = true;
+    }
+    if (any) out.push({ tileId: id, category: "stdTrack", slot: track, byFaction });
+  }
+  for (const id of result.standardTech.free) push("stdFree", id, TECH_PREF);
+  return out;
+}
+
 /**
  * セットアップに出ているタイル群から、カテゴリ別の種族スコアを作る。
  * 各カテゴリは評価指数（SetupWeights）を掛けた後の値。

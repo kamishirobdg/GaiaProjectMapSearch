@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { SetupResult } from "@/gaia/setup/types";
-import { scoreSetupFactions, setupFactionBreakdown } from "./factionEval";
+import { scoreSetupFactions, setupFactionBreakdown, setupFactionTileHits } from "./factionEval";
 import {
   DEFAULT_SETUP_WEIGHTS,
   LF_ONLY_WEIGHT_KEYS,
@@ -171,5 +171,39 @@ describe("serializeSetupWeights", () => {
   it("書いた内容を読み戻すと元へ戻る", () => {
     const w = { ...DEFAULT_SETUP_WEIGHTS, advanced: 2, stdFree: 0 };
     expect(sanitizeSetupWeights(JSON.parse(serializeSetupWeights(w)!))).toEqual(w);
+  });
+});
+
+describe("setupFactionTileHits（マーカー用のタイル単位の寄与）", () => {
+  it("タイル単位の合計が内訳表の合計と一致する", () => {
+    const s = syntheticSetup();
+    for (const w of [DEFAULT_SETUP_WEIGHTS, withWeight("roundScoring", 2), withWeight("stdTrack", 1)]) {
+      const total = scoreSetupFactions(s, w);
+      const sum: Record<string, number> = {};
+      for (const h of setupFactionTileHits(s, w)) {
+        for (const [f, v] of Object.entries(h.byFaction)) sum[f] = (sum[f] ?? 0) + (v ?? 0);
+      }
+      for (const f of FACTION_IDS) expect(sum[f] ?? 0).toBeCloseTo(total[f], 9);
+    }
+  });
+
+  it("カテゴリ別に足しても内訳表と一致する", () => {
+    const s = syntheticSetup();
+    const { byCategory } = setupFactionBreakdown(s, DEFAULT_SETUP_WEIGHTS);
+    const hits = setupFactionTileHits(s, DEFAULT_SETUP_WEIGHTS);
+    for (const k of SETUP_WEIGHT_KEYS) {
+      const sum: Record<string, number> = {};
+      for (const h of hits.filter((x) => x.category === k)) {
+        for (const [f, v] of Object.entries(h.byFaction)) sum[f] = (sum[f] ?? 0) + (v ?? 0);
+      }
+      for (const f of FACTION_IDS) expect(sum[f] ?? 0).toBeCloseTo(byCategory[k][f], 9);
+    }
+  });
+
+  it("寄与ゼロのタイルは出さない（光らせる対象にしない）", () => {
+    for (const h of setupFactionTileHits(syntheticSetup())) {
+      expect(Object.keys(h.byFaction).length).toBeGreaterThan(0);
+      for (const v of Object.values(h.byFaction)) expect(v).not.toBe(0);
+    }
   });
 });

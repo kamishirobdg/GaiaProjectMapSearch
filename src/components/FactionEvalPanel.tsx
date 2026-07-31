@@ -11,7 +11,7 @@
 
 import React from "react";
 import { PLANET_INPUT_BG, PLANET_LABEL_JA, type PlanetTypeKey } from "@/app/board/BreakdownTable";
-import { setupFactionBreakdown, type FactionScores } from "@/gaia/eval/factionEval";
+import { setupFactionBreakdown, setupFactionTileHits, type FactionScores } from "@/gaia/eval/factionEval";
 import { FACTIONS, type FactionId } from "@/gaia/eval/factionWeights";
 import {
   DEFAULT_SETUP_WEIGHTS,
@@ -27,6 +27,22 @@ import type { SetupResult } from "@/gaia/setup/types";
 import { T } from "@/components/ui/layout";
 
 type Lang = "ja" | "en";
+
+/** 種族の母星色（タイルを縁取るので、背景色ではなく濃い方を使う）。 */
+const HOME_COLOR_VIVID: Record<string, string> = {
+  BLACK: "#444444",
+  BLUE: "#2b7fe0",
+  BROWN: "#9c6b34",
+  ORANGE: "#f0951f",
+  RED: "#e23b3b",
+  WHITE: "#8d8d8d",
+  YELLOW: "#e8c400",
+};
+/** 種族に紐づかない選択（列まるごと）のときの色。 */
+const NEUTRAL_MARK_COLOR = "#2b7fe0";
+
+/** マーカー指定: どのタイルを何色で光らせるか。 */
+export type SetupMarkRequest = { tileIds: string[]; color: string };
 
 // ラベルは短く、意味はツールチップ（title）で引けるようにする（2026-07-30 要望）。
 const CAT_LABEL: Record<SetupWeightKey, { ja: string; en: string; tipJa: string; tipEn: string }> = {
@@ -223,13 +239,55 @@ export function FactionScoreTable({
   weights,
   lang,
   lf,
+  onMark,
+  activeSources,
 }: {
   result: SetupResult;
   weights: SetupWeights;
   lang: Lang;
   lf: boolean;
+  /** セル/種族名/列ヘッダのクリック。sourceId は `${軸}:${種族|*}` 形式。 */
+  onMark?: (sourceId: string, req: SetupMarkRequest, additive: boolean) => void;
+  activeSources?: Set<string>;
 }) {
   const t = UI[lang];
+  const hits = React.useMemo(() => setupFactionTileHits(result, weights), [result, weights]);
+  const isActive = (id: string) => !!activeSources && activeSources.has(id);
+
+  /**
+   * クリック用の属性。faction=null は列まるごと、category=null は種族の全カテゴリ。
+   * 光らせるのは「その数値を動かしているタイル」だけ（寄与0は入らない）。
+   */
+  const markProps = (
+    sourceId: string,
+    faction: FactionId | null,
+    category: SetupWeightKey | null,
+    color: string,
+    join?: "left" | "right"
+  ): React.HTMLAttributes<HTMLTableCellElement> => {
+    if (!onMark) return {};
+    const ring = "#2b7fe0";
+    const outline =
+      join === "left"
+        ? `inset 2px 0 0 0 ${ring}, inset 0 2px 0 0 ${ring}, inset 0 -2px 0 0 ${ring}`
+        : join === "right"
+          ? `inset -2px 0 0 0 ${ring}, inset 0 2px 0 0 ${ring}, inset 0 -2px 0 0 ${ring}`
+          : `inset 0 0 0 2px ${ring}`;
+    return {
+      onClick: (e) => {
+        const ids = hits
+          .filter((h) => (category == null || h.category === category))
+          .filter((h) => (faction == null ? true : (h.byFaction[faction] ?? 0) !== 0))
+          .map((h) => h.tileId);
+        onMark(sourceId, { tileIds: [...new Set(ids)], color }, e.ctrlKey || e.metaKey);
+      },
+      title:
+        lang === "ja"
+          ? "この数値を動かしているタイルを光らせる（Ctrlで複数選択）"
+          : "Highlight the tiles behind this number (Ctrl = multi-select)",
+      style: { cursor: "pointer", boxShadow: isActive(sourceId) ? outline : undefined },
+    };
+  };
   const { byCategory, total } = React.useMemo(
     () => setupFactionBreakdown(result, weights),
     [result, weights]
@@ -253,11 +311,23 @@ export function FactionScoreTable({
             <th style={thStyle} title={t.tipTotal}>
               {t.colTotal}
             </th>
-            {cols.map((k) => (
-              <th key={k} style={thStyle} title={lang === "ja" ? CAT_LABEL[k].tipJa : CAT_LABEL[k].tipEn}>
-                {lang === "ja" ? CAT_LABEL[k].ja : CAT_LABEL[k].en}
-              </th>
-            ))}
+            {cols.map((k) => {
+              const m = markProps(`${k}:*`, null, k, NEUTRAL_MARK_COLOR);
+              return (
+                <th
+                  key={k}
+                  style={{ ...thStyle, ...(m.style ?? {}) }}
+                  onClick={m.onClick as any}
+                  title={
+                    (lang === "ja" ? CAT_LABEL[k].tipJa : CAT_LABEL[k].tipEn) +
+                    (m.title ? `
+${m.title}` : "")
+                  }
+                >
+                  {lang === "ja" ? CAT_LABEL[k].ja : CAT_LABEL[k].en}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>
@@ -266,23 +336,56 @@ export function FactionScoreTable({
             const colorName = lang === "ja" ? PLANET_LABEL_JA[colorKey] : colorKey;
             return (
               <tr key={f.id} style={{ background: PLANET_INPUT_BG[colorKey] }}>
-                <td style={tdLeftStyle} title={`${colorName} / ${f.labelEn}`}>
-                  {lang === "ja" ? f.labelJa : f.labelEn}
-                </td>
-                <td
-                  style={{
-                    ...tdStyle,
-                    fontWeight: 800,
-                    color: extremeColor(total[f.id], exTotal),
-                  }}
-                >
-                  {fmt1(total[f.id])}
-                </td>
-                {cols.map((k) => (
-                  <td key={k} style={{ ...tdStyle, color: extremeColor(byCategory[k][f.id], exByCat[k]) }}>
-                    {fmt1(byCategory[k][f.id])}
-                  </td>
-                ))}
+                {(() => {
+                  const c = HOME_COLOR_VIVID[f.color] ?? NEUTRAL_MARK_COLOR;
+                  const m = markProps(`total:${f.id}`, f.id, null, c, "left");
+                  return (
+                    <td
+                      style={{ ...tdLeftStyle, ...(m.style ?? {}) }}
+                      onClick={m.onClick}
+                      title={`${colorName} / ${f.labelEn}` + (m.title ? `
+${m.title}` : "")}
+                    >
+                      {lang === "ja" ? f.labelJa : f.labelEn}
+                    </td>
+                  );
+                })()}
+                {(() => {
+                  const c = HOME_COLOR_VIVID[f.color] ?? NEUTRAL_MARK_COLOR;
+                  const m = markProps(`total:${f.id}`, f.id, null, c, "right");
+                  return (
+                    <td
+                      onClick={m.onClick}
+                      title={m.title}
+                      style={{
+                        ...tdStyle,
+                        fontWeight: 800,
+                        color: extremeColor(total[f.id], exTotal),
+                        ...(m.style ?? {}),
+                      }}
+                    >
+                      {fmt1(total[f.id])}
+                    </td>
+                  );
+                })()}
+                {cols.map((k) => {
+                  const c = HOME_COLOR_VIVID[f.color] ?? NEUTRAL_MARK_COLOR;
+                  const m = markProps(`${k}:${f.id}`, f.id, k, c);
+                  return (
+                    <td
+                      key={k}
+                      onClick={m.onClick}
+                      title={m.title}
+                      style={{
+                        ...tdStyle,
+                        color: extremeColor(byCategory[k][f.id], exByCat[k]),
+                        ...(m.style ?? {}),
+                      }}
+                    >
+                      {fmt1(byCategory[k][f.id])}
+                    </td>
+                  );
+                })}
               </tr>
             );
           })}
@@ -410,6 +513,8 @@ export default function FactionEvalPanel({
   lang,
   lf,
   players,
+  onMark,
+  activeSources,
 }: {
   result: SetupResult | null;
   weights: SetupWeights;
@@ -418,6 +523,8 @@ export default function FactionEvalPanel({
   lang: Lang;
   lf: boolean;
   players: number;
+  onMark?: (sourceId: string, req: SetupMarkRequest, additive: boolean) => void;
+  activeSources?: Set<string>;
 }) {
   const t = UI[lang];
   const total = React.useMemo(
@@ -433,7 +540,14 @@ export default function FactionEvalPanel({
       {result && total ? (
         <>
           <ScoreSummary total={total} players={players} lang={lang} />
-          <FactionScoreTable result={result} weights={weights} lang={lang} lf={lf} />
+          <FactionScoreTable
+            result={result}
+            weights={weights}
+            lang={lang}
+            lf={lf}
+            onMark={onMark}
+            activeSources={activeSources}
+          />
         </>
       ) : (
         <div style={{ fontSize: T.fontBody, color: T.fgMuted }}>{t.empty}</div>

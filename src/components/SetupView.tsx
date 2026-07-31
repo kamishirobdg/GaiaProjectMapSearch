@@ -34,7 +34,7 @@ import { STORE_SETUP_PROFILES, isDbUpgradeBlocked } from "@/app/board/persistenc
 import { DEFAULT_SETUP_WEIGHTS, isDefaultWeights, type SetupWeights } from "@/gaia/eval/setupWeights";
 import { copyText, decodeSetupToken, setupShareUrl } from "@/lib/setupShare";
 import GlobalBar from "@/components/GlobalBar";
-import FactionEvalPanel, { useSetupWeights } from "@/components/FactionEvalPanel";
+import FactionEvalPanel, { useSetupWeights, type SetupMarkRequest } from "@/components/FactionEvalPanel";
 import { PageBody, SectionTitle, T, TwoCol } from "@/components/ui/layout";
 import {
   readSharedExpansion,
@@ -308,12 +308,15 @@ function TileCellView({
   lang,
   lf,
   full,
+  mark,
 }: {
   id: string;
   tag?: string;
   lang: Lang;
   lf: boolean;
   full?: boolean;
+  /** 光らせる色（未指定なら光らせない）。要素自体を縁取るのでレイアウト非依存。 */
+  mark?: string;
 }) {
   const [failed, setFailed] = React.useState(false);
   const label = labelOf(id, lang);
@@ -323,10 +326,12 @@ function TileCellView({
   return (
     <div
       title={tooltip}
+      data-tile-id={id}
+      className={mark ? "setup-tile-marked" : undefined}
       style={{
-        border: "1px solid #ddd",
+        border: mark ? `2px solid ${mark}` : "1px solid #ddd",
         borderRadius: 8,
-        padding: "6px 8px",
+        padding: mark ? "5px 7px" : "6px 8px",
         fontSize: 12,
         background: "#fafafa",
         minWidth: 0,
@@ -335,6 +340,7 @@ function TileCellView({
         flexDirection: "column",
         alignItems: "flex-start",
         gap: 4,
+        ...(mark ? { boxShadow: `0 0 0 3px ${mark}55`, outline: "none" } : {}),
       }}
     >
       {tag ? <span style={{ fontSize: 11, opacity: 0.6 }}>{tag}</span> : null}
@@ -744,6 +750,34 @@ export default function SetupView() {
   const [dbBlocked, setDbBlocked] = React.useState(false);
 
   /**
+   * 評価表クリックで光らせるタイル（2026-07-30）。Map の #9 マーカーと同じ操作:
+   * 単独クリックで置換、同じ所を再クリックで解除、Ctrl で複数選択。
+   * タイルIDで持つので、レイアウトが変わっても該当タイルに付いて回る。
+   */
+  const [markSources, setMarkSources] = React.useState<Map<string, SetupMarkRequest>>(new Map());
+  const onMark = React.useCallback((sourceId: string, req: SetupMarkRequest, additive: boolean) => {
+    setMarkSources((prev) => {
+      if (additive) {
+        const next = new Map(prev);
+        if (next.has(sourceId)) next.delete(sourceId);
+        else next.set(sourceId, req);
+        return next;
+      }
+      if (prev.has(sourceId) && prev.size === 1) return new Map();
+      return new Map([[sourceId, req]]);
+    });
+  }, []);
+  const activeSources = React.useMemo(() => new Set(markSources.keys()), [markSources]);
+  /** タイルID -> 色。複数ソースが同じタイルを指したら先に選んだ色を使う。 */
+  const markedTiles = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const req of markSources.values()) {
+      for (const id of req.tileIds) if (!m.has(id)) m.set(id, req.color);
+    }
+    return m;
+  }, [markSources]);
+
+  /**
    * 「既定値のままの条件」か。人数・拡張は使う人の選択なので判定に含めず、
    * ルール類と評価指数だけを見る。既定値を変えたら自動的に追随する
    * （固定の名前を保存しない＝今の既定と比べる。2026-07-30 要望）。
@@ -874,6 +908,16 @@ export default function SetupView() {
 
   const currentId = React.useMemo(() => setupHistoryId(buildInput(seed)), [buildInput, seed]);
 
+  // 表示中のセットアップが変わったらマーカーを消す（別の卓のタイルが光ったままに
+  // ならないように。Map の markHashRef と同じ考え方）。
+  const markKeyRef = React.useRef<string>("");
+  React.useEffect(() => {
+    if (markKeyRef.current !== currentId) {
+      markKeyRef.current = currentId;
+      setMarkSources((prev) => (prev.size ? new Map() : prev));
+    }
+  }, [currentId]);
+
   // 船ルールの充足不能な組み合わせはエラーにせず警告表示（2026-07-23 要望）。
   const shipRuleWarnings = React.useMemo(() => {
     if (!lf) return [];
@@ -899,11 +943,21 @@ export default function SetupView() {
   }, []);
 
   const tileCell = (id: string, tag?: string, full?: boolean) => (
-    <TileCellView key={id + (tag ?? "")} id={id} tag={tag} lang={lang} lf={lf} full={full} />
+    <TileCellView
+      key={id + (tag ?? "")}
+      id={id}
+      tag={tag}
+      lang={lang}
+      lf={lf}
+      full={full}
+      mark={markedTiles.get(id)}
+    />
   );
 
   return (
     <>
+      {/* マーカーの点滅。要素自体に付けるのでレイアウトが変わっても追従する。 */}
+      <style>{`@keyframes setupTileBlink{0%,100%{opacity:1}50%{opacity:.45}} .setup-tile-marked{animation:setupTileBlink 1.1s ease-in-out infinite}`}</style>
       <GlobalBar
         active="setup"
         players={players}
@@ -1252,6 +1306,8 @@ export default function SetupView() {
           lang={lang}
           lf={lf}
           players={players}
+          onMark={onMark}
+          activeSources={activeSources}
         />
       </section>
 
