@@ -15,7 +15,7 @@ import {
   topFactions,
   type FactionScores,
 } from "./factionEval";
-import { FACTION_IDS, TILE_FACTION_WEIGHTS } from "./factionWeights";
+import { FACTION_IDS, factionIdsForMode, TILE_FACTION_WEIGHTS, type FactionId } from "./factionWeights";
 import { countMapPlanets, mapFactionScoresFromCounts } from "./mapFaction";
 import { makeSearchPlacementFromSeed } from "@/gaia/ssot/searchPlacementConfig";
 
@@ -225,5 +225,44 @@ describe("mapFaction", () => {
     expect(scores.hadschHallas).toBe(5);
     expect(scores.ivits).toBe(5);
     expect(topFactions(scores, 1)[0]).toBe("terrans");
+  });
+});
+
+// 基本版では Lost Fleet の4種族は選べないので、上位K種族にも散らばりにも入れない
+// （2026-07-31 ユーザー確定）。重みテーブル自体は共通のまま、参照側で絞る。
+describe("基本版では LF4種族を候補に入れない", () => {
+  const LF: FactionId[] = ["moweyds", "spaceGiants", "tinkerroids", "darkanians"];
+
+  it("factionIdsForMode: 基本版14 / LF18", () => {
+    expect(factionIdsForMode(true)).toHaveLength(18);
+    expect(factionIdsForMode(false)).toHaveLength(14);
+    for (const f of LF) {
+      expect(factionIdsForMode(true)).toContain(f);
+      expect(factionIdsForMode(false)).not.toContain(f);
+    }
+  });
+
+  it("topFactions: LF種族が最高スコアでも基本版では選ばれない", () => {
+    const scores = Object.fromEntries(FACTION_IDS.map((f) => [f, 0])) as FactionScores;
+    for (const f of LF) scores[f] = 100;
+    scores.terrans = 1;
+
+    expect(topFactions(scores, 1, true)[0]).toBe(LF[0]);
+    expect(topFactions(scores, 1, false)[0]).toBe("terrans");
+    expect(topFactions(scores, 4, false).some((f) => LF.includes(f))).toBe(false);
+    // 既定は従来どおり全18種族
+    expect(topFactions(scores, 1)[0]).toBe(LF[0]);
+  });
+
+  it("neutralBalance: 基本版の散らばりに LF種族のスコアが混ざらない", () => {
+    const flat = Object.fromEntries(FACTION_IDS.map((f) => [f, 5])) as FactionScores;
+    const skewed = { ...flat };
+    for (const f of LF) skewed[f] = -50; // 基本14種族は完全に平坦のまま
+
+    const opts = { playerCount: 4 };
+    // 基本版から見れば14種族は平坦なので散らばり0＝満点（-0）
+    expect(criterionScore("neutralBalance", skewed, { ...opts, lostFleet: false })).toBe(-0);
+    // LF から見ると LF4種族の外れ値で散らばりが出る
+    expect(criterionScore("neutralBalance", skewed, { ...opts, lostFleet: true })).toBeLessThan(-1);
   });
 });

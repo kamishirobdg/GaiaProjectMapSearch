@@ -12,6 +12,7 @@ import type { SetupResult } from "@/gaia/setup/types";
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
 import {
   FACTION_IDS,
+  factionIdsForMode,
   TECH_PREF,
   TECH_TRACK_WEIGHTS,
   TILE_FACTION_WEIGHTS,
@@ -191,13 +192,20 @@ function std(xs: number[]): number {
   const m = mean(xs);
   return Math.sqrt(mean(xs.map((x) => (x - m) * (x - m))));
 }
-function sortedDesc(scores: FactionScores): number[] {
-  return Object.values(scores).sort((a, b) => b - a);
+function sortedDesc(scores: FactionScores, ids: readonly FactionId[]): number[] {
+  return ids.map((f) => scores[f]).sort((a, b) => b - a);
 }
 
-/** マップ側スコア上位N種族（同点はFACTION_IDS順で安定）。 */
-export function topFactions(scores: FactionScores, n: number): FactionId[] {
-  return [...FACTION_IDS].sort((a, b) => scores[b] - scores[a]).slice(0, n);
+/**
+ * マップ側スコア上位N種族（同点はFACTION_IDS順で安定）。
+ * 基本版では LF の4種族を候補から外す（基本版では選べないため、2026-07-31）。
+ */
+export function topFactions(
+  scores: FactionScores,
+  n: number,
+  lostFleet: boolean = true
+): FactionId[] {
+  return [...factionIdsForMode(lostFleet)].sort((a, b) => scores[b] - scores[a]).slice(0, n);
 }
 
 export type RecommendCriterion = "opposeMap" | "alignMap" | "topBalance" | "neutralBalance";
@@ -211,14 +219,18 @@ export type RecommendCriterion = "opposeMap" | "alignMap" | "topBalance" | "neut
  *   K種族の平均を主項、K内の散らばりを軽い減点にして1種族だけ突出するのを避ける。
  * - topBalance: 上位 K=プレイ人数+2 種族が拮抗して強いほど良い
  *   （上位Kの散らばりを罰し、上位Kと残りの差を少し好む）。
- * - neutralBalance: 全14種族の散らばりが小さいほど良い（マップ非依存）。
+ * - neutralBalance: 全種族の散らばりが小さいほど良い（マップ非依存）。
+ *
+ * 散らばり系（topBalance / neutralBalance）が見る母集団は、その拡張で選べる種族だけ。
+ * 基本版で LF の4種族を混ぜると、遊べない種族の低スコアが散らばりを押し上げてしまう
+ * （2026-07-31）。`lostFleet` 省略時は従来どおり全18種族。
  */
 export function criterionScore(
   criterion: RecommendCriterion,
   setupScores: FactionScores,
-  opts: { playerCount: number; mapTop3?: FactionId[]; mapTopK?: FactionId[] }
+  opts: { playerCount: number; mapTop3?: FactionId[]; mapTopK?: FactionId[]; lostFleet?: boolean }
 ): number {
-  const all = sortedDesc(setupScores);
+  const all = sortedDesc(setupScores, factionIdsForMode(opts.lostFleet !== false));
   switch (criterion) {
     case "opposeMap": {
       const top3 = opts.mapTop3 ?? [];
@@ -294,7 +306,12 @@ export function recommendSetups(args: {
     };
     const result = buildSetupFromSeed(input);
     const setupScores = scoreSetupFactions(result, weights);
-    const score = criterionScore(criterion, setupScores, { playerCount, mapTop3, mapTopK });
+    const score = criterionScore(criterion, setupScores, {
+      playerCount,
+      mapTop3,
+      mapTopK,
+      lostFleet,
+    });
     all.push({ input, result, setupScores, criterion, score, trials: seeds.length });
   }
   // 安定ソート（Array#sort は安定）なので同着は seeds の順を保つ。

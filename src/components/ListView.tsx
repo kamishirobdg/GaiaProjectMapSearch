@@ -211,9 +211,9 @@ function factionLabel(id: FactionId, lang: Lang): string {
   return f ? (lang === "ja" ? f.labelJa : f.labelEn) : id;
 }
 
-/** セットアップスコア上位N件を [ラベル +n] で並べる。 */
-function topFactionText(scores: FactionScores, n: number, lang: Lang): string {
-  const ids = topFactions(scores, n);
+/** セットアップスコア上位N件を [ラベル +n] で並べる。基本版では LF4種族を除く。 */
+function topFactionText(scores: FactionScores, n: number, lang: Lang, lf: boolean): string {
+  const ids = topFactions(scores, n, lf);
   return ids
     .map((f) => `${factionLabel(f, lang)} ${scores[f] >= 0 ? "+" : ""}${Math.round(scores[f] * 10) / 10}`)
     .join(" / ");
@@ -702,9 +702,10 @@ export default function ListView() {
       const tid = templateIdBySearchKey[c.searchKey] ?? null;
       if (!tid) return null;
       try {
+        const derived = deriveSetupSettings(tid);
         const ms = mapFactionScores(tid, c.placement ?? []);
-        const top3 = topFactions(ms, 3);
-        const topK = topFactions(ms, Math.max(2, (playersForK ?? deriveSetupSettings(tid).players) + 2));
+        const top3 = topFactions(ms, 3, derived.lf);
+        const topK = topFactions(ms, Math.max(2, (playersForK ?? derived.players) + 2), derived.lf);
         return { tid, top3, topK, detail: top3.map((f) => ({ id: f, score: ms[f] })) };
       } catch {
         return null;
@@ -1452,7 +1453,8 @@ export default function ListView() {
                       {t.players}: {pairShared.input.playerCount ?? 4}
                     </div>
                     <div>
-                      <span style={{ opacity: 0.7 }}>{t.setupStrong}:</span> {topFactionText(scores, 5, lang)}
+                      <span style={{ opacity: 0.7 }}>{t.setupStrong}:</span>{" "}
+                      {topFactionText(scores, 5, lang, lfShared)}
                     </div>
                     <Link href={`/setup?s=${sToken}`} style={{ fontSize: 12 }}>
                       {t.openSetup}
@@ -1543,7 +1545,7 @@ export default function ListView() {
                   ) : null}
                   <div>
                     <span style={{ opacity: 0.7 }}>{t.setupStrong}:</span>{" "}
-                    {topFactionText(rec.setupScores, 5, lang)}
+                    {topFactionText(rec.setupScores, 5, lang, recSettings.lf)}
                   </div>
 
                   {/* 提案中のマップとセットアップを画像で表示（ミニ盤面＋縮小セットアップ）。2026-07-24 */}

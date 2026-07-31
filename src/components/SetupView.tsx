@@ -1342,7 +1342,10 @@ ${pickHint}`}
         </div>
       </section>
 
-      {/* Muaked/Tinkerroid planet-transform satellites: 7 colors in board order */}
+      {/* Muaked/Tinkerroid planet-transform satellites: 7 colors in board order.
+          惑星改造ボードは LF の内容物で、使うのは LF の2種族だけ。基本版では
+          その2種族を選べないので出さない（2026-07-31）。 */}
+      {lf ? (
       <section>
         <div style={{ fontWeight: 700, marginBottom: 2 }}>{t.satellites}</div>
         <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 6 }}>{t.satellitesNote}</div>
@@ -1380,6 +1383,7 @@ ${pickHint}`}
           })}
         </div>
       </section>
+      ) : null}
           </>
         }
         left={

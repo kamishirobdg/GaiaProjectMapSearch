@@ -12,7 +12,7 @@
 import React from "react";
 import { EXTRA_LABEL_JA, PLANET_INPUT_BG, PLANET_LABEL_JA, type PlanetTypeKey } from "@/app/board/BreakdownTable";
 import { setupFactionBreakdown, setupFactionTileHits, type FactionScores } from "@/gaia/eval/factionEval";
-import { FACTIONS, type FactionId } from "@/gaia/eval/factionWeights";
+import { factionsForMode, type FactionId } from "@/gaia/eval/factionWeights";
 import {
   DEFAULT_SETUP_WEIGHTS,
   LF_ONLY_WEIGHT_KEYS,
@@ -302,11 +302,13 @@ export function FactionScoreTable({
   );
 
   const cols = SETUP_WEIGHT_DISPLAY_ORDER.filter((k) => lf || !LF_ONLY_WEIGHT_KEYS.has(k));
-  const rows = [...FACTIONS].sort((a, b) => total[b.id] - total[a.id]);
+  // 基本版では LF の4種族は選べないので行に出さない（2026-07-31 ユーザー確定）。
+  const shown = factionsForMode(lf);
+  const rows = [...shown].sort((a, b) => total[b.id] - total[a.id]);
 
-  const exTotal = extremesOf(FACTIONS.map((f) => total[f.id]));
+  const exTotal = extremesOf(shown.map((f) => total[f.id]));
   const exByCat = {} as Record<SetupWeightKey, { max: number; min: number }>;
-  for (const k of cols) exByCat[k] = extremesOf(FACTIONS.map((f) => byCategory[k][f.id]));
+  for (const k of cols) exByCat[k] = extremesOf(shown.map((f) => byCategory[k][f.id]));
 
   return (
     <div style={{ overflowX: "auto", border: T.borderSoft, borderRadius: T.radius }}>
@@ -408,18 +410,22 @@ function ScoreSummary({
   total,
   players,
   lang,
+  lf,
 }: {
   total: FactionScores;
   players: number;
   lang: Lang;
+  lf: boolean;
 }) {
   const t = UI[lang];
-  const ids = [...FACTIONS].map((f) => f.id) as FactionId[];
+  // 表と同じ母集団で集計する（基本版は14種族）。
+  const shown = factionsForMode(lf);
+  const ids = shown.map((f) => f.id) as FactionId[];
   const values = ids.map((id) => total[id]);
   const k = Math.min(values.length, Math.max(2, players + 2));
   const desc = [...values].sort((a, b) => b - a);
   const bestId = ids.reduce((a, b) => (total[b] > total[a] ? b : a), ids[0]);
-  const best = FACTIONS.find((f) => f.id === bestId);
+  const best = shown.find((f) => f.id === bestId);
   const chip: React.CSSProperties = {
     border: T.borderSoft,
     borderRadius: 6,
@@ -547,7 +553,7 @@ export default function FactionEvalPanel({
       </div>
       {result && total ? (
         <>
-          <ScoreSummary total={total} players={players} lang={lang} />
+          <ScoreSummary total={total} players={players} lang={lang} lf={lf} />
           <FactionScoreTable
             result={result}
             weights={weights}

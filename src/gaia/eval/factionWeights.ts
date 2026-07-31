@@ -100,6 +100,29 @@ export const FACTIONS: FactionDef[] = [
 
 export const FACTION_IDS: readonly FactionId[] = FACTIONS.map((f) => f.id);
 
+/** Lost Fleet で追加される4種族。 */
+export const LF_FACTION_IDS: ReadonlySet<FactionId> = new Set<FactionId>([
+  "moweyds",
+  "spaceGiants",
+  "tinkerroids",
+  "darkanians",
+]);
+
+/**
+ * その拡張で選べる勢力（基本版=14、Lost Fleet=18）。
+ * **基本版では LF の4種族は使えない**ので、評価表にも出さず、上位K種族・
+ * セット提案の選定対象にも入れない（2026-07-31 ユーザー確定）。
+ * 重み自体は共通テーブルに持ったままで、絞り込みは参照側で行う。
+ */
+export function factionsForMode(lostFleet: boolean): FactionDef[] {
+  return lostFleet ? FACTIONS : FACTIONS.filter((f) => !LF_FACTION_IDS.has(f.id));
+}
+
+/** 同上のID配列。 */
+export function factionIdsForMode(lostFleet: boolean): readonly FactionId[] {
+  return lostFleet ? FACTION_IDS : FACTION_IDS.filter((id) => !LF_FACTION_IDS.has(id));
+}
+
 /**
  * マップ特徴への親和度（母星色の供給量は全種族共通で基本点になるため、
  * ここにはガイア惑星・次元横断惑星への依存度だけを持つ）。
