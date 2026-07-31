@@ -115,7 +115,7 @@ describe("cluster axis (base)", () => {
     expect(r.breakdown.axesByType.cluster!.RED).toBe(3);
     expect(r.breakdown.axesByType.cluster!.BLUE).toBe(3);
     expect(r.breakdown.axesByType.cluster!.WHITE).toBe(0);
-    expect(r.breakdown.audit.cluster?.clusters).toEqual([{ size: 3, colors: ["BLUE", "RED"] }]);
+    expect(r.breakdown.audit.cluster?.clusters).toEqual([{ size: 3, weightedSize: 3, colors: ["BLUE", "RED"] }]);
   });
 
   it("gaia/transdim join clusters for size but earn no colour points (H5と同じ連結定義)", () => {
@@ -126,7 +126,29 @@ describe("cluster axis (base)", () => {
     ]);
     const r = evaluateSoft(e, { ...BASE_SOFT, wClusterSize: 1 });
     expect(r.breakdown.axesByType.cluster!.RED).toBe(2);
-    expect(r.breakdown.audit.cluster?.clusters).toEqual([{ size: 2, colors: ["RED"] }]);
+    expect(r.breakdown.audit.cluster?.clusters).toEqual([{ size: 2, weightedSize: 2, colors: ["RED"] }]);
+  });
+
+  it("次元横断惑星は星系の大きさを半分だけ増やす（2026-07-30 確定）", () => {
+    // RED-TRANSDIM の2連結: 大きさは 1 + 0.5 = 1.5 => RED+1.5
+    const e = extractedOf([
+      cell({ q: 0, r: 0, color: "RED" }),
+      cell({ q: 1, r: 0, kind: "TRANSDIM" }),
+    ]);
+    const r = evaluateSoft(e, { ...BASE_SOFT, wClusterSize: 1 });
+    expect(r.breakdown.axesByType.cluster!.RED).toBeCloseTo(1.5, 9);
+    expect(r.breakdown.audit.cluster?.clusters).toEqual([
+      { size: 2, weightedSize: 1.5, colors: ["RED"] },
+    ]);
+  });
+
+  it("ガイア惑星は従来どおり1つ分で数える（半減は次元横断だけ）", () => {
+    const e = extractedOf([
+      cell({ q: 0, r: 0, color: "RED" }),
+      cell({ q: 1, r: 0, kind: "GAIA" }),
+    ]);
+    const r = evaluateSoft(e, { ...BASE_SOFT, wClusterSize: 1 });
+    expect(r.breakdown.axesByType.cluster!.RED).toBe(2);
   });
 
   it("weight multiplies the size bonus", () => {

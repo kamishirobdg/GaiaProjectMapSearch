@@ -977,13 +977,16 @@ return (savedProfiles ?? []).filter((p) => {
   // Soft params
   const [wOuter, setWOuter] = React.useState(3);
   const [wTouch, setWTouch] = React.useState(1);
-  const [wScout, setWScout] = React.useState(6);
+  // 既定値は「各軸が全体に占める割合」を実測して決めた（2026-07-30 ユーザー確定）。
+  // 影響力の順を 船接触 > 船星系 > ガイア > 星系 > 最外周 > 外周 にしてある。
+  // 実測(3p_lostFleet/24盤面): 31.2% / 27.0% / 23.4% / 13.9% / 3.3% / 1.2%
+  const [wScout, setWScout] = React.useState(10);
   const [wScoutCore, setWScoutCore] = React.useState(4);
 
-  const [wScoutS1, setWScoutS1] = React.useState(6);
-  const [wScoutS2, setWScoutS2] = React.useState(6);
-  const [wScoutS3, setWScoutS3] = React.useState(6);
-  const [wScoutS4, setWScoutS4] = React.useState(6);
+  const [wScoutS1, setWScoutS1] = React.useState(10);
+  const [wScoutS2, setWScoutS2] = React.useState(10);
+  const [wScoutS3, setWScoutS3] = React.useState(10);
+  const [wScoutS4, setWScoutS4] = React.useState(10);
 
   const [wScoutCoreS1, setWScoutCoreS1] = React.useState(3);
   const [wScoutCoreS2, setWScoutCoreS2] = React.useState(3);
@@ -1003,8 +1006,8 @@ return (savedProfiles ?? []).filter((p) => {
   // 星系クラスタ（サイズn>=2の各色に+n×重み）。LFではキー・実行時とも
   // フィールドごと省略（evaluateSoft側もフィールド不在で完全スキップ）。
   const [wGaiaD1, setWGaiaD1] = React.useState(5);
-  const [wGaiaD2, setWGaiaD2] = React.useState(3);
-  const [wGaiaD3, setWGaiaD3] = React.useState(1);
+  const [wGaiaD2, setWGaiaD2] = React.useState(8);
+  const [wGaiaD3, setWGaiaD3] = React.useState(3);
   const [wClusterSize, setWClusterSize] = React.useState(1);
 
   // LF でガイア近接・星系軸を有効化するオプトイン（Phase A, 2026-07-25）。

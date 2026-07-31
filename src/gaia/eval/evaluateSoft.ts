@@ -216,7 +216,8 @@ scoutCore: {
     cluster?: {
       byType: AxisByType;
       weight: number;
-      clusters: Array<{ size: number; colors: string[] }>;
+      /** size=素の個数、weightedSize=次元横断を0.5で数えた重み付きの大きさ（得点はこちら） */
+      clusters: Array<{ size: number; weightedSize?: number; colors: string[] }>;
       /** PROTO/ASTEROID 分（軸には入らない表示用） */
       extraByKind?: Record<string, number>;
       /** マーカー用の座標付きヒット（クラスタ構成セルすべて） */
@@ -233,6 +234,9 @@ export type SoftEvalResult = {
 };
 
 const PLANET_TYPES: PlanetType[] = ["BLACK", "BLUE", "BROWN", "ORANGE", "RED", "WHITE", "YELLOW"];
+
+/** 星系の大きさを数えるときの次元横断惑星の価値（他の惑星の半分。2026-07-30 ユーザー確定） */
+export const CLUSTER_TRANSDIM_WEIGHT = 0.5;
 
 function zeroAxis(): AxisByType {
   return { BLACK: 0, BLUE: 0, BROWN: 0, ORANGE: 0, RED: 0, WHITE: 0, YELLOW: 0 };
@@ -439,7 +443,13 @@ for (const s of extracted.scoutCells) {
   const byType = zeroAxis();
   let total = 0;
 
-  const wScoutEff = num(wScoutByScoutKey?.[s.key], wScout);
+  // 船別の重み上書きは船ID（twilight/eclipse/rebellion/tfmars）で引く。
+  // 以前はセル座標 s.key で引いていたため常に未ヒットで、全船が既定値へ
+  // フォールバックしていた（2026-07-30 修正）。座標キーでの指定も後方互換で残す。
+  const wScoutEff = num(
+    wScoutByScoutKey?.[String((s as any).scoutId ?? "")] ?? wScoutByScoutKey?.[s.key],
+    wScout
+  );
 
   for (const p of extracted.planetCells) {
     const kindU = String((p as any).planetKind ?? "").toUpperCase();
@@ -565,7 +575,12 @@ if (scoutCoreAttributionMode === "best") {
   // ScoutCore uses per-scout assigned Scout planets (mode A/B)
 if (scoutPlanetKeySetByScoutKey.size > 0) {
   for (const [scoutKey, scoutPlanetKeys] of scoutPlanetKeySetByScoutKey.entries()) {
-    const wScoutCoreEff = num(wScoutCoreByScoutKey?.[scoutKey], wScoutCore);
+    // 船接触と同じく船IDで引く（座標キー指定も後方互換で残す）。
+    const scoutIdOf = String((scoutCellByKey.get(scoutKey) as any)?.scoutId ?? "");
+    const wScoutCoreEff = num(
+      wScoutCoreByScoutKey?.[scoutIdOf] ?? wScoutCoreByScoutKey?.[scoutKey],
+      wScoutCore
+    );
     if (wScoutCoreEff <= 0) continue;
     if (!scoutPlanetKeys || scoutPlanetKeys.size === 0) continue;
 
@@ -697,7 +712,7 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
   // マーカー用の座標付きヒット。クラスタを構成するセルすべてを対象にする
   // （軸へ効くのは基本7色だけだが、◎で軸全体を出したときに星系の形が見えるように）。
   const clusterHits: Array<{ cellKey: string; planetType: string; size: number }> = [];
-  const clusterList: Array<{ size: number; colors: string[] }> = [];
+  const clusterList: Array<{ size: number; weightedSize: number; colors: string[] }> = [];
   if (clusterEnabled) {
     const planetPts = (extracted.cells ?? []).filter((c) => (c as any).isPlanet);
     const cellByKey = new Map(planetPts.map((c) => [`${c.q},${c.r}`, c]));
@@ -706,19 +721,23 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
       if (comp.length < 2) continue;
       const colorSet = new Set<PlanetType>();
       const extraSet = new Set<string>();
+      // クラスタの「大きさ」は素の個数ではなく重み付き（2026-07-30 ユーザー確定）。
+      // 次元横断惑星は1ラウンド目に入植できないので他の惑星の半分で数える。
+      let weightedSize = 0;
       for (const pos of comp) {
         const c = cellByKey.get(`${pos.q},${pos.r}`);
         if (!c) continue;
         const t = toPlanetType((c as any).planetKind as any, (c as any).colorKey);
         const kindU = String((c as any).planetKind ?? "").toUpperCase() || "UNKNOWN";
+        weightedSize += kindU === "TRANSDIM" ? CLUSTER_TRANSDIM_WEIGHT : 1;
         if (t) colorSet.add(t);
         else extraSet.add(kindU);
         clusterHits.push({ cellKey: (c as any).key, planetType: t ?? kindU, size: comp.length });
       }
-      for (const t of colorSet) clusterAxis[t] += wCluster * comp.length;
+      for (const t of colorSet) clusterAxis[t] += wCluster * weightedSize;
       // 色ごとに1回、と同じ規則で追加種別にも入れる（表示・マーカー用。スコアには入らない）
-      for (const k of extraSet) clusterExtraByKind[k] = (clusterExtraByKind[k] ?? 0) + wCluster * comp.length;
-      clusterList.push({ size: comp.length, colors: [...colorSet].sort() });
+      for (const k of extraSet) clusterExtraByKind[k] = (clusterExtraByKind[k] ?? 0) + wCluster * weightedSize;
+      clusterList.push({ size: comp.length, weightedSize, colors: [...colorSet].sort() });
     }
     clusterHits.sort((a, b) => String(a.cellKey).localeCompare(String(b.cellKey)));
     // deterministic ordering for audit
