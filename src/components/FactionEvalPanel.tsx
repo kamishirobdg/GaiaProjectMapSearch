@@ -22,6 +22,9 @@ import {
   DEFAULT_SETUP_WEIGHTS,
   LF_ONLY_WEIGHT_KEYS,
   SETUP_WEIGHT_DISPLAY_ORDER,
+  SETUP_WEIGHT_MAX,
+  SETUP_WEIGHT_MIN,
+  SETUP_WEIGHT_STEP,
   isDefaultWeights,
   readSetupWeights,
   writeSetupWeights,
@@ -170,9 +173,13 @@ const UI = {
 } as const;
 
 /** 1桁までの丸め（末尾の .0 は落とす）。 */
+/**
+ * サマリの数値。係数の基準が100になって桁が増えたので、整数へ丸める
+ * （平均・散らばりは割り算なのでもともと小数が出るが、1400 に対する 0.1 は
+ * 情報として意味がない。2026-07-31）。
+ */
 function fmt1(n: number): string {
-  const r = Math.round(n * 10) / 10;
-  return Number.isInteger(r) ? String(r) : r.toFixed(1);
+  return String(Math.round(n));
 }
 
 function mean(xs: number[]): number {
@@ -519,15 +526,20 @@ export function SetupWeightInputs({
             <span>{lang === "ja" ? CAT_LABEL[k].ja : CAT_LABEL[k].en}</span>
             <input
               type="number"
-              step={0.25}
-              min={-9}
-              max={9}
+              step={SETUP_WEIGHT_STEP}
+              min={SETUP_WEIGHT_MIN}
+              max={SETUP_WEIGHT_MAX}
               value={weights[k]}
               onChange={(e) => {
                 const v = Number(e.target.value);
-                onChange(k, Number.isFinite(v) ? Math.max(-9, Math.min(9, v)) : DEFAULT_SETUP_WEIGHTS[k]);
+                onChange(
+                  k,
+                  Number.isFinite(v)
+                    ? Math.max(SETUP_WEIGHT_MIN, Math.min(SETUP_WEIGHT_MAX, v))
+                    : DEFAULT_SETUP_WEIGHTS[k]
+                );
               }}
-              style={{ width: 58, padding: "2px 4px", fontSize: T.fontNote }}
+              style={{ width: 66, padding: "2px 4px", fontSize: T.fontNote }}
             />
           </label>
         ))}

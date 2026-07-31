@@ -16,6 +16,7 @@ import {
   type FactionScores,
 } from "./factionEval";
 import { FACTION_IDS, factionIdsForMode, TILE_FACTION_WEIGHTS, type FactionId } from "./factionWeights";
+import { SETUP_WEIGHT_BASE } from "./setupWeights";
 import { countMapPlanets, mapFactionScoresFromCounts } from "./mapFaction";
 import { makeSearchPlacementFromSeed } from "@/gaia/ssot/searchPlacementConfig";
 
@@ -43,11 +44,12 @@ describe("scoreSetupFactions", () => {
   it("sums draft weights over drawn tiles (round scoring counts copies)", () => {
     const s = syntheticSetup();
     const scores = scoreSetupFactions(s);
+    // 係数の基準は100（2026-07-31 に 1 から変更。評価値から小数を消すため）。
     // firaks: AT02(+2) + AT13(+1) + RS07×2(+2×2) + RB01(+1) = 8、
-    // ＋標準技術: sci列のTS6 → 2*0.5 = 1 ⇒ 計9
-    expect(scores.firaks).toBe(9);
-    // ivits: FS06(+2) + RB02(+1) = 3、＋標準技術: terra列のTS1 → 1*0.5 ⇒ 計3.5
-    expect(scores.ivits).toBe(3.5);
+    // ＋標準技術: sci列のTS6 → 2*50 = 100 ⇒ 計 9×100
+    expect(scores.firaks).toBe(9 * SETUP_WEIGHT_BASE);
+    // ivits: FS06(+2) + RB02(+1) = 3、＋標準技術: terra列のTS1 → 1*50 ⇒ 計 3.5×100
+    expect(scores.ivits).toBe(3.5 * SETUP_WEIGHT_BASE);
     // タイル由来と標準技術由来の合計になっていること（terrans で確認）
     const terransTiles =
       (TILE_FACTION_WEIGHTS.AT02?.terrans ?? 0) +
@@ -74,21 +76,21 @@ describe("scoreSetupFactions", () => {
         free: ["TS4", "TS8", "TS9"],
       },
     });
-    // terrans: gaia aff2 × TS7 pref2 × 0.5 = 2 / eco は aff0 なので 0
+    // terrans: gaia aff2 × TS7 pref2 × 50 = 200 / eco は aff0 なので 0
     expect(scoreStandardTech(onGaia).terrans).toBeGreaterThan(scoreStandardTech(onEco).terrans);
-    expect(scoreStandardTech(onGaia).terrans).toBe(2);
+    expect(scoreStandardTech(onGaia).terrans).toBe(2 * SETUP_WEIGHT_BASE);
     expect(scoreStandardTech(onEco).terrans).toBe(0);
   });
 
   it("standard tech: 自由列はトラック非依存に低係数で効く", () => {
-    // hadschHallas は TS8（クレ4収入、pref2）を自由列に持つと 2*0.25 = 0.5。
+    // hadschHallas は TS8（クレ4収入、pref2）を自由列に持つと 2*25 = 50。
     const s = syntheticSetup({
       standardTech: {
         byTrack: { terra: "TS1", nav: "TS2", ai: "TS3", gaia: "TS4", eco: "TS5", sci: "TS6" },
         free: ["TS7", "TS8", "TS9"],
       },
     });
-    expect(scoreStandardTech(s).hadschHallas).toBe(0.5);
+    expect(scoreStandardTech(s).hadschHallas).toBe(0.5 * SETUP_WEIGHT_BASE);
   });
 
   it("returns a finite score for every faction", () => {

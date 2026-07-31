@@ -13,8 +13,11 @@ import { scoreSetupFactions, setupFactionBreakdown, setupFactionTileHits } from 
 import {
   DEFAULT_SETUP_WEIGHTS,
   LF_ONLY_WEIGHT_KEYS,
+  SETUP_WEIGHT_BASE,
   SETUP_WEIGHT_DISPLAY_ORDER,
   SETUP_WEIGHT_KEYS,
+  SETUP_WEIGHT_MAX,
+  SETUP_WEIGHT_MIN,
   isDefaultWeights,
   sanitizeSetupWeights,
   serializeSetupWeights,
@@ -47,7 +50,7 @@ function withWeight(k: keyof SetupWeights, v: number): SetupWeights {
 }
 
 describe("DEFAULT_SETUP_WEIGHTS", () => {
-  it("既定は導入前の計算と同値（標準技術の2定数がそのまま入る）", () => {
+  it("既定は基準100（標準技術の2定数がそのまま入る）", () => {
     expect(DEFAULT_SETUP_WEIGHTS.stdTrack).toBe(STD_TECH_TRACK_SCALE);
     expect(DEFAULT_SETUP_WEIGHTS.stdFree).toBe(STD_TECH_FREE_SCALE);
     for (const k of [
@@ -59,9 +62,19 @@ describe("DEFAULT_SETUP_WEIGHTS", () => {
       "federation",
       "lfShip",
     ] as const) {
-      expect(DEFAULT_SETUP_WEIGHTS[k]).toBe(1);
+      expect(DEFAULT_SETUP_WEIGHTS[k]).toBe(SETUP_WEIGHT_BASE);
     }
     expect(isDefaultWeights(DEFAULT_SETUP_WEIGHTS)).toBe(true);
+  });
+
+  // 評価値から小数を消すのが基準100の目的（2026-07-31）。タイルの重みは整数なので、
+  // 係数が 100 / 50 / 25 なら内訳も総合も必ず整数になる。
+  it("既定の係数では評価値に小数が出ない", () => {
+    const b = setupFactionBreakdown(syntheticSetup({ mode: "lostFleet" }), DEFAULT_SETUP_WEIGHTS);
+    for (const f of FACTION_IDS) {
+      expect(Number.isInteger(b.total[f])).toBe(true);
+      for (const k of SETUP_WEIGHT_KEYS) expect(Number.isInteger(b.byCategory[k][f])).toBe(true);
+    }
   });
 
   it("表示順は全カテゴリを過不足なく並べたもの", () => {
@@ -92,7 +105,7 @@ describe("setupFactionBreakdown", () => {
   it("係数はそのカテゴリだけに線形に効く", () => {
     const s = syntheticSetup();
     const base = setupFactionBreakdown(s, DEFAULT_SETUP_WEIGHTS);
-    const doubled = setupFactionBreakdown(s, withWeight("roundScoring", 2));
+    const doubled = setupFactionBreakdown(s, withWeight("roundScoring", SETUP_WEIGHT_BASE * 2));
     for (const f of FACTION_IDS) {
       expect(doubled.byCategory.roundScoring[f]).toBeCloseTo(base.byCategory.roundScoring[f] * 2, 10);
       // 他のカテゴリは動かない
@@ -101,8 +114,8 @@ describe("setupFactionBreakdown", () => {
         expect(doubled.byCategory[k][f]).toBeCloseTo(base.byCategory[k][f], 10);
       }
     }
-    // firaks は RS07（+2）が2枚で +4 効いているので、係数2で総合が +4 されるはず
-    expect(doubled.total.firaks).toBeCloseTo(base.total.firaks + 4, 10);
+    // firaks は RS07（+2）が2枚で +4 効いているので、係数2倍で総合が +4×基準 されるはず
+    expect(doubled.total.firaks).toBeCloseTo(base.total.firaks + 4 * SETUP_WEIGHT_BASE, 10);
   });
 
   it("係数0でそのカテゴリの寄与が消える", () => {
@@ -133,21 +146,21 @@ describe("setupFactionBreakdown", () => {
       },
     });
     const base = setupFactionBreakdown(s, DEFAULT_SETUP_WEIGHTS);
-    const scaled = setupFactionBreakdown(s, withWeight("advExtension", 2));
+    const scaled = setupFactionBreakdown(s, withWeight("advExtension", SETUP_WEIGHT_BASE * 2));
     // firaks は AT02 で +2。追加上級の係数だけが効き、通常の上級は動かない。
-    expect(base.byCategory.advExtension.firaks).toBe(2);
-    expect(scaled.byCategory.advExtension.firaks).toBe(4);
+    expect(base.byCategory.advExtension.firaks).toBe(2 * SETUP_WEIGHT_BASE);
+    expect(scaled.byCategory.advExtension.firaks).toBe(4 * SETUP_WEIGHT_BASE);
     expect(scaled.byCategory.advanced.firaks).toBe(base.byCategory.advanced.firaks);
   });
 });
 
 describe("sanitizeSetupWeights", () => {
   it("欠けたキー・非数値は既定へ、範囲外はクランプ", () => {
-    const w = sanitizeSetupWeights({ advanced: 2, booster: "x", roundScoring: 99, finalScoring: -99 });
-    expect(w.advanced).toBe(2);
+    const w = sanitizeSetupWeights({ advanced: 200, booster: "x", roundScoring: 9999, finalScoring: -9999 });
+    expect(w.advanced).toBe(200);
     expect(w.booster).toBe(DEFAULT_SETUP_WEIGHTS.booster);
-    expect(w.roundScoring).toBe(9);
-    expect(w.finalScoring).toBe(-9);
+    expect(w.roundScoring).toBe(SETUP_WEIGHT_MAX);
+    expect(w.finalScoring).toBe(SETUP_WEIGHT_MIN);
     expect(w.stdTrack).toBe(DEFAULT_SETUP_WEIGHTS.stdTrack);
   });
 

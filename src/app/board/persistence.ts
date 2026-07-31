@@ -78,7 +78,11 @@ export const IDB_NAME = "gaia_map_cache";
 //     各行に条件キーを持たせて分ける。
 // v7: Setup の一括探索のランキングを条件×基準ごとに貯める setup_ranking を追加
 //     （2026-07-31。Map の candidates と同じで、次の探索は前回の上位とマージする）。
-export const IDB_VERSION = 7;
+// v8: 評価値の重みを Map 10倍 / Setup 100倍にしたので、貯めてある結果と条件を全部捨てる
+//     （2026-07-31 ユーザー確定「再生成可能なものは全て消して良い」）。
+//     スコアの桁が変わるので古い候補と混ぜて並べられず、保存済みの条件プロファイルは
+//     古いスケールの重みを持っていて、適用すると評価が桁ひとつ小さくなる。
+export const IDB_VERSION = 8;
 export const STORE_CANDIDATES = "candidates";
 export const STORE_PROFILES = "profiles";
 // Setup-side saved list shares this DB (one DB per origin keeps the version
@@ -180,6 +184,25 @@ export function openDb(): Promise<IDBDatabase> {
       // 同じ "id"）。件数が小さいので getAll + JS 側で絞る。
       if (!db.objectStoreNames.contains(STORE_SETUP_RANKING)) {
         db.createObjectStore(STORE_SETUP_RANKING, { keyPath: "id" });
+      }
+
+      // ----- v8: 重みのスケール変更にともなう全消し -----
+      // 評価値の重みを Map 10倍 / Setup 100倍にしたので、貯めてある結果と条件は
+      // 古いスケールのままで新しい値と比べられない。どれもシードと条件から
+      // 作り直せるものなので捨てる（2026-07-31 ユーザー確定）。
+      if (oldVersion > 0 && oldVersion < 8) {
+        for (const name of [
+          STORE_CANDIDATES,
+          STORE_PROFILES,
+          STORE_SETUPS,
+          STORE_SETUP_PROFILES,
+          STORE_LIST_PROFILES,
+          STORE_SETUP_RANKING,
+        ]) {
+          try {
+            if (db.objectStoreNames.contains(name)) tx.objectStore(name).clear();
+          } catch {}
+        }
       }
 
       // ----- migrations / backfills -----

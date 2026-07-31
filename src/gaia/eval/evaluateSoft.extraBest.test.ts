@@ -88,19 +88,35 @@ const sumOf = (r: ReturnType<typeof evaluateSoft>, kind: string) => {
 
 describe("extraBest（原始・小惑星の最良の1つ）", () => {
   it("船に近いほうの1惑星だけを採り、合算はしない", () => {
-    // 船から距離1の PROTO（+10）と距離3の PROTO（+8）。単純合算なら 18。
+    // 距離が1伸びるごとに DISTANCE_FALLOFF(10) 引く。wScout=100 なら
+    // 距離1の PROTO は +100、距離3の PROTO は +80。単純合算なら 180。
     const e = extractedOf(
       [cell({ q: 1, r: 0, kind: "PROTO" }), cell({ q: 3, r: 0, kind: "PROTO" })],
       [scout(0, 0, "twilight")]
     );
-    const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 10 });
+    const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 100 });
 
-    expect(sumOf(r, "PROTO")).toBe(18);
+    expect(sumOf(r, "PROTO")).toBe(180);
     const best = bestOf(r, "PROTO");
     expect(best.cellKey).toBe("1,0");
-    expect(best.raw).toBe(10);
-    expect(best.total).toBeCloseTo(10 * EXTRA_BEST_FACTOR, 9);
+    expect(best.raw).toBe(100);
+    expect(best.total).toBe(Math.round(100 * EXTRA_BEST_FACTOR));
     expect(best.factor).toBe(EXTRA_BEST_FACTOR);
+  });
+
+  // 補正値は 2.75 なので掛けると小数が出る。他の評価値は整数なので、軸ごとに
+  // 丸めて評価列はその合計にしてある（2026-07-31）。
+  it("評価値に小数を出さない（軸ごとに丸め、評価はその合計）", () => {
+    const e = extractedOf(
+      [cell({ q: 1, r: 0, kind: "PROTO" }), cell({ q: 2, r: 0, kind: "GAIA" })],
+      [scout(0, 0, "twilight")]
+    );
+    const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 100, wGaiaDist1: 50, wGaiaDist2: 80 });
+    const b = bestOf(r, "PROTO");
+    for (const v of [b.scout, b.core, b.gaia, b.cluster, b.total]) {
+      expect(Number.isInteger(v)).toBe(true);
+    }
+    expect(b.scout + b.core + b.gaia + b.cluster).toBe(b.total);
   });
 
   it("軸ごとの値も同じ補正が掛かるので、4軸の合計＝評価になる", () => {
@@ -115,8 +131,9 @@ describe("extraBest（原始・小惑星の最良の1つ）", () => {
     );
     const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 10, wGaiaDist1: 5, wGaiaDist2: 3, wGaiaDist3: 1 });
     const b = bestOf(r, "PROTO");
-    expect(b.scout + b.core + b.gaia + b.cluster).toBeCloseTo(b.total, 9);
-    expect(b.raw * EXTRA_BEST_FACTOR).toBeCloseTo(b.total, 9);
+    expect(b.scout + b.core + b.gaia + b.cluster).toBe(b.total);
+    // 軸ごとに丸めるので、raw×補正値との差は軸の数（最大4）の丸め誤差に収まる
+    expect(Math.abs(b.raw * EXTRA_BEST_FACTOR - b.total)).toBeLessThanOrEqual(2);
   });
 
   it("種別ごとに1つずつ選ぶ（原始と小惑星は別枠）", () => {
@@ -128,11 +145,11 @@ describe("extraBest（原始・小惑星の最良の1つ）", () => {
       ],
       [scout(0, 0, "twilight")]
     );
-    const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 10 });
+    const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 100 });
     expect(bestOf(r, "PROTO").cellKey).toBe("1,0");
     expect(bestOf(r, "ASTEROID").cellKey).toBe("2,0");
-    expect(bestOf(r, "PROTO").raw).toBe(10);
-    expect(bestOf(r, "ASTEROID").raw).toBe(9);
+    expect(bestOf(r, "PROTO").raw).toBe(100);
+    expect(bestOf(r, "ASTEROID").raw).toBe(90);
   });
 
   it("最良の1つは種別ごとの単純合算を超えない", () => {
@@ -144,7 +161,7 @@ describe("extraBest（原始・小惑星の最良の1つ）", () => {
       ],
       [scout(0, 0, "twilight")]
     );
-    const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 10, wClusterSize: 1 });
+    const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 100, wClusterSize: 10 });
     expect(bestOf(r, "PROTO").raw).toBeLessThanOrEqual(sumOf(r, "PROTO"));
   });
 
@@ -156,10 +173,10 @@ describe("extraBest（原始・小惑星の最良の1つ）", () => {
       cell({ q: 1, r: 0, kind: "PROTO" }),
       cell({ q: 2, r: 0, color: "RED" }),
     ]);
-    const r = evaluateSoft(e, { ...BASE_SOFT, wClusterSize: 1 });
-    expect(sumOf(r, "PROTO")).toBe(3);
+    const r = evaluateSoft(e, { ...BASE_SOFT, wClusterSize: 10 });
+    expect(sumOf(r, "PROTO")).toBe(30);
     const b = bestOf(r, "PROTO");
-    expect(b.cluster).toBeCloseTo(3 * EXTRA_BEST_FACTOR, 9);
+    expect(b.cluster).toBe(Math.round(30 * EXTRA_BEST_FACTOR));
     // 同点なのでセルキーの小さい方が安定して選ばれる
     expect(b.cellKey).toBe("0,0");
   });

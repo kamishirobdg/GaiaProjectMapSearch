@@ -331,15 +331,26 @@ function toPlanetType(kind?: PlanetKind, colorKey?: string): PlanetType | null {
   return null;
 }
 
+/**
+ * 距離が1伸びるごとに引く量（2026-07-31）。
+ *
+ * 船接触・船星系の寄与は「重み −（距離−1）」で、引く量が**絶対値**なので、
+ * 重みだけ10倍にすると減衰の効き方そのものが変わってしまう
+ * （旧 wScout=10 は 10→9→8 と1割ずつ落ちるが、100 のままだと 100→99→98 で
+ * ほとんど落ちない）。重みを10倍にしたぶん、ここも10にして形を保つ。
+ * 重みのスケールを変えるときは必ずこの値も一緒に変えること。
+ */
+export const DISTANCE_FALLOFF = 10;
+
 function scoutValue(d: number, wScout: number, R: number): number {
   if (d < 1 || d > R) return 0;
-  const v = wScout - (d - 1);
+  const v = wScout - (d - 1) * DISTANCE_FALLOFF;
   return v > 0 ? v : 0;
 }
 
 function scoutCoreValue(d: number, wScoutCore: number): number {
   if (d !== 1 && d !== 2) return 0;
-  const v = wScoutCore - (d - 1);
+  const v = wScoutCore - (d - 1) * DISTANCE_FALLOFF;
   return v > 0 ? v : 0;
 }
 
@@ -859,15 +870,22 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
     }
     for (const [kind, b] of bestRaw) {
       const f = EXTRA_BEST_FACTOR;
+      // 補正値は 2.75 なので、掛けると小数が出る（他の評価値は整数）。
+      // 軸ごとに丸めて、評価列はその合計にする。こうすると列の合計と評価が
+      // 必ず一致したまま、表から小数が消える（2026-07-31）。
+      const scout = Math.round(b.e.scout * f);
+      const core = Math.round(b.e.core * f);
+      const gaia = Math.round(b.e.gaia * f);
+      const cluster = Math.round(b.e.cluster * f);
       extraBest[kind] = {
         cellKey: b.cellKey,
-        scout: b.e.scout * f,
-        core: b.e.core * f,
-        gaia: b.e.gaia * f,
-        cluster: b.e.cluster * f,
+        scout,
+        core,
+        gaia,
+        cluster,
         raw: b.raw,
         factor: f,
-        total: b.raw * f,
+        total: scout + core + gaia + cluster,
       };
     }
   }

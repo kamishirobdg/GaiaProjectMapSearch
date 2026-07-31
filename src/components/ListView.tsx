@@ -32,6 +32,7 @@ import GlobalBar from "@/components/GlobalBar";
 import {
   readSharedExpansion,
   readSharedPlayers,
+  resetStaleEvalScaleStorage,
   writeSharedExpansion,
   writeSharedPlayers,
   type Expansion,
@@ -215,7 +216,7 @@ function factionLabel(id: FactionId, lang: Lang): string {
 function topFactionText(scores: FactionScores, n: number, lang: Lang, lf: boolean): string {
   const ids = topFactions(scores, n, lf);
   return ids
-    .map((f) => `${factionLabel(f, lang)} ${scores[f] >= 0 ? "+" : ""}${Math.round(scores[f] * 10) / 10}`)
+    .map((f) => `${factionLabel(f, lang)} ${scores[f] >= 0 ? "+" : ""}${Math.round(scores[f])}`)
     .join(" / ");
 }
 
@@ -546,6 +547,8 @@ export default function ListView() {
   // 復元は読み取りのみ（書込みはユーザー操作ハンドラのみの規律）。
   // paint 前に走らせてタブ遷移時のちらつきを防ぐ。
   useIsoLayoutEffect(() => {
+    // 旧スケールの評価指数・結果を捨てる（読む前に1回。2026-07-31）
+    resetStaleEvalScaleStorage();
     const v = (() => {
       try {
         return localStorage.getItem("gaia_ui_lang");
@@ -1539,7 +1542,7 @@ export default function ListView() {
                     <div>
                       <span style={{ opacity: 0.7 }}>{t.mapStrong}:</span>{" "}
                       {recMapTop
-                        .map((x) => `${factionLabel(x.id, lang)} ${Math.round(x.score * 10) / 10}`)
+                        .map((x) => `${factionLabel(x.id, lang)} ${Math.round(x.score)}`)
                         .join(" / ")}
                     </div>
                   ) : null}

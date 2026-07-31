@@ -58,6 +58,7 @@ import { PageBody, SectionTitle, T, TwoCol } from "@/components/ui/layout";
 import {
   readSharedExpansion,
   readSharedPlayers,
+  resetStaleEvalScaleStorage,
   writeSharedExpansion,
   writeSharedPlayers,
   type Expansion,
@@ -407,7 +408,7 @@ function bulkTopText(
   };
   const scores = scoreSetupFactions(buildSetupFromSeed(row.input), weights);
   return topFactions(scores, 3, lf)
-    .map((id) => `${label(id)} ${Math.round(scores[id] * 10) / 10}`)
+    .map((id) => `${label(id)} ${Math.round(scores[id])}`)
     .join(" / ");
 }
 
@@ -736,6 +737,8 @@ export default function SetupView() {
 
   // Restore language (shared with the map page) and remembered settings.
   useIsoLayoutEffect(() => {
+    // 旧スケールの評価指数・結果を捨てる（読む前に1回。2026-07-31）
+    resetStaleEvalScaleStorage();
     const v = lsGet("gaia_ui_lang");
     if (v === "ja" || v === "en") setLang(v);
 
@@ -1851,7 +1854,7 @@ ${pickHint}`}
                         {s}
                       </td>
                       <td style={{ ...bulkTd, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                        {(Math.round(r.score * 100) / 100).toFixed(2)}
+                        {Math.round(r.score)}
                       </td>
                       <td style={bulkTd}>{bulkTopText(r, lf, lang, evalWeights)}</td>
                       <td style={{ ...bulkTd, textAlign: "right" }}>
@@ -1957,7 +1960,7 @@ ${pickHint}`}
                       {(savedTopFactions.get(r.id) ?? []).map((f) => (
                         <span
                           key={f.id}
-                          title={`${lang === "ja" ? f.labelJa : f.labelEn} ${Math.round(f.score * 10) / 10}`}
+                          title={`${lang === "ja" ? f.labelJa : f.labelEn} ${Math.round(f.score)}`}
                           style={{
                             background: factionHomeBg(f.color),
                             border: "1px solid rgba(0,0,0,0.15)",

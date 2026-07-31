@@ -63,14 +63,18 @@ const HARD_PARAMS: HardParams = {
   centerMode: "NONE",
 };
 
+// 2026-07-31: 評価値から小数を消すため、惑星1つあたりの寄与を決める重みを
+// すべて10倍にした（DISTANCE_FALLOFF も一緒に10へ）。ここも同じ倍率にすることで、
+// 各エントリの値がちょうど10倍になるだけの差分に収まる。
+// wImbalance は planetTypeTotals に掛ける係数なので据え置き（スコアは自動で10倍）。
 const SOFT_PARAMS: SoftParams = {
-  wOuter: 3,
-  wTouch: 1,
-  wScout: 6,
+  wOuter: 30,
+  wTouch: 10,
+  wScout: 60,
   scoutRadius: 3,
-  wScoutByScoutKey: { twilight: 6, eclipse: 6, rebellion: 6, tfmars: 6 },
-  wScoutCore: 4,
-  wScoutCoreByScoutKey: { twilight: 3, eclipse: 3, rebellion: 3, tfmars: 3 },
+  wScoutByScoutKey: { twilight: 60, eclipse: 60, rebellion: 60, tfmars: 60 },
+  wScoutCore: 40,
+  wScoutCoreByScoutKey: { twilight: 30, eclipse: 30, rebellion: 30, tfmars: 30 },
   scoutCoreAttributionMode: "all",
   wImbalance: 100,
   imbalanceMetric: "std",
@@ -164,7 +168,7 @@ function runOne(
   // LF ランは SOFT_PARAMS のまま（フィールド不在= evaluateSoft が完全スキップ）。
   const softParams: SoftParams =
     templateId === "base_34p"
-      ? { ...SOFT_PARAMS, wGaiaDist1: 5, wGaiaDist2: 3, wGaiaDist3: 1, wClusterSize: 1 }
+      ? { ...SOFT_PARAMS, wGaiaDist1: 50, wGaiaDist2: 30, wGaiaDist3: 10, wClusterSize: 10 }
       : SOFT_PARAMS;
   const methodField = placementMethod === undefined ? {} : { placementMethod };
 

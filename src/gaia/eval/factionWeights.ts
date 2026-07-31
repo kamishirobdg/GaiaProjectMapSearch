@@ -280,10 +280,14 @@ export const TECH_PREF: Record<string, Partial<Record<FactionId, number>>> = {
 /**
  * 標準技術の寄与スケール。他タイル（-2..+2 の素点合計）に対して
  * 支配的にならないよう、積（最大4）を圧縮する。DRAFT。
+ *
+ * 2026-07-31: 評価値から小数を消すため、カテゴリ係数の基準を 1 から 100 にした
+ * （0.5 → 50、0.25 → 25）。比率は変えていないので効き具合は同じ。
+ * これが Setup 側の小数の唯一の発生源だった（タイルの重みはすべて整数）。
  */
-export const STD_TECH_TRACK_SCALE = 0.5;
+export const STD_TECH_TRACK_SCALE = 50;
 /** 自由列3枚（トラック制約なし）の係数。トラック分より軽くする。 */
-export const STD_TECH_FREE_SCALE = 0.25;
+export const STD_TECH_FREE_SCALE = 25;
 
 /**
  * タイル id → 種族別重み。DRAFT — 全値レビュー対象（編集用の正本）。

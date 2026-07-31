@@ -55,18 +55,29 @@ export const SETUP_WEIGHT_DISPLAY_ORDER: readonly SetupWeightKey[] = [
   "booster",
 ];
 
-/** 既定値＝評価指数の導入前と同じ計算になる係数。 */
+/**
+ * 既定値。基準は 100（2026-07-31 に 1 から変更）。
+ * タイルの重みはすべて整数なので、係数を100倍にすると評価値から小数が消える。
+ * 比率は変えていないのでカテゴリどうしの効き具合は従来と同じ。
+ */
+export const SETUP_WEIGHT_BASE = 100;
 export const DEFAULT_SETUP_WEIGHTS: SetupWeights = {
-  advanced: 1,
-  advExtension: 1,
-  booster: 1,
-  roundScoring: 1,
-  finalScoring: 1,
-  federation: 1,
+  advanced: SETUP_WEIGHT_BASE,
+  advExtension: SETUP_WEIGHT_BASE,
+  booster: SETUP_WEIGHT_BASE,
+  roundScoring: SETUP_WEIGHT_BASE,
+  finalScoring: SETUP_WEIGHT_BASE,
+  federation: SETUP_WEIGHT_BASE,
   stdTrack: STD_TECH_TRACK_SCALE,
   stdFree: STD_TECH_FREE_SCALE,
-  lfShip: 1,
+  lfShip: SETUP_WEIGHT_BASE,
 };
+
+/** 評価指数の入力範囲（基準100に合わせて -900..900）。 */
+export const SETUP_WEIGHT_MIN = -900;
+export const SETUP_WEIGHT_MAX = 900;
+/** 入力欄の刻み。旧 0.25 相当（基準の 1/4）。 */
+export const SETUP_WEIGHT_STEP = 25;
 
 /** LF でしか効かないカテゴリ（基本版では列も入力欄も出さない）。 */
 export const LF_ONLY_WEIGHT_KEYS: ReadonlySet<SetupWeightKey> = new Set<SetupWeightKey>([
@@ -80,14 +91,16 @@ export function isDefaultWeights(w: SetupWeights): boolean {
 
 /**
  * 任意の入力（localStorage の JSON など）を係数へ正規化する。
- * 数値でないキー・非有限値は既定値へフォールバックし、-9..9 にクランプする。
+ * 数値でないキー・非有限値は既定値へフォールバックし、範囲へクランプする。
  */
 export function sanitizeSetupWeights(raw: unknown): SetupWeights {
   const src = (raw ?? {}) as Record<string, unknown>;
   const out = {} as SetupWeights;
   for (const k of SETUP_WEIGHT_KEYS) {
     const n = Number(src[k]);
-    out[k] = Number.isFinite(n) ? Math.max(-9, Math.min(9, n)) : DEFAULT_SETUP_WEIGHTS[k];
+    out[k] = Number.isFinite(n)
+      ? Math.max(SETUP_WEIGHT_MIN, Math.min(SETUP_WEIGHT_MAX, n))
+      : DEFAULT_SETUP_WEIGHTS[k];
   }
   return out;
 }
