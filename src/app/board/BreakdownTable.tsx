@@ -29,6 +29,21 @@ export const PLANET_INPUT_BG: Record<PlanetTypeKey, string> = {
   YELLOW: "#fff9c4",
 };
 
+/**
+ * 基本7色に入らない惑星種別（LFの原始惑星・小惑星）の背景。
+ * 内訳表の行・種族評価表の行・色優遇の入力欄で共用する（2026-07-31）。
+ *
+ * 小惑星はマーカー色 #9c4a8f を薄めた色。原始はマーカー色 #3d8cb5 を薄めると
+ * 青（#cfe8ff）と見分けづらかったので、色相を水色側へ振ってある。
+ * **マーカーのリング色（RING_COLOR）は変えていない** —— 盤面ではタイル画像と
+ * 対応することが大事で、表では他の行と見分けられることが大事、と目的が違う。
+ * どちらも黒文字のまま読める明度（コントラスト比 12.4:1 / 8.2:1）。
+ */
+export const EXTRA_INPUT_BG: Record<string, string> = {
+  PROTO: "#7fd4e0",
+  ASTEROID: "#c492bc",
+};
+
 // --- #9 マーカー連動: 詳細表クリック→地図リング -----------------------------
 export type BreakdownMarker = { key: string; color: string; label?: string };
 export type MarkAxis = "total" | "scout" | "scoutCore" | "gaia" | "cluster" | "outer" | "touch";

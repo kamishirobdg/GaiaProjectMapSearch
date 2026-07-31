@@ -57,6 +57,16 @@ export const UI_TEXT = {
     noSearchConfig: `No search config for templateId. Add it in src/gaia/ssot/searchPlacementConfig.ts`,
     templateMismatch:
       "The board does not belong to the selected template, so markers fall back to tile level. Match the players/expansion radios to the board.",
+    tipPrefScale: [
+      "How strongly this planet colour is favoured (+) or avoided (-).",
+      "Measured against how much boards actually differ (300 boards, 4p Lost Fleet):",
+      "  0 = off",
+      "  1 = about even with the balance term; breaks ties toward this colour",
+      "  2 = preference leads; the chosen board almost always has this colour strong",
+      "  3 = stronger still",
+      "  5 = practically decided by this colour alone (other conditions ignored)",
+      "Negative values do the same in reverse (pick boards where the colour is weak).",
+    ].join("\n"),
 
     currentPlacementHash: "current placementHash",
     fixedLarge: "fixedLarge",
@@ -283,6 +293,16 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     noSearchConfig: `templateIdに対応する検索設定がありません。src/gaia/ssot/searchPlacementConfig.ts に追加してください。`,
     templateMismatch:
       "表示中の盤面が選択中のテンプレートのものではないため、マーカーがタイル単位に劣化しています。人数・拡張の選択を盤面に合わせてください。",
+    tipPrefScale: [
+      "その惑星色をどれだけ優遇（+）／冷遇（-）するか。",
+      "盤面が実際にどれだけ違うかを実測して目盛りを合わせてある（300盤面・4人LF）:",
+      "  0 = 効かない",
+      "  1 = 偏り（バランス）とほぼ互角。同程度の盤面ならこの色が強い方を選ぶ",
+      "  2 = 優遇が主導。選ばれる盤面はほぼこの色が強い",
+      "  3 = さらに強く寄る",
+      "  5 = 実質この色だけで決まる（他の条件はほぼ無視される）",
+      "マイナスは逆向きに同じだけ効く（この色が弱い盤面を選ぶ）。",
+    ].join("\n"),
 
     currentPlacementHash: "現在のHash",
     fixedLarge: "固定基本タイル",

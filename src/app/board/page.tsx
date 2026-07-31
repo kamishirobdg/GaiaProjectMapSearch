@@ -85,7 +85,7 @@ import {
 } from "./persistence";
 
 import { UI_TEXT, type Lang, type UiKey } from "./uiText";
-import { ColorBreakdownTable, PLANET_ORDER, PLANET_LABEL_JA, PLANET_INPUT_BG, fmt0, axisMarkers, type BreakdownMarker, type MarkAxis } from "./BreakdownTable";
+import { ColorBreakdownTable, PLANET_ORDER, PLANET_LABEL_JA, PLANET_INPUT_BG, EXTRA_INPUT_BG, fmt0, axisMarkers, type BreakdownMarker, type MarkAxis, type PlanetTypeKey } from "./BreakdownTable";
 
 function parseSeedStart(seed: string): number {
   const n = parseInt(seed, 10);
@@ -186,8 +186,15 @@ const DEFAULT_CONDITIONS = {
   // opt-in から変更）。LF の検索キーにこの2軸が入るので、以前の LF 保存結果とは
   // 別バケットになる。
   applyExtraAxesLF: true,
-  // 色優遇/冷遇
-  wColorPref: 3,
+  // 色優遇/冷遇。pref（色ごとの ±）に掛ける係数で、pref の目盛りの意味を決める。
+  //
+  // 2026-07-31: 3 → 25。実測（scripts/measure_color_pref.ts、4p_lostFleet 300盤面）で
+  // 「偏り項スコアの振れ幅（上位10%と下位10%の差）1747」に対し
+  // 「色の評価値の振れ幅（同）67」。優遇項の振れ幅は wColorPref × pref × 67 なので、
+  // 3 のままだと pref=2 で偏り項の0.2倍しか効かず、実用域が10〜20になっていた。
+  // 25 にすると pref=1 でほぼ互角、2 で優遇が主導、5 で実質その色だけで決まる
+  // ―― 入力欄の目盛りと体感が一致する（tipPrefScale の文言はこの実測に基づく）。
+  wColorPref: 25,
   pref: 0,
   // 保持件数
   keepTop: 20,
@@ -1090,6 +1097,29 @@ return (savedProfiles ?? []).filter((p) => {
   const [prefRED, setPrefRED] = React.useState(DEFAULT_CONDITIONS.pref);
   const [prefWHITE, setPrefWHITE] = React.useState(DEFAULT_CONDITIONS.pref);
   const [prefYELLOW, setPrefYELLOW] = React.useState(DEFAULT_CONDITIONS.pref);
+  // 拡張種族の母星（原始惑星・小惑星）も優遇/冷遇できる（2026-07-31 要望）。
+  // 掛け先は内訳表と同じ extraBest（最良の1惑星×補正値）。
+  const [prefPROTO, setPrefPROTO] = React.useState(DEFAULT_CONDITIONS.pref);
+  const [prefASTEROID, setPrefASTEROID] = React.useState(DEFAULT_CONDITIONS.pref);
+
+  /**
+   * 検索キー／実行時に渡す色優遇の表。0 の種別はフィールドごと省略する
+   * （互換の鉄則。原始・小惑星を使わない条件は従来とバイト不変のキーになる）。
+   */
+  const colorPrefByType = React.useMemo(
+    () => ({
+      BLACK: prefBLACK,
+      BLUE: prefBLUE,
+      BROWN: prefBROWN,
+      ORANGE: prefORANGE,
+      RED: prefRED,
+      WHITE: prefWHITE,
+      YELLOW: prefYELLOW,
+      ...(prefPROTO !== 0 ? { PROTO: prefPROTO } : {}),
+      ...(prefASTEROID !== 0 ? { ASTEROID: prefASTEROID } : {}),
+    }),
+    [prefBLACK, prefBLUE, prefBROWN, prefORANGE, prefRED, prefWHITE, prefYELLOW, prefPROTO, prefASTEROID]
+  );
 
   const [trials, setTrials] = React.useState(30000);
   const [keepTop, setKeepTop] = React.useState(DEFAULT_CONDITIONS.keepTop);
@@ -1404,6 +1434,10 @@ try {
             if (cp.RED != null) setPrefRED(Number(cp.RED) || 0);
             if (cp.WHITE != null) setPrefWHITE(Number(cp.WHITE) || 0);
             if (cp.YELLOW != null) setPrefYELLOW(Number(cp.YELLOW) || 0);
+            // 原始・小惑星は 0 のときフィールドごと省略しているので、
+            // 「不在＝0」として明示的に戻す（既定OFF前提の復元漏れを作らない）。
+            setPrefPROTO(cp.PROTO != null ? Number(cp.PROTO) || 0 : 0);
+            setPrefASTEROID(cp.ASTEROID != null ? Number(cp.ASTEROID) || 0 : 0);
           }
         } catch {}
       } catch {}
@@ -1467,6 +1501,8 @@ try {
     setPrefRED(D.pref);
     setPrefWHITE(D.pref);
     setPrefYELLOW(D.pref);
+    setPrefPROTO(D.pref);
+    setPrefASTEROID(D.pref);
 
     setKeepTop(D.keepTop);
 
@@ -1521,7 +1557,7 @@ try {
           imbalanceMetric,
           ...extraAxes,
           wColorPref,
-          colorPrefByType: { BLACK: prefBLACK, BLUE: prefBLUE, BROWN: prefBROWN, ORANGE: prefORANGE, RED: prefRED, WHITE: prefWHITE, YELLOW: prefYELLOW },
+          colorPrefByType,
         }
       : {
           wOuter,
@@ -1536,9 +1572,9 @@ try {
           scoutCoreAttributionMode: scoutCoreAttribBest ? "best" : "all",
           ...extraAxes,
           wColorPref,
-          colorPrefByType: { BLACK: prefBLACK, BLUE: prefBLUE, BROWN: prefBROWN, ORANGE: prefORANGE, RED: prefRED, WHITE: prefWHITE, YELLOW: prefYELLOW },
+          colorPrefByType,
         };
-  }, [isBase, extraAxesOn, wOuter, wTouch, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wGaiaD1, wGaiaD2, wGaiaD3, wClusterSize, wColorPref, prefBLACK, prefBLUE, prefBROWN, prefORANGE, prefRED, prefWHITE, prefYELLOW]);
+  }, [isBase, extraAxesOn, wOuter, wTouch, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wGaiaD1, wGaiaD2, wGaiaD3, wClusterSize, wColorPref, colorPrefByType]);
 
   const searchKeyParams = React.useMemo(() => {
     return {
@@ -2152,7 +2188,7 @@ async function handleGenerateRank() {
         wScoutCoreByScoutKey: { twilight: wScoutCoreS1, eclipse: wScoutCoreS2, rebellion: wScoutCoreS3, tfmars: wScoutCoreS4 },
         scoutCoreAttributionMode: scoutCoreAttribBest ? "best" : "all",
         wColorPref,
-        colorPrefByType: { BLACK: prefBLACK, BLUE: prefBLUE, BROWN: prefBROWN, ORANGE: prefORANGE, RED: prefRED, WHITE: prefWHITE, YELLOW: prefYELLOW },
+        colorPrefByType,
         // ガイア近接・星系軸: base は常時、LF はオプトイン時のみ（キーと一致）。
         // OFF の LF ではフィールド省略＝evaluateSoft が完全スキップ（既存挙動不変）。
         ...(extraAxesOn
@@ -3552,15 +3588,24 @@ const handleDeleteUsed = React.useCallback(
                     ["RED", "赤", prefRED, setPrefRED],
                     ["WHITE", "白", prefWHITE, setPrefWHITE],
                     ["YELLOW", "黄", prefYELLOW, setPrefYELLOW],
+                    // 原始・小惑星は LF だけに出る惑星なので LF のときだけ（2026-07-31）。
+                    ...(isBase
+                      ? []
+                      : ([
+                          ["PROTO", "原始", prefPROTO, setPrefPROTO],
+                          ["ASTEROID", "小惑星", prefASTEROID, setPrefASTEROID],
+                        ] as const)),
                   ] as const).map(([key, ja, value, setter]) => (
                     <label
                       key={key}
+                      title={t("tipPrefScale")}
                       style={{
                         display: "flex",
                         gap: 6,
                         alignItems: "center",
                         justifyContent: "space-between",
-                        background: PLANET_INPUT_BG[key],
+                        background:
+                          PLANET_INPUT_BG[key as PlanetTypeKey] ?? EXTRA_INPUT_BG[key] ?? undefined,
                         border: "1px solid rgba(0,0,0,0.15)",
                         borderRadius: 6,
                         padding: "3px 6px",

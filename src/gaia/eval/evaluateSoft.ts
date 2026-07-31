@@ -98,6 +98,14 @@ export type SoftBreakdown = {
     valueByType: AxisByType;
     scoreByType: AxisByType;
     score: number;
+    /**
+     * 原始・小惑星ぶんの優遇/冷遇（2026-07-31）。基本7色は planetTypeTotals を
+     * 掛けるが、この2つは軸を持たないので extraBest（最良の1惑星×補正値）を掛ける。
+     * 指定が無ければフィールドごと出さない（既存の監査データと同じ形を保つ）。
+     */
+    prefExtraByKind?: Record<string, number>;
+    valueExtraByKind?: Record<string, number>;
+    scoreExtraByKind?: Record<string, number>;
   };
 
   audit: {
@@ -256,6 +264,9 @@ export type SoftEvalResult = {
 };
 
 const PLANET_TYPES: PlanetType[] = ["BLACK", "BLUE", "BROWN", "ORANGE", "RED", "WHITE", "YELLOW"];
+
+/** 基本7色に入らないが色優遇/冷遇の対象にする惑星種別（2026-07-31）。 */
+export const EXTRA_PREF_KINDS = ["PROTO", "ASTEROID"] as const;
 
 /** 星系の大きさを数えるときの次元横断惑星の価値（他の惑星の半分。2026-07-30 ユーザー確定） */
 export const CLUSTER_TRANSDIM_WEIGHT = 0.5;
@@ -913,9 +924,27 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
   for (const t of PLANET_TYPES) {
     prefByType[t] = num(colorPrefByTypeRaw?.[t], 0);
   }
+  // 原始・小惑星は軸（planetTypeTotals）を持たないので、内訳表に出しているのと同じ
+  // extraBest（最良の1惑星×補正値）を優遇/冷遇の掛け先にする（2026-07-31 要望）。
+  // 指定が無ければ完全に素通り＝既存のスコア・キーは不変。
+  const prefExtraByKind: Record<string, number> = {};
+  const valueExtraByKind: Record<string, number> = {};
+  const scoreExtraByKind: Record<string, number> = {};
+  for (const k of EXTRA_PREF_KINDS) {
+    const p = num(colorPrefByTypeRaw?.[k], 0);
+    if (p !== 0) prefExtraByKind[k] = p;
+  }
+
   const colorPrefScoreByType: AxisByType = zeroAxis();
   let colorPrefScore = 0;
   if (wColorPref !== 0) {
+    for (const [k, p] of Object.entries(prefExtraByKind)) {
+      const value = extraBest[k]?.total ?? 0;
+      const v = wColorPref * p * value;
+      valueExtraByKind[k] = value;
+      scoreExtraByKind[k] = v;
+      colorPrefScore += v;
+    }
     for (const t of PLANET_TYPES) {
       const v = wColorPref * prefByType[t] * (planetTypeTotals[t] ?? 0);
       colorPrefScoreByType[t] = v;
@@ -941,7 +970,16 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
       imbalance: { metric, value: imbalanceValue, score: imbalanceScore },
       colorPreference:
         wColorPref !== 0 || PLANET_TYPES.some((t) => prefByType[t] !== 0)
-          ? { wColorPref, prefByType, valueByType: planetTypeTotals, scoreByType: colorPrefScoreByType, score: colorPrefScore }
+          ? {
+              wColorPref,
+              prefByType,
+              valueByType: planetTypeTotals,
+              scoreByType: colorPrefScoreByType,
+              score: colorPrefScore,
+              ...(Object.keys(prefExtraByKind).length > 0
+                ? { prefExtraByKind, valueExtraByKind, scoreExtraByKind }
+                : {}),
+            }
           : undefined,
       audit: {
         outerCountByType,

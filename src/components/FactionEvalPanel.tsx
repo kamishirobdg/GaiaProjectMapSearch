@@ -11,6 +11,7 @@
 
 import React from "react";
 import {
+  EXTRA_INPUT_BG,
   EXTRA_LABEL_JA,
   PLANET_INPUT_BG,
   PLANET_LABEL_JA,
@@ -37,31 +38,11 @@ import { T } from "@/components/ui/layout";
 type Lang = "ja" | "en";
 
 /**
- * LF4種族の母星（原始惑星・小惑星）の行背景。
- *
- * 小惑星は Map のマーカー色 #9c4a8f を白と 6:4 で混ぜた濃さ。マーカー色そのままだと
- * 文字を白抜きにするしかなく、表の中では 赤字＝最小・青字＝最大 に意味があるので、
- * 白抜きが別の意味に見えてしまう（2026-07-31 ユーザー指摘）。
- *
- * 原始はマーカー色 #3d8cb5 を薄めた色だと青（#cfe8ff）と見分けづらかったので、
- * 色相を水色側へ振ってある（2026-07-31 ユーザー指摘）。**Map のマーカーのリング色は
- * タイル画像から採った色なので変えていない** —— 盤面ではタイルの見た目と対応する
- * ことが大事で、この表では他の行と見分けられることが大事、と目的が違う。
- *
- * どちらも黒文字のまま読める明度（コントラスト比 12.4:1 / 8.2:1。
- * 基本7色でいちばん濃い BLACK #adadad と同程度かそれ以上）。
- */
-const EXTRA_HOME_BG: Record<string, string> = {
-  PROTO: "#7fd4e0",
-  ASTEROID: "#c492bc",
-};
-
-/**
- * 種族の母星色の背景。評価表の行と、保存リストの「上位4種族」チップで共用する
- * （2026-07-31）。基本7色は内訳表と同じ配色、原始・小惑星は上の薄めたマーカー色。
+ * 種族の母星色の背景。評価表の行・保存リストの「上位4種族」チップ・
+ * Map の色優遇の入力欄で共用する（2026-07-31）。配色の正本は BreakdownTable。
  */
 export function factionHomeBg(color: string): string | undefined {
-  return EXTRA_HOME_BG[color] ?? PLANET_INPUT_BG[color as PlanetTypeKey];
+  return EXTRA_INPUT_BG[color] ?? PLANET_INPUT_BG[color as PlanetTypeKey];
 }
 
 /** 種族の母星色（タイルを縁取るので、背景色ではなく濃い方を使う）。 */
