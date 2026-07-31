@@ -183,6 +183,8 @@ scoutCore: {
   extraByKind: Record<string, number>;
 
   coreHits: Array<{
+    /** どの船由来か（評価指数の船別セルからマークするため） */
+    scoutKey: string;
     scoutPlanetKey: string;
     corePlanetKey: string;
     corePlanetType: string;
@@ -512,7 +514,7 @@ if (scoutCoreAttributionMode === "best") {
   // ===== scoutCore (Scout惑星集合 -> 距離1/2) =====
   const scoutCoreAxis: AxisByType = zeroAxis();
   const perScoutPlanet: Array<{ scoutPlanetKey: string; byType: AxisByType; total: number; extraByKind: Record<string, number> }> = [];
-  const scoutCoreHits: Array<{ scoutPlanetKey: string; corePlanetKey: string; corePlanetType: string; distance: 1 | 2; value: number }> = [];
+  const scoutCoreHits: Array<{ scoutKey: string; scoutPlanetKey: string; corePlanetKey: string; corePlanetType: string; distance: 1 | 2; value: number }> = [];
 
   const scoutCoreExtraByKind: Record<string, number> = {};
   const scoutCoreDistanceHistogram: Record<number, number> = {};
@@ -565,6 +567,8 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
         incNumRecord(scoutCoreDistanceHistogram, d0, 1);
 
         scoutCoreHits.push({
+          // どの船由来かを残す（評価指数の船別セルからマークするため。2026-07-30）
+          scoutKey,
           scoutPlanetKey: sp.key,
           corePlanetKey: p.key,
           corePlanetType: t ?? kindU ?? "UNKNOWN",

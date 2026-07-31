@@ -91,7 +91,13 @@ export function axisMarkers(
   audit: any,
   axis: MarkAxis,
   colorKey: string | null,
-  lang: Lang
+  lang: Lang,
+  opts?: {
+    /** ガイア軸のみ: この距離のヒットだけに絞る（評価指数のガイア距離1/2/3 用） */
+    gaiaDistance?: number;
+    /** scout/scoutCore のみ: この船由来のヒットだけに絞る（評価指数の船別セル用） */
+    scoutKey?: string;
+  }
 ): BreakdownMarker[] {
   if (!audit) return [];
   const out: BreakdownMarker[] = [];
@@ -106,18 +112,25 @@ export function axisMarkers(
     (audit.outerHits ?? []).forEach((h: any) => push(h.cellKey, h.planetType, lang === "ja" ? " / 最外周" : " / outer"));
   const doTouch = () =>
     (audit.touchHits ?? []).forEach((h: any) => push(h.cellKey, h.planetType, lang === "ja" ? " / 外周" : " / touch"));
+  const byShip = (h: any) => opts?.scoutKey == null || String(h.scoutKey) === opts.scoutKey;
   const doScout = () =>
-    (audit.scout?.scoutHits ?? []).forEach((h: any) =>
-      push(h.planetKey, h.planetType, (lang === "ja" ? ` / 船接触 +${h.value}` : ` / scout +${h.value}`) + dist(h.distance))
-    );
+    (audit.scout?.scoutHits ?? [])
+      .filter(byShip)
+      .forEach((h: any) =>
+        push(h.planetKey, h.planetType, (lang === "ja" ? ` / 船接触 +${h.value}` : ` / scout +${h.value}`) + dist(h.distance))
+      );
   const doScoutCore = () =>
-    (audit.scoutCore?.coreHits ?? []).forEach((h: any) =>
-      push(h.corePlanetKey, h.corePlanetType, (lang === "ja" ? ` / 船星系 +${h.value}` : ` / core +${h.value}`) + dist(h.distance))
-    );
+    (audit.scoutCore?.coreHits ?? [])
+      .filter(byShip)
+      .forEach((h: any) =>
+        push(h.corePlanetKey, h.corePlanetType, (lang === "ja" ? ` / 船星系 +${h.value}` : ` / core +${h.value}`) + dist(h.distance))
+      );
   const doGaia = () =>
-    (audit.gaiaProximity?.gaiaHits ?? []).forEach((h: any) =>
-      push(h.cellKey, h.planetType, (lang === "ja" ? ` / ガイア +${h.value}` : ` / gaia +${h.value}`) + dist(h.distance))
-    );
+    (audit.gaiaProximity?.gaiaHits ?? [])
+      .filter((h: any) => opts?.gaiaDistance == null || Number(h.distance) === opts.gaiaDistance)
+      .forEach((h: any) =>
+        push(h.cellKey, h.planetType, (lang === "ja" ? ` / ガイア +${h.value}` : ` / gaia +${h.value}`) + dist(h.distance))
+      );
   const doCluster = () =>
     (audit.cluster?.clusterHits ?? []).forEach((h: any) =>
       push(h.cellKey, h.planetType, lang === "ja" ? ` / 星系 ${h.size}個` : ` / cluster of ${h.size}`)
@@ -407,7 +420,16 @@ return (
 
           return (
             <tr key={k} style={rowStyleFor(k)}>
-              <td style={tdLeftStyle}>{colorLabel}</td>
+              {/* 色名も「評価」セルと同じクリック範囲にする（色名〜評価値までを
+                  ひとつの当たり判定として扱う。2026-07-30 要望）。 */}
+              {(() => {
+                const m = cellMark("total", k);
+                return (
+                  <td onClick={m.onClick} title={m.title} style={{ ...tdLeftStyle, ...m.style }}>
+                    {colorLabel}
+                  </td>
+                );
+              })()}
               {COL_ORDER.map((ck) => (
                 <React.Fragment key={`${k}_${String(ck)}`}>{renderCell(ck, k)}</React.Fragment>
               ))}
@@ -478,7 +500,14 @@ return (
 
             return (
               <tr key={`EXTRA_${k}`} style={rowStyleFor(k)}>
-                <td style={tdLeftStyle}>{label}</td>
+                {(() => {
+                  const m = markExtra("total");
+                  return (
+                    <td onClick={m.onClick} title={m.title} style={{ ...tdLeftStyle, ...m.style }}>
+                      {label}
+                    </td>
+                  );
+                })()}
                 {COL_ORDER.map((ck) => (
                   <React.Fragment key={`EXTRA_${k}_${String(ck)}`}>{cellForExtra(ck)}</React.Fragment>
                 ))}

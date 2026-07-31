@@ -84,7 +84,7 @@ import {
 } from "./persistence";
 
 import { UI_TEXT, type Lang, type UiKey } from "./uiText";
-import { ColorBreakdownTable, PLANET_ORDER, PLANET_LABEL_JA, PLANET_INPUT_BG, fmt0, type BreakdownMarker } from "./BreakdownTable";
+import { ColorBreakdownTable, PLANET_ORDER, PLANET_LABEL_JA, PLANET_INPUT_BG, fmt0, axisMarkers, type BreakdownMarker, type MarkAxis } from "./BreakdownTable";
 
 function parseSeedStart(seed: string): number {
   const n = parseInt(seed, 10);
@@ -1735,6 +1735,52 @@ const onMark = React.useCallback(
   []
 );
 const activeSources = React.useMemo(() => new Set(markSources.keys()), [markSources]);
+
+/**
+ * 評価指数のセル（ラベル＋入力欄のかたまり）をクリック可能にする（2026-07-30 要望）。
+ * 詳細表の列ヘッダ ◎ と同じ sourceId を使うので、どちらから押しても同じ枠が光る。
+ * 数値を編集したいときに邪魔をしないよう、input 上のクリックは無視する。
+ */
+const evalCellMark = React.useCallback(
+  (
+    sourceId: string,
+    axis: MarkAxis,
+    opts?: { gaiaDistance?: number; scoutKey?: string },
+    extraTip?: string
+  ): React.HTMLAttributes<HTMLLabelElement> => ({
+    onClick: (e) => {
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.closest("input"))) return;
+      const audit = (getBreakdown(displayResult) as any)?.audit ?? null;
+      if (!audit) return;
+      onMark(sourceId, axisMarkers(audit, axis, null, lang, opts), e.ctrlKey || e.metaKey);
+    },
+    title:
+      (extraTip ? `${extraTip}\n` : "") +
+      (lang === "ja"
+        ? "クリックでこの指数が効いている惑星を地図にマーク（Ctrlで複数選択）"
+        : "Click to mark the planets this weight applies to (Ctrl = multi-select)"),
+    style: {
+      cursor: "pointer",
+      boxShadow: activeSources.has(sourceId) ? "inset 0 0 0 2px #2b7fe0" : undefined,
+    },
+  }),
+  [displayResult, lang, onMark, activeSources]
+);
+
+/** EVAL_CELL のスタイルと合成して label へ渡すためのヘルパ。 */
+const evalCellProps = React.useCallback(
+  (
+    sourceId: string,
+    axis: MarkAxis,
+    opts?: { gaiaDistance?: number; scoutKey?: string },
+    extraTip?: string
+  ) => {
+    const p = evalCellMark(sourceId, axis, opts, extraTip);
+    return { ...p, style: { ...EVAL_CELL, ...(p.style ?? {}) } };
+  },
+  [evalCellMark]
+);
 /**
  * 評価/audit のセル座標（論理マップのフレーム）→ 描画のセル座標（テンプレートの
  * フレーム）の対応表。
@@ -1760,19 +1806,36 @@ const cellKeyToTile = React.useMemo(() => {
       m.set(`${c.pos.q},${c.pos.r}`, { slotId: c.slotId, localKey: c.localKey });
     }
   } catch {
-    // 取れないときは素通し（viewer 側が素の軸座標にフォールバックする）
+    // 取れないときは素通し（viewer 側がタイル単位のマーカーにフォールバックする）
   }
   return m;
 }, [templateId, placementForViewer]);
 
-const markers = React.useMemo(
-  () =>
-    [...markSources.values()].flat().map((m) => {
-      const t = cellKeyToTile.get(m.key);
-      return t ? { ...m, slotId: t.slotId, localKey: t.localKey } : m;
-    }),
-  [markSources, cellKeyToTile]
-);
+/**
+ * マーカー配列。(セル, 色) で必ず重複を潰す。
+ *
+ * 潰さないと同じセルに同じリングが何枚も重なる（中央の惑星は船接触・船星系・
+ * ガイア・星系の複数軸に同時に該当するため、実測で1セルに最大12枚）。
+ * 重なると点滅（opacity .32）が合成で打ち消され、外周だけ点滅して中央は
+ * 点きっぱなしに見える（2026-07-30 報告の原因）。ラベルは束ねて全部出す。
+ */
+const markers = React.useMemo(() => {
+  const byCellColor = new Map<string, BreakdownMarker & { slotId?: string; localKey?: string }>();
+  for (const m of [...markSources.values()].flat()) {
+    const id = `${m.key}|${m.color}`;
+    const prev = byCellColor.get(id);
+    if (prev) {
+      const label = String(m.label ?? "");
+      if (label && !String(prev.label ?? "").split("\n").includes(label)) {
+        prev.label = prev.label ? `${prev.label}\n${label}` : label;
+      }
+      continue;
+    }
+    const t = cellKeyToTile.get(m.key);
+    byCellColor.set(id, t ? { ...m, slotId: t.slotId, localKey: t.localKey } : { ...m });
+  }
+  return [...byCellColor.values()];
+}, [markSources, cellKeyToTile]);
 const markHashRef = React.useRef<string>("");
 const curMarkHash = getPlacementHashForResult(displayResult);
 React.useEffect(() => {
@@ -3149,11 +3212,11 @@ const handleDeleteUsed = React.useCallback(
                   <Hint label={t("soft")} tip={t("tipSoft")} />
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
-                  <label style={EVAL_CELL}>
+                  <label {...evalCellProps("outer:*", "outer")}>
                     <Hint label={t("wOuter")} tip={t("tipWOuter")} />
                     <input type="number" value={wOuter} min={0} max={10} onChange={(e) => setWOuter(Number(e.target.value) || 0)} style={{ width: 60 }} />
                   </label>
-                  <label style={EVAL_CELL}>
+                  <label {...evalCellProps("touch:*", "touch")}>
                     <Hint label={t("wTouch")} tip={t("tipWTouch")} />
                     <input type="number" value={wTouch} min={0} max={10} onChange={(e) => setWTouch(Number(e.target.value) || 0)} style={{ width: 60 }} />
                   </label>
@@ -3193,19 +3256,19 @@ const handleDeleteUsed = React.useCallback(
                   )}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
-                  <label style={EVAL_CELL} title={t("wGaiaTip")}>
+                  <label {...evalCellProps("gaia:d1", "gaia", { gaiaDistance: 1 }, t("wGaiaTip"))}>
                     <span>{t("wGaiaD1")}</span>
                     <input type="number" value={wGaiaD1} min={0} max={20} disabled={!extraAxesOn} onChange={(e) => setWGaiaD1(Number(e.target.value) || 0)} style={{ width: 60, background: extraAxesOn ? undefined : "#e6e6e6" }} />
                   </label>
-                  <label style={EVAL_CELL} title={t("wGaiaTip")}>
+                  <label {...evalCellProps("gaia:d2", "gaia", { gaiaDistance: 2 }, t("wGaiaTip"))}>
                     <span>{t("wGaiaD2")}</span>
                     <input type="number" value={wGaiaD2} min={0} max={20} disabled={!extraAxesOn} onChange={(e) => setWGaiaD2(Number(e.target.value) || 0)} style={{ width: 60, background: extraAxesOn ? undefined : "#e6e6e6" }} />
                   </label>
-                  <label style={EVAL_CELL} title={t("wGaiaTip")}>
+                  <label {...evalCellProps("gaia:d3", "gaia", { gaiaDistance: 3 }, t("wGaiaTip"))}>
                     <span>{t("wGaiaD3")}</span>
                     <input type="number" value={wGaiaD3} min={0} max={20} disabled={!extraAxesOn} onChange={(e) => setWGaiaD3(Number(e.target.value) || 0)} style={{ width: 60, background: extraAxesOn ? undefined : "#e6e6e6" }} />
                   </label>
-                  <label style={EVAL_CELL} title={t("wClusterTip")}>
+                  <label {...evalCellProps("cluster:*", "cluster", undefined, t("wClusterTip"))}>
                     <span>{t("wClusterSize")}</span>
                     <input type="number" value={wClusterSize} min={0} max={20} disabled={!extraAxesOn} onChange={(e) => setWClusterSize(Number(e.target.value) || 0)} style={{ width: 60, background: extraAxesOn ? undefined : "#e6e6e6" }} />
                   </label>
@@ -3221,37 +3284,37 @@ const handleDeleteUsed = React.useCallback(
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8, alignItems: "start" }}>
                     {/* 上段: 船接触（各船） */}
-                    <label style={EVAL_CELL}>
+                    <label {...evalCellProps("scout:twilight", "scout", { scoutKey: "twilight" })}>
                       <Hint label={t("wScoutS1")} tip={t("tipWScoutShip")} />
                       <input type="number" value={wScoutS1} min={0} max={20} onChange={(e) => setWScoutS1(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
                     </label>
-                    <label style={EVAL_CELL}>
+                    <label {...evalCellProps("scout:eclipse", "scout", { scoutKey: "eclipse" })}>
                       <Hint label={t("wScoutS2")} tip={t("tipWScoutShip")} />
                       <input type="number" value={wScoutS2} min={0} max={20} onChange={(e) => setWScoutS2(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
                     </label>
-                    <label style={EVAL_CELL}>
+                    <label {...evalCellProps("scout:rebellion", "scout", { scoutKey: "rebellion" })}>
                       <Hint label={t("wScoutS3")} tip={t("tipWScoutShip")} />
                       <input type="number" value={wScoutS3} min={0} max={20} onChange={(e) => setWScoutS3(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
                     </label>
-                    <label style={EVAL_CELL}>
+                    <label {...evalCellProps("scout:tfmars", "scout", { scoutKey: "tfmars" })}>
                       <Hint label={t("wScoutS4")} tip={t("tipWScoutShip")} />
                       <input type="number" value={wScoutS4} min={0} max={20} onChange={(e) => setWScoutS4(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
                     </label>
 
                     {/* 下段: 船星系（各船） */}
-                    <label style={EVAL_CELL}>
+                    <label {...evalCellProps("scoutCore:twilight", "scoutCore", { scoutKey: "twilight" })}>
                       <Hint label={t("wScoutCoreS1")} tip={t("tipWScoutCoreShip")} />
                       <input type="number" value={wScoutCoreS1} min={0} max={20} onChange={(e) => setWScoutCoreS1(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
                     </label>
-                    <label style={EVAL_CELL}>
+                    <label {...evalCellProps("scoutCore:eclipse", "scoutCore", { scoutKey: "eclipse" })}>
                       <Hint label={t("wScoutCoreS2")} tip={t("tipWScoutCoreShip")} />
                       <input type="number" value={wScoutCoreS2} min={0} max={20} onChange={(e) => setWScoutCoreS2(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
                     </label>
-                    <label style={EVAL_CELL}>
+                    <label {...evalCellProps("scoutCore:rebellion", "scoutCore", { scoutKey: "rebellion" })}>
                       <Hint label={t("wScoutCoreS3")} tip={t("tipWScoutCoreShip")} />
                       <input type="number" value={wScoutCoreS3} min={0} max={20} onChange={(e) => setWScoutCoreS3(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
                     </label>
-                    <label style={EVAL_CELL}>
+                    <label {...evalCellProps("scoutCore:tfmars", "scoutCore", { scoutKey: "tfmars" })}>
                       <Hint label={t("wScoutCoreS4")} tip={t("tipWScoutCoreShip")} />
                       <input type="number" value={wScoutCoreS4} min={0} max={20} onChange={(e) => setWScoutCoreS4(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
                     </label>

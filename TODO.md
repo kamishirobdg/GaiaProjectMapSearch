@@ -9,6 +9,17 @@
   次に push するときは `git push origin release/v1.01:main`
   （origin/main は release/v1.01 の祖先なので FF で通る）。push＝Vercel本番デプロイ。
 
+## 不具合（未修正・要調査）
+
+- **`?t=<templateId>` がテンプレ切替に効かないことがある**（2026-07-30 発見）。
+  マウント時に「前回の検索条件プロファイル」を自動適用する処理が後勝ちして
+  `which` を戻すため、`/board?h=...&t=base_34p` を開いても LF テンプレのまま
+  base の placement を描画する。結果 `buildLogicalMapFromPlacement` が
+  「slot center not found」で落ち、`cellKeyToTile` が空になって
+  **マーカーが黙ってタイル単位へ劣化する**。List の「Mapで開く」も同じ経路。
+  直すときは「自動適用より ?t= を優先」＋「テンプレと placement が食い違ったら
+  画面に出す（黙って劣化させない）」の2点。
+
 ## 要フィードバック（実データでの確認待ち）
 
 - **セットアップ→マップ方向／保存済みから選ぶ**: 開発環境にピン留め・保存セットアップが
