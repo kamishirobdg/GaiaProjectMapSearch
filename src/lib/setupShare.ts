@@ -7,6 +7,7 @@
 // （受け手の記憶設定は書き換えない）。
 
 import type { BuildSetupInput } from "@/gaia/setup/buildSetup";
+import type { TileRuleMode, TileRules } from "@/gaia/setup/tileRules";
 import { AVOID_RULES } from "@/gaia/setup/buildSetup";
 import { TECH_SHIP_IDS, type ShipId } from "@/gaia/setup/types";
 import { stableStringify } from "@/app/board/persistence";
@@ -66,6 +67,24 @@ export function decodeSetupToken(token: string): BuildSetupInput | null {
     const ext = raw.extensionFaceMode;
     const econ = raw.econFaceMode;
 
+    /**
+     * 全スロットのタイル指定（2026-07-30 追加）。受け手が知らない形の値を
+     * そのまま流し込まないよう、モードだけ検証して通す（id は将来増えるので
+     * ホワイトリストにしない＝知らない id は生成側で「プールに無い」として
+     * 据え置かれるだけで害がない）。
+     */
+    const tileRules: TileRules = {};
+    if (raw.tileRules && typeof raw.tileRules === "object" && !Array.isArray(raw.tileRules)) {
+      for (const [slotId, slot] of Object.entries(raw.tileRules as Record<string, unknown>)) {
+        if (!slot || typeof slot !== "object" || Array.isArray(slot)) continue;
+        const picked: Record<string, TileRuleMode> = {};
+        for (const [tileId, mode] of Object.entries(slot as Record<string, unknown>)) {
+          if (mode === "fix" || mode === "exclude" || mode === "candidate") picked[tileId] = mode;
+        }
+        if (Object.keys(picked).length > 0) tileRules[slotId] = picked;
+      }
+    }
+
     return {
       seed,
       ...(Number.isFinite(players) ? { playerCount: players } : {}),
@@ -81,6 +100,7 @@ export function decodeSetupToken(token: string): BuildSetupInput | null {
       ...(lf && shipDistanceAvoid.length > 0 ? { shipDistanceAvoid } : {}),
       ...(lf && shipDistanceForce.length > 0 ? { shipDistanceForce } : {}),
       ...(lf && (gold === "avoid" || gold === "force") ? { rebellionGoldFed: gold } : {}),
+      ...(Object.keys(tileRules).length > 0 ? { tileRules } : {}),
     };
   } catch {
     return null;

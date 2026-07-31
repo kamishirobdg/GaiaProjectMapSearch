@@ -59,3 +59,29 @@ describe("setup share token", () => {
     });
   });
 });
+
+describe("タイル指定の往復（2026-07-30）", () => {
+  it("tileRules を落とさずに復元する", () => {
+    const input = {
+      seed: "42",
+      playerCount: 4,
+      tileRules: { "std:nav": { TS8: "fix" }, booster: { RB01: "fix", RB02: "exclude" } },
+    } as any;
+    const back = decodeSetupToken(encodeSetupToken(input));
+    expect(back).toEqual(input);
+  });
+
+  it("知らないモードは捨てる（壊れたリンクで変な条件を作らない）", () => {
+    const token = encodeSetupToken({
+      seed: "42",
+      playerCount: 4,
+      tileRules: { "std:nav": { TS8: "fix", TS1: "bogus" } },
+    } as any);
+    expect((decodeSetupToken(token) as any).tileRules).toEqual({ "std:nav": { TS8: "fix" } });
+  });
+
+  it("空の指定はフィールドごと落ちる（キー不変の前提）", () => {
+    const token = encodeSetupToken({ seed: "42", playerCount: 4, tileRules: {} } as any);
+    expect("tileRules" in (decodeSetupToken(token) as any)).toBe(false);
+  });
+});

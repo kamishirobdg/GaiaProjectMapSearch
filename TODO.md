@@ -5,7 +5,8 @@
 ## リリース状況
 
 - 2026-07-30: `release/v1.01` を `main` へ FF push（89コミット、`719fd5e..3c4722f`）。
-- **その後の7コミットは未push**（マーカー関連の修正と基準4の追加）。
+- **その後の28コミットが未push**（マーカーのセル単位化・Setup/List の評価表示と
+  条件プロファイル・評価指数の再配分・タイル指定など）。
   次に push するときは `git push origin release/v1.01:main`
   （origin/main は release/v1.01 の祖先なので FF で通る）。push＝Vercel本番デプロイ。
 
@@ -51,6 +52,16 @@
   いじったときのセット提案の変化が期待どおりかの確認が未。
 
 ## 残タスク
+
+- **旧ルール入力の後片付け**（低優先）。UI を全スロットのタイル指定へ統合したので、
+  `BuildSetupInput` の `avoidRules` / `forceRules` / `forceTileRules` /
+  `allowTileRules` / `shipDistanceAvoid` / `shipDistanceForce` / `rebellionGoldFed`
+  は**もう誰も設定しない**（エンジンと共有リンクの復元だけが読む）。
+  副作用として、保存リストの行に出る「回避N / 強制N」は常に 0 になる。
+  タイル指定の件数を出すように直すか、表示ごと消すのが自然。
+  `AVOID_RULES` は既定の除外を作るためだけに残っている（`allowTiles` は未使用）。
+- **List のミニ盤面にはマーカーが出ない**: 評価表クリックのタイル点滅は Setup 専用。
+  List の提案プレビュー（SetupBoard/SmallTile）は対象外のままにしてある。
 
 - **スカウトの船別色**（要判断）: 現状マーカーは惑星色で統一。船ごとに色を割り当てるか、
   どの船由来かはポップアップだけで示すか。
