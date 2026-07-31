@@ -141,3 +141,61 @@ export function writeSetupWeights(w: SetupWeights): void {
     // ignore
   }
 }
+
+// --- 色優遇/冷遇（母星色ごと。2026-07-31）------------------------------------
+//
+// Map の colorPrefByType と同じ形。0 のキーは持たない（＝未指定と同じ）ので、
+// 使っていない条件のキーは従来とバイト不変。
+
+/** 優遇/冷遇を付けられる母星色。基本7色＋LFの原始・小惑星。 */
+export const COLOR_PREF_KEYS = [
+  "BLACK",
+  "BLUE",
+  "BROWN",
+  "ORANGE",
+  "RED",
+  "WHITE",
+  "YELLOW",
+  "PROTO",
+  "ASTEROID",
+] as const;
+export type ColorPrefKey = (typeof COLOR_PREF_KEYS)[number];
+export type ColorPrefByColor = Partial<Record<ColorPrefKey, number>>;
+
+/** 入力範囲。Map の色優遇と同じ目盛り（1=互角 / 2=主導 / 5=ほぼ全て）。 */
+export const COLOR_PREF_MIN = -20;
+export const COLOR_PREF_MAX = 20;
+
+export const LS_SETUP_COLOR_PREF = "gaia_setup_color_pref";
+
+/** 0・非数値・範囲外を落として正規化する（0 はキーごと落とす）。 */
+export function sanitizeColorPref(raw: unknown): ColorPrefByColor {
+  const src = (raw ?? {}) as Record<string, unknown>;
+  const out: ColorPrefByColor = {};
+  for (const k of COLOR_PREF_KEYS) {
+    const n = Number(src[k]);
+    if (!Number.isFinite(n) || n === 0) continue;
+    out[k] = Math.max(COLOR_PREF_MIN, Math.min(COLOR_PREF_MAX, n));
+  }
+  return out;
+}
+
+export function readColorPref(): ColorPrefByColor {
+  try {
+    const raw = localStorage.getItem(LS_SETUP_COLOR_PREF);
+    if (!raw) return {};
+    return sanitizeColorPref(JSON.parse(raw));
+  } catch {
+    return {};
+  }
+}
+
+export function writeColorPref(p: ColorPrefByColor): void {
+  try {
+    const clean = sanitizeColorPref(p);
+    if (Object.keys(clean).length === 0) localStorage.removeItem(LS_SETUP_COLOR_PREF);
+    else localStorage.setItem(LS_SETUP_COLOR_PREF, JSON.stringify(clean));
+  } catch {
+    // ignore
+  }
+}

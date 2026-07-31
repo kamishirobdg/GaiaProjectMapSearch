@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 import type { SetupResult } from "@/gaia/setup/types";
 import {
+  colorValueOf,
   criterionScore,
   recommendSetup,
   recommendSetups,
@@ -236,6 +237,63 @@ describe("mapFaction", () => {
   });
 });
 
+// 色優遇/冷遇（2026-07-31）。掛け先は「その母星色でいちばん強い種族のスコア」。
+describe("色優遇/冷遇（Setup）", () => {
+  const flat = () => Object.fromEntries(FACTION_IDS.map((f) => [f, 10])) as FactionScores;
+
+  it("colorValueOf は色ごとにその色の最大スコアを返す", () => {
+    const s = flat();
+    s.terrans = 50; // BLUE
+    s.lantids = 20; // BLUE
+    s.xenos = 30; // YELLOW
+    const v = colorValueOf(s, true);
+    expect(v.BLUE).toBe(50); // 平均でも合計でもなく最大
+    expect(v.YELLOW).toBe(30);
+  });
+
+  it("優遇した色が強いほど基準値が上がる／冷遇は逆", () => {
+    const weak = flat();
+    const strong = flat();
+    strong.terrans = 40; // BLUE を強くする
+    const opts = { playerCount: 4, lostFleet: true };
+    const pref = { w: 1, byColor: { BLUE: 1 } };
+
+    const dWithout =
+      criterionScore("neutralBalance", strong, opts) - criterionScore("neutralBalance", weak, opts);
+    const dWith =
+      criterionScore("neutralBalance", strong, { ...opts, colorPref: pref }) -
+      criterionScore("neutralBalance", weak, { ...opts, colorPref: pref });
+    // BLUE の最大が 10 → 40 に上がったぶん（30）が w=1 で加算される
+    expect(dWith - dWithout).toBeCloseTo(30, 9);
+
+    const neg = { w: 1, byColor: { BLUE: -1 } };
+    const dNeg =
+      criterionScore("neutralBalance", strong, { ...opts, colorPref: neg }) -
+      criterionScore("neutralBalance", weak, { ...opts, colorPref: neg });
+    expect(dNeg - dWithout).toBeCloseTo(-30, 9);
+  });
+
+  it("指定なし・係数0では基準値が変わらない", () => {
+    const s = flat();
+    s.terrans = 40;
+    const opts = { playerCount: 4, lostFleet: true };
+    const bare = criterionScore("topBalance", s, opts);
+    expect(criterionScore("topBalance", s, { ...opts, colorPref: { w: 0, byColor: { BLUE: 5 } } })).toBe(bare);
+    expect(criterionScore("topBalance", s, { ...opts, colorPref: { w: 1, byColor: {} } })).toBe(bare);
+  });
+
+  it("基本版では LF4種族の色は掛け先を持たない", () => {
+    const s = flat();
+    s.moweyds = 99; // PROTO
+    const opts = { playerCount: 4, lostFleet: false };
+    const pref = { w: 1, byColor: { PROTO: 5 } };
+    // 基本版では PROTO の種族が母集団に居ないので効かない
+    expect(criterionScore("neutralBalance", s, { ...opts, colorPref: pref })).toBe(
+      criterionScore("neutralBalance", s, opts)
+    );
+  });
+});
+
 // Setup タブの一括探索（2026-07-31）。「いまの条件で」大量生成するのが要件なので、
 // baseInput のタイル指定が探索結果の全件で守られていることを固定する。
 describe("recommendSetups の baseInput", () => {
@@ -319,8 +377,10 @@ describe("基本版では LF4種族を候補に入れない", () => {
     for (const f of LF) skewed[f] = -50; // 基本14種族は完全に平坦のまま
 
     const opts = { playerCount: 4 };
-    // 基本版から見れば14種族は平坦なので散らばり0＝満点（-0）
-    expect(criterionScore("neutralBalance", skewed, { ...opts, lostFleet: false })).toBe(-0);
+    // 基本版から見れば14種族は平坦なので散らばり0＝満点。
+    // 符号付きゼロ（-0）になりうるので Object.is ではなく数値比較で見る
+    // （色優遇ぶんの 0 を足すと -0 が +0 になるため。2026-07-31）。
+    expect(criterionScore("neutralBalance", skewed, { ...opts, lostFleet: false }) === 0).toBe(true);
     // LF から見ると LF4種族の外れ値で散らばりが出る
     expect(criterionScore("neutralBalance", skewed, { ...opts, lostFleet: true })).toBeLessThan(-1);
   });

@@ -13,6 +13,7 @@ import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetu
 import {
   FACTION_IDS,
   factionIdsForMode,
+  factionsForMode,
   TECH_PREF,
   TECH_TRACK_WEIGHTS,
   TILE_FACTION_WEIGHTS,
@@ -211,6 +212,59 @@ export function topFactions(
 export type RecommendCriterion = "opposeMap" | "alignMap" | "topBalance" | "neutralBalance";
 
 /**
+ * セットアップ側の色優遇/冷遇（2026-07-31）。Map の wColorPref / colorPrefByType と
+ * 同じ形。掛け先は「その母星色でいちばん強い種族のスコア」——
+ * 実際に遊ぶのはその色の2種族のうち強い方なので、平均や合計より max が意味を持つ。
+ */
+export type SetupColorPref = {
+  /** 係数。pref の目盛りの意味を決める。 */
+  w: number;
+  /** 母星色（BLACK..YELLOW / PROTO / ASTEROID）→ ±。0 や未指定は効かない。 */
+  byColor: Record<string, number>;
+};
+
+/**
+ * Setup 側の色優遇の係数（2026-07-31）。pref の目盛りを Map と同じ意味にするための値。
+ *
+ * 実測（scripts/measure_setup_color_pref.ts、4人LF 300件）:
+ *   基準値の振れ幅（上位10%と下位10%の差） topBalance 13.7 / neutralBalance 16.0
+ *   母星色ごとの値の振れ幅（平均） 53.1
+ * 0.25 にすると pref=1 で基準の振れ幅と×1.0（topBalance）／×0.8（neutralBalance）。
+ * Map と揃えて「1=互角 / 2=主導 / 5=ほぼ全て」と読める。
+ * Map の wColorPref と違いユーザーには出さない（入力するのは色ごとの ± だけ）。
+ */
+export const SETUP_COLOR_PREF_W = 0.25;
+
+/** 母星色ごとの「その色でいちばん強い種族のスコア」。色優遇の掛け先。 */
+export function colorValueOf(
+  scores: FactionScores,
+  lostFleet: boolean
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const f of factionsForMode(lostFleet)) {
+    const v = scores[f.id] ?? 0;
+    if (out[f.color] == null || v > out[f.color]) out[f.color] = v;
+  }
+  return out;
+}
+
+/** 色優遇ぶんの加点（指定が無ければ 0）。 */
+function colorPrefBonus(
+  scores: FactionScores,
+  lostFleet: boolean,
+  pref?: SetupColorPref
+): number {
+  if (!pref || !pref.w) return 0;
+  const vals = colorValueOf(scores, lostFleet);
+  let s = 0;
+  for (const [c, p] of Object.entries(pref.byColor)) {
+    if (!p) continue;
+    s += pref.w * p * (vals[c] ?? 0);
+  }
+  return s;
+}
+
+/**
  * 基準ごとの「このセットアップの良さ」（大きいほど良い）。DRAFT の式:
  * - opposeMap: マップ上位3種族のセットアップスコア合計が小さいほど良い
  *   （タイブレークに全体バランス）。
@@ -228,31 +282,44 @@ export type RecommendCriterion = "opposeMap" | "alignMap" | "topBalance" | "neut
 export function criterionScore(
   criterion: RecommendCriterion,
   setupScores: FactionScores,
-  opts: { playerCount: number; mapTop3?: FactionId[]; mapTopK?: FactionId[]; lostFleet?: boolean }
-): number {
-  const all = sortedDesc(setupScores, factionIdsForMode(opts.lostFleet !== false));
-  switch (criterion) {
-    case "opposeMap": {
-      const top3 = opts.mapTop3 ?? [];
-      const sum = top3.reduce((a, f) => a + setupScores[f], 0);
-      return -sum - 0.2 * std(all);
-    }
-    case "alignMap": {
-      // マップ上位 K=人数+2 種族。呼び出し側が K を渡さなければ上位3で代用する。
-      const topK = opts.mapTopK ?? opts.mapTop3 ?? [];
-      if (topK.length === 0) return 0;
-      const vals = topK.map((f) => setupScores[f]);
-      return mean(vals) - 0.2 * std(vals);
-    }
-    case "topBalance": {
-      const k = Math.min(all.length, Math.max(2, opts.playerCount + 2));
-      const topK = all.slice(0, k);
-      const rest = all.slice(k);
-      return -std(topK) + 0.3 * (mean(topK) - mean(rest));
-    }
-    case "neutralBalance":
-      return -std(all);
+  opts: {
+    playerCount: number;
+    mapTop3?: FactionId[];
+    mapTopK?: FactionId[];
+    lostFleet?: boolean;
+    /** 色優遇/冷遇（2026-07-31）。どの基準にも同じ形で足す。 */
+    colorPref?: SetupColorPref;
   }
+): number {
+  const lf = opts.lostFleet !== false;
+  const all = sortedDesc(setupScores, factionIdsForMode(lf));
+  // 基準そのものとは独立に足す（Map で偏り項に色優遇を足しているのと同じ形）。
+  const bonus = colorPrefBonus(setupScores, lf, opts.colorPref);
+  const base = (() => {
+    switch (criterion) {
+      case "opposeMap": {
+        const top3 = opts.mapTop3 ?? [];
+        const sum = top3.reduce((a, f) => a + setupScores[f], 0);
+        return -sum - 0.2 * std(all);
+      }
+      case "alignMap": {
+        // マップ上位 K=人数+2 種族。呼び出し側が K を渡さなければ上位3で代用する。
+        const topK = opts.mapTopK ?? opts.mapTop3 ?? [];
+        if (topK.length === 0) return 0;
+        const vals = topK.map((f) => setupScores[f]);
+        return mean(vals) - 0.2 * std(vals);
+      }
+      case "topBalance": {
+        const k = Math.min(all.length, Math.max(2, opts.playerCount + 2));
+        const topK = all.slice(0, k);
+        const rest = all.slice(k);
+        return -std(topK) + 0.3 * (mean(topK) - mean(rest));
+      }
+      case "neutralBalance":
+        return -std(all);
+    }
+  })();
+  return base + bonus;
 }
 
 export type Recommendation = {
@@ -300,9 +367,21 @@ export function recommendSetups(args: {
    * 省略時は従来どおり人数・拡張だけの素のセットアップ。
    */
   baseInput?: Omit<BuildSetupInput, "seed">;
+  /** 色優遇/冷遇（2026-07-31）。 */
+  colorPref?: SetupColorPref;
 }): Recommendation[] {
-  const { criterion, seeds, playerCount, lostFleet, mapTop3, mapTopK, weights, topN, baseInput } =
-    args;
+  const {
+    criterion,
+    seeds,
+    playerCount,
+    lostFleet,
+    mapTop3,
+    mapTopK,
+    weights,
+    topN,
+    baseInput,
+    colorPref,
+  } = args;
   if (topN <= 0) return [];
   const all: Recommendation[] = [];
   for (const seed of seeds) {
@@ -320,6 +399,7 @@ export function recommendSetups(args: {
       mapTop3,
       mapTopK,
       lostFleet,
+      colorPref,
     });
     all.push({ input, result, setupScores, criterion, score, trials: seeds.length });
   }

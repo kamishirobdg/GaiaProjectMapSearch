@@ -36,6 +36,7 @@ import { copyText, decodeSetupToken, setupShareUrl } from "@/lib/setupShare";
 import GlobalBar from "@/components/GlobalBar";
 import FactionEvalPanel, {
   factionHomeBg,
+  useColorPref,
   useSetupWeights,
   type SetupMarkRequest,
 } from "@/components/FactionEvalPanel";
@@ -43,6 +44,7 @@ import {
   recommendSetups,
   scoreSetupFactions,
   topFactions,
+  SETUP_COLOR_PREF_W,
   type Recommendation,
 } from "@/gaia/eval/factionEval";
 import { factionsForMode, type FactionDef } from "@/gaia/eval/factionWeights";
@@ -822,6 +824,16 @@ export default function SetupView() {
 
   // 評価指数（カテゴリ別係数）。List タブと localStorage を共有する。
   const [evalWeights, changeEvalWeight, resetEvalWeights, setAllEvalWeights] = useSetupWeights();
+  // 色優遇/冷遇（母星色ごと。2026-07-31）。一括探索の並びにだけ効く。
+  const [colorPref, changeColorPref, resetColorPref, setAllColorPref] = useColorPref();
+  /** criterionScore へ渡す形。指定が無ければ undefined＝素通り。 */
+  const colorPrefArg = React.useMemo(
+    () =>
+      Object.keys(colorPref).length > 0
+        ? { w: SETUP_COLOR_PREF_W, byColor: colorPref as Record<string, number> }
+        : undefined,
+    [colorPref]
+  );
 
   /**
    * いまの「条件」。シードだけを除いたビルド入力＋評価指数（2026-07-30）。
@@ -1021,13 +1033,14 @@ export default function SetupView() {
       playerCount: players,
       lostFleet: lf,
       weights: evalWeights,
+      colorPref: colorPrefArg,
     }).then((rows) => {
       if (alive) setBulkRows(rows);
     });
     return () => {
       alive = false;
     };
-  }, [bucketKey, bulkCriterion, players, lf, evalWeights]);
+  }, [bucketKey, bulkCriterion, players, lf, evalWeights, colorPrefArg]);
 
   const handleBulkSearch = React.useCallback(() => {
     if (bulkBusy) {
@@ -1058,6 +1071,7 @@ export default function SetupView() {
         playerCount: players,
         lostFleet: lf,
         weights: evalWeights,
+        colorPref: colorPrefArg,
         fresh: acc.map((r) => ({ seed: String(r.input.seed), input: r.input, score: r.score })),
         cap: BULK_TOP_N,
       })
@@ -1098,6 +1112,7 @@ export default function SetupView() {
         playerCount: players,
         lostFleet: lf,
         weights: evalWeights,
+        colorPref: colorPrefArg,
         topN: BULK_TOP_N,
         baseInput,
       });
@@ -1106,7 +1121,7 @@ export default function SetupView() {
       window.setTimeout(() => step(from + BULK_CHUNK, merged), 0);
     };
     step(0, []);
-  }, [bulkBusy, bulkTrials, buildInput, bucketKey, bulkCriterion, players, lf, evalWeights]);
+  }, [bulkBusy, bulkTrials, buildInput, bucketKey, bulkCriterion, players, lf, evalWeights, colorPrefArg]);
 
   const handleBulkClear = React.useCallback(() => {
     bulkGenRef.current += 1;
@@ -1770,6 +1785,9 @@ ${pickHint}`}
           players={players}
           onMark={onMark}
           activeSources={activeSources}
+          colorPref={colorPref}
+          onChangeColorPref={changeColorPref}
+          onResetColorPref={resetColorPref}
         />
       </section>
 

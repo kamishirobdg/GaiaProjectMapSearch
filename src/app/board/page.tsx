@@ -3564,8 +3564,8 @@ const handleDeleteUsed = React.useCallback(
                       type="number"
                       value={wColorPref}
                       min={0}
-                      max={20}
-                      onChange={(e) => setWColorPref(Math.max(0, Math.min(20, Number(e.target.value) || 0)))}
+                      max={100}
+                      onChange={(e) => setWColorPref(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
                       style={{ width: 60 }}
                     />
                   </label>

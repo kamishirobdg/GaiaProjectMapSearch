@@ -16,7 +16,12 @@
 
 import type { BuildSetupInput } from "@/gaia/setup/buildSetup";
 import { buildSetupFromSeed } from "@/gaia/setup/buildSetup";
-import { criterionScore, scoreSetupFactions, type RecommendCriterion } from "@/gaia/eval/factionEval";
+import {
+  criterionScore,
+  scoreSetupFactions,
+  type RecommendCriterion,
+  type SetupColorPref,
+} from "@/gaia/eval/factionEval";
 import type { SetupWeights } from "@/gaia/eval/setupWeights";
 import {
   openDb,
@@ -54,11 +59,12 @@ export function scoreOf(
   criterion: RecommendCriterion,
   playerCount: number,
   lostFleet: boolean,
-  weights?: SetupWeights
+  weights?: SetupWeights,
+  colorPref?: SetupColorPref
 ): number {
   const result = buildSetupFromSeed(input);
   const setupScores = scoreSetupFactions(result, weights);
-  return criterionScore(criterion, setupScores, { playerCount, lostFleet });
+  return criterionScore(criterion, setupScores, { playerCount, lostFleet, colorPref });
 }
 
 function sortDesc(rows: ScoredSetup[]): ScoredSetup[] {
@@ -118,14 +124,18 @@ export async function listRanking(args: {
   playerCount: number;
   lostFleet: boolean;
   weights?: SetupWeights;
+  colorPref?: SetupColorPref;
 }): Promise<ScoredSetup[]> {
-  const { conditionKey, criterion, playerCount, lostFleet, weights } = args;
+  const { conditionKey, criterion, playerCount, lostFleet, weights, colorPref } = args;
   try {
     const db = await openDb();
     const rows = await idbGetAllFromStore<RankedSetup>(db, STORE_SETUP_RANKING);
     const mine = rows.filter((r) => r.conditionKey === conditionKey && r.criterion === criterion);
     return sortDesc(
-      mine.map((r) => ({ ...r, score: scoreOf(r.input, criterion, playerCount, lostFleet, weights) }))
+      mine.map((r) => ({
+        ...r,
+        score: scoreOf(r.input, criterion, playerCount, lostFleet, weights, colorPref),
+      }))
     );
   } catch {
     return [];
@@ -143,10 +153,11 @@ export async function mergeRanking(args: {
   playerCount: number;
   lostFleet: boolean;
   weights?: SetupWeights;
+  colorPref?: SetupColorPref;
   fresh: Array<{ seed: string; input: BuildSetupInput; score: number }>;
   cap?: number;
 }): Promise<ScoredSetup[]> {
-  const { conditionKey, criterion, playerCount, lostFleet, weights, fresh } = args;
+  const { conditionKey, criterion, playerCount, lostFleet, weights, colorPref, fresh } = args;
   const cap = args.cap ?? SETUP_RANKING_CAP;
 
   const db = await openDb();
@@ -154,7 +165,10 @@ export async function mergeRanking(args: {
   const existing = all
     .filter((r) => r.conditionKey === conditionKey && r.criterion === criterion)
     // 保存済みのスコアは信用せず、いまの評価指数で採点し直してから比べる。
-    .map((r) => ({ ...r, score: scoreOf(r.input, criterion, playerCount, lostFleet, weights) }));
+    .map((r) => ({
+      ...r,
+      score: scoreOf(r.input, criterion, playerCount, lostFleet, weights, colorPref),
+    }));
 
   const { keep, drop } = mergeRankingRows({
     conditionKey,
