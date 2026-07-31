@@ -46,6 +46,14 @@ const EXTRA_HOME_BG: Record<string, string> = {
   ASTEROID: "#c492bc",
 };
 
+/**
+ * 種族の母星色の背景。評価表の行と、保存リストの「上位4種族」チップで共用する
+ * （2026-07-31）。基本7色は内訳表と同じ配色、原始・小惑星は上の薄めたマーカー色。
+ */
+export function factionHomeBg(color: string): string | undefined {
+  return EXTRA_HOME_BG[color] ?? PLANET_INPUT_BG[color as PlanetTypeKey];
+}
+
 /** 種族の母星色（タイルを縁取るので、背景色ではなく濃い方を使う）。 */
 const HOME_COLOR_VIVID: Record<string, string> = {
   BLACK: "#444444",
@@ -355,12 +363,10 @@ ${m.title}` : "")
         <tbody>
           {rows.map((f) => {
             const colorKey = f.color as PlanetTypeKey;
-            // 原始惑星・小惑星は基本7色の表に無いので、Map のマーカー色を使う。
-            const extraBg = EXTRA_HOME_BG[f.color];
             const colorName =
               lang === "ja" ? (PLANET_LABEL_JA[colorKey] ?? EXTRA_LABEL_JA[f.color] ?? f.color) : f.color;
             return (
-              <tr key={f.id} style={{ background: extraBg ?? PLANET_INPUT_BG[colorKey] }}>
+              <tr key={f.id} style={{ background: factionHomeBg(f.color) }}>
                 {(() => {
                   const c = HOME_COLOR_VIVID[f.color] ?? NEUTRAL_MARK_COLOR;
                   const m = markProps(`total:${f.id}`, f.id, null, c, "left");

@@ -34,14 +34,18 @@ import { STORE_SETUP_PROFILES, isDbUpgradeBlocked } from "@/app/board/persistenc
 import { DEFAULT_SETUP_WEIGHTS, isDefaultWeights, type SetupWeights } from "@/gaia/eval/setupWeights";
 import { copyText, decodeSetupToken, setupShareUrl } from "@/lib/setupShare";
 import GlobalBar from "@/components/GlobalBar";
-import FactionEvalPanel, { useSetupWeights, type SetupMarkRequest } from "@/components/FactionEvalPanel";
+import FactionEvalPanel, {
+  factionHomeBg,
+  useSetupWeights,
+  type SetupMarkRequest,
+} from "@/components/FactionEvalPanel";
 import {
   recommendSetups,
   scoreSetupFactions,
   topFactions,
   type Recommendation,
 } from "@/gaia/eval/factionEval";
-import { factionsForMode } from "@/gaia/eval/factionWeights";
+import { factionsForMode, type FactionDef } from "@/gaia/eval/factionWeights";
 import {
   clearRanking,
   deleteRankingByCondition,
@@ -1109,6 +1113,34 @@ export default function SetupView() {
 
   const currentId = React.useMemo(() => setupHistoryId(buildInput(seed)), [buildInput, seed]);
 
+  /**
+   * 保存リスト行に出す「評価値の高い種族4つ」（2026-07-31 要望）。
+   * 保存しているのは入力だけなので、行ごとに組み立て直して評価する
+   * （0.25ms/件。表示するのはいまの条件バケツの行だけなので、上限100件でも数十ms）。
+   * 基本版では LF4種族を候補から外す（その拡張で選べる種族だけ）。
+   */
+  const savedTopFactions = React.useMemo(() => {
+    const out = new Map<string, Array<FactionDef & { score: number }>>();
+    for (const r of saved) {
+      if (r.conditionKey !== bucketKey) continue;
+      try {
+        const rowLf = r.input.mode === "lostFleet";
+        const scores = scoreSetupFactions(buildSetupFromSeed(r.input), evalWeights);
+        const defs = factionsForMode(rowLf);
+        out.set(
+          r.id,
+          topFactions(scores, 4, rowLf)
+            .map((id) => defs.find((d) => d.id === id))
+            .filter((d): d is FactionDef => !!d)
+            .map((d) => ({ ...d, score: scores[d.id] }))
+        );
+      } catch {
+        // 壊れた入力は種族チップなしで出す（行自体は復元に使える）
+      }
+    }
+    return out;
+  }, [saved, bucketKey, evalWeights]);
+
   // 表示中のセットアップが変わったらマーカーを消す（別の卓のタイルが光ったままに
   // ならないように。Map の markHashRef と同じ考え方）。
   const markKeyRef = React.useRef<string>("");
@@ -1843,14 +1875,6 @@ ${pickHint}`}
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {rows.map((r) => {
                 const isCurrent = r.id === currentId;
-                const nAvoid = r.input.avoidRules?.length ?? 0;
-                const nForce = r.input.forceRules?.length ?? 0;
-                const when = new Date(r.createdAt).toLocaleString(lang === "ja" ? "ja-JP" : "en-US", {
-                  month: "numeric",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                });
                 return (
                   <div
                     key={r.id}
@@ -1881,22 +1905,27 @@ ${pickHint}`}
                       }}
                     >
                       {r.pinned ? <span title={t.pin}>📌</span> : null}
-                      <span style={{ fontFamily: "monospace", fontWeight: 700 }}>{r.input.seed}</span>
                       <span>{r.input.mode === "lostFleet" ? t.modeLF : t.modeBase}</span>
                       <span>
                         {t.players}: {r.input.playerCount ?? 4}
                       </span>
-                      {nAvoid > 0 ? (
-                        <span style={{ opacity: 0.7 }}>
-                          {t.avoidShort}{nAvoid}
+                      {/* 評価値の高い種族4つ。背景はその種族の母星色（2026-07-31 要望）。
+                          キー（シード）と実行時間は表示から外した。 */}
+                      {(savedTopFactions.get(r.id) ?? []).map((f) => (
+                        <span
+                          key={f.id}
+                          title={`${lang === "ja" ? f.labelJa : f.labelEn} ${Math.round(f.score * 10) / 10}`}
+                          style={{
+                            background: factionHomeBg(f.color),
+                            border: "1px solid rgba(0,0,0,0.15)",
+                            borderRadius: 4,
+                            padding: "0 5px",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {lang === "ja" ? f.labelJa : f.labelEn}
                         </span>
-                      ) : null}
-                      {nForce > 0 ? (
-                        <span style={{ opacity: 0.7 }}>
-                          {t.forceShort}{nForce}
-                        </span>
-                      ) : null}
-                      <span style={{ opacity: 0.55 }}>{when}</span>
+                      ))}
                       {isCurrent ? (
                         <span style={{ color: "#3467c4", fontWeight: 700 }}>{t.currentBadge}</span>
                       ) : null}
