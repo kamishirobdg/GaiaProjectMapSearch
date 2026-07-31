@@ -2492,11 +2492,10 @@ const handleDeleteUsed = React.useCallback(
 );
 
 
-  const curHashFromResult = getPlacementHashForResult(displayResult);
-  const curImb = getImbalanceSummary(displayResult);
-  const curOT = getOuterTouchCounts(displayResult);
-  const curScout = getScoutSummary(displayResult);
-  const curScoutCore = getScoutCoreSummary(displayResult);
+  // 「詳細情報」を出さなくなったので、そこでしか使っていなかった要約
+  // （getImbalanceSummary / getOuterTouchCounts / getScoutSummary /
+  // getScoutCoreSummary）はここで作らない。関数自体は残してあるので、
+  // 戻すときはこの行に呼び出しを足すだけでよい（2026-07-31）。
 
   // 用語集（英→日＋意味）
   // 用語集データは各ラベルの Hint ツールチップ（uiText の tip* キー）へ移行済み。
@@ -3233,35 +3232,10 @@ const handleDeleteUsed = React.useCallback(
             <div style={{ padding: 10, border: "1px solid #ddd", borderRadius: 8 }}>
               <div style={{ fontWeight: 700, marginBottom: 6 }}>{t("currentLogicalSummary")}</div>
 
-              <details style={{ marginTop: 4 }}>
-                <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.75 }}>
-                  {lang === "ja" ? "詳細情報" : "System"}
-                </summary>
-                <div style={{ fontFamily: "monospace", fontSize: 11, opacity: 0.85, marginTop: 4 }} title={t("tipHashPair")}>
-                  {t("seed")}={String(selectedSeedLabel ?? seed ?? "-")}  /  <Hint label={`${t("placementHashResult")}=${curHashFromResult}`} tip={t("tipHashPair")} />  /  <Hint label={`${t("placementHashView")}=${currentHash}`} tip={t("tipHashPair")} />
-                </div>
-
-                <div style={{ marginTop: 8, fontSize: 12 }}>
-                  <Hint label={t("score")} tip={t("tipScore")} />={displayResult ? Number(displayResult.score ?? 0 ).toFixed(3) : "-"}
-                </div>
-
-                <div style={{ marginTop: 4, fontSize: 12 }}>
-                  <Hint label={`${t("imbalance")} (${curImb.metric})`} tip={t("tipScore")} />={displayResult ? (Math.round(curImb.value * 1000) / 1000).toFixed(3) : "-"}
-                </div>
-
-                <div style={{ marginTop: 4, fontSize: 12, opacity: 0.9 }}>
-                  <Hint label={t("outerCnt")} tip={t("tipOuterCnt")} />={displayResult ? curOT.outerSum : "-"} / <Hint label={t("touchCnt")} tip={t("tipTouchCnt")} />={displayResult ? curOT.touchSum : "-"}
-                </div>
-
-                <div style={{ marginTop: 4, fontSize: 12, opacity: 0.9 }}>
-                  <Hint label={t("scoutRadius")} tip={t("tipScoutRadius")} />={curScout.radius ?? "-"} / {t("scoutTotal")}={displayResult ? curScout.scoutTotal : "-"}
-                </div>
-
-                <div style={{ marginTop: 4, fontSize: 12, opacity: 0.9 }}>
-                  {t("scoutCoreRadius")}={curScoutCore.radius ?? "-"} / {t("scoutCoreTotal")}={displayResult ? curScoutCore.totalCore : "-"}
-                  {displayResult ? <span> / {t("extra")}={curScoutCore.totalExtra}</span> : null}
-                </div>
-              </details>
+              {/* 「詳細情報」（seed/placementHash・生スコア・偏り・各軸の素の合計）は
+                  開発中の確認用で、いまはユーザーが見る情報ではないので出さない
+                  （2026-07-31 要望）。値の出どころ（curImb / curOT / curScout /
+                  curScoutCore）は残してあるので、必要になったらここへ戻せる。 */}
 
               {displayResult ? (
                 // 既定で開く。表示は displayResult に基づき、条件変更で結果バケットが
