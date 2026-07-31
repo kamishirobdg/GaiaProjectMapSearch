@@ -175,7 +175,10 @@ const DEFAULT_CONDITIONS = {
   wGaiaD2: 8,
   wGaiaD3: 3,
   wClusterSize: 1,
-  applyExtraAxesLF: false,
+  // Lost Fleet でもガイア・星系を既定で評価する（2026-07-30 ユーザー確定で
+  // opt-in から変更）。LF の検索キーにこの2軸が入るので、以前の LF 保存結果とは
+  // 別バケットになる。
+  applyExtraAxesLF: true,
   // 色優遇/冷遇
   wColorPref: 3,
   pref: 0,
@@ -1046,14 +1049,18 @@ return (savedProfiles ?? []).filter((p) => {
   const [wGaiaD3, setWGaiaD3] = React.useState(DEFAULT_CONDITIONS.wGaiaD3);
   const [wClusterSize, setWClusterSize] = React.useState(DEFAULT_CONDITIONS.wClusterSize);
 
-  // LF でガイア近接・星系軸を有効化するオプトイン（Phase A, 2026-07-25）。
-  // 既定 OFF。OFF のときはキーからフィールドごと省略＝既存LFキーはバイト不変。
-  // ON にすると base と同じ2軸を評価に加える（LFキーが変わり別バケット＝了承済み）。
+  // LF でガイア近接・星系軸を評価に含めるかどうか（Phase A, 2026-07-25 に opt-in で
+  // 導入 → 2026-07-30 に既定 ON へ変更、ユーザー確定）。
+  // OFF にするとキーからフィールドごと省略され、旧LFキー（2軸なし）に戻る。
   // base では常時有効なのでこのフラグは無視される。
   const [applyExtraAxesLF, setApplyExtraAxesLF] = React.useState(DEFAULT_CONDITIONS.applyExtraAxesLF);
   React.useEffect(() => {
     try {
-      if (localStorage.getItem("gaia_lf_extra_axes") === "1") setApplyExtraAxesLF(true);
+      // 既定が ON になったので、明示的に OFF にした人の "0" も復元する必要がある
+      // （以前は既定 OFF で "1" のときだけ ON にすればよかった。2026-07-30）。
+      const v = localStorage.getItem("gaia_lf_extra_axes");
+      if (v === "1") setApplyExtraAxesLF(true);
+      else if (v === "0") setApplyExtraAxesLF(false);
     } catch {}
   }, []);
   const changeApplyExtraAxesLF = React.useCallback((on: boolean) => {
