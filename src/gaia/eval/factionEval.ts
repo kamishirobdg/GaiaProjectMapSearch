@@ -294,16 +294,25 @@ export function recommendSetups(args: {
   mapTopK?: FactionId[];
   weights?: SetupWeights;
   topN: number;
+  /**
+   * 生成条件のベース（Setup タブの一括探索用、2026-07-31）。渡すとこれに seed を
+   * 載せて生成するので、タイル指定や面の指定が効いたまま探索できる。
+   * 省略時は従来どおり人数・拡張だけの素のセットアップ。
+   */
+  baseInput?: Omit<BuildSetupInput, "seed">;
 }): Recommendation[] {
-  const { criterion, seeds, playerCount, lostFleet, mapTop3, mapTopK, weights, topN } = args;
+  const { criterion, seeds, playerCount, lostFleet, mapTop3, mapTopK, weights, topN, baseInput } =
+    args;
   if (topN <= 0) return [];
   const all: Recommendation[] = [];
   for (const seed of seeds) {
-    const input: BuildSetupInput = {
-      seed,
-      playerCount,
-      ...(lostFleet ? { mode: "lostFleet" as const } : {}),
-    };
+    const input: BuildSetupInput = baseInput
+      ? ({ ...baseInput, seed } as BuildSetupInput)
+      : {
+          seed,
+          playerCount,
+          ...(lostFleet ? { mode: "lostFleet" as const } : {}),
+        };
     const result = buildSetupFromSeed(input);
     const setupScores = scoreSetupFactions(result, weights);
     const score = criterionScore(criterion, setupScores, {

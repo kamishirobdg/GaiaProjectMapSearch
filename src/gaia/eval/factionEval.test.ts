@@ -228,6 +228,57 @@ describe("mapFaction", () => {
   });
 });
 
+// Setup タブの一括探索（2026-07-31）。「いまの条件で」大量生成するのが要件なので、
+// baseInput のタイル指定が探索結果の全件で守られていることを固定する。
+describe("recommendSetups の baseInput", () => {
+  const seeds = Array.from({ length: 60 }, (_, i) => String(2000 + i * 3));
+
+  it("baseInput のタイル指定が上位の全件で守られる", () => {
+    const rs = recommendSetups({
+      criterion: "topBalance",
+      seeds,
+      playerCount: 4,
+      lostFleet: false,
+      topN: 10,
+      baseInput: { playerCount: 4, tileRules: { "std:nav": { TS7: "fix" } } } as any,
+    });
+    expect(rs).toHaveLength(10);
+    for (const r of rs) {
+      expect(r.result.standardTech.byTrack.nav).toBe("TS7");
+      expect((r.input as any).tileRules).toEqual({ "std:nav": { TS7: "fix" } });
+    }
+  });
+
+  it("baseInput 省略時は従来どおり人数・拡張だけの素のセットアップ", () => {
+    const rs = recommendSetups({
+      criterion: "topBalance",
+      seeds: seeds.slice(0, 5),
+      playerCount: 3,
+      lostFleet: true,
+      topN: 5,
+    });
+    for (const r of rs) {
+      expect(r.input).toEqual({ seed: r.input.seed, playerCount: 3, mode: "lostFleet" });
+    }
+  });
+
+  it("チャンク分割して畳み込んでも全件一括と同じ上位になる（UIの分割実行と一致）", () => {
+    const args = {
+      criterion: "topBalance" as const,
+      playerCount: 4,
+      lostFleet: false,
+      topN: 5,
+    };
+    const whole = recommendSetups({ ...args, seeds });
+    const chunked: typeof whole = [];
+    for (let i = 0; i < seeds.length; i += 25) {
+      chunked.push(...recommendSetups({ ...args, seeds: seeds.slice(i, i + 25) }));
+    }
+    const merged = chunked.sort((a, b) => b.score - a.score).slice(0, 5);
+    expect(merged.map((r) => r.input.seed)).toEqual(whole.map((r) => r.input.seed));
+  });
+});
+
 // 基本版では Lost Fleet の4種族は選べないので、上位K種族にも散らばりにも入れない
 // （2026-07-31 ユーザー確定）。重みテーブル自体は共通のまま、参照側で絞る。
 describe("基本版では LF4種族を候補に入れない", () => {
