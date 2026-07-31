@@ -38,18 +38,23 @@ export type SetupWeights = Record<SetupWeightKey, number>;
 
 /**
  * 画面での並び順（評価表の列・評価指数の入力欄で共用）。
- * ブースターとラウンド得点はラベルが長い割に影響が小さいので右端へ置く
- * （横スクロールで最初に隠れるのが影響の小さい列になる。2026-07-30 要望）。
+ *
+ * **影響力の大きい順**に左から並べる。横スクロールで最初に隠れるのが影響の小さい列に
+ * なるようにするため（2026-07-30 の意図は同じ。順番だけ 2026-07-31 に更新した）。
+ * 順番はユーザーの実プレイ感による:
+ *   技術 > LF船 > 上級 > ブースター > ラウンド > 最終 > 追加上級 > 同盟
+ * 以前は「ブースターとラウンド得点は影響が小さい」という想定で右端に置いていたが、
+ * 実際には効いているという評価に変わったので入れ替えた。
  */
 export const SETUP_WEIGHT_DISPLAY_ORDER: readonly SetupWeightKey[] = [
-  "advanced",
-  "advExtension",
-  "finalScoring",
-  "federation",
   "standardTech",
   "lfShip",
-  "roundScoring",
+  "advanced",
   "booster",
+  "roundScoring",
+  "finalScoring",
+  "advExtension",
+  "federation",
 ];
 
 /**

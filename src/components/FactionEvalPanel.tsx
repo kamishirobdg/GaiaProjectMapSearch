@@ -83,7 +83,9 @@ const CAT_LABEL: Record<SetupWeightKey, { ja: string; en: string; tipJa: string;
     tipEn: "Advanced tech (the six under the research tracks)",
   },
   advExtension: {
-    ja: "追加上級",
+    // 列幅は1文字あたり約16px。影響力がいちばん小さい列なので短くする
+    // （意味はツールチップが持つ。得点ボード「拡張部」の追加上級。2026-07-31）。
+    ja: "拡張",
     en: "adv+",
     tipJa: "得点ボード拡張部の追加上級技術（取得条件が通常の上級と異なるため別枠）",
     tipEn: "Extra advanced tech on the scoring-board extension (different acquisition rule)",
@@ -113,8 +115,8 @@ const CAT_LABEL: Record<SetupWeightKey, { ja: string; en: string; tipJa: string;
     tipEn: "Federation tile (Terraforming level 5)",
   },
   standardTech: {
-    ja: "標準技術",
-    en: "std tech",
+    ja: "技術",
+    en: "tech",
     tipJa:
       "標準技術タイル9枚。どこに置かれたか（研究列6つ／フリー枠）で価値が変わる。\n" +
       "フリー枠はどの列も登らずに取れるので、そのタイル自体の有用度だけで見る。",

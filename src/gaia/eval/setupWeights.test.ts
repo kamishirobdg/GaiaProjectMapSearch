@@ -78,8 +78,10 @@ describe("DEFAULT_SETUP_WEIGHTS", () => {
 
   it("表示順は全カテゴリを過不足なく並べたもの", () => {
     expect([...SETUP_WEIGHT_DISPLAY_ORDER].sort()).toEqual([...SETUP_WEIGHT_KEYS].sort());
-    // 影響の小さい2列は右端（横スクロールで最初に隠れる位置）。2026-07-30 要望。
-    expect(SETUP_WEIGHT_DISPLAY_ORDER.slice(-2)).toEqual(["roundScoring", "booster"]);
+    // 影響力の大きい順（横スクロールで最初に隠れるのが影響の小さい列になるように）。
+    // 順番はユーザーの実プレイ感による（2026-07-31 更新）。
+    expect(SETUP_WEIGHT_DISPLAY_ORDER[0]).toBe("standardTech");
+    expect(SETUP_WEIGHT_DISPLAY_ORDER.slice(-2)).toEqual(["advExtension", "federation"]);
   });
 
   it("既定を明示で渡しても省略時と同じスコアになる", () => {
