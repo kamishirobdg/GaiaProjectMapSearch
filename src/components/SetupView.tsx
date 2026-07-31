@@ -419,6 +419,19 @@ function bulkTopText(
 const LF_REVISED_IDS = new Set(["TS2", "AT15", "FS03"]);
 
 /**
+ * タイル1枚ぶんの枠幅（2026-07-31）。TileImage の maxWidth 110 に
+ * TileCellView の padding(8+8) と border(1+1) を足した実寸。
+ * 研究トラックの列幅と船カードの幅をこれに合わせて、余白いっぱいに
+ * 引き伸ばさないようにする。
+ */
+const TILE_COL_W = 128;
+/**
+ * 船カードの中身の幅。box-sizing は content-box なので、カード自身の
+ * padding(8+8) と border(1+1) は width に含めず外側に付く（外形は 146px）。
+ */
+const SHIP_CARD_W = TILE_COL_W;
+
+/**
  * Tile image (public/setup-tiles/<imageId>.png). Falls back to nothing when
  * the id has no image, leaving the text caption to carry the cell.
  */
@@ -1463,7 +1476,21 @@ export default function SetupView() {
           （キュレーション済みの除外はタイル指定の既定値に入っている。2026-07-30）。 */}
       <section>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.researchTracks}</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
+        {/* 列はタイル幅ちょうど（TILE_COL_W）で、余った幅に広がらないようにする。
+            以前は grid の 1fr で引き伸ばしていたので、広い画面だと列間が
+            300px 以上空いて読みづらかった（2026-07-31 指摘）。
+            6トラックは盤面と同じく必ず横一列に並べたいので折り返さず、
+            入りきらない幅ではこの節だけ横スクロールさせる。 */}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "nowrap",
+            gap: 8,
+            alignItems: "flex-start",
+            overflowX: "auto",
+            paddingBottom: 4,
+          }}
+        >
           {RESEARCH_TRACK_IDS.map((track) => {
             const showEconTop = track === "eco" && lf && result.mode === "lostFleet";
             const econFaceLabel =
@@ -1473,7 +1500,7 @@ export default function SetupView() {
                   : t.faceB
                 : "";
             return (
-              <div key={track} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div key={track} style={{ width: TILE_COL_W, flex: "0 0 auto", display: "flex", flexDirection: "column", gap: 6 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.8 }}>
                   {lang === "ja" ? TRACK_LABEL[track].ja : TRACK_LABEL[track].en}
                 </div>
@@ -1584,26 +1611,42 @@ ${pickHint}`}
 
           <section>
             <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.ships}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 8 }}>
+            {/* 船カードはタイル1枚ぶんの幅（SHIP_CARD_W）に固定する。以前は grid の
+                1fr で余白いっぱいに広げていたので、110px のタイルを載せた枠が
+                500px 近くまで伸びて右ペイン全体を圧迫していた（2026-07-31 指摘）。 */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start" }}>
               {result.ships!.map((ship) => {
                 return (
-                  <div key={ship} style={{ border: "1px solid #ddd", borderRadius: 8, padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div key={ship} style={{ width: SHIP_CARD_W, border: "1px solid #ddd", borderRadius: 8, padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.8 }}>
                       {lang === "ja" ? SHIP_LABEL[ship].ja : SHIP_LABEL[ship].en}
                     </div>
                     {tileCell(result.goldFederations![ship]!, t.goldFed, false, { slotId: `goldFed:${ship}`, title: `${t.goldFed} / ${lang === "ja" ? SHIP_LABEL[ship].ja : SHIP_LABEL[ship].en}`, kind: "goldFed" })}
                     {result.shipTech![ship] ? tileCell(result.shipTech![ship]!, t.shipTechLabel, false, { slotId: `shipTech:${ship}`, title: `${t.shipTechLabel} / ${lang === "ja" ? SHIP_LABEL[ship].ja : SHIP_LABEL[ship].en}`, kind: "shipTech" }) : null}
-                    {ship === "twilight" ? (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        <div style={{ fontSize: 11, opacity: 0.65 }}>{t.artifactsLabel}</div>
-                        {result.artifacts!.map((id) => tileCell(id, undefined, false, { slotId: "artifacts", title: t.artifactsLabel, kind: "artifacts", singleFix: false }))}
-                      </div>
-                    ) : null}
                   </div>
                 );
               })}
             </div>
           </section>
+
+          {/* アーティファクトは船カードの中では縦積みになり、トワイライトの列だけが
+              他の3倍の高さになっていた（節全体で 982px）。横に流す独立した節へ出す。
+              トワイライトのものであることは見出しで示す（2026-07-31）。 */}
+          {result.artifacts && result.artifacts.length > 0 ? (
+            <section>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.artifactsLabel}</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start" }}>
+                {result.artifacts.map((id) =>
+                  tileCell(id, undefined, false, {
+                    slotId: "artifacts",
+                    title: t.artifactsLabel,
+                    kind: "artifacts",
+                    singleFix: false,
+                  })
+                )}
+              </div>
+            </section>
+          ) : null}
         </>
       ) : null}
 
