@@ -22,6 +22,7 @@ import {
   factionIdsForMode,
   STD_TECH_SCALE,
   TECH_POSITION_WEIGHTS,
+  techPositionCell,
   TILE_FACTION_WEIGHTS,
   type FactionId,
 } from "./factionWeights";
@@ -109,7 +110,7 @@ describe("scoreSetupFactions", () => {
       },
     });
     const free = (["TS7", "TS8", "TS9"] as const).reduce(
-      (a, id) => a + (TECH_POSITION_WEIGHTS[id]?.free?.hadschHallas ?? 0),
+      (a, id) => a + (techPositionCell(id, "free")?.hadschHallas ?? 0),
       0
     );
     // トラックに置かれた6枚は、この配置では hadschHallas に効かない

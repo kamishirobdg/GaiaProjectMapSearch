@@ -158,31 +158,30 @@ export const MAP_AFFINITY: Partial<Record<FactionId, { gaia?: number; transdim?:
   terrans: { transdim: 2 },
   itars: { transdim: 1.5 },
   balTaks: { transdim: 1 },
+  geodens: { gaia: 2 },
   spaceGiants: { gaia: -1 },
   tinkerroids: { gaia: -1 },
   darkanians: { gaia: -1 },
 };
 
-// --- 標準技術のトラック別評価（2026-07-25 案1 DRAFT） ---------------------
+// --- 標準技術のトラック別評価 ---------------------------------------------
 //
 // 標準技術9種は毎ゲーム全部場に出るが、「6種がどの研究トラックの下に付くか」
 // はセットアップごとに変わる。トラック下のタイルは そのトラックを1段上げる
 // ついでに手に入る ので、価値は「そのトラックを登りたいか」×「そのタイルが
 // 有用か」で決まる。
 //
-// ★ここが編集用の正本テーブル（配置 × 技術タイル）。
-//   セルに「そのタイルがその場所に置かれたとき ± がある種族と値」を書く。
+// ★ここが編集用の正本テーブル（研究列 × 技術タイル）。
+//   セルに「そのタイルがその列の下に置かれたとき ± がある種族と値」を書く。
 //   記載なし＝0。値の目安: 4=主役級 / 2=得意 / 1=噛み合う / -1..-2=噛み合わない。
-//   寄与 = TECH_POSITION_WEIGHTS[タイル][配置][種族] × STD_TECH_SCALE
+//   寄与 = techPositionCell(タイル, 配置)[種族] × STD_TECH_SCALE
 //
-// 2026-07-31: トラック下6枚とフリー枠3枚を1つの表にまとめた（ユーザー要望
-// 「どのタイルがどこに配置されるかで評価値を計算して合計する」）。
-// 配置は研究列6つ＋"free"（トラックに紐付かない3枚）の7通り。
-// free 列は「どの列も登らずに取れるぶん、そのタイル自体の有用度だけ」で、
-// 旧 TECH_PREF の値をそのまま持ってきてある。
-// **旧実装ではフリー枠に別係数（トラックの 2/5）を掛けていたので、
-//   free 列の効き具合は相対的に上がっている**（トラック比 0.2 → 0.4 相当）。
-//   値の見直しは「評価値を1つずつ精査」のタスクで行う。
+// **フリー枠はここに書かない**（2026-08-01）。研究列6つの最大値として
+// `techPositionCell()` が計算する。理由はその関数のコメントを参照
+// （ルールブック p13: フリー枠は「任意の研究エリア」を進められるので、
+// どのトラック配置に対しても完全な上位互換）。
+// 副作用: 負の値はフリー枠では 0 になる（記載のない列＝0 が最大値として選ばれる）。
+// 嫌なタイルでも、フリー枠にあるなら取らずに済むので損はしない、という意味。
 //
 // 値は「トラック親和度(0..2) × タイル有用度(-2..2)」の積。
 // 親和度（＝その種族が登りたい列。2026-08-01 に見直し。**初期研究レベルは未確認**なので
@@ -203,9 +202,22 @@ export const MAP_AFFINITY: Partial<Record<FactionId, { gaia?: number; transdim?:
 /** 標準技術の置き場所: 研究列6つ、または列に紐付かないフリー枠。 */
 export type TechPosition = ResearchTrackId | "free";
 
+/**
+ * ★編集用の正本。**研究列6つだけを書く。フリー枠は書かない**（2026-08-01）。
+ *
+ * ルールブック p13「技術タイルの獲得」:
+ *   - 研究エリアの真下の6枚 → **その研究エリアでのみ**マーカーを進められる。
+ *     そこで進められない場合、その進展分は失われる。
+ *   - 他の3枚（フリー枠） → **任意の研究エリア1つ**を進められる。
+ * つまりフリー枠は常にトラック配置の完全な上位互換で、フリー枠に置かれることの
+ * 利益は「登りたい列を選べる」ことに尽きる。だから
+ *   **free = そのタイルの研究列6つのうち最大値**
+ * が正しく、`techPositionCell()` がそれを計算する（データには持たない）。
+ * 値を直すときは研究列だけ触ればよく、フリー枠は自動で追随する。
+ */
 export const TECH_POSITION_WEIGHTS: Record<
   string,
-  Partial<Record<TechPosition, Partial<Record<FactionId, number>>>>
+  Partial<Record<ResearchTrackId, Partial<Record<FactionId, number>>>>
 > = {
   // TS1 即時:鉱石1+QIC1
   // ダー・シュワーム人は衛星をQICで払う唯一の勢力＝QICが直接得点になる。
@@ -217,7 +229,6 @@ export const TECH_POSITION_WEIGHTS: Record<
     gaia:  { balTaks: 2, gleens: -2 }, // ガイア計画
     eco:   { darkanians: 1 }, // 経済
     sci:   { tinkerroids: 1 }, // 科学
-    free:  { ivits: 2, xenos: 1, geodens: 1, balTaks: 1, spaceGiants: 1, tinkerroids: 1, darkanians: 1, gleens: -1 },
   },
   // TS2 即時:惑星種類×知識1
   // ランティダ人の「他プレイヤーの惑星に置く鉱山」は惑星の種類に数えないので対象外。
@@ -228,7 +239,6 @@ export const TECH_POSITION_WEIGHTS: Record<
     gaia:  { gleens: 2 }, // ガイア計画
     eco:   { darkanians: 2 }, // 経済
     sci:   { tinkerroids: 1 }, // 科学
-    free:  { geodens: 2, spaceGiants: 2, darkanians: 2, xenos: 1, gleens: 1, tinkerroids: 1 },
   },
   // TS3 首府学院のパワー値4
   // パワー値は「受動的にチャージする量」と「同盟のパワー値合計」の両方に効く。
@@ -240,7 +250,6 @@ export const TECH_POSITION_WEIGHTS: Record<
     gaia:  { itars: 2 }, // ガイア計画
     eco:   { taklons: 4, nevlas: 4, moweyds: 4, ambas: 1, bescods: 1 }, // 経済
     sci:   { nevlas: 4, bescods: 2, tinkerroids: 2, itars: 1 }, // 科学
-    free:  { taklons: 2, nevlas: 2, moweyds: 2, tinkerroids: 2, ambas: 1, bescods: 1, itars: 1, ivits: 1, xenos: 1 },
   },
   // TS4 即時:7VP（純粋な点数＝相性なし）
   TS4: {
@@ -250,7 +259,6 @@ export const TECH_POSITION_WEIGHTS: Record<
     gaia:  {}, // ガイア計画
     eco:   {}, // 経済
     sci:   {}, // 科学
-    free:  {},
   },
   // TS5 収入:鉱石1+パワー1
   // スペースジャイアントは通常惑星が常に2段階改造＝鉱石の消費がいちばん重い。
@@ -261,7 +269,6 @@ export const TECH_POSITION_WEIGHTS: Record<
     gaia:  { gleens: 2, itars: 2 }, // ガイア計画
     eco:   { taklons: 2, nevlas: 2, moweyds: 2 }, // 経済
     sci:   { nevlas: 2, itars: 1, tinkerroids: 1 }, // 科学
-    free:  { spaceGiants: 2, taklons: 1, itars: 1, geodens: 1, gleens: 1, tinkerroids: 1, moweyds: 1, nevlas: 1 },
   },
   // TS6 収入:知識1+クレ1
   TS6: {
@@ -271,7 +278,6 @@ export const TECH_POSITION_WEIGHTS: Record<
     gaia:  { gleens: -2 }, // ガイア計画
     eco:   { nevlas: 2, firaks: 1, bescods: 1, darkanians: 1 }, // 経済
     sci:   { lantids: 2, firaks: 2, bescods: 2, nevlas: 2, tinkerroids: 1 }, // 科学
-    free:  { firaks: 1, bescods: 1, nevlas: 1, lantids: 1, tinkerroids: 1, darkanians: 1, gleens: -1 },
   },
   // TS7 ガイア鉱山+3VP
   // グリーン人は自前の「ガイア惑星に鉱山で+2VP」と重なって1つの鉱山が5VPになる。
@@ -283,7 +289,6 @@ export const TECH_POSITION_WEIGHTS: Record<
     gaia:  { terrans: 4, gleens: 4, itars: 4, balTaks: 2 }, // ガイア計画
     eco:   { darkanians: -1 }, // 経済
     sci:   { terrans: 2, itars: 2, tinkerroids: -1 }, // 科学
-    free:  { terrans: 2, gleens: 2, itars: 2, balTaks: 1, spaceGiants: -1, tinkerroids: -1, darkanians: -1 },
   },
   // TS8 収入:クレ4
   // ハッシュ・ホラ人のPIは「パワーの代わりにクレジットを払う」＝クレジットが第2のパワー。
@@ -294,7 +299,6 @@ export const TECH_POSITION_WEIGHTS: Record<
     gaia:  {}, // ガイア計画
     eco:   { hadschHallas: 4, taklons: 2, nevlas: 2, darkanians: 2, ambas: 1 }, // 経済
     sci:   { nevlas: 2 }, // 科学
-    free:  { hadschHallas: 2, darkanians: 2, taklons: 1, nevlas: 1, ambas: 1 },
   },
   // TS9 アクション:パワー4
   // ネヴラ人はエリアⅢのトークンが2パワー、モウェイド人はパワーリングで建造物の
@@ -306,9 +310,64 @@ export const TECH_POSITION_WEIGHTS: Record<
     gaia:  { itars: 2 }, // ガイア計画
     eco:   { taklons: 4, nevlas: 4, moweyds: 4, bescods: 1 }, // 経済
     sci:   { nevlas: 4, bescods: 2, itars: 1 }, // 科学
-    free:  { taklons: 2, nevlas: 2, moweyds: 2, itars: 1, bescods: 1 },
   },
 };
+
+/** 研究列6つ（フリー枠を除いた配置）。`free` の計算に使う。 */
+const TECH_TRACK_POSITIONS: readonly ResearchTrackId[] = [
+  "terra",
+  "nav",
+  "ai",
+  "gaia",
+  "eco",
+  "sci",
+];
+
+/** tileId → 計算した free 枠のセル（初回だけ作る）。 */
+const freeCellCache = new Map<string, Partial<Record<FactionId, number>>>();
+
+function computeFreeCell(tileId: string): Partial<Record<FactionId, number>> {
+  const tile = TECH_POSITION_WEIGHTS[tileId];
+  const out: Partial<Record<FactionId, number>> = {};
+  if (!tile) return out;
+  for (const f of FACTION_IDS) {
+    // 記載のない列は0。**6列すべての最大値**を取るので、どこか1列でも
+    // 記載が無ければ 0 が下限になる（＝嫌なタイルでもフリー枠なら取らずに済む）。
+    let best = 0;
+    for (const pos of TECH_TRACK_POSITIONS) {
+      const v = tile[pos]?.[f] ?? 0;
+      if (v > best) best = v;
+    }
+    if (best !== 0) out[f] = best;
+  }
+  return out;
+}
+
+/**
+ * 標準技術1枚ぶんの重み（配置ごと）。**参照はここを通すこと。**
+ *
+ * フリー枠はデータに持たず、研究列6つの**最大値**として計算する（2026-08-01）。
+ * 根拠はルールブック p13「技術タイルの獲得」——
+ * 研究エリアの真下の6枚は「その研究エリアでのみ」マーカーを進められ、進められない
+ * 場合は進展分が失われる。フリー枠の3枚は「任意の研究エリア1つ」を進められる。
+ * つまりフリー枠はどのトラック配置に対しても完全な上位互換で、フリー枠であることの
+ * 利益は「登りたい列を選べる」ことに尽きる。だから最大値を取るのが正しい。
+ *
+ * 副作用として、**編集するのは研究列だけでよい**（フリー枠は自動で追随する）。
+ */
+export function techPositionCell(
+  tileId: string,
+  pos: TechPosition
+): Partial<Record<FactionId, number>> | undefined {
+  if (pos !== "free") return TECH_POSITION_WEIGHTS[tileId]?.[pos];
+  if (!TECH_POSITION_WEIGHTS[tileId]) return undefined;
+  let cell = freeCellCache.get(tileId);
+  if (!cell) {
+    cell = computeFreeCell(tileId);
+    freeCellCache.set(tileId, cell);
+  }
+  return cell;
+}
 
 /**
  * 標準技術の寄与スケール（＝評価指数 standardTech の既定値）。
@@ -394,11 +453,11 @@ export function roundTimingOf(tileId: string, roundIndex: number): number {
 // 下の数字はすぐ古くなる。セットアップを引かずにこの表と TECH_POSITION_WEIGHTS を
 // 素で数え、「1ゲームで実際に場に出る枚数」で割り引いた期待値（4人LF）。
 //
-//   ダルカニア人 98.5 / ネヴラ人 81.1 / スペースジャイアント 76.2 / ジオデン人 73.6
-//   ティンカーロイド 72.7 / イタル人 71.5 / ゼノ族 68.4 / タクロン族 67.3
-//   ランティダ人 64.1 / フィラク族 60.5 / マッドアンドロイド 58.1 / モウェイド人 54.5
-//   ダー・シュワーム人 42.9 / グリーン人 42.7 / 地球人 41.7 / ハッシュ・ホラ人 38.6
-//   アンバス人 32.1 / バル・タック人 18.0        （最大/最小 = 5.5倍）
+//   ダルカニア人 104.5 / ネヴラ人 87.1 / スペースジャイアント 81.4
+//   ティンカーロイド 78.7 / ジオデン人 77.1 / イタル人 75.8 / タクロン族 72.5
+//   ゼノ族 71.0 / ランティダ人 65.0 / フィラク族 61.4 / マッドアンドロイド 60.7
+//   モウェイド人 58.7 / グリーン人 47.8 / ダー・シュワーム人 45.5 / 地球人 43.4
+//   ハッシュ・ホラ人 40.3 / アンバス人 33.9 / バル・タック人 19.7  （最大/最小 = 5.3倍）
 //
 // 正規化しない方針（案C＝「タイル関与の広さ＝強さ」）なので差が出ること自体は
 // 設計どおり。ただし**上下の外れ値は「1つの能力を何枚ものタイルに書いた」結果**
@@ -416,8 +475,8 @@ export function roundTimingOf(tileId: string, roundIndex: number): number {
 //   QIC付きタイルすべてに書いているため）。合計は中位だが分散が大きい。
 //
 // 母星色ごと（その色でいちばん強い種族＝色優遇の掛け先と同じ見かた）:
-//   小惑星98.5 / 白81.1 / 原始76.2 / 橙73.6 / 黄68.4 / 茶67.3 / 青64.1 /
-//   黒60.5 / 赤42.9  —— 赤（ハッシュ・ホラ／ダー・シュワーム）が一段低い。
+//   小惑星104.5 / 白87.1 / 原始81.4 / 橙77.1 / 茶72.5 / 黄71.0 / 青65.0 /
+//   黒61.4 / 赤45.5  —— 赤（ハッシュ・ホラ／ダー・シュワーム）が一段低い。
 // ---------------------------------------------------------------------------
 export const TILE_FACTION_WEIGHTS: Record<string, Partial<Record<FactionId, number>>> = {
   // ===== 上級技術（15＋LF6） =====

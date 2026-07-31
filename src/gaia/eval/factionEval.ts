@@ -16,7 +16,7 @@ import {
   factionsForMode,
   roundTimingOf,
   ROUND_TIMING_BASE,
-  TECH_POSITION_WEIGHTS,
+  techPositionCell,
   TILE_FACTION_WEIGHTS,
   type FactionId,
   type TechPosition,
@@ -143,7 +143,7 @@ export function setupFactionTileHits(
     ...result.standardTech.free.map((id) => ({ id, pos: "free" as TechPosition })),
   ];
   for (const { id, pos } of stdSlots) {
-    const cell = TECH_POSITION_WEIGHTS[id]?.[pos];
+    const cell = techPositionCell(id, pos);
     if (!cell) continue;
     const scale = w.standardTech;
     const byFaction: Partial<Record<FactionId, number>> = {};
@@ -206,7 +206,7 @@ export function setupFactionBreakdown(
   // 2026-07-31: トラック下とフリー枠を1つの表へ統合し、係数も1つにした。
   const addStd = (id: string | undefined, pos: TechPosition) => {
     if (!id) return;
-    const cell = TECH_POSITION_WEIGHTS[id]?.[pos];
+    const cell = techPositionCell(id, pos);
     if (!cell) return;
     for (const [f, v] of Object.entries(cell)) byCategory.standardTech[f as FactionId] += v ?? 0;
   };

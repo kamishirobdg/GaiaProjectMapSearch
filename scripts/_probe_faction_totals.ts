@@ -17,8 +17,10 @@
 import {
   FACTIONS,
   TECH_POSITION_WEIGHTS,
+  techPositionCell,
   TILE_FACTION_WEIGHTS,
   type FactionId,
+  type TechPosition,
 } from "../src/gaia/eval/factionWeights";
 import { SETUP_CATALOG } from "../src/gaia/setup/data";
 import {
@@ -126,23 +128,27 @@ const rows: Row[] = FACTIONS.map((f) => {
 
   // 標準技術は9種が必ず全部出る。どの列に置かれるかは等確率とみなして
   // 7通り（研究列6 + フリー）の平均を取る。
+  // フリー枠は研究列の最大値（techPositionCell が計算する）。
+  const TECH_POSITIONS: TechPosition[] = ["terra", "nav", "ai", "gaia", "eco", "sci", "free"];
   let techSum = 0;
-  for (const tile of Object.values(TECH_POSITION_WEIGHTS)) {
-    const cells = Object.values(tile);
+  for (const tileId of Object.keys(TECH_POSITION_WEIGHTS)) {
     let s = 0;
-    for (const cell of cells) {
-      const v = cell?.[f.id] ?? 0;
+    for (const pos of TECH_POSITIONS) {
+      const v = techPositionCell(tileId, pos)?.[f.id] ?? 0;
       if (v === 0) continue;
       s += v;
-      if (v > 0) {
-        posCount++;
-        posSum += v;
-      } else {
-        negCount++;
-        negSum += v;
+      // 枚数・素点はデータに書いてある研究列だけ数える（フリーは派生なので重複させない）
+      if (pos !== "free") {
+        if (v > 0) {
+          posCount++;
+          posSum += v;
+        } else {
+          negCount++;
+          negSum += v;
+        }
       }
     }
-    techSum += s / cells.length;
+    techSum += s / TECH_POSITIONS.length;
   }
   const techExpected = techSum * DEFAULT_SETUP_WEIGHTS.standardTech;
   byCat.standardTech = techExpected;
