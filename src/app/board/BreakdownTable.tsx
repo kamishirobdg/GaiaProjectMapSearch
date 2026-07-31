@@ -100,6 +100,12 @@ export function axisMarkers(
      * 監査の scoutKey は探査船セルの座標なので、船の識別は scoutId で行う。
      */
     scoutId?: string;
+    /**
+     * この1セルだけに絞る（原始・小惑星の追加行用、2026-07-31）。
+     * 追加行の値は「最良の1惑星」のものなので、マークもその惑星だけにする
+     * —— 全部の原始惑星を光らせると、数字とマークが食い違って見える。
+     */
+    onlyCellKey?: string;
   }
 ): BreakdownMarker[] {
   if (!audit) return [];
@@ -108,6 +114,7 @@ export function axisMarkers(
     const k = String(key ?? "");
     const p = String(pt ?? "");
     if (!k || (colorKey && p !== colorKey)) return;
+    if (opts?.onlyCellKey != null && k !== opts.onlyCellKey) return;
     out.push({ key: k, color: RING_COLOR[p] ?? "#666666", label: `${markerColorLabel(p, lang)}${extra}` });
   };
   const dist = (d: any) => (d ? (lang === "ja" ? ` / 距離${d}` : ` / dist ${d}`) : "");
@@ -194,7 +201,9 @@ const isActiveSource = (id: string) => !!activeSources && activeSources.has(id);
 const cellMark = (
   axis: MarkAxis,
   k: string,
-  join?: "left" | "right"
+  join?: "left" | "right",
+  /** 原始・小惑星の追加行だけ: 最良の1惑星に絞る（2026-07-31） */
+  onlyCellKey?: string
 ): React.HTMLAttributes<HTMLTableCellElement> => {
   if (!onMark) return {};
   const id = `${axis}:${k}`;
@@ -207,7 +216,12 @@ const cellMark = (
         ? `inset -2px 0 0 0 ${ring}, inset 0 2px 0 0 ${ring}, inset 0 -2px 0 0 ${ring}`
         : `inset 0 0 0 2px ${ring}`;
   return {
-    onClick: (e) => onMark(id, axisMarkers(audit, axis, k, lang), e.ctrlKey || e.metaKey),
+    onClick: (e) =>
+      onMark(
+        id,
+        axisMarkers(audit, axis, k, lang, onlyCellKey ? { onlyCellKey } : undefined),
+        e.ctrlKey || e.metaKey
+      ),
     title: lang === "ja" ? "地図にマーク（Ctrlで複数選択）" : "Mark on map (Ctrl = multi-select)",
     style: {
       cursor: "pointer",
@@ -474,18 +488,29 @@ return (
           if (!hasAny) return null;
 
           return kinds.map((k) => {
-            const vScout = ex(a?.scout?.extraByKind, k);
-            const vCore = ex(a?.scoutCore?.extraByKind, k);
-            const vGaia = ex(a?.gaiaProximity?.extraByKind, k);
-            const vCluster = ex(a?.cluster?.extraByKind, k);
+            /**
+             * 「最良の1惑星 × 補正値」（2026-07-31 ユーザー確定）。複数がそこそこ
+             * 優位であるより「船に近く星系にも近い最良の惑星が1つ」が望ましい、
+             * という判断で、種別ごとの単純合算をやめた。
+             * extraBest を持たない古い保存結果は従来の合算にフォールバックする
+             * （page.tsx の displayBreakdown が再評価すれば新しい値になる）。
+             */
+            const best = a?.extraBest?.[k] ?? null;
+            const vScout = best ? Number(best.scout) || 0 : ex(a?.scout?.extraByKind, k);
+            const vCore = best ? Number(best.core) || 0 : ex(a?.scoutCore?.extraByKind, k);
+            const vGaia = best ? Number(best.gaia) || 0 : ex(a?.gaiaProximity?.extraByKind, k);
+            const vCluster = best ? Number(best.cluster) || 0 : ex(a?.cluster?.extraByKind, k);
             // 最外周/外周は原始・小惑星の種族評価に効かないので計算対象外
             // （表示は「-」。2026-07-30 ユーザー確定）。
             const vTotal = vScout + vCore + vGaia + vCluster;
 
             const label = lang === "ja" ? EXTRA_LABEL_JA[k] : k;
 
-            // 基本7色の行と同じクリック挙動（sourceId も同形式 `${axis}:${kind}`）
-            const markExtra = (axis: MarkAxis, join?: "left" | "right") => cellMark(axis, k, join);
+            // 基本7色の行と同じクリック挙動（sourceId も同形式 `${axis}:${kind}`）。
+            // ただし値が最良の1惑星のものなので、マークもその惑星だけに絞る。
+            const onlyCell = best ? String(best.cellKey ?? "") || undefined : undefined;
+            const markExtra = (axis: MarkAxis, join?: "left" | "right") =>
+              cellMark(axis, k, join, onlyCell);
 
             const cellForExtra = (colKey: keyof typeof cols) => {
               if (!cols[colKey]) return null;

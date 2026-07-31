@@ -110,6 +110,28 @@ export type SoftBreakdown = {
     outerCountExtraByKind?: Record<string, number>;
     touchCountExtraByKind?: Record<string, number>;
 
+    /**
+     * 原始・小惑星の「最良の1惑星 × 補正値」（2026-07-31）。内訳表の追加行はこれを出す。
+     * 中身は 船接触＋船星系＋ガイア＋星系 の合計で、最外周/外周は入らない。
+     * 種別ごとの単純合算（各軸の extraByKind）は監査用に従来どおり残してある。
+     * 軸・スコアには入らないので、保存済み結果や回帰スナップショットには影響しない。
+     */
+    extraBest?: Record<
+      string,
+      {
+        /** 選ばれた惑星のセル座標（マーカー用） */
+        cellKey: string;
+        scout: number;
+        core: number;
+        gaia: number;
+        cluster: number;
+        /** 補正前の4軸合計 */
+        raw: number;
+        factor: number;
+        total: number;
+      }
+    >;
+
     // planetType は基本7色に加え PROTO/ASTEROID も入る（マーカー用）
     outerHits: Array<{
       cellKey: string;
@@ -237,6 +259,23 @@ const PLANET_TYPES: PlanetType[] = ["BLACK", "BLUE", "BROWN", "ORANGE", "RED", "
 
 /** 星系の大きさを数えるときの次元横断惑星の価値（他の惑星の半分。2026-07-30 ユーザー確定） */
 export const CLUSTER_TRANSDIM_WEIGHT = 0.5;
+
+/**
+ * 原始・小惑星の「最良の1つ」に掛ける補正値（2026-07-31）。
+ *
+ * 内訳表の追加行を基本7色の行と同じ物差しで読めるようにするための係数。
+ * スコア（planetTypeTotals）には入らない。
+ *
+ * 実測（`npx tsx scripts/measure_extra_best.ts`、LF 3p/4p 各24盤面・既定の評価指数）:
+ *   最良値の平均   PROTO 34.98 / ASTEROID 44.07
+ *   基本7色の平均  107.73
+ *   → 種別ごとに合わせるなら PROTO 3.08 / ASTEROID 2.44 だが、
+ *     それだと「小惑星のほうが条件の良い惑星が多い」という盤面の実態を
+ *     打ち消してしまう。両種別まとめた平均 39.53 に対する比 2.73 を
+ *     0.25 刻みに丸めて 2.75 を全体で使う。
+ *     結果、平均は PROTO 96.2 / ASTEROID 121.2（基本7色平均の -11% / +12%）。
+ */
+export const EXTRA_BEST_FACTOR = 2.75;
 
 function zeroAxis(): AxisByType {
   return { BLACK: 0, BLUE: 0, BROWN: 0, ORANGE: 0, RED: 0, WHITE: 0, YELLOW: 0 };
@@ -389,6 +428,37 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
   const touchExtraByKind: Record<string, number> = {};
   const outerCountExtraByKind: Record<string, number> = {};
   const touchCountExtraByKind: Record<string, number> = {};
+
+  /**
+   * PROTO/ASTEROID の惑星ごとの寄与（2026-07-31）。
+   *
+   * 「複数がそこそこ優位であるより、船に近く星系にも近い最良の惑星が1つ」が
+   * 望ましい、というユーザー判断（2026-07-30）。種別ごとの単純合算（extraByKind）
+   * だと弱い惑星が数だけ多い盤面が高く出るので、惑星ごとに持ち直して
+   * 最良の1つを選べるようにする。中身は 船接触＋船星系＋ガイア＋星系 の合計で、
+   * 最外周/外周は原始・小惑星の評価に効かないので入れない（2026-07-30 確定）。
+   *
+   * extraByKind 自体は従来どおり素の合算のまま残す（既存の表示・監査が読むため）。
+   * ここから作る extraBest が「最良の1つ×補正値」の表示用。
+   */
+  const extraByPlanet = new Map<
+    string,
+    { kind: string; scout: number; core: number; gaia: number; cluster: number }
+  >();
+  const addExtraPlanet = (
+    cellKey: string,
+    kind: string,
+    axis: "scout" | "core" | "gaia" | "cluster",
+    v: number
+  ) => {
+    if (kind !== "PROTO" && kind !== "ASTEROID") return;
+    let e = extraByPlanet.get(cellKey);
+    if (!e) {
+      e = { kind, scout: 0, core: 0, gaia: 0, cluster: 0 };
+      extraByPlanet.set(cellKey, e);
+    }
+    e[axis] += v;
+  };
   for (const p of extracted.planetCells) {
     if (toPlanetType((p as any).planetKind as any, (p as any).colorKey)) continue;
     const kindU = String((p as any).planetKind ?? "").toUpperCase() || "UNKNOWN";
@@ -486,6 +556,7 @@ for (const s of extracted.scoutCells) {
       // PROTO/ASTEROID等は別枠
       const k = kindU || "UNKNOWN";
       scoutExtraByKind[k] = (scoutExtraByKind[k] ?? 0) + contrib;
+      addExtraPlanet(p.key, k, "scout", contrib);
     }
 
     total += contrib;
@@ -622,6 +693,7 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
           const k = kindU || "UNKNOWN";
           extraByKind[k] = (extraByKind[k] ?? 0) + contrib;
           scoutCoreExtraByKind[k] = (scoutCoreExtraByKind[k] ?? 0) + contrib;
+          addExtraPlanet(p.key, k, "core", contrib);
         }
 
         total += contrib;
@@ -694,6 +766,7 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
           gaiaHitCount += 1;
         } else {
           gaiaExtraByKind[kindU] = (gaiaExtraByKind[kindU] ?? 0) + w;
+          addExtraPlanet(p.key, kindU, "gaia", w);
         }
         gaiaHits.push({ cellKey: p.key, planetType: t ?? kindU, distance: d, value: w });
       }
@@ -724,6 +797,9 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
       // クラスタの「大きさ」は素の個数ではなく重み付き（2026-07-30 ユーザー確定）。
       // 次元横断惑星は1ラウンド目に入植できないので他の惑星の半分で数える。
       let weightedSize = 0;
+      // このクラスタに含まれる PROTO/ASTEROID のセル。weightedSize が確定してから
+      // 惑星ごとの寄与へ配るので、いったん覚えておく（2026-07-31）。
+      const extraCellsInComp: Array<{ cellKey: string; kind: string }> = [];
       for (const pos of comp) {
         const c = cellByKey.get(`${pos.q},${pos.r}`);
         if (!c) continue;
@@ -731,17 +807,69 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
         const kindU = String((c as any).planetKind ?? "").toUpperCase() || "UNKNOWN";
         weightedSize += kindU === "TRANSDIM" ? CLUSTER_TRANSDIM_WEIGHT : 1;
         if (t) colorSet.add(t);
-        else extraSet.add(kindU);
+        else {
+          extraSet.add(kindU);
+          extraCellsInComp.push({ cellKey: (c as any).key, kind: kindU });
+        }
         clusterHits.push({ cellKey: (c as any).key, planetType: t ?? kindU, size: comp.length });
       }
       for (const t of colorSet) clusterAxis[t] += wCluster * weightedSize;
       // 色ごとに1回、と同じ規則で追加種別にも入れる（表示・マーカー用。スコアには入らない）
       for (const k of extraSet) clusterExtraByKind[k] = (clusterExtraByKind[k] ?? 0) + wCluster * weightedSize;
+      // 惑星ごとの方は「その惑星が属するクラスタの大きさ」なので、同じクラスタに
+      // 同種別が2つあればどちらも同じ値を持つ（種別ごとの合算とは意図的に違う）。
+      for (const e of extraCellsInComp) {
+        addExtraPlanet(e.cellKey, e.kind, "cluster", wCluster * weightedSize);
+      }
       clusterList.push({ size: comp.length, weightedSize, colors: [...colorSet].sort() });
     }
     clusterHits.sort((a, b) => String(a.cellKey).localeCompare(String(b.cellKey)));
     // deterministic ordering for audit
     clusterList.sort((a, b) => b.size - a.size || a.colors.join(",").localeCompare(b.colors.join(",")));
+  }
+
+  // ===== 原始・小惑星の「最良の1つ×補正値」（2026-07-31）=====
+  //
+  // 種別ごとに、4軸の合計がいちばん大きい惑星を1つ選ぶ。同点はセルキーで安定化。
+  // 表示は「その惑星の値 × EXTRA_BEST_FACTOR」で、軸ごとの値も同じ補正を掛けるので
+  // 列の合計と評価列が一致する。スコア（planetTypeTotals）には入れないので、
+  // 保存済みの結果・回帰スナップショットには影響しない。
+  const extraBest: Record<
+    string,
+    {
+      cellKey: string;
+      scout: number;
+      core: number;
+      gaia: number;
+      cluster: number;
+      /** 補正前の4軸合計（補正値を決め直すときの実測に使う） */
+      raw: number;
+      factor: number;
+      total: number;
+    }
+  > = {};
+  {
+    const bestRaw = new Map<string, { cellKey: string; e: { scout: number; core: number; gaia: number; cluster: number }; raw: number }>();
+    for (const [cellKey, e] of extraByPlanet) {
+      const raw = e.scout + e.core + e.gaia + e.cluster;
+      const cur = bestRaw.get(e.kind);
+      if (!cur || raw > cur.raw || (raw === cur.raw && cellKey.localeCompare(cur.cellKey) < 0)) {
+        bestRaw.set(e.kind, { cellKey, e, raw });
+      }
+    }
+    for (const [kind, b] of bestRaw) {
+      const f = EXTRA_BEST_FACTOR;
+      extraBest[kind] = {
+        cellKey: b.cellKey,
+        scout: b.e.scout * f,
+        core: b.e.core * f,
+        gaia: b.e.gaia * f,
+        cluster: b.e.cluster * f,
+        raw: b.raw,
+        factor: f,
+        total: b.raw * f,
+      };
+    }
   }
 
   // totals & imbalance
@@ -797,6 +925,8 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
         touchExtraByKind,
         outerCountExtraByKind,
         touchCountExtraByKind,
+        // 原始・小惑星の「最良の1惑星 × 補正値」（内訳表の追加行はこれを出す。2026-07-31）
+        ...(Object.keys(extraBest).length > 0 ? { extraBest } : {}),
         outerHits,
         touchHits,
         scout: {
