@@ -55,6 +55,8 @@ export const UI_TEXT = {
 
     searchSsot: "Search SSOT",
     noSearchConfig: `No search config for templateId. Add it in src/gaia/ssot/searchPlacementConfig.ts`,
+    templateMismatch:
+      "The board does not belong to the selected template, so markers fall back to tile level. Match the players/expansion radios to the board.",
 
     currentPlacementHash: "current placementHash",
     fixedLarge: "fixedLarge",
@@ -279,6 +281,8 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
 
     searchSsot: "固定タイル",
     noSearchConfig: `templateIdに対応する検索設定がありません。src/gaia/ssot/searchPlacementConfig.ts に追加してください。`,
+    templateMismatch:
+      "表示中の盤面が選択中のテンプレートのものではないため、マーカーがタイル単位に劣化しています。人数・拡張の選択を盤面に合わせてください。",
 
     currentPlacementHash: "現在のHash",
     fixedLarge: "固定基本タイル",

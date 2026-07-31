@@ -1123,6 +1123,14 @@ return (savedProfiles ?? []).filter((p) => {
   // If URL has ?h=..., apply it once results exist.
   const pendingHashRef = React.useRef<string | null>(null);
   const hashAppliedRef = React.useRef<boolean>(false);
+  /**
+   * URL の ?t=<templateId> で開かれたときのテンプレID。
+   * 保存済み条件の自動適用（下の didAutoApplyRef の effect）はプロファイルの
+   * テンプレへ which を戻すが、savedProfiles は非同期で届くのでマウント時の
+   * ?t= より後に走り、後勝ちで上書きしてしまう（2026-07-30 報告）。
+   * このrefが立っている間は自動適用にテンプレを触らせない。
+   */
+  const urlTemplateRef = React.useRef<string | null>(null);
 
   
   const [placementOverride, setPlacementOverride] = React.useState<any[] | null>(null);
@@ -1175,6 +1183,7 @@ setSelectedSeedLabel(String(found.seed ?? ""));
         // List の「Mapで開く」でマップが正しく出なかった。
         const t = url.searchParams.get("t");
         if (t && t.trim()) {
+          urlTemplateRef.current = t.trim();
           applyTemplateFromId(t.trim());
           url.searchParams.delete("t");
         }
@@ -1273,17 +1282,22 @@ setSelectedSeedLabel(String(found.seed ?? ""));
   }, []);
 
   const applySavedProfile = React.useCallback(
-    (p: PersistedProfile, opts?: { closePanel?: boolean }) => {
+    (p: PersistedProfile, opts?: { closePanel?: boolean; keepTemplate?: boolean }) => {
       const closePanel = opts?.closePanel !== false; // default true
+      const keepTemplate = opts?.keepTemplate === true; // default false
       const params = (p.params ?? null) as any;
       const tid = String(params?.templateId ?? p.templateId ?? "");
       const hasParams = !!params;
 
       if (!hasParams) return;
 
+      // keepTemplate: URL の ?t= で開かれたときは、そちらを優先してテンプレ
+      // （which / 人数 / 拡張）を触らない。条件そのものは通常どおり復元する。
+      const tmpl = keepTemplate ? "" : tid;
+
       // Keep the shared players/expansion selection in sync with the profile's
       // template (Lost Fleet 3p/4p, or base_34p which is shared by 3/4 players).
-      if (tid === "base_34p") {
+      if (tmpl === "base_34p") {
         setWhich("base");
         setExpansion("base");
         writeSharedExpansion("base");
@@ -1293,20 +1307,24 @@ setSelectedSeedLabel(String(found.seed ?? ""));
           writeSharedPlayers(p);
           return p;
         });
-        const pm = Number((params as any)?.placementMethod);
-        if (pm === 1 || pm === 2 || pm === 3) setPlacementMethod(pm as 1 | 2 | 3);
-      } else if (tid.startsWith("3p")) {
+      } else if (tmpl.startsWith("3p")) {
         setWhich("3p");
         setPlayers(3);
         setExpansion("lostFleet");
         writeSharedPlayers(3);
         writeSharedExpansion("lostFleet");
-      } else if (tid.startsWith("4p")) {
+      } else if (tmpl.startsWith("4p")) {
         setWhich("4p");
         setPlayers(4);
         setExpansion("lostFleet");
         writeSharedPlayers(4);
         writeSharedExpansion("lostFleet");
+      }
+
+      // placementMethod はテンプレ切替とは独立の検索条件なので、?t= 優先時も復元する。
+      if (tid === "base_34p") {
+        const pm = Number((params as any)?.placementMethod);
+        if (pm === 1 || pm === 2 || pm === 3) setPlacementMethod(pm as 1 | 2 | 3);
       }
 
       try {
@@ -1580,7 +1598,8 @@ try {
     if (!chosen) return;
 
     didAutoApplyRef.current = true;
-    applySavedProfile(chosen, { closePanel: false });
+    // ?t= で開かれたときはテンプレを触らせない（?t= が後勝ちで潰されるのを防ぐ）。
+    applySavedProfile(chosen, { closePanel: false, keepTemplate: !!urlTemplateRef.current });
   }, [savedProfiles, applySavedProfile]);
 
 
@@ -1943,6 +1962,28 @@ const cellKeyToTile = React.useMemo(() => {
   }
   return m;
 }, [templateId, placementForViewer]);
+
+/**
+ * 表示中の placement が、いま選ばれているテンプレのものかを突き合わせる。
+ *
+ * ?t= が効かずに食い違うと、マーカーが黙ってタイル単位へ劣化したり、別テンプレの
+ * スロット位置で盤面が描かれたりする（2026-07-30 報告）。黙って劣化させない。
+ *
+ * 例外の有無では検出できない: 4p_lostFleet のスロットは base_34p / 3p_lostFleet の
+ * 上位集合なので、base の placement を渡しても buildLogicalMapFromPlacement は
+ * 通ってしまう（実測: cells=190 の"正しく見える"論理マップができる）。
+ * スロット集合そのものを比べる。正規の placement は全テンプレ・全方式・全シードで
+ * テンプレのスロット集合と完全一致することを確認済み。
+ */
+const templateMismatch = React.useMemo(() => {
+  if (!Array.isArray(placementForViewer) || placementForViewer.length === 0) return null;
+  const want = new Set<string>(((template as any).slots ?? []).map((s: any) => String(s.slotId)));
+  const got = new Set<string>(placementForViewer.map((p: any) => String(p.slotId)));
+  if (want.size === got.size && [...got].every((id) => want.has(id))) return null;
+  const missing = [...want].filter((id) => !got.has(id));
+  const extra = [...got].filter((id) => !want.has(id));
+  return { missing, extra };
+}, [template, placementForViewer]);
 
 /**
  * マーカー配列。(セル, 色) で必ず重複を潰す。
@@ -3117,6 +3158,27 @@ const handleDeleteUsed = React.useCallback(
               tileMode={tileMode}
             />
           </div>
+
+          {templateMismatch ? (
+            <div
+              style={{
+                margin: "6px 10px 0",
+                padding: "6px 8px",
+                border: "1px solid #d9822b",
+                borderRadius: 6,
+                background: "#fff6e8",
+                color: "#8a4b00",
+                fontSize: 12,
+                lineHeight: 1.5,
+              }}
+            >
+              ⚠ {t("templateMismatch")}
+              <div style={{ fontFamily: "monospace", fontSize: 11, opacity: 0.8, marginTop: 2 }}>
+                templateId={templateId} / 不足={templateMismatch.missing.join(",") || "-"} / 余剰=
+                {templateMismatch.extra.join(",") || "-"}
+              </div>
+            </div>
+          ) : null}
 
           {errorMsg ? <div style={{ padding: 10, color: "crimson", fontSize: 13, whiteSpace: "pre-wrap" }}>{errorMsg}</div> : null}
         </div>
