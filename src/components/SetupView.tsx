@@ -44,6 +44,7 @@ import {
   type Expansion,
 } from "@/lib/sharedSettings";
 import { SETUP_CATALOG } from "@/gaia/setup/data";
+import { hasRule, setTileRule, type TileRuleMode, type TileRules } from "@/gaia/setup/tileRules";
 import {
   RESEARCH_TRACK_IDS,
   TECH_SHIP_IDS,
@@ -94,7 +95,7 @@ const UI = {
     satellites: "衛星駒の順（モウェイド人／ティンカーロイド）",
     satellitesNote: "惑星改造ボードの7スペースに置く色順（番号順）。勢力選択とは独立。",
     draftNote:
-      "※ 全タイル（基本版・Lost Fleet）はルールブック・実物確認済み。種族別評価の重みは DRAFT（レビュー中）。",
+      "※ 全タイル（基本版・Lost Fleet）はルールブック・実物確認済み。種族別評価の重みは 仮設定。",
     seed: "シード",
     randomSeed: "ランダム",
     players: "人数",
@@ -158,6 +159,15 @@ const UI = {
     warnDistAvoidAll: "3人以上では3隻すべての回避は満たせません（満たせない分は無視）",
     shareRow: "共有",
     shareCopied: "コピーしました",
+    pickNotePositional: "この枠に入れるタイルを指定します（固定は1枚）",
+    pickNoteMembership: "この枠は順不同です。固定＝必ず場に出す",
+    pickClear: "この枠の指定を全部消す",
+    pickClose: "閉じる",
+    modeDefault: "指定なし",
+    modeFix: "固定",
+    modeInclude: "含む",
+    modeCandidate: "候補",
+    modeExclude: "除外",
   },
   en: {
     title: "Setup (research / boosters / scoring)",
@@ -230,6 +240,15 @@ const UI = {
     warnDistAvoidAll: "With 3+ players, avoiding it on all three ships cannot be satisfied (unmet ones are ignored)",
     shareRow: "Share",
     shareCopied: "Copied",
+    pickNotePositional: "Constrain which tile lands in this slot (one pin)",
+    pickNoteMembership: "This slot is unordered. Pin = always in play",
+    pickClear: "Clear this slot",
+    pickClose: "Close",
+    modeDefault: "Any",
+    modeFix: "Pin",
+    modeInclude: "Include",
+    modeCandidate: "Candidate",
+    modeExclude: "Exclude",
   },
 } as const;
 
@@ -309,6 +328,9 @@ function TileCellView({
   lf,
   full,
   mark,
+  onPick,
+  pinned,
+  pickLabel,
 }: {
   id: string;
   tag?: string;
@@ -317,6 +339,11 @@ function TileCellView({
   full?: boolean;
   /** 光らせる色（未指定なら光らせない）。要素自体を縁取るのでレイアウト非依存。 */
   mark?: string;
+  /** クリックでそのスロットの指定パネルを開く */
+  onPick?: () => void;
+  /** そのスロットに指定が入っているか（バッジ表示用） */
+  pinned?: boolean;
+  pickLabel?: string;
 }) {
   const [failed, setFailed] = React.useState(false);
   const label = labelOf(id, lang);
@@ -325,10 +352,13 @@ function TileCellView({
   const imageId = lf && LF_REVISED_IDS.has(id) ? `${id}_LF` : id;
   return (
     <div
-      title={tooltip}
+      title={onPick ? `${tooltip}
+${pickLabel ?? ""}` : tooltip}
       data-tile-id={id}
+      onClick={onPick}
       className={mark ? "setup-tile-marked" : undefined}
       style={{
+        cursor: onPick ? "pointer" : undefined,
         border: mark ? `2px solid ${mark}` : "1px solid #ddd",
         borderRadius: 8,
         padding: mark ? "5px 7px" : "6px 8px",
@@ -343,7 +373,12 @@ function TileCellView({
         ...(mark ? { boxShadow: `0 0 0 3px ${mark}55`, outline: "none" } : {}),
       }}
     >
-      {tag ? <span style={{ fontSize: 11, opacity: 0.6 }}>{tag}</span> : null}
+      {tag || pinned ? (
+        <span style={{ fontSize: 11, opacity: 0.7, display: "flex", gap: 4, alignItems: "center" }}>
+          {tag ?? ""}
+          {pinned ? <span title={pickLabel} style={{ color: "#1b6b2f", fontWeight: 700 }}>指定</span> : null}
+        </span>
+      ) : null}
       {!failed ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -393,6 +428,7 @@ const LS = {
   econFace: "gaia_setup_econface",
   avoid: "gaia_setup_avoid",
   shipRules: "gaia_setup_shiprules",
+  tileRules: "gaia_setup_tilerules",
 } as const;
 
 /** LF船ルールのUI状態（off はキー省略 / gold は "" が off）。 */
@@ -518,6 +554,15 @@ export default function SetupView() {
   const [ruleModes, setRuleModes] = React.useState<Record<string, string>>({});
   // LF船ルール（距離タイルの船別 回避/強制＋リベリオン金枠同盟）
   const [shipRules, setShipRules] = React.useState<ShipRulesState>({ dist: {}, gold: "" });
+  // 全スロット共通のタイル指定（固定/除外/候補）。2026-07-30。
+  const [tileRules, setTileRules] = React.useState<TileRules>({});
+  /** どのスロットの指定パネルを開いているか。 */
+  const [picker, setPicker] = React.useState<{
+    slotId: string;
+    title: string;
+    pool: string[];
+    singleFix: boolean;
+  } | null>(null);
   // 共有リンクトークンの捕捉（null=未捕捉、""=なし）。ボードの pendingHashRef と同型。
   const pendingShareRef = React.useRef<string | null>(null);
   // 共有ボタンの「コピーしました」表示対象行
@@ -544,6 +589,8 @@ export default function SetupView() {
     for (const sh of input.shipDistanceForce ?? []) dist[sh] = "force";
     const sr: ShipRulesState = { dist, gold: input.rebellionGoldFed ?? "" };
     setShipRules(sr);
+    const tr = (input as any).tileRules ?? {};
+    setTileRules(tr);
     setSeed(input.seed);
     if (persist) {
       writeSharedExpansion(m);
@@ -552,6 +599,7 @@ export default function SetupView() {
       lsSet(LS.econFace, input.econFaceMode ?? "random");
       lsSet(LS.avoid, JSON.stringify(modes));
       lsSet(LS.shipRules, JSON.stringify(sr));
+      lsSet(LS.tileRules, JSON.stringify(tr));
     }
   }, []);
 
@@ -586,6 +634,15 @@ export default function SetupView() {
           }
           setRuleModes(modes);
         }
+      }
+    } catch {
+      // ignore
+    }
+    try {
+      const raw = lsGet(LS.tileRules);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) setTileRules(parsed);
       }
     } catch {
       // ignore
@@ -713,9 +770,10 @@ export default function SetupView() {
         ...(lf && distAvoid.length > 0 ? { shipDistanceAvoid: distAvoid } : {}),
         ...(lf && distForce.length > 0 ? { shipDistanceForce: distForce } : {}),
         ...(lf && shipRules.gold ? { rebellionGoldFed: shipRules.gold } : {}),
+        ...(Object.keys(tileRules).length > 0 ? { tileRules } : {}),
       };
     },
-    [players, lf, extFaceMode, econFaceMode, ruleModes, shipRules]
+    [players, lf, extFaceMode, econFaceMode, ruleModes, shipRules, tileRules]
   );
 
   const result = React.useMemo(() => buildSetupFromSeed(buildInput(seed)), [seed, buildInput]);
@@ -836,6 +894,8 @@ export default function SetupView() {
     const sr: ShipRulesState = { dist: {}, gold: "" };
     setShipRules(sr);
     lsSet(LS.shipRules, JSON.stringify(sr));
+    setTileRules({});
+    lsSet(LS.tileRules, JSON.stringify({}));
     resetEvalWeights();
   }, [resetEvalWeights]);
 
@@ -942,7 +1002,74 @@ export default function SetupView() {
     writeSharedPlayers(np);
   }, []);
 
-  const tileCell = (id: string, tag?: string, full?: boolean) => (
+  /** そのスロットに入りうるタイルの一覧（指定パネルの選択肢）。 */
+  const poolFor = React.useCallback(
+    (kind: string): string[] => {
+      const ids = (g: { id: string }[]) => g.map((t) => t.id);
+      switch (kind) {
+        case "std":
+          return ids(SETUP_CATALOG.standardTech);
+        case "adv":
+          return lf
+            ? [...ids(SETUP_CATALOG.advancedTech), ...ids(SETUP_CATALOG.advancedTechLF)]
+            : ids(SETUP_CATALOG.advancedTech);
+        case "booster":
+          return lf
+            ? [...ids(SETUP_CATALOG.boosters), ...ids(SETUP_CATALOG.boostersLF)]
+            : ids(SETUP_CATALOG.boosters);
+        case "rs":
+          return lf
+            ? [...ids(SETUP_CATALOG.roundScoring), ...ids(SETUP_CATALOG.roundScoringLF)]
+            : ids(SETUP_CATALOG.roundScoring);
+        case "fs":
+          return lf
+            ? [...ids(SETUP_CATALOG.finalScoring), ...ids(SETUP_CATALOG.finalScoringLF)]
+            : ids(SETUP_CATALOG.finalScoring);
+        case "fed":
+          return ids(SETUP_CATALOG.federations);
+        case "shipTech":
+          return ids(SETUP_CATALOG.standardTechLF);
+        case "goldFed":
+          return ids(SETUP_CATALOG.federationsGold);
+        case "artifacts":
+          return ids(SETUP_CATALOG.artifacts);
+        default:
+          return [];
+      }
+    },
+    [lf]
+  );
+
+  const openPicker = React.useCallback(
+    (slotId: string, title: string, kind: string, singleFix: boolean) => {
+      setPicker({ slotId, title, pool: poolFor(kind), singleFix });
+    },
+    [poolFor]
+  );
+
+  const changeTileRule = React.useCallback(
+    (slotId: string, tileId: string, mode: TileRuleMode | null, singleFix: boolean) => {
+      setTileRules((prev) => {
+        const next = setTileRule(prev, slotId, tileId, mode, { singleFix });
+        lsSet(LS.tileRules, JSON.stringify(next));
+        return next;
+      });
+    },
+    []
+  );
+
+  const pickHint = lang === "ja" ? "クリックでこの枠のタイルを指定" : "Click to constrain this slot";
+
+  /**
+   * タイル1枚。slot を渡すとクリックで指定パネルが開く。
+   * singleFix=false は順不同の枠（複数「含む」を許す）。
+   */
+  const tileCell = (
+    id: string,
+    tag?: string,
+    full?: boolean,
+    slot?: { slotId: string; title: string; kind: string; singleFix?: boolean }
+  ) => (
     <TileCellView
       key={id + (tag ?? "")}
       id={id}
@@ -951,11 +1078,118 @@ export default function SetupView() {
       lf={lf}
       full={full}
       mark={markedTiles.get(id)}
+      pinned={slot ? hasRule(tileRules, slot.slotId) : false}
+      pickLabel={slot ? `${slot.title} — ${pickHint}` : undefined}
+      onPick={
+        slot ? () => openPicker(slot.slotId, slot.title, slot.kind, slot.singleFix !== false) : undefined
+      }
     />
   );
 
   return (
     <>
+      {/* タイル指定パネル（クリックしたスロットの候補一覧）。2026-07-30。 */}
+      {picker ? (
+        <div
+          onClick={() => setPicker(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.35)",
+            zIndex: 60,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "white",
+              borderRadius: T.radius,
+              padding: T.pad,
+              maxWidth: 760,
+              width: "100%",
+              maxHeight: "80vh",
+              overflowY: "auto",
+              boxShadow: "0 8px 30px rgba(0,0,0,0.3)",
+            }}
+          >
+            <div style={{ display: "flex", gap: 10, alignItems: "baseline", marginBottom: 8, flexWrap: "wrap" }}>
+              <div style={{ fontWeight: 700, fontSize: T.fontHead }}>{picker.title}</div>
+              <div style={{ fontSize: T.fontNote, color: T.fgMuted }}>
+                {picker.singleFix ? t.pickNotePositional : t.pickNoteMembership}
+              </div>
+              <button
+                onClick={() => {
+                  for (const tid of Object.keys(tileRules[picker.slotId] ?? {})) {
+                    changeTileRule(picker.slotId, tid, null, picker.singleFix);
+                  }
+                }}
+                style={{ marginLeft: "auto", fontSize: 11, padding: "3px 8px" }}
+              >
+                {t.pickClear}
+              </button>
+              <button onClick={() => setPicker(null)} style={{ fontSize: 11, padding: "3px 8px" }}>
+                {t.pickClose}
+              </button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {picker.pool.map((tid) => {
+                const mode = tileRules[picker.slotId]?.[tid] ?? null;
+                const modes: Array<{ v: TileRuleMode | null; label: string; color: string }> = [
+                  { v: null, label: t.modeDefault, color: "#888" },
+                  { v: "fix", label: picker.singleFix ? t.modeFix : t.modeInclude, color: "#1b6b2f" },
+                  { v: "candidate", label: t.modeCandidate, color: "#1f5fa8" },
+                  { v: "exclude", label: t.modeExclude, color: "#b3261e" },
+                ];
+                return (
+                  <div
+                    key={tid}
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      border: T.borderSoft,
+                      borderRadius: 6,
+                      padding: "4px 6px",
+                      background: mode ? "#f2f7ff" : undefined,
+                    }}
+                  >
+                    <SmallTile id={tid} lang={lang} lf={lf} size={44} />
+                    <div style={{ fontSize: 12, flex: "1 1 200px", minWidth: 140 }}>
+                      <div style={{ fontWeight: 700 }}>{labelOf(tid, lang)}</div>
+                      <div style={{ fontSize: 11, color: T.fgMuted }}>{effectOf(tid, lang) ?? ""}</div>
+                    </div>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      {modes.map((m) => (
+                        <button
+                          key={String(m.v)}
+                          onClick={() => changeTileRule(picker.slotId, tid, m.v, picker.singleFix)}
+                          style={{
+                            fontSize: 11,
+                            padding: "3px 8px",
+                            fontWeight: mode === m.v ? 700 : 400,
+                            color: mode === m.v ? "#fff" : m.color,
+                            background: mode === m.v ? m.color : undefined,
+                            border: `1px solid ${m.color}`,
+                            borderRadius: 5,
+                          }}
+                        >
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* マーカーの点滅。要素自体に付けるのでレイアウトが変わっても追従する。 */}
       <style>{`@keyframes setupTileBlink{0%,100%{opacity:1}50%{opacity:.45}} .setup-tile-marked{animation:setupTileBlink 1.1s ease-in-out infinite}`}</style>
       <GlobalBar
@@ -1003,7 +1237,7 @@ export default function SetupView() {
                 </div>
                 {/* トラック上部スロット（列の縦位置を揃えるため全列で高さを確保） */}
                 <div style={{ minHeight: 148, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-                  {track === "terra" ? tileCell(result.federationLv5, t.fedTag) : null}
+                  {track === "terra" ? tileCell(result.federationLv5, t.fedTag, false, { slotId: "fed", title: t.federationLv5, kind: "fed" }) : null}
                   {showEconTop && result.mode === "lostFleet" ? (
                     <div
                       title={result.econTileFace === "A" ? t.econFaceA : t.econFaceB}
@@ -1028,8 +1262,8 @@ export default function SetupView() {
                     </div>
                   ) : null}
                 </div>
-                {tileCell(result.advancedTech.byTrack[track], t.advanced)}
-                {tileCell(result.standardTech.byTrack[track], t.standard)}
+                {tileCell(result.advancedTech.byTrack[track], t.advanced, false, { slotId: `adv:${track}`, title: `${t.advanced} / ${lang === "ja" ? TRACK_LABEL[track].ja : TRACK_LABEL[track].en}`, kind: "adv" })}
+                {tileCell(result.standardTech.byTrack[track], t.standard, false, { slotId: `std:${track}`, title: `${t.standard} / ${lang === "ja" ? TRACK_LABEL[track].ja : TRACK_LABEL[track].en}`, kind: "std" })}
                 {rule ? (
                   <div
                     title={lang === "ja" ? rule.label : rule.labelEn}
@@ -1073,7 +1307,7 @@ export default function SetupView() {
       <section>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.freeStandard}</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start" }}>
-          {result.standardTech.free.map((id) => tileCell(id))}
+          {result.standardTech.free.map((id) => tileCell(id, undefined, false, { slotId: "stdFree", title: t.freeStandard, kind: "std", singleFix: false }))}
         </div>
       </section>
 
@@ -1081,7 +1315,7 @@ export default function SetupView() {
       <section>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.roundScoring}</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start" }}>
-          {result.roundScoring.map((id, i) => tileCell(id, `${t.round}${i + 1}`))}
+          {result.roundScoring.map((id, i) => tileCell(id, `${t.round}${i + 1}`, false, { slotId: `rs:${i}`, title: `${t.roundScoring} ${t.round}${i + 1}`, kind: "rs" }))}
         </div>
       </section>
 
@@ -1091,7 +1325,7 @@ export default function SetupView() {
       <section>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.finalScoring}</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start" }}>
-          {result.finalScoring.map((id) => tileCell(id, undefined, true))}
+          {result.finalScoring.map((id, i) => tileCell(id, undefined, true, { slotId: `fs:${i}`, title: `${t.finalScoring} ${i + 1}`, kind: "fs" }))}
         </div>
       </section>
 
@@ -1101,7 +1335,7 @@ export default function SetupView() {
           <section>
             <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.scoringExtension}</div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
-              {tileCell(result.advancedTech.extension!, t.extensionAdv)}
+              {tileCell(result.advancedTech.extension!, t.extensionAdv, false, { slotId: "advExt", title: t.extensionAdv, kind: "adv" })}
               <div style={{ fontSize: 12, opacity: 0.85, display: "flex", flexDirection: "column", gap: 4 }}>
                 <TileImage
                   imageId={result.extensionFace === "vp25" ? "FACE_EXT_VP25" : "FACE_EXT_SHUTTLE"}
@@ -1130,12 +1364,12 @@ export default function SetupView() {
                     <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.8 }}>
                       {lang === "ja" ? SHIP_LABEL[ship].ja : SHIP_LABEL[ship].en}
                     </div>
-                    {tileCell(result.goldFederations![ship]!, t.goldFed)}
-                    {result.shipTech![ship] ? tileCell(result.shipTech![ship]!, t.shipTechLabel) : null}
+                    {tileCell(result.goldFederations![ship]!, t.goldFed, false, { slotId: `goldFed:${ship}`, title: `${t.goldFed} / ${lang === "ja" ? SHIP_LABEL[ship].ja : SHIP_LABEL[ship].en}`, kind: "goldFed" })}
+                    {result.shipTech![ship] ? tileCell(result.shipTech![ship]!, t.shipTechLabel, false, { slotId: `shipTech:${ship}`, title: `${t.shipTechLabel} / ${lang === "ja" ? SHIP_LABEL[ship].ja : SHIP_LABEL[ship].en}`, kind: "shipTech" }) : null}
                     {ship === "twilight" ? (
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                         <div style={{ fontSize: 11, opacity: 0.65 }}>{t.artifactsLabel}</div>
-                        {result.artifacts!.map((id) => tileCell(id))}
+                        {result.artifacts!.map((id) => tileCell(id, undefined, false, { slotId: "artifacts", title: t.artifactsLabel, kind: "artifacts", singleFix: false }))}
                       </div>
                     ) : null}
                     {techShip ? (
@@ -1184,7 +1418,7 @@ export default function SetupView() {
       <section>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.boosters}</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start" }}>
-          {result.boosters.available.map((id) => tileCell(id, undefined, true))}
+          {result.boosters.available.map((id) => tileCell(id, undefined, true, { slotId: "booster", title: t.boosters, kind: "booster", singleFix: false }))}
         </div>
       </section>
 

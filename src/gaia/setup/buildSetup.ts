@@ -41,6 +41,12 @@ import {
   type ShipId,
 } from "./types";
 import { SETUP_CATALOG } from "./data";
+import {
+  enforceMembership,
+  enforcePositional,
+  slotConstraint,
+  type TileRules,
+} from "./tileRules";
 
 export type BuildSetupInput = {
   seed: string;
@@ -92,6 +98,12 @@ export type BuildSetupInput = {
   shipDistanceForce?: ShipId[];
   /** LF: リベリオンの金枠同盟に FEDG2「任意の技術タイル1枚」を置く/置かない。 */
   rebellionGoldFed?: "avoid" | "force";
+  /**
+   * 全スロット共通のタイル指定（固定/除外/候補）。2026-07-30。
+   * slotId は SETUP_SLOTS のもの。空のときはフィールドごと省略する
+   * （互換の鉄則: 指定が無い状態のキーは従来と同じ）。
+   */
+  tileRules?: TileRules;
 };
 
 /** LF船ルールの対象タイル（データカタログの id）。 */
@@ -184,7 +196,25 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
   const playerCount = clampPlayers(input.playerCount, lf);
 
   // 1) Standard tech: 6 under tracks + 3 free. (LF's new types are NOT mixed.)
-  const std = shuffleSeeded(idsOf(SETUP_CATALOG.standardTech), streamFor(seed, "standardTech"));
+  const rules = input.tileRules;
+  const stdPool = idsOf(SETUP_CATALOG.standardTech);
+  const std = shuffleSeeded(stdPool, streamFor(seed, "standardTech"));
+  {
+    // 研究トラックの標準技術（位置あり）→ フリー枠（順不同）の順に満たす。
+    const locked = new Set<number>();
+    RESEARCH_TRACK_IDS.forEach((track, i) => {
+      const c = slotConstraint(rules, `std:${track}`, stdPool);
+      if (!c) return;
+      enforcePositional(std, i, c, { spareStart: std.length, lockedIndices: locked });
+      locked.add(i);
+    });
+    enforceMembership(
+      std,
+      { start: RESEARCH_TRACK_IDS.length, count: 3 },
+      slotConstraint(rules, "stdFree", stdPool),
+      { lockedIndices: locked }
+    );
+  }
   const stdByTrack = assignByTrack(std.slice(0, RESEARCH_TRACK_IDS.length));
   const stdFree = std.slice(RESEARCH_TRACK_IDS.length, RESEARCH_TRACK_IDS.length + 3);
 
@@ -198,6 +228,20 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
   const directives = resolveAdvDirectives(input);
   applyForceRules(adv, directives.wantedByTrack, lf);
   applyAvoidRules(adv, directives.bannedByTrack, lf);
+  {
+    const spareStart = RESEARCH_TRACK_IDS.length + (lf ? 1 : 0);
+    const locked = new Set<number>();
+    RESEARCH_TRACK_IDS.forEach((track, i) => {
+      const c = slotConstraint(rules, `adv:${track}`, advPool);
+      if (!c) return;
+      enforcePositional(adv, i, c, { spareStart, lockedIndices: locked });
+      locked.add(i);
+    });
+    if (lf) {
+      const c = slotConstraint(rules, "advExt", advPool);
+      if (c) enforcePositional(adv, RESEARCH_TRACK_IDS.length, c, { spareStart, lockedIndices: locked });
+    }
+  }
   const advByTrack = assignByTrack(adv.slice(0, RESEARCH_TRACK_IDS.length));
   const advExtension = adv[RESEARCH_TRACK_IDS.length]; // used only in LF mode
 
@@ -207,6 +251,7 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
     : idsOf(SETUP_CATALOG.boosters);
   const boosters = shuffleSeeded(boosterPool, streamFor(seed, "boosters"));
   const availableCount = Math.min(playerCount + 3, boosters.length);
+  enforceMembership(boosters, { start: 0, count: availableCount }, slotConstraint(rules, "booster", boosterPool));
   const available = boosters.slice(0, availableCount);
   const unused = boosters.slice(availableCount);
 
@@ -215,6 +260,16 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
     ? [...SETUP_CATALOG.roundScoring, ...SETUP_CATALOG.roundScoringLF]
     : SETUP_CATALOG.roundScoring;
   const scoringPool = shuffleSeeded(physicalPoolOf(scoringTiles), streamFor(seed, "roundScoring"));
+  {
+    const pool = physicalPoolOf(scoringTiles);
+    const locked = new Set<number>();
+    for (let i = 0; i < 6; i += 1) {
+      const c = slotConstraint(rules, `rs:${i}`, pool);
+      if (!c) continue;
+      enforcePositional(scoringPool, i, c, { spareStart: 6, lockedIndices: locked });
+      locked.add(i);
+    }
+  }
   const roundScoring = scoringPool.slice(0, 6);
 
   // 5) Final scoring: draw 2 (of 6, LF: of 9).
@@ -222,10 +277,21 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
     ? [...idsOf(SETUP_CATALOG.finalScoring), ...idsOf(SETUP_CATALOG.finalScoringLF)]
     : idsOf(SETUP_CATALOG.finalScoring);
   const finals = shuffleSeeded(finalPool, streamFor(seed, "finalScoring"));
+  {
+    const locked = new Set<number>();
+    for (let i = 0; i < 2; i += 1) {
+      const c = slotConstraint(rules, `fs:${i}`, finalPool);
+      if (!c) continue;
+      enforcePositional(finals, i, c, { spareStart: 2, lockedIndices: locked });
+      locked.add(i);
+    }
+  }
   const finalScoring = finals.slice(0, 2);
 
   // 6) Federation for Terraforming research level 5: draw 1 of 6 types.
-  const feds = shuffleSeeded(idsOf(SETUP_CATALOG.federations), streamFor(seed, "federationLv5"));
+  const fedPool = idsOf(SETUP_CATALOG.federations);
+  const feds = shuffleSeeded(fedPool, streamFor(seed, "federationLv5"));
+  enforcePositional(feds, 0, slotConstraint(rules, "fed", fedPool), { spareStart: 1 });
   const federationLv5 = feds[0];
 
   // 7) Muaked/Tinkerroid planet-transform: shuffle the 7 base colors into the
@@ -254,20 +320,46 @@ export function buildSetupFromSeed(input: BuildSetupInput): SetupResult {
   const techShips = TECH_SHIP_IDS.filter((s) => ships.includes(s));
 
   // New standard tech types onto the ship tech spaces (leftover boxed at 2p).
-  const shipTechDraw = shuffleSeeded(idsOf(SETUP_CATALOG.standardTechLF), streamFor(seed, "shipTech"));
+  const shipTechPool = idsOf(SETUP_CATALOG.standardTechLF);
+  const shipTechDraw = shuffleSeeded(shipTechPool, streamFor(seed, "shipTech"));
   applyShipDistanceRules(shipTechDraw, techShips, input);
+  {
+    const locked = new Set<number>();
+    techShips.forEach((ship, i) => {
+      const c = slotConstraint(rules, `shipTech:${ship}`, shipTechPool);
+      if (!c) return;
+      enforcePositional(shipTechDraw, i, c, { spareStart: techShips.length, lockedIndices: locked });
+      locked.add(i);
+    });
+  }
   const shipTech: Partial<Record<ShipId, string>> = {};
   techShips.forEach((ship, i) => {
     shipTech[ship] = shipTechDraw[i];
   });
 
   // playerCount artifacts onto Twilight.
-  const artifactsDraw = shuffleSeeded(idsOf(SETUP_CATALOG.artifacts), streamFor(seed, "artifacts"));
+  const artifactPool = idsOf(SETUP_CATALOG.artifacts);
+  const artifactsDraw = shuffleSeeded(artifactPool, streamFor(seed, "artifacts"));
+  enforceMembership(
+    artifactsDraw,
+    { start: 0, count: playerCount },
+    slotConstraint(rules, "artifacts", artifactPool)
+  );
   const artifacts = artifactsDraw.slice(0, playerCount);
 
   // One gold federation tile per ship in play.
-  const goldDraw = shuffleSeeded(idsOf(SETUP_CATALOG.federationsGold), streamFor(seed, "goldFederations"));
+  const goldPool = idsOf(SETUP_CATALOG.federationsGold);
+  const goldDraw = shuffleSeeded(goldPool, streamFor(seed, "goldFederations"));
   applyRebellionGoldRule(goldDraw, ships, input.rebellionGoldFed);
+  {
+    const locked = new Set<number>();
+    ships.forEach((ship, i) => {
+      const c = slotConstraint(rules, `goldFed:${ship}`, goldPool);
+      if (!c) return;
+      enforcePositional(goldDraw, i, c, { spareStart: ships.length, lockedIndices: locked });
+      locked.add(i);
+    });
+  }
   const goldFederations: Partial<Record<ShipId, string>> = {};
   ships.forEach((ship, i) => {
     goldFederations[ship] = goldDraw[i];
