@@ -11,14 +11,27 @@ import {
 } from "@/gaia/setup/buildSetup";
 import {
   SETUP_HISTORY_CAP,
+  countSetupsByCondition,
   deleteSavedSetup,
+  deleteSetupsByCondition,
   listSavedSetups,
   recordSetup,
   setSetupPinned,
   setSetupUsed,
+  setupConditionKey,
   setupHistoryId,
   type SavedSetup,
 } from "@/lib/setupHistory";
+import ConditionProfilesPanel from "@/components/ConditionProfilesPanel";
+import {
+  conditionKeyOf,
+  deleteConditionProfile,
+  listConditionProfiles,
+  upsertConditionProfile,
+  type ConditionProfile,
+} from "@/lib/conditionProfiles";
+import { STORE_SETUP_PROFILES } from "@/app/board/persistence";
+import { DEFAULT_SETUP_WEIGHTS, type SetupWeights } from "@/gaia/eval/setupWeights";
 import { copyText, decodeSetupToken, setupShareUrl } from "@/lib/setupShare";
 import GlobalBar from "@/components/GlobalBar";
 import FactionEvalPanel, { useSetupWeights } from "@/components/FactionEvalPanel";
@@ -702,11 +715,96 @@ export default function SetupView() {
   const result = React.useMemo(() => buildSetupFromSeed(buildInput(seed)), [seed, buildInput]);
 
   // 評価指数（カテゴリ別係数）。List タブと localStorage を共有する。
-  const [evalWeights, changeEvalWeight, resetEvalWeights] = useSetupWeights();
+  const [evalWeights, changeEvalWeight, resetEvalWeights, setAllEvalWeights] = useSetupWeights();
+
+  /**
+   * いまの「条件」。シードだけを除いたビルド入力＋評価指数（2026-07-30）。
+   * Map の searchKey と同じ考え方で、この内容から決まるキーで結果が分かれる。
+   * 無効時フィールド省略は buildInput 側で守られているので、そのまま使える。
+   */
+  const conditionParams = React.useMemo(() => {
+    const input = buildInput("") as any;
+    delete input.seed;
+    return { setup: input, evalWeights };
+  }, [buildInput, evalWeights]);
+  /** 条件プロファイルのキー（評価指数まで含む。同じ設定で指数違いを別名保存できる）。 */
+  const conditionKey = React.useMemo(() => conditionKeyOf(conditionParams), [conditionParams]);
+  /**
+   * 結果バケツのキーは「セットアップの設定だけ」。生成されるセットアップは
+   * 評価指数に依存しない（指数は評価・表示にしか効かない）ので、指数を変えても
+   * 貯めた結果が見えなくならないようにする。
+   */
+  const bucketKey = React.useMemo(() => setupConditionKey(buildInput("")), [buildInput]);
 
   // ----- 保存リスト（ランキング骨組み: ピン留め→新しい順、TODO ⑧） -----
   const [saved, setSaved] = React.useState<SavedSetup[]>([]);
   const [savedView, setSavedView] = React.useState<"active" | "used">("active");
+  const [profiles, setProfiles] = React.useState<Array<ConditionProfile<typeof conditionParams>>>([]);
+
+  const refreshProfiles = React.useCallback(async () => {
+    const [rows, counts] = await Promise.all([
+      listConditionProfiles<typeof conditionParams>(STORE_SETUP_PROFILES),
+      countSetupsByCondition(),
+    ]);
+    // 件数は「その条件の設定が指す結果バケツ」から引く（キーの粒度が違うため）。
+    setProfiles(
+      rows.map((r) => {
+        const su = (r.params as any)?.setup ?? {};
+        const bk = setupConditionKey({ ...su, seed: "" } as BuildSetupInput);
+        return { ...r, resultCount: counts[bk] ?? 0 };
+      })
+    );
+  }, []);
+
+  /** 条件プロファイルを適用する（保存された条件を画面へ戻す）。 */
+  const applyProfile = React.useCallback(
+    (p: ConditionProfile<typeof conditionParams>) => {
+      const setup = (p.params as any)?.setup ?? {};
+      applyInput({ ...setup, seed } as BuildSetupInput, true);
+      const w = (p.params as any)?.evalWeights as SetupWeights | undefined;
+      setAllEvalWeights({ ...DEFAULT_SETUP_WEIGHTS, ...(w ?? {}) });
+    },
+    [applyInput, seed, setAllEvalWeights]
+  );
+
+  /** 条件を既定値へ戻す（結果は消さない）。Map の「既定値で新規」と同じ役割。 */
+  const resetConditions = React.useCallback(() => {
+    setExtFaceMode("auto");
+    lsSet(LS.extFace, "auto");
+    setEconFaceMode("random");
+    lsSet(LS.econFace, "random");
+    setRuleModes({});
+    lsSet(LS.avoid, JSON.stringify({}));
+    const sr: ShipRulesState = { dist: {}, gold: "" };
+    setShipRules(sr);
+    lsSet(LS.shipRules, JSON.stringify(sr));
+    resetEvalWeights();
+  }, [resetEvalWeights]);
+
+  /** 条件の要約（プロファイル一覧の1行に出す）。 */
+  const summarizeCondition = React.useCallback(
+    (params: typeof conditionParams) => {
+      const t = UI[lang];
+      const su = (params as any)?.setup ?? {};
+      const parts: string[] = [];
+      parts.push(su.mode === "lostFleet" ? t.modeLF : t.modeBase);
+      parts.push(`${t.players}${su.playerCount ?? 4}`);
+      const nAvoid = (su.avoidRules?.length ?? 0) + Object.keys(su.allowTileRules ?? {}).length;
+      const nForce = (su.forceRules?.length ?? 0) + Object.keys(su.forceTileRules ?? {}).length;
+      if (nAvoid > 0) parts.push(`${t.avoidShort}${nAvoid}`);
+      if (nForce > 0) parts.push(`${t.forceShort}${nForce}`);
+      if (su.extensionFaceMode) parts.push(`${t.extFaceModeLabel}:${su.extensionFaceMode}`);
+      if (su.econFaceMode) parts.push(`${t.econFaceModeLabel}:${su.econFaceMode}`);
+      const nShip =
+        (su.shipDistanceAvoid?.length ?? 0) + (su.shipDistanceForce?.length ?? 0) + (su.rebellionGoldFed ? 1 : 0);
+      if (nShip > 0) parts.push(`船ルール${nShip}`);
+      const w = (params as any)?.evalWeights ?? {};
+      const diff = Object.keys(w).filter((k) => (w as any)[k] !== (DEFAULT_SETUP_WEIGHTS as any)[k]).length;
+      if (diff > 0) parts.push(`指数${diff}`);
+      return parts.join(" / ");
+    },
+    [lang]
+  );
 
   // 復元は読み取りのみ（書込みはユーザー操作ハンドラのみの規律）。
   React.useEffect(() => {
@@ -714,22 +812,35 @@ export default function SetupView() {
     void listSavedSetups().then((rows) => {
       if (alive) setSaved(rows);
     });
+    void refreshProfiles();
     return () => {
       alive = false;
     };
-  }, []);
+  }, [refreshProfiles]);
 
   // 「生成」＝ランダムシードを引く＋その入力を自動記録。
+  /** 記録に合わせて条件プロファイルも作る/更新する（Map が検索時に作るのと同じ）。 */
+  const recordAndTrack = React.useCallback(
+    (input: BuildSetupInput) => {
+      void recordSetup(input).then(async (rows) => {
+        setSaved(rows);
+        await upsertConditionProfile(STORE_SETUP_PROFILES, conditionParams);
+        await refreshProfiles();
+      });
+    },
+    [conditionParams, refreshProfiles]
+  );
+
   const handleRoll = React.useCallback(() => {
     const s = randomSeedString();
     setSeed(s);
-    void recordSetup(buildInput(s)).then(setSaved);
-  }, [buildInput]);
+    recordAndTrack(buildInput(s));
+  }, [buildInput, recordAndTrack]);
 
   // 手入力シードなど、表示中の内容を明示的に記録する補助ボタン。
   const handleRecordCurrent = React.useCallback(() => {
-    void recordSetup(buildInput(seed)).then(setSaved);
-  }, [buildInput, seed]);
+    recordAndTrack(buildInput(seed));
+  }, [buildInput, seed, recordAndTrack]);
 
   // 行クリックで保存時の入力を復元（自分の操作なので記憶設定にも反映する）。
   const restoreSaved = React.useCallback(
@@ -1077,6 +1188,34 @@ export default function SetupView() {
             ) : null}
           </div>
 
+      {/* 保存済み条件（Map と同じ操作。条件ごとに保存リストが分かれる） */}
+      <ConditionProfilesPanel
+        profiles={profiles}
+        currentKey={conditionKey}
+        lang={lang}
+        summarize={summarizeCondition}
+        onApply={applyProfile}
+        onRename={(key, name) => {
+          const p = profiles.find((x) => x.key === key);
+          if (!p) return;
+          void upsertConditionProfile(STORE_SETUP_PROFILES, p.params, { name }).then(refreshProfiles);
+        }}
+        onDeleteMeta={(key) => {
+          void deleteConditionProfile(STORE_SETUP_PROFILES, key).then(refreshProfiles);
+        }}
+        onDeleteAll={(key) => {
+          const p = profiles.find((x) => x.key === key);
+          const su = (p?.params as any)?.setup ?? null;
+          void (async () => {
+            if (su) await deleteSetupsByCondition(setupConditionKey({ ...su, seed: "" } as BuildSetupInput));
+            await deleteConditionProfile(STORE_SETUP_PROFILES, key);
+            setSaved(await listSavedSetups());
+            await refreshProfiles();
+          })();
+        }}
+        onResetDefaults={resetConditions}
+      />
+
       {/* 評価（種族別）＋評価指数。表示中のセットアップをそのまま評価する。 */}
       <section>
         <FactionEvalPanel
@@ -1097,7 +1236,8 @@ export default function SetupView() {
           <div style={{ fontSize: 11, opacity: 0.6 }}>{t.savedListNote}</div>
           <div style={{ marginLeft: "auto", display: "flex", gap: 6, fontSize: 12 }}>
             {(["active", "used"] as const).map((v) => {
-              const count = saved.filter((r) => (v === "used") === r.used).length;
+              // 件数もいまの条件バケツのぶんだけ数える（表示行と食い違わせない）
+              const count = saved.filter((r) => (v === "used") === r.used && r.conditionKey === bucketKey).length;
               return (
                 <button
                   key={v}
@@ -1115,13 +1255,9 @@ export default function SetupView() {
           </div>
         </div>
         {(() => {
-          // 現在の人数/拡張に合致する保存のみ表示（Map のランキング同様、2026-07-25 要望）。
-          const rows = saved.filter(
-            (r) =>
-              (savedView === "used") === r.used &&
-              (lf ? r.input.mode === "lostFleet" : r.input.mode !== "lostFleet") &&
-              (r.input.playerCount ?? 4) === players
-          );
+          // いまの条件バケツの保存のみ表示（2026-07-30。以前は人数/拡張だけで
+          // 絞っていたので、上級ルールや評価指数が違う結果も混ざっていた）。
+          const rows = saved.filter((r) => (savedView === "used") === r.used && r.conditionKey === bucketKey);
           if (rows.length === 0) {
             return (
               <div style={{ fontSize: 12, opacity: 0.6 }}>

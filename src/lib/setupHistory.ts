@@ -30,8 +30,11 @@ export const SETUP_ALGO_VERSION = "setup_v2";
 export const SETUP_HISTORY_CAP = 100;
 
 export type SavedSetup = {
-  /** stableStringify(input)。同一シード＋条件の重複記録はこの id でスキップ。 */
+  /** `${conditionKey}:${seed}`。同一条件＋同一シードの重複記録はこの id でスキップ。 */
   id: string;
+  /** 所属する条件バケツ（conditionKeyOf(条件) の文字列）。2026-07-30 追加。 */
+  conditionKey: string;
+  seed: string;
   input: BuildSetupInput;
   algoVersion: string;
   pinned: boolean;
@@ -41,8 +44,19 @@ export type SavedSetup = {
   usedAt?: number;
 };
 
+/** 条件（シード以外）だけを取り出す。これが条件バケツのキーの材料になる。 */
+export function setupConditionOf(input: BuildSetupInput): Omit<BuildSetupInput, "seed"> {
+  const rest = { ...input } as any;
+  delete rest.seed;
+  return rest;
+}
+
+export function setupConditionKey(input: BuildSetupInput): string {
+  return stableStringify(setupConditionOf(input));
+}
+
 export function setupHistoryId(input: BuildSetupInput): string {
-  return stableStringify(input);
+  return `${setupConditionKey(input)}:${String(input.seed)}`;
 }
 
 /** ピン留め最優先→生成の新しい順（同時刻は id で安定化）。 */
@@ -59,20 +73,52 @@ export function sortSaved(rows: SavedSetup[]): SavedSetup[] {
  * ピン留め・使用済みは対象外かつ上限にカウントしない。
  */
 export function overflowIds(rows: SavedSetup[], cap: number = SETUP_HISTORY_CAP): string[] {
-  const plain = rows
-    .filter((r) => !r.pinned && !r.used)
-    .sort((a, b) => b.createdAt - a.createdAt || (a.id < b.id ? -1 : 1));
-  return plain.slice(cap).map((r) => r.id);
+  // 上限は条件バケツごとに効かせる（Map の searchKey ごとの capacityActive と同型）。
+  const byKey = new Map<string, SavedSetup[]>();
+  for (const r of rows) {
+    if (r.pinned || r.used) continue;
+    const k = String(r.conditionKey ?? "");
+    const arr = byKey.get(k);
+    if (arr) arr.push(r);
+    else byKey.set(k, [r]);
+  }
+  const out: string[] = [];
+  for (const arr of byKey.values()) {
+    arr.sort((a, b) => b.createdAt - a.createdAt || (a.id < b.id ? -1 : 1));
+    for (const r of arr.slice(cap)) out.push(r.id);
+  }
+  return out;
 }
 
-export async function listSavedSetups(): Promise<SavedSetup[]> {
+/**
+ * 保存リストを返す。conditionKey を渡すとその条件バケツだけに絞る
+ * （渡さなければ全件。List タブの選択肢づくりなどで使う）。
+ */
+export async function listSavedSetups(conditionKey?: string): Promise<SavedSetup[]> {
   try {
     const db = await openDb();
     const rows = await idbGetAllFromStore<SavedSetup>(db, STORE_SETUPS);
-    return sortSaved(rows);
+    const filtered = conditionKey == null ? rows : rows.filter((r) => r.conditionKey === conditionKey);
+    return sortSaved(filtered);
   } catch {
     return [];
   }
+}
+
+/** 条件バケツごとの件数（条件プロファイル一覧の resultCount 用）。 */
+export async function countSetupsByCondition(): Promise<Record<string, number>> {
+  const rows = await listSavedSetups();
+  const out: Record<string, number> = {};
+  for (const r of rows) out[r.conditionKey] = (out[r.conditionKey] ?? 0) + 1;
+  return out;
+}
+
+/** その条件バケツの結果をまとめて消す（条件プロファイルの「結果ごと削除」）。 */
+export async function deleteSetupsByCondition(conditionKey: string): Promise<void> {
+  const db = await openDb();
+  const rows = await idbGetAllFromStore<SavedSetup>(db, STORE_SETUPS);
+  const ids = rows.filter((r) => r.conditionKey === conditionKey).map((r) => r.id);
+  if (ids.length > 0) await idbDeleteByIds(db, STORE_SETUPS, ids);
 }
 
 /**
@@ -88,6 +134,8 @@ export async function recordSetup(input: BuildSetupInput): Promise<SavedSetup[]>
     const now = Date.now();
     const row: SavedSetup = {
       id,
+      conditionKey: setupConditionKey(input),
+      seed: String(input.seed),
       input,
       algoVersion: SETUP_ALGO_VERSION,
       pinned: false,

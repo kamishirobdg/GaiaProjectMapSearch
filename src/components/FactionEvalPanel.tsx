@@ -144,7 +144,12 @@ function stdev(xs: number[]): number {
  * 評価指数の状態。復元は読み取りのみの effect、書込みはユーザー操作ハンドラ
  * だけ（localStorage の規律。Strict Mode の二重実行で既定が上書きされるのを防ぐ）。
  */
-export function useSetupWeights(): [SetupWeights, (k: SetupWeightKey, v: number) => void, () => void] {
+export function useSetupWeights(): [
+  SetupWeights,
+  (k: SetupWeightKey, v: number) => void,
+  () => void,
+  (w: SetupWeights) => void,
+] {
   const [weights, setWeights] = React.useState<SetupWeights>(DEFAULT_SETUP_WEIGHTS);
   React.useEffect(() => {
     setWeights(readSetupWeights());
@@ -161,7 +166,13 @@ export function useSetupWeights(): [SetupWeights, (k: SetupWeightKey, v: number)
     writeSetupWeights(next);
     setWeights(next);
   }, []);
-  return [weights, change, reset];
+  /** 条件プロファイルの適用など、一括で差し替えるとき用（2026-07-30）。 */
+  const setAll = React.useCallback((w: SetupWeights) => {
+    const next = { ...DEFAULT_SETUP_WEIGHTS, ...w };
+    writeSetupWeights(next);
+    setWeights(next);
+  }, []);
+  return [weights, change, reset, setAll];
 }
 
 const thStyle: React.CSSProperties = {

@@ -71,12 +71,21 @@ export type PersistedProfile = {
 
 export const IDB_NAME = "gaia_map_cache";
 // v5: setups store added (setup-side saved list; see src/lib/setupHistory.ts).
-export const IDB_VERSION = 5;
+// v6: Setup/List も Map と同じ「条件プロファイル + 条件ごとの結果バケツ」構造へ
+//     （2026-07-30 ユーザー確定）。旧 setups は条件とシードが1行に同居していて
+//     移行できないため、アップグレード時に破棄する（旧データ破棄もユーザー確定）。
+export const IDB_VERSION = 6;
 export const STORE_CANDIDATES = "candidates";
 export const STORE_PROFILES = "profiles";
 // Setup-side saved list shares this DB (one DB per origin keeps the version
 // handling in a single place). CRUD lives in src/lib/setupHistory.ts.
 export const STORE_SETUPS = "setups";
+/** Setup の条件プロファイル（Map の profiles と同じ役割）。 */
+export const STORE_SETUP_PROFILES = "setup_profiles";
+/** List の条件プロファイル。 */
+export const STORE_LIST_PROFILES = "list_profiles";
+/** List の結果（セット提案・提案ログ）。条件キーごとのバケツ。 */
+export const STORE_LIST_RESULTS = "list_results";
 export const LAST_APPLIED_SEARCHKEY = "gaia_last_applied_searchKey_v1";
 
 
@@ -88,6 +97,17 @@ export function openDb(): Promise<IDBDatabase> {
 
   _dbPromise = new Promise((resolve, reject) => {
     const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+
+    // 別タブが古いバージョンの接続を握っていると upgrade が始まらず、
+    // 何も言わずに固まる（保存・読み出しが全部止まる）。待ち続けずに失敗させ、
+    // 呼び出し側の catch で「空扱い」に落とす（2026-07-30）。
+    req.onblocked = () => {
+      reject(
+        new Error(
+          "IndexedDB upgrade blocked: 別のタブでこのアプリを開いたままにすると更新できません。他のタブを閉じて再読み込みしてください。"
+        )
+      );
+    };
 
     req.onupgradeneeded = () => {
       const db = req.result;
@@ -128,11 +148,24 @@ export function openDb(): Promise<IDBDatabase> {
         profiles.createIndex("byBaseKeyRaw", "baseKeyRaw", { unique: false });
       }
 
-      // ----- setups (v5) -----
+      // ----- setups (v5) / condition profiles (v6) -----
       // Small rows (~hundreds of bytes each, capped at 100 unpinned/unused);
       // listing does a full getAll + in-JS sort, so no indexes are needed.
       if (!db.objectStoreNames.contains(STORE_SETUPS)) {
         db.createObjectStore(STORE_SETUPS, { keyPath: "id" });
+      } else if ((req as any).transaction && db.version >= 6) {
+        // v6: 行の形（条件込みの入力 -> 条件キー+シード）が変わるので中身を捨てる。
+        try {
+          tx.objectStore(STORE_SETUPS).clear();
+        } catch {}
+      }
+      for (const name of [STORE_SETUP_PROFILES, STORE_LIST_PROFILES]) {
+        if (!db.objectStoreNames.contains(name)) {
+          db.createObjectStore(name, { keyPath: "key" });
+        }
+      }
+      if (!db.objectStoreNames.contains(STORE_LIST_RESULTS)) {
+        db.createObjectStore(STORE_LIST_RESULTS, { keyPath: "id" });
       }
 
       // ----- migrations / backfills -----

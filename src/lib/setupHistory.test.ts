@@ -7,6 +7,8 @@ import { describe, expect, it } from "vitest";
 import type { BuildSetupInput } from "@/gaia/setup/buildSetup";
 import {
   overflowIds,
+  setupConditionKey,
+  setupConditionOf,
   setupHistoryId,
   sortSaved,
   type SavedSetup,
@@ -14,6 +16,8 @@ import {
 
 function row(partial: Partial<SavedSetup> & { id: string }): SavedSetup {
   return {
+    conditionKey: "k",
+    seed: partial.id,
     input: { seed: partial.id },
     algoVersion: "setup_v1",
     pinned: false,
@@ -83,5 +87,35 @@ describe("overflowIds", () => {
 
   it("上限以内なら空", () => {
     expect(overflowIds([row({ id: "a", createdAt: 1 })], 100)).toEqual([]);
+  });
+});
+
+describe("条件バケツ（2026-07-30）", () => {
+  it("シードだけ違う入力は同じ条件キーになる", () => {
+    const a: BuildSetupInput = { seed: "1", playerCount: 4, mode: "lostFleet" };
+    const b: BuildSetupInput = { seed: "999", playerCount: 4, mode: "lostFleet" };
+    expect(setupConditionKey(a)).toBe(setupConditionKey(b));
+    // id はシードまで含むので別物
+    expect(setupHistoryId(a)).not.toBe(setupHistoryId(b));
+  });
+
+  it("条件が違えば別の条件キーになる", () => {
+    const a: BuildSetupInput = { seed: "1", playerCount: 4, mode: "lostFleet" };
+    const b: BuildSetupInput = { seed: "1", playerCount: 3, mode: "lostFleet" };
+    expect(setupConditionKey(a)).not.toBe(setupConditionKey(b));
+  });
+
+  it("条件からシードが取り除かれている", () => {
+    const c = setupConditionOf({ seed: "1", playerCount: 4 } as BuildSetupInput);
+    expect("seed" in (c as any)).toBe(false);
+    expect((c as any).playerCount).toBe(4);
+  });
+
+  it("上限は条件バケツごとに効く（別条件の件数を巻き込まない）", () => {
+    const rows: SavedSetup[] = [];
+    for (let i = 0; i < 3; i += 1) rows.push(row({ id: `A${i}`, conditionKey: "A", createdAt: i }));
+    for (let i = 0; i < 3; i += 1) rows.push(row({ id: `B${i}`, conditionKey: "B", createdAt: i }));
+    // cap=2 なら各バケツで1件ずつ（最も古いもの）が溢れる
+    expect(overflowIds(rows, 2).sort()).toEqual(["A0", "B0"]);
   });
 });
