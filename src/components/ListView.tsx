@@ -38,16 +38,11 @@ import {
   type Expansion,
 } from "@/lib/sharedSettings";
 import {
-  criterionScore,
-  recommendSetups,
   scoreSetupFactions,
   topFactions,
-  LIST_FACTION_PREF_W,
   type FactionScores,
   type RecommendCriterion,
-  type Recommendation,
 } from "@/gaia/eval/factionEval";
-import { mapFactionScores, mapValueByFaction } from "@/gaia/eval/mapFaction";
 import { FACTIONS, type FactionId } from "@/gaia/eval/factionWeights";
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
 import { SetupBoard } from "@/components/SetupView";
@@ -68,6 +63,18 @@ import { STORE_LIST_PROFILES, isDbUpgradeBlocked } from "@/app/board/persistence
 import { DEFAULT_SETUP_WEIGHTS, isDefaultWeights, type SetupWeights } from "@/gaia/eval/setupWeights";
 import { PageBody, Panel, TwoCol } from "@/components/ui/layout";
 import { buildMapPool } from "@/lib/mapCandidates";
+// セット提案の選定ロジックは純粋関数として切り出してある（React Compiler が
+// handleGenerate のメモ化を保てるようにするため。2026-08-02）。
+import {
+  mapTopOf,
+  planPair,
+  setupSettingsOf,
+  type PairDir,
+  type PairLogEntry,
+  type PairLogPayload,
+  type PairOption,
+  type SetupSource,
+} from "@/lib/pairPlan";
 
 type Lang = "ja" | "en";
 
@@ -225,19 +232,6 @@ function topFactionText(scores: FactionScores, n: number, lang: Lang, lf: boolea
     .join(" / ");
 }
 
-/**
- * ペア提案のセットアップ条件はマップのテンプレートから導出する
- * （マップと拡張・人数が食い違う提案を出さないため）。マップなしのときは
- * 共有設定（人数・拡張）に従う。
- */
-function deriveSetupSettings(templateId: string | null): { players: number; lf: boolean } {
-  if (templateId === "3p_lostFleet") return { players: 3, lf: true };
-  if (templateId === "4p_lostFleet") return { players: 4, lf: true };
-  const p = readSharedPlayers() ?? 4;
-  if (templateId === "base_34p") return { players: Math.min(4, Math.max(3, p)), lf: false };
-  return { players: p, lf: (readSharedExpansion() ?? "base") === "lostFleet" };
-}
-
 /** templateId -> 表示用の 拡張/人数 ラベル。 */
 function templateMeta(templateId: string, t: (typeof UI)["ja" | "en"]): string {
   switch (templateId) {
@@ -269,23 +263,6 @@ const useIsoLayoutEffect = typeof window !== "undefined" ? React.useLayoutEffect
 // List のマップ/基準の選択を記憶する localStorage キー（人数/拡張と同様に永続）。
 /** 探索候補に載せるランキングマップの上限（描画とスコア計算のコスト抑制）。 */
 const RANKED_MAP_CAP = 200;
-
-/** 提案を出す件数（比較用に複数出す、2026-07-25 要望）。 */
-const PAIR_TOP_N = 5;
-
-/** 提案1件分（マップ＋セットアップ＋スコア）。クリックで切り替えて見比べる。 */
-type PairOption = {
-  key: string;
-  /** 表示対象のマップ id（候補に無い場合は ""）。 */
-  mapId: string;
-  rec: Recommendation;
-  mapTop: Array<{ id: FactionId; score: number }> | null;
-};
-
-/** 探索の向き（2026-07-25 要望）。 */
-type PairDir = "mapToSetup" | "setupToMap";
-/** マップ→セットアップ時の相手の探し方。 */
-type SetupSource = "random" | "saved";
 
 const LS_LIST_DIR = "gaia_list_pair_dir";
 const LS_LIST_SRC = "gaia_list_setup_source";
@@ -336,31 +313,6 @@ function writeProposals(list: SavedProposal[]): void {
 // 何をどの条件で提案したかの記録。左ペインの空きスペースに出す。
 const LS_LIST_PAIRLOG = "gaia_list_pair_log_v2";
 const PAIRLOG_CAP = 30;
-type PairLogEntry = {
-  id: string;
-  /** どの条件で生成したログか（条件バケツのキー） */
-  conditionKey: string;
-  at: number;
-  dir: PairDir;
-  source: SetupSource;
-  criterion: RecommendCriterion;
-  players: number;
-  lf: boolean;
-  /** 提示できた候補数（上位N件の N）。 */
-  count: number;
-  /** 先頭候補の識別子（マップ＝盤面ハッシュ先頭、セットアップ＝シード）。 */
-  seed: string;
-  mapHash: string;
-  mapScore: number;
-  score: number;
-  /**
-   * クリックで再表示するための候補一覧。セットアップは入力そのものを持つ
-   * （保存済み由来の回避/強制ルールまで忠実に復元するため。シードだけでは
-   * ルール付きセットアップを再現できない）。マップは盤面ハッシュで引き当てる。
-   * 旧バージョンのログには無いので optional。
-   */
-  opts?: Array<{ input: BuildSetupInput; mapHash: string; mapScore: number; score: number }>;
-};
 function loadPairLog(): PairLogEntry[] {
   try {
     const raw = localStorage.getItem(LS_LIST_PAIRLOG);
@@ -415,23 +367,6 @@ export default function ListView() {
   const [evalWeights, changeEvalWeight, resetEvalWeights, setAllEvalWeights] = useSetupWeights();
   // 種族優遇/冷遇（2026-07-31）。掛け先は「Mapの評価値＋Setupの評価値」の合計。
   const [factionPref, changeFactionPref, resetFactionPref] = useFactionPref();
-
-  /**
-   * criterionScore へ渡す種族優遇。Map ぶんはマップ1枚で決まるのでここで作り、
-   * Setup ぶんは criterionScore が採点中のスコアから足す。
-   * 指定が無ければ undefined＝素通り。
-   */
-  const factionPrefArg = React.useCallback(
-    (mapBreakdown: any) =>
-      Object.keys(factionPref).length > 0
-        ? {
-            w: LIST_FACTION_PREF_W,
-            byFaction: factionPref as Partial<Record<FactionId, number>>,
-            mapValueByFaction: mapValueByFaction(mapBreakdown),
-          }
-        : undefined,
-    [factionPref]
-  );
 
   /**
    * いまの「条件」（2026-07-30）。Map の searchKey と同じ考え方で、この内容から
@@ -711,36 +646,6 @@ export default function ListView() {
     return [...pins, ...allSetups.filter((r) => !seen.has(r.id))];
   }, [allSetups]);
 
-  /** セットアップ保存レコードの人数/拡張。 */
-  const setupSettingsOf = React.useCallback(
-    (r: SavedSetup) => ({
-      players: r.input.playerCount ?? 4,
-      lf: r.input.mode === "lostFleet",
-    }),
-    []
-  );
-
-  /**
-   * マップの上位種族（テンプレ不明・計算不能なら null）。生成とログ復元で共用。
-   * top3 は基準1（逆優位）用、topK は基準4（優位）用で K=人数+2。
-   */
-  const mapTopOf = React.useCallback(
-    (c: PersistedCandidate, playersForK?: number) => {
-      const tid = templateIdBySearchKey[c.searchKey] ?? null;
-      if (!tid) return null;
-      try {
-        const derived = deriveSetupSettings(tid);
-        const ms = mapFactionScores(tid, c.placement ?? []);
-        const top3 = topFactions(ms, 3, derived.lf);
-        const topK = topFactions(ms, Math.max(2, (playersForK ?? derived.players) + 2), derived.lf);
-        return { tid, top3, topK, detail: top3.map((f) => ({ id: f, score: ms[f] })) };
-      } catch {
-        return null;
-      }
-    },
-    [templateIdBySearchKey]
-  );
-
   // List を開いた時点のデフォルト選択（最優先=ピン留め最上位→無ければ全体最上位）。
   // 復元した pairMapId が選択候補に無い場合（ピン解除後など）もデフォルトへフォールバック。
   React.useEffect(() => {
@@ -809,7 +714,7 @@ export default function ListView() {
 
   /** 生成のたびに提案ログへ1件積む（先頭候補の内容を記録）。 */
   const pushPairLog = React.useCallback(
-    (e: Omit<PairLogEntry, "id" | "at" | "conditionKey">) => {
+    (e: PairLogPayload) => {
       const at = Date.now();
       const entry: PairLogEntry = { ...e, conditionKey, at, id: `${at}-${e.seed}-${e.mapHash}` };
       setPairLog((prev) => {
@@ -821,223 +726,32 @@ export default function ListView() {
     [conditionKey]
   );
 
-  // セット提案の生成（上位 PAIR_TOP_N 件を提示。要望 2026-07-25）
+  // セット提案の生成（上位 PAIR_TOP_N 件を提示。要望 2026-07-25）。
+  // 選定そのものは pairPlan.ts の純粋関数に任せ、ここは結果を画面へ反映するだけ。
   const handleGenerate = React.useCallback(() => {
     setRecorded(false);
-    // マップの上位種族を出す小ヘルパ（テンプレ不整合は null）。
-    // --- セットアップ→マップ: 起点のセットアップに最も合うマップを探す ---
-    if (pairDir === "setupToMap") {
-      const src = selectableSetups.find((r) => r.id === pairSetupId) ?? null;
-      if (!src) {
-        setPairMsg(UI[lang].needSetup);
-        clearPair();
-        return;
-      }
-      const settings = setupSettingsOf(src);
-      const result = buildSetupFromSeed(src.input);
-      const setupScores = scoreSetupFactions(result, evalWeights);
-      // 人数/拡張が一致するマップだけを対象にする。
-      const cands = selectableMaps.filter((c) => {
-        const tid = templateIdBySearchKey[c.searchKey] ?? "";
-        if (!tid) return false;
-        const s = deriveSetupSettings(tid);
-        return s.lf === settings.lf && (s.lf ? s.players === settings.players : true);
-      });
-      const scored: Array<{ c: PersistedCandidate; score: number; top: NonNullable<ReturnType<typeof mapTopOf>> }> = [];
-      for (const c of cands) {
-        const top = mapTopOf(c);
-        if (!top) continue;
-        scored.push({
-          c,
-          top,
-          score: criterionScore(criterion, setupScores, {
-            playerCount: settings.players,
-            lostFleet: settings.lf,
-            mapTop3: top.top3,
-            factionPref: factionPrefArg((c as any)?.evaluation?.breakdown),
-          }),
-        });
-      }
-      if (scored.length === 0) {
-        setPairMsg(UI[lang].needMapPool);
-        clearPair();
-        return;
-      }
-      scored.sort((a, b) => b.score - a.score);
-      setPairMsg(criterion === "opposeMap" || criterion === "alignMap" ? null : UI[lang].mapIndependentNote);
-      setPairOptions(
-        scored.slice(0, PAIR_TOP_N).map((x) => ({
-          key: `m:${x.c.id}`,
-          mapId: x.c.id,
-          mapTop: x.top.detail,
-          rec: {
-            input: src.input,
-            result,
-            setupScores,
-            criterion,
-            score: x.score,
-            trials: cands.length,
-          },
-        }))
-      );
-      setPairIndex(0);
-      setRecSettings(settings);
-      pushPairLog({
-        dir: pairDir,
-        source: setupSource,
-        criterion,
-        players: settings.players,
-        lf: settings.lf,
-        count: Math.min(scored.length, PAIR_TOP_N),
-        seed: String(src.input.seed),
-        mapHash: String(scored[0].c.placementHash ?? ""),
-        mapScore: Number(scored[0].c.score ?? 0),
-        score: scored[0].score,
-        opts: scored.slice(0, PAIR_TOP_N).map((x) => ({
-          input: src.input,
-          mapHash: String(x.c.placementHash ?? ""),
-          mapScore: Number(x.c.score ?? 0),
-          score: x.score,
-        })),
-      });
-      return;
-    }
-
-    // --- マップ→セットアップ ---
-    const selected = selectableMaps.find((c) => c.id === pairMapId) ?? null;
-    const tid = selected ? (templateIdBySearchKey[selected.searchKey] ?? null) : null;
-    const mapDependent = criterion === "opposeMap" || criterion === "alignMap";
-    if (mapDependent && (!selected || !tid)) {
-      setPairMsg(UI[lang].needMap);
+    const plan = planPair({
+      pairDir,
+      setupSource,
+      criterion,
+      pairMapId,
+      pairSetupId,
+      selectableMaps,
+      selectableSetups,
+      templateIdBySearchKey,
+      evalWeights,
+      factionPref,
+    });
+    if (!plan.ok) {
+      setPairMsg(UI[lang][plan.failure]);
       clearPair();
       return;
     }
-    setPairMsg(null);
-    let mapTop3: FactionId[] | undefined;
-    let mapTopK: FactionId[] | undefined;
-    let mapTopDetail: Array<{ id: FactionId; score: number }> | null = null;
-    if (selected && tid) {
-      const top = mapTopOf(selected);
-      if (top) {
-        mapTop3 = top.top3;
-        mapTopK = top.topK;
-        mapTopDetail = top.detail;
-      } else if (mapDependent) {
-        setPairMsg(UI[lang].needMap);
-        clearPair();
-        return;
-      }
-    }
-    const settings = deriveSetupSettings(tid);
-    // 種族優遇の Map ぶんは、選んだマップ候補の評価内訳から引く（2026-07-31）。
-    const selectedMapBreakdown = (selected as any)?.evaluation?.breakdown ?? null;
-
-    // 保存済みセットアップから選ぶ（2026-07-25 要望）。
-    if (setupSource === "saved") {
-      const cands = selectableSetups.filter((r) => {
-        const s = setupSettingsOf(r);
-        return s.lf === settings.lf && s.players === settings.players;
-      });
-      const scored = cands.map((r) => {
-        const res = buildSetupFromSeed(r.input);
-        const scores = scoreSetupFactions(res, evalWeights);
-        return {
-          r,
-          res,
-          scores,
-          score: criterionScore(criterion, scores, {
-            playerCount: settings.players,
-            lostFleet: settings.lf,
-            ...(mapTop3 ? { mapTop3 } : {}),
-            ...(mapTopK ? { mapTopK } : {}),
-            factionPref: factionPrefArg(selectedMapBreakdown),
-          }),
-        };
-      });
-      if (scored.length === 0) {
-        setPairMsg(UI[lang].needSetupPool);
-        clearPair();
-        return;
-      }
-      scored.sort((a, b) => b.score - a.score);
-      setPairOptions(
-        scored.slice(0, PAIR_TOP_N).map((x) => ({
-          key: `s:${x.r.id}`,
-          mapId: pairMapId,
-          mapTop: mapTopDetail,
-          rec: {
-            input: x.r.input,
-            result: x.res,
-            setupScores: x.scores,
-            criterion,
-            score: x.score,
-            trials: cands.length,
-          },
-        }))
-      );
-      setPairIndex(0);
-      setRecSettings(settings);
-      pushPairLog({
-        dir: pairDir,
-        source: setupSource,
-        criterion,
-        players: settings.players,
-        lf: settings.lf,
-        count: Math.min(scored.length, PAIR_TOP_N),
-        seed: String(scored[0].r.input.seed),
-        mapHash: String(selected?.placementHash ?? ""),
-        mapScore: Number(selected?.score ?? 0),
-        score: scored[0].score,
-        opts: scored.slice(0, PAIR_TOP_N).map((x) => ({
-          input: x.r.input,
-          mapHash: String(selected?.placementHash ?? ""),
-          mapScore: Number(selected?.score ?? 0),
-          score: x.score,
-        })),
-      });
-      return;
-    }
-
-    // ランダム生成（従来動作）。
-    const seeds = Array.from({ length: 200 }, () =>
-      String(Math.floor(Math.random() * 2147483647) + 1)
-    );
-    const rs = recommendSetups({
-      criterion,
-      seeds,
-      playerCount: settings.players,
-      lostFleet: settings.lf,
-      ...(mapTop3 ? { mapTop3 } : {}),
-      ...(mapTopK ? { mapTopK } : {}),
-      weights: evalWeights,
-      factionPref: factionPrefArg(selectedMapBreakdown),
-      topN: PAIR_TOP_N,
-    });
-    setPairOptions(
-      rs.map((r) => ({ key: `r:${r.input.seed}`, mapId: pairMapId, mapTop: mapTopDetail, rec: r }))
-    );
+    setPairMsg(plan.note === "mapIndependent" ? UI[lang].mapIndependentNote : null);
+    setPairOptions(plan.options);
     setPairIndex(0);
-    setRecSettings(settings);
-    if (rs.length > 0) {
-      pushPairLog({
-        dir: pairDir,
-        source: setupSource,
-        criterion,
-        players: settings.players,
-        lf: settings.lf,
-        count: rs.length,
-        seed: String(rs[0].input.seed),
-        mapHash: String(selected?.placementHash ?? ""),
-        mapScore: Number(selected?.score ?? 0),
-        score: rs[0].score,
-        opts: rs.map((r) => ({
-          input: r.input,
-          mapHash: String(selected?.placementHash ?? ""),
-          mapScore: Number(selected?.score ?? 0),
-          score: r.score,
-        })),
-      });
-    }
+    setRecSettings(plan.settings);
+    if (plan.log) pushPairLog(plan.log);
   }, [
     pushPairLog,
     selectableMaps,
@@ -1046,12 +760,12 @@ export default function ListView() {
     pairSetupId,
     pairDir,
     setupSource,
-    setupSettingsOf,
     criterion,
     templateIdBySearchKey,
     clearPair,
     lang,
     evalWeights,
+    factionPref,
   ]);
 
   /**
@@ -1070,7 +784,7 @@ export default function ListView() {
         return {
           key: `log:${e.id}:${i}`,
           mapId: map?.id ?? "",
-          mapTop: map ? (mapTopOf(map)?.detail ?? null) : null,
+          mapTop: map ? (mapTopOf(map, templateIdBySearchKey)?.detail ?? null) : null,
           rec: {
             input: o.input,
             result,
@@ -1092,7 +806,7 @@ export default function ListView() {
       const lostMap = !!e.mapHash && !opts.some((o) => o.mapId);
       setPairMsg(lostMap ? UI[lang].logMapMissing : null);
     },
-    [selectableMaps, mapTopOf, lang, evalWeights]
+    [selectableMaps, templateIdBySearchKey, lang, evalWeights]
   );
 
   const handleRecordRec = React.useCallback(() => {
