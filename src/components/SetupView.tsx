@@ -66,7 +66,7 @@ import {
   type Expansion,
 } from "@/lib/sharedSettings";
 import { SETUP_CATALOG } from "@/gaia/setup/data";
-import { hasRule, setTileRule, type TileRuleMode, type TileRules } from "@/gaia/setup/tileRules";
+import { countTileRules, hasRule, setTileRule, type TileRuleMode, type TileRules } from "@/gaia/setup/tileRules";
 import {
   RESEARCH_TRACK_IDS,
   TECH_SHIP_IDS,
@@ -959,10 +959,18 @@ export default function SetupView() {
       const parts: string[] = [];
       parts.push(su.mode === "lostFleet" ? t.modeLF : t.modeBase);
       parts.push(`${t.players}${su.playerCount ?? 4}`);
+      // 旧「回避/強制」プルダウンのフィールドは UI からもう設定されない（共有リンクで
+      // 古い条件を復元したときだけ入る）。0件なら行ごと出ないのでそのまま残してある。
       const nAvoid = (su.avoidRules?.length ?? 0) + Object.keys(su.allowTileRules ?? {}).length;
       const nForce = (su.forceRules?.length ?? 0) + Object.keys(su.forceTileRules ?? {}).length;
       if (nAvoid > 0) parts.push(`${t.avoidShort}${nAvoid}`);
       if (nForce > 0) parts.push(`${t.forceShort}${nForce}`);
+      // いまの指定はこちら（全スロット共通のタイル指定）。除外は既定との差を数える
+      // （countTileRules のコメント参照）。
+      const nTile = countTileRules(su.tileRules as TileRules | undefined, defaultAdvancedTileRules());
+      if (nTile.fix > 0) parts.push(`${t.modeFix}${nTile.fix}`);
+      if (nTile.candidate > 0) parts.push(`${t.modeCandidate}${nTile.candidate}`);
+      if (nTile.exclude > 0) parts.push(`${t.modeExclude}${nTile.exclude}`);
       if (su.extensionFaceMode) parts.push(`${t.extFaceModeLabel}:${su.extensionFaceMode}`);
       if (su.econFaceMode) parts.push(`${t.econFaceModeLabel}:${su.econFaceMode}`);
       const nShip =

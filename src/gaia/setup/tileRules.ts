@@ -137,6 +137,41 @@ export function hasRule(rules: TileRules | undefined, slotId: string): boolean {
 }
 
 /**
+ * 条件サマリに出す件数（2026-08-02）。
+ *
+ * 固定・候補はそのまま数える。**除外だけは既定（`defaultAdvancedTileRules()`）との差**
+ * を数える —— 既定の除外はどの条件にも同じだけ入っているので、素の件数を出しても
+ * 条件の見分けに使えないため。既定に無い除外を足したぶんも、既定の除外を解除した
+ * ぶんも「1件の違い」として数える。
+ *
+ * 既定値を引数で受けるのは、この module が buildSetup.ts へ依存しないようにするため
+ * （buildSetup 側がこの module を読んでいるので、import すると循環する）。
+ * rules が undefined＝保存時に指定が空だった条件なので、既定とみなして差0にする。
+ */
+export function countTileRules(
+  rules: TileRules | undefined,
+  defaults: TileRules
+): { fix: number; candidate: number; exclude: number } {
+  const tr = rules ?? defaults;
+  let fix = 0;
+  let candidate = 0;
+  let exclude = 0;
+  for (const [slotId, byTile] of Object.entries(tr)) {
+    for (const [tileId, mode] of Object.entries(byTile)) {
+      if (mode === "fix") fix += 1;
+      else if (mode === "candidate") candidate += 1;
+      else if (defaults[slotId]?.[tileId] !== "exclude") exclude += 1;
+    }
+  }
+  for (const [slotId, byTile] of Object.entries(defaults)) {
+    for (const tileId of Object.keys(byTile)) {
+      if (tr[slotId]?.[tileId] !== "exclude") exclude += 1;
+    }
+  }
+  return { fix, candidate, exclude };
+}
+
+/**
  * 1タイルのモードを設定して新しい TileRules を返す（不変更新）。
  * mode=null でデフォルトへ戻す。空になったスロットはキーごと消す
  * （無効時フィールド省略＝指定が無い状態のキーを変えないため）。

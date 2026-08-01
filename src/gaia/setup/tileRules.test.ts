@@ -4,9 +4,9 @@
 // 「どのシードでも指定が満たされる」「指定が無ければ出力が変わらない」の2点を固定する。
 
 import { describe, expect, it } from "vitest";
-import { buildSetupFromSeed, type BuildSetupInput } from "./buildSetup";
+import { buildSetupFromSeed, defaultAdvancedTileRules, type BuildSetupInput } from "./buildSetup";
 import { RESEARCH_TRACK_IDS } from "./types";
-import { setTileRule, slotConstraint, type TileRules } from "./tileRules";
+import { countTileRules, setTileRule, slotConstraint, type TileRules } from "./tileRules";
 import { SETUP_CATALOG } from "./data";
 
 const SEEDS = Array.from({ length: 30 }, (_, i) => String(1000 + i * 7));
@@ -162,5 +162,41 @@ describe("setTileRule", () => {
     const a: TileRules = { "std:nav": { TS1: "fix" } };
     setTileRule(a, "std:nav", "TS2", "exclude");
     expect(a).toEqual({ "std:nav": { TS1: "fix" } });
+  });
+});
+
+// 条件サマリ（保存済み条件の1行）に出す件数。既定の除外はどの条件にも同じだけ
+// 入っているので、除外だけは「既定との差」でなければ見分けに使えない。
+describe("countTileRules", () => {
+  const DEF = defaultAdvancedTileRules();
+
+  it("既定そのまま／未設定はどれも0", () => {
+    expect(countTileRules(DEF, DEF)).toEqual({ fix: 0, candidate: 0, exclude: 0 });
+    expect(countTileRules(undefined, DEF)).toEqual({ fix: 0, candidate: 0, exclude: 0 });
+  });
+
+  it("固定と候補は素の件数を数える", () => {
+    let r = setTileRule(DEF, "std:nav", "TS8", "fix");
+    r = setTileRule(r, "fs:0", "FS01", "candidate");
+    r = setTileRule(r, "fs:0", "FS02", "candidate");
+    expect(countTileRules(r, DEF)).toEqual({ fix: 1, candidate: 2, exclude: 0 });
+  });
+
+  it("除外は既定に足したぶんを数える", () => {
+    const added = setTileRule(DEF, "std:nav", "TS8", "exclude");
+    expect(countTileRules(added, DEF).exclude).toBe(1);
+  });
+
+  it("既定の除外を解除したぶんも1件として数える", () => {
+    const slotId = Object.keys(DEF)[0];
+    const tileId = Object.keys(DEF[slotId])[0];
+    const removed = setTileRule(DEF, slotId, tileId, null);
+    expect(countTileRules(removed, DEF).exclude).toBe(1);
+  });
+
+  it("既定の除外だけを大量に持っていても0のまま（見分けに使えるように）", () => {
+    const n = Object.values(DEF).reduce((s, byTile) => s + Object.keys(byTile).length, 0);
+    expect(n).toBeGreaterThan(0); // 既定の除外が実在することの確認
+    expect(countTileRules(DEF, DEF).exclude).toBe(0);
   });
 });

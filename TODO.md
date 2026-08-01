@@ -255,9 +255,13 @@
   `BuildSetupInput` の `avoidRules` / `forceRules` / `forceTileRules` /
   `allowTileRules` / `shipDistanceAvoid` / `shipDistanceForce` / `rebellionGoldFed`
   は**もう誰も設定しない**（エンジンと共有リンクの復元だけが読む）。
-  副作用として、保存リストの行に出る「回避N / 強制N」は常に 0 になる。
-  タイル指定の件数を出すように直すか、表示ごと消すのが自然。
   `AVOID_RULES` は既定の除外を作るためだけに残っている（`allowTiles` は未使用）。
+  - **条件サマリは 2026-08-02 に対応済み**。旧フィールドは0件で行ごと出ないため
+    タイル指定を入れても条件を見分けられなかったので、`countTileRules`
+    （`src/gaia/setup/tileRules.ts`）で「固定N / 候補N / 除外N」を出すようにした。
+    除外だけは既定との差を数える（既定の除外はどの条件にも同じだけ入っているため）。
+  - **残っているのは型からフィールドを消すかどうか**。消すと古い共有リンクの復元が
+    落ちるので、移行の要否とセットで判断する。
 - **List のミニ盤面にはマーカーが出ない**: 評価表クリックのタイル点滅は Setup 専用。
   List の提案プレビュー（SetupBoard/SmallTile）は対象外のままにしてある。
 
