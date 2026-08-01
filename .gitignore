@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# サブエージェントが作る一時 worktree（リポジトリのコピーがまるごと入る）
+/.claude/worktrees/
