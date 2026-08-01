@@ -272,19 +272,27 @@ export const EXTRA_PREF_KINDS = ["PROTO", "ASTEROID"] as const;
 export const CLUSTER_TRANSDIM_WEIGHT = 0.5;
 
 /**
- * 原始・小惑星の「最良の1つ」に掛ける補正値（2026-07-31）。
+ * 原始・小惑星の「最良の1つ」に掛ける補正値（2026-07-31、2026-08-02 に再調査）。
  *
  * 内訳表の追加行を基本7色の行と同じ物差しで読めるようにするための係数。
- * スコア（planetTypeTotals）には入らない。
+ * 検索スコア本体（planetTypeTotals）には入らないが、次の2つには効くので
+ * 「表示専用」ではない:
+ *   - Map の色優遇（`wColorPref × pref × extraBest.total`。pref を付けたときだけ）
+ *   - List の種族優遇の掛け先（`mapValueByFaction` が LF4種族の Map 評価値に使う）
  *
- * 実測（`npx tsx scripts/measure_extra_best.ts`、LF 3p/4p 各24盤面・既定の評価指数）:
- *   最良値の平均   PROTO 34.98 / ASTEROID 44.07
- *   基本7色の平均  107.73
- *   → 種別ごとに合わせるなら PROTO 3.08 / ASTEROID 2.44 だが、
- *     それだと「小惑星のほうが条件の良い惑星が多い」という盤面の実態を
- *     打ち消してしまう。両種別まとめた平均 39.53 に対する比 2.73 を
- *     0.25 刻みに丸めて 2.75 を全体で使う。
- *     結果、平均は PROTO 96.2 / ASTEROID 121.2（基本7色平均の -11% / +12%）。
+ * 実測（`npx tsx scripts/_probe_extra_best_bias.ts`、LF 3p/4p 各60盤面・既定の評価指数）:
+ *   最良の1惑星（4軸）の平均  PROTO 34.83 / ASTEROID 43.93 / 基本7色 37.57
+ *   基本7色の色ごとの合計     108.02
+ *
+ * 種別ごとに分ける（PROTO 3.10 / ASTEROID 2.46）ことはしない。理由は2つ:
+ *   - PROTO と ASTEROID の差は個数ではなく置かれ方の質。惑星の個数で層別しても
+ *     同じ個数どうしで ASTEROID が +9〜10 高い（5個 33.65 vs 43.00 /
+ *     6個 35.60 vs 45.20 / 7個 34.00 vs 44.18）。個数が増えても最良値は
+ *     ほとんど上がらないので、最大値の上振れでもない。分けるとこの差が消える。
+ *   - 決め方を変えても同じ値になる。基本色の「色ごとの合計 ÷ 4軸の最良1惑星」
+ *     ＝ 2.875 をそのまま換算率として使っても 2.75 とほぼ変わらない
+ *     （PROTO 100.2 / ASTEROID 126.3）。
+ * 結果、平均は PROTO 95.8 / ASTEROID 120.8（基本7色平均の -11% / +12%）。
  */
 export const EXTRA_BEST_FACTOR = 2.75;
 
