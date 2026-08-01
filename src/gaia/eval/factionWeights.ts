@@ -203,8 +203,9 @@ export const MAP_AFFINITY: Partial<Record<FactionId, { gaia?: number; transdim?:
 export type TechPosition = ResearchTrackId | "free";
 
 /**
- * ★編集用の正本。**研究列6つだけを書く。フリー枠は書かない**（2026-08-01）。
+ * 標準技術の重みテーブル（タイル → 研究列 → 種族 → 値）。
  *
+ * **研究列6つだけを書く。フリー枠は書かない**（2026-08-01）。
  * ルールブック p13「技術タイルの獲得」:
  *   - 研究エリアの真下の6枚 → **その研究エリアでのみ**マーカーを進められる。
  *     そこで進められない場合、その進展分は失われる。
@@ -215,10 +216,123 @@ export type TechPosition = ResearchTrackId | "free";
  * が正しく、`techPositionCell()` がそれを計算する（データには持たない）。
  * 値を直すときは研究列だけ触ればよく、フリー枠は自動で追随する。
  */
-export const TECH_POSITION_WEIGHTS: Record<
+export type TechPositionTable = Record<
   string,
   Partial<Record<ResearchTrackId, Partial<Record<FactionId, number>>>>
-> = {
+>;
+
+/**
+ * ★編集用の正本（**通常版**）。基本14種族ぶん。
+ *
+ * 2026-08-01: ユーザー作成の CSV（Tile_Score_通常.csv）から機械生成した。
+ * 手で写すと 9タイル×6列×14種族＝756セルの写し間違いが避けられないため:
+ *   生成   python scripts/gen_tech_position_table.py <csv>      → この中身を差し替え
+ *   検算   python scripts/gen_tech_position_table.py <csv> --check（全セル・両方向）
+ * 値を直すときはこのファイルを直接編集してよい（CSV は履歴。
+ * techPositionBase.test.ts は CSV ではなくこの表の構造だけを見る）。
+ *
+ * LF の4種族（モウェイド人・スペースジャイアント・ティンカーロイド・ダルカニア人）は
+ * **通常版では選べない**ので、この表には入れない（記載なし＝0）。
+ *
+ * 通常版と拡張版で値を分ける理由（ユーザー 2026-08-01）:
+ * 拡張の有無で場に出るタイルの母集団が変わり、同じ標準技術タイルでも
+ * 相対的な影響力が変わるため。
+ */
+export const TECH_POSITION_WEIGHTS_BASE: TechPositionTable = {
+  // TS1 即時:鉱石1+QIC1
+  TS1: {
+    terra: { lantids: 1, xenos: 3, taklons: 2, ambas: 3, hadschHallas: 3, ivits: 3, geodens: 1, balTaks: 2, firaks: 3, nevlas: 2, itars: 2 }, // 惑星改造
+    nav:   { lantids: 2, xenos: 3, gleens: -1, taklons: 2, ambas: 3, hadschHallas: 3, ivits: 3, geodens: 2, balTaks: -1, firaks: 2, bescods: 2, nevlas: 2, itars: 2 }, // 航行
+    ai:    { lantids: 2, xenos: 3, taklons: 2, ambas: 3, hadschHallas: 3, ivits: 3, balTaks: 2, nevlas: 2, itars: 2 }, // 人工知能
+    gaia:  { gleens: -1, balTaks: 1, itars: 2 }, // ガイア計画
+    eco:   { lantids: 1, xenos: 2, taklons: 2, ambas: 2, hadschHallas: 3, ivits: 2, firaks: 3, bescods: 1, nevlas: 2, itars: 2 }, // 経済
+    sci:   { nevlas: 1 }, // 科学
+  },
+  // TS2 即時:惑星種類×知識1
+  TS2: {
+    terra: { taklons: 1, ivits: 2, geodens: 4, balTaks: 2, nevlas: 2 }, // 惑星改造
+    nav:   { gleens: -1, taklons: 1, geodens: 3 }, // 航行
+    ai:    { xenos: 2, taklons: 2, ambas: 2, hadschHallas: 2, ivits: 2, geodens: 5, balTaks: 2, firaks: 1, nevlas: 2, itars: 1 }, // 人工知能
+    gaia:  { terrans: -1, gleens: -1 }, // ガイア計画
+    eco:   { geodens: 1 }, // 経済
+    sci:   { taklons: 1, geodens: 1, nevlas: 2 }, // 科学
+  },
+  // TS3 首府学院のパワー値4
+  TS3: {
+    terra: { lantids: 1, bescods: 1 }, // 惑星改造
+    nav:   { terrans: 2, lantids: 1, gleens: 1, taklons: 1, ambas: 1, bescods: 2 }, // 航行
+    ai:    { lantids: 1, xenos: 1, taklons: 1, bescods: 2, itars: 1 }, // 人工知能
+    gaia:  { terrans: 2, lantids: -1, xenos: -1, gleens: 2, taklons: -2, ambas: -1, hadschHallas: -1, ivits: 1, geodens: -1, balTaks: 2, bescods: 1, nevlas: -2, itars: 2 }, // ガイア計画
+    eco:   { taklons: 1, hadschHallas: 1, firaks: 1, bescods: 2, nevlas: 1, itars: 1 }, // 経済
+    sci:   {}, // 科学
+  },
+  // TS4 即時:7VP
+  TS4: {
+    terra: {}, // 惑星改造
+    nav:   {}, // 航行
+    ai:    {}, // 人工知能
+    gaia:  {}, // ガイア計画
+    eco:   {}, // 経済
+    sci:   {}, // 科学
+  },
+  // TS5 収入:鉱石1+パワー1
+  TS5: {
+    terra: { terrans: 1, lantids: 2, xenos: 2, gleens: 2, taklons: 2, ambas: 2, hadschHallas: 2, ivits: 2, geodens: 2, balTaks: 2, firaks: 2, bescods: 1, nevlas: 2, itars: 2 }, // 惑星改造
+    nav:   { terrans: 2, lantids: 2, xenos: 2, gleens: 2, taklons: 3, ambas: 3, hadschHallas: 3, ivits: 3, geodens: 2, firaks: 1, bescods: 3, nevlas: 2, itars: 3 }, // 航行
+    ai:    { xenos: 2, taklons: 1, ambas: 1, hadschHallas: 1, ivits: 1, firaks: 1, nevlas: 1, itars: 2 }, // 人工知能
+    gaia:  { terrans: 2, gleens: 2, taklons: -2, ivits: 1, balTaks: 3, nevlas: -2, itars: 2 }, // ガイア計画
+    eco:   { lantids: 3, xenos: 2, taklons: 3, ambas: 3, hadschHallas: 3, ivits: 3, geodens: 1, balTaks: 2, firaks: 3, bescods: 2, nevlas: 3, itars: 3 }, // 経済
+    sci:   { taklons: 1, geodens: 1, nevlas: 1 }, // 科学
+  },
+  // TS6 収入:知識1+クレ1
+  TS6: {
+    terra: { lantids: 2, taklons: 2, ambas: 2, hadschHallas: 2, ivits: 1, geodens: 2, balTaks: 2, firaks: 2, bescods: 1, nevlas: 1, itars: 1 }, // 惑星改造
+    nav:   { terrans: 2, lantids: 2, xenos: 2, gleens: 2, taklons: 3, ambas: 3, hadschHallas: 2, ivits: 2, geodens: 2, firaks: 2, bescods: 2, nevlas: 2, itars: 2 }, // 航行
+    ai:    { terrans: 1, lantids: 1, xenos: 2, taklons: 1, ambas: 2, ivits: 2, bescods: 1, itars: 1 }, // 人工知能
+    gaia:  { terrans: 3, hadschHallas: -1, balTaks: 3, nevlas: -1, itars: 2 }, // ガイア計画
+    eco:   { lantids: 2, taklons: 2, ambas: 3, hadschHallas: 3, ivits: 3, geodens: 2, balTaks: 2, firaks: 3, bescods: 2, nevlas: 3, itars: 1 }, // 経済
+    sci:   { terrans: 1, lantids: 2, gleens: 3, taklons: 2, ambas: 2, hadschHallas: 2, ivits: 1, geodens: 1, balTaks: 1, firaks: 3, bescods: 1, nevlas: 3, itars: 2 }, // 科学
+  },
+  // TS7 ガイア鉱山+3VP
+  TS7: {
+    terra: { terrans: 2, gleens: 2 }, // 惑星改造
+    nav:   { terrans: 4, gleens: 4, itars: 1 }, // 航行
+    ai:    { terrans: 2, balTaks: 2, itars: 1 }, // 人工知能
+    gaia:  { terrans: 4, gleens: 4, ivits: 1, balTaks: 1, bescods: 2, itars: 2 }, // ガイア計画
+    eco:   { terrans: 1, gleens: 1 }, // 経済
+    sci:   { terrans: 1, gleens: 1 }, // 科学
+  },
+  // TS8 収入:クレ4
+  TS8: {
+    terra: { terrans: 2, lantids: 2, xenos: 2, gleens: 3, taklons: 2, ambas: 2, hadschHallas: 2, ivits: 2, geodens: 2, balTaks: 2, firaks: 2, bescods: 2, nevlas: 2, itars: 2 }, // 惑星改造
+    nav:   { terrans: 3, lantids: 3, xenos: 3, gleens: 4, taklons: 3, ambas: 4, hadschHallas: 4, ivits: 3, geodens: 3, firaks: 3, bescods: 3, nevlas: 3, itars: 3 }, // 航行
+    ai:    { terrans: 1, lantids: 1, xenos: 3, taklons: 1, ambas: 1, hadschHallas: 1, ivits: 1, geodens: 1, balTaks: 1, firaks: 1, bescods: 1, nevlas: 1, itars: 1 }, // 人工知能
+    gaia:  { terrans: 4, gleens: 3, balTaks: 4, bescods: 1 }, // ガイア計画
+    eco:   { terrans: 2, lantids: 3, xenos: 3, gleens: 2, taklons: 3, ambas: 3, hadschHallas: 4, ivits: 2, geodens: 2, balTaks: 3, firaks: 3, bescods: 3, nevlas: 3, itars: 3 }, // 経済
+    sci:   { lantids: 1, xenos: 1, ambas: 1, hadschHallas: 1, ivits: 1, firaks: 1, bescods: 2, nevlas: 1, itars: 1 }, // 科学
+  },
+  // TS9 アクション:パワー4
+  TS9: {
+    terra: { lantids: 2, xenos: 1, gleens: 1, taklons: 3, ambas: 2, hadschHallas: 2, ivits: 2, geodens: 2, balTaks: 2, firaks: 2, bescods: 2, nevlas: 3, itars: 2 }, // 惑星改造
+    nav:   { terrans: 3, lantids: 3, xenos: 3, gleens: 3, taklons: 5, ambas: 3, hadschHallas: 3, ivits: 3, geodens: 3, firaks: 3, bescods: 3, nevlas: 3, itars: 2 }, // 航行
+    ai:    { xenos: 3, taklons: 3, ambas: 2, hadschHallas: 2, ivits: 2, geodens: 2, balTaks: 2, firaks: 2, bescods: 2, nevlas: 2, itars: 2 }, // 人工知能
+    gaia:  { terrans: 3, gleens: 3, taklons: -3, ivits: 1, balTaks: 4, bescods: 2, nevlas: -2, itars: 2 }, // ガイア計画
+    eco:   { lantids: 3, xenos: 2, gleens: 2, taklons: 5, ambas: 3, hadschHallas: 4, ivits: 3, geodens: 2, balTaks: 2, firaks: 4, bescods: 3, nevlas: 4, itars: 2 }, // 経済
+    sci:   { terrans: 2, nevlas: 1 }, // 科学
+  },
+};
+
+/**
+ * ★編集用の正本（**Lost Fleet 版**）。18種族ぶん。
+ *
+ * 2026-08-01: 拡張の有無で同じタイルの影響力が変わるため、通常版
+ * （TECH_POSITION_WEIGHTS_BASE）と別テーブルにした。参照は
+ * `techPositionCell(tileId, pos, lostFleet)` を通すこと。
+ *
+ * **この表はまだ通常版の CSV が反映されていない**（2026-08-01 時点の値のまま）。
+ * 拡張版の値が出来たら差し替える。
+ */
+export const TECH_POSITION_WEIGHTS_LF: TechPositionTable = {
   // TS1 即時:鉱石1+QIC1
   // ダー・シュワーム人は衛星をQICで払う唯一の勢力＝QICが直接得点になる。
   // グリーン人はQICを得られず鉱石に化けるので、QIC付きのタイルは1枚ぶん損。
@@ -323,11 +437,20 @@ const TECH_TRACK_POSITIONS: readonly ResearchTrackId[] = [
   "sci",
 ];
 
-/** tileId → 計算した free 枠のセル（初回だけ作る）。 */
+/**
+ * その拡張で使う標準技術のテーブル。
+ * 拡張の有無で場に出るタイルの母集団が変わり、同じタイルでも相対的な影響力が
+ * 変わるため、通常版と拡張版で別の値を持つ（ユーザー 2026-08-01）。
+ */
+export function techPositionTable(lostFleet: boolean): TechPositionTable {
+  return lostFleet ? TECH_POSITION_WEIGHTS_LF : TECH_POSITION_WEIGHTS_BASE;
+}
+
+/** `${base|lf}:${tileId}` → 計算した free 枠のセル（初回だけ作る）。 */
 const freeCellCache = new Map<string, Partial<Record<FactionId, number>>>();
 
-function computeFreeCell(tileId: string): Partial<Record<FactionId, number>> {
-  const tile = TECH_POSITION_WEIGHTS[tileId];
+function computeFreeCell(tileId: string, lostFleet: boolean): Partial<Record<FactionId, number>> {
+  const tile = techPositionTable(lostFleet)[tileId];
   const out: Partial<Record<FactionId, number>> = {};
   if (!tile) return out;
   for (const f of FACTION_IDS) {
@@ -357,16 +480,47 @@ function computeFreeCell(tileId: string): Partial<Record<FactionId, number>> {
  */
 export function techPositionCell(
   tileId: string,
-  pos: TechPosition
+  pos: TechPosition,
+  lostFleet: boolean
 ): Partial<Record<FactionId, number>> | undefined {
-  if (pos !== "free") return TECH_POSITION_WEIGHTS[tileId]?.[pos];
-  if (!TECH_POSITION_WEIGHTS[tileId]) return undefined;
-  let cell = freeCellCache.get(tileId);
+  const table = techPositionTable(lostFleet);
+  if (pos !== "free") return table[tileId]?.[pos];
+  if (!table[tileId]) return undefined;
+  const key = `${lostFleet ? "lf" : "base"}:${tileId}`;
+  let cell = freeCellCache.get(key);
   if (!cell) {
-    cell = computeFreeCell(tileId);
-    freeCellCache.set(tileId, cell);
+    cell = computeFreeCell(tileId, lostFleet);
+    freeCellCache.set(key, cell);
   }
   return cell;
+}
+
+// --- 拡張ごとのタイル重み上書き（2026-08-01）--------------------------------
+//
+// TILE_FACTION_WEIGHTS は通常版・拡張版で共通の正本。拡張の有無で影響力が
+// 変わるタイルだけ、ここに Lost Fleet 用の値を書いて上書きする。
+// **いまは空**（ユーザー: 標準技術以外は影響が小さいので当面は共通でよい。
+// 上級技術は今後値を分ける可能性があるので、仕組みだけ用意しておく）。
+//
+// 書き方は TILE_FACTION_WEIGHTS と同じで、**タイル単位で丸ごと差し替える**
+// （部分マージはしない。半端に混ざると追えなくなるため）。
+//   TILE_FACTION_WEIGHTS_LF = { AT08: { terrans: 3, gleens: 2, ... } }
+
+export const TILE_FACTION_WEIGHTS_LF: Record<string, Partial<Record<FactionId, number>>> = {};
+
+/**
+ * そのタイルの種族別重み。Lost Fleet では上書きがあればそちらを使う。
+ * 参照はここを通すこと（`TILE_FACTION_WEIGHTS` を直接引くと上書きを取り逃す）。
+ */
+export function tileFactionWeights(
+  tileId: string,
+  lostFleet: boolean
+): Partial<Record<FactionId, number>> | undefined {
+  if (lostFleet) {
+    const override = TILE_FACTION_WEIGHTS_LF[tileId];
+    if (override) return override;
+  }
+  return TILE_FACTION_WEIGHTS[tileId];
 }
 
 /**

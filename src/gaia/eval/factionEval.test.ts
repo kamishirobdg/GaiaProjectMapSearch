@@ -20,9 +20,10 @@ import {
 import {
   FACTION_IDS,
   factionIdsForMode,
+  LF_FACTION_IDS,
   STD_TECH_SCALE,
-  TECH_POSITION_WEIGHTS,
   techPositionCell,
+  techPositionTable,
   TILE_FACTION_WEIGHTS,
   type FactionId,
 } from "./factionWeights";
@@ -91,43 +92,47 @@ describe("scoreSetupFactions", () => {
         free: ["TS4", "TS8", "TS9"],
       },
     });
-    // terrans はガイア列の親和度が高く、経済列は0。期待値はテーブルから引く。
-    expect(scoreStandardTech(onGaia).terrans).toBeGreaterThan(scoreStandardTech(onEco).terrans);
-    expect(scoreStandardTech(onGaia).terrans).toBe(
-      (TECH_POSITION_WEIGHTS.TS7?.gaia?.terrans ?? 0) * STD_TECH_SCALE
+    // 差は TS7/TS5 の入れ替えぶんだけ。期待値はテーブルから組み立てる
+    // （値の見直しでベタ書きが壊れるのを避ける。2026-08-01）。
+    const t = techPositionTable(false); // syntheticSetup は mode 省略＝通常版
+    const cell = (id: string, pos: "gaia" | "eco") => t[id]?.[pos]?.terrans ?? 0;
+    const diff =
+      cell("TS7", "gaia") + cell("TS5", "eco") - (cell("TS5", "gaia") + cell("TS7", "eco"));
+    expect(diff).toBeGreaterThan(0); // ガイア列に置く方が terrans に効く
+    expect(scoreStandardTech(onGaia).terrans - scoreStandardTech(onEco).terrans).toBe(
+      diff * STD_TECH_SCALE
     );
-    expect(TECH_POSITION_WEIGHTS.TS7?.eco?.terrans ?? 0).toBe(0);
-    expect(scoreStandardTech(onEco).terrans).toBe(0);
   });
 
-  it("standard tech: 自由列はトラック非依存に同じ係数で効く", () => {
-    // hadschHallas に効くのは free の TS8 だけ（TS1..TS6 のトラック列は全部0）。
-    // 2026-07-31: フリー枠も同じ表・同じ係数で評価する（旧: 専用の低い係数）。
-    const s = syntheticSetup({
-      standardTech: {
-        byTrack: { terra: "TS1", nav: "TS2", ai: "TS3", gaia: "TS4", eco: "TS5", sci: "TS6" },
-        free: ["TS7", "TS8", "TS9"],
-      },
-    });
-    const free = (["TS7", "TS8", "TS9"] as const).reduce(
-      (a, id) => a + (techPositionCell(id, "free")?.hadschHallas ?? 0),
-      0
-    );
-    // トラックに置かれた6枚は、この配置では hadschHallas に効かない
-    const placed = [
-      ["TS1", "terra"],
-      ["TS2", "nav"],
-      ["TS3", "ai"],
-      ["TS4", "gaia"],
-      ["TS5", "eco"],
-      ["TS6", "sci"],
-    ] as const;
-    const tracks = placed.reduce(
-      (a, [id, pos]) => a + (TECH_POSITION_WEIGHTS[id]?.[pos]?.hadschHallas ?? 0),
-      0
-    );
-    expect(tracks).toBe(0);
-    expect(scoreStandardTech(s).hadschHallas).toBe(free * STD_TECH_SCALE);
+  it("standard tech: フリー枠は研究列6つの最大値になる", () => {
+    // ルールブック p13: フリー枠の3枚は「任意の研究エリア1つ」を進められるので、
+    // どのトラック配置に対しても完全な上位互換。だから最大値を取る（2026-08-01）。
+    for (const lf of [false, true]) {
+      const table = techPositionTable(lf);
+      for (const id of Object.keys(table)) {
+        const free = techPositionCell(id, "free", lf) ?? {};
+        for (const f of FACTION_IDS) {
+          const tracks = (["terra", "nav", "ai", "gaia", "eco", "sci"] as const).map(
+            (pos) => table[id]?.[pos]?.[f] ?? 0
+          );
+          expect(`${id}/${f}: ${free[f] ?? 0}`).toBe(`${id}/${f}: ${Math.max(0, ...tracks)}`);
+        }
+      }
+    }
+  });
+
+  it("standard tech: 通常版と拡張版で別のテーブルを引く", () => {
+    // LF4種族は通常版のテーブルに入っていない（通常版では選べないため）。
+    for (const id of Object.keys(techPositionTable(false))) {
+      for (const pos of ["terra", "nav", "ai", "gaia", "eco", "sci"] as const) {
+        const cell = techPositionCell(id, pos, false) ?? {};
+        for (const f of LF_FACTION_IDS) expect(cell[f] ?? 0).toBe(0);
+      }
+    }
+    // 同じ盤面でも mode が変われば標準技術の評価が変わりうる
+    const base = syntheticSetup();
+    const lf = syntheticSetup({ mode: "lostFleet" });
+    expect(scoreStandardTech(base)).not.toEqual(scoreStandardTech(lf));
   });
 
   it("returns a finite score for every faction", () => {

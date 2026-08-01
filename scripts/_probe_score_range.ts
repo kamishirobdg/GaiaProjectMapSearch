@@ -8,7 +8,9 @@ import { factionIdsForMode } from "../src/gaia/eval/factionWeights";
 
 const N = Number(process.argv[2] ?? 300) || 300;
 const PLAYERS = Number(process.argv[3] ?? 4) || 4;
-const ids = factionIdsForMode(true);
+/** 既定は拡張版。--base で通常版。 */
+const LF = !process.argv.includes("--base");
+const ids = factionIdsForMode(LF);
 
 let max = -Infinity;
 let min = Infinity;
@@ -18,7 +20,7 @@ const tops: number[] = [];
 for (let s = 1; s <= N; s++) {
   const r = buildSetupFromSeed({
     seed: String(s),
-    mode: "lostFleet",
+    ...(LF ? { mode: "lostFleet" as const } : {}),
     playerCount: PLAYERS,
     tileRules: defaultAdvancedTileRules(),
   } as never);
@@ -33,7 +35,7 @@ for (let s = 1; s <= N; s++) {
 
 tops.sort((a, b) => a - b);
 const mean = tops.reduce((a, b) => a + b, 0) / tops.length;
-console.log(`${N}件（${PLAYERS}人 LF・既定の評価指数）`);
+console.log(`${N}件（${PLAYERS}人 ${LF ? "拡張版LF" : "通常版"}・既定の評価指数）`);
 console.log(`種族スコア: 全体の最大 ${max} / 全体の最小 ${min}`);
 console.log(`盤面ごとの最高値: 中央値 ${tops[Math.floor(N / 2)]} / 平均 ${mean.toFixed(1)}`);
 console.log(`小数になった値: ${fractional} 件`);

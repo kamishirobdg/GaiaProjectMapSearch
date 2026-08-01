@@ -90,14 +90,16 @@ const CAT_LABEL: Record<SetupWeightKey, { ja: string; en: string; tipJa: string;
     tipJa: "得点ボード拡張部の追加上級技術（取得条件が通常の上級と異なるため別枠）",
     tipEn: "Extra advanced tech on the scoring-board extension (different acquisition rule)",
   },
+  // 2026-08-01: 列幅を揃えるため2文字に短縮（ラベルが長い列だけ幅が広がって
+  // 数値の並びが不揃いになるため）。意味はツールチップで補う。
   booster: {
-    ja: "ブースター",
+    ja: "RB",
     en: "boost",
-    tipJa: "使用するラウンドブースター",
+    tipJa: "ラウンドブースター（使用する分のみ）",
     tipEn: "Round boosters in play",
   },
   roundScoring: {
-    ja: "ラウンド",
+    ja: "R点",
     en: "round",
     tipJa: "ラウンド得点タイル（同じタイルが2枚出れば枚数分加算）",
     tipEn: "Round scoring tiles (duplicates count twice)",

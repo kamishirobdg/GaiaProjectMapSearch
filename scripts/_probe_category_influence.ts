@@ -19,6 +19,8 @@ import { factionIdsForMode } from "../src/gaia/eval/factionWeights";
 
 const N = Number(process.argv[2] ?? 300) || 300;
 const PLAYERS = Number(process.argv[3] ?? 4) || 4;
+/** 既定は拡張版。--base で通常版（LF船・追加上級の列は常に0になる）。 */
+const LF = !process.argv.includes("--base");
 
 const LABEL: Record<SetupWeightKey, string> = {
   standardTech: "技術",
@@ -40,7 +42,7 @@ function sd(xs: number[]) {
   return Math.sqrt(mean(xs.map((x) => (x - m) * (x - m))));
 }
 
-const ids = factionIdsForMode(true);
+const ids = factionIdsForMode(LF);
 
 // perSetup[cat] = そのセットアップでの種族間SD / 幅
 const withinSd: Record<string, number[]> = {};
@@ -59,7 +61,7 @@ for (const k of SETUP_WEIGHT_DISPLAY_ORDER) {
 for (let seed = 1; seed <= N; seed++) {
   const result = buildSetupFromSeed({
     seed: String(seed),
-    mode: "lostFleet",
+    ...(LF ? { mode: "lostFleet" as const } : {}),
     playerCount: PLAYERS,
     tileRules: defaultAdvancedTileRules(),
   } as never);
@@ -73,7 +75,9 @@ for (let seed = 1; seed <= N; seed++) {
   totalWithinSd.push(sd(ids.map((f) => b.total[f])));
 }
 
-console.log(`セットアップ ${N}件（${PLAYERS}人 LF・既定の評価指数・既定の除外）\n`);
+console.log(
+  `セットアップ ${N}件（${PLAYERS}人 ${LF ? "拡張版LF" : "通常版"}・既定の評価指数・既定の除外）\n`
+);
 console.log("カテゴリ      A:種族間SD    B:幅     C:盤面間SD   A の占有率");
 console.log("".padEnd(60, "-"));
 

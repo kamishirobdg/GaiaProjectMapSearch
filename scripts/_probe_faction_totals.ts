@@ -1,10 +1,11 @@
 // scripts/_probe_faction_totals.ts
 //
 // 「どの種族が強く出ているか」を**テーブルだけ**から見る（2026-08-01）。
-// セットアップを引かずに TILE_FACTION_WEIGHTS / TECH_POSITION_WEIGHTS を素で数えるので、
-// factionWeights.ts を編集しながら「入れすぎ／入れなさすぎ」を確かめられる。
+// セットアップを引かずに重みテーブルを素で数えるので、factionWeights.ts を
+// 編集しながら「入れすぎ／入れなさすぎ」を確かめられる。
 //
-//   npx tsx scripts/_probe_faction_totals.ts [--by-category]
+//   npx tsx scripts/_probe_faction_totals.ts [--base|--lf] [--by-category]
+//   （既定は --lf。--base は通常版＝基本14種族・LF船カテゴリなし）
 //
 // 見かた:
 //   枚数  … その種族に非ゼロの値が入っているタイルの数（正の枚数 / 負の枚数）
@@ -16,9 +17,10 @@
 
 import {
   FACTIONS,
-  TECH_POSITION_WEIGHTS,
+  factionIdsForMode,
   techPositionCell,
-  TILE_FACTION_WEIGHTS,
+  techPositionTable,
+  tileFactionWeights,
   type FactionId,
   type TechPosition,
 } from "../src/gaia/eval/factionWeights";
@@ -29,8 +31,14 @@ import {
 } from "../src/gaia/eval/setupWeights";
 
 const BY_CATEGORY = process.argv.includes("--by-category");
+/** 既定は拡張版。--base で通常版（基本14種族・拡張タイルなし）。 */
+const LF = !process.argv.includes("--base");
 
-/** カテゴリ → そのカテゴリのタイルID群と「プールの何枚が場に出るか」（4人LF）。 */
+/** 拡張の有無でプールが変わる。LF 分は LF モードのときだけ混ぜる。 */
+const lfIds = <T extends { id: string }>(xs: readonly T[] | undefined) =>
+  LF ? (xs ?? []).map((t) => t.id) : [];
+
+/** カテゴリ → そのカテゴリのタイルID群と「プールの何枚が場に出るか」（4人）。 */
 const POOL: Array<{
   key: SetupWeightKey;
   label: string;
@@ -40,31 +48,31 @@ const POOL: Array<{
   {
     key: "advanced",
     label: "上級",
-    ids: [...SETUP_CATALOG.advancedTech, ...(SETUP_CATALOG.advancedTechLF ?? [])].map((t) => t.id),
+    ids: [...SETUP_CATALOG.advancedTech.map((t) => t.id), ...lfIds(SETUP_CATALOG.advancedTechLF)],
     drawn: 6,
   },
   {
     key: "advExtension",
     label: "追加上級",
-    ids: [...SETUP_CATALOG.advancedTech, ...(SETUP_CATALOG.advancedTechLF ?? [])].map((t) => t.id),
-    drawn: 1,
+    ids: [...SETUP_CATALOG.advancedTech.map((t) => t.id), ...lfIds(SETUP_CATALOG.advancedTechLF)],
+    drawn: LF ? 1 : 0, // 得点ボード拡張部は LF のみ
   },
   {
     key: "booster",
     label: "ブースター",
-    ids: [...SETUP_CATALOG.boosters, ...(SETUP_CATALOG.boostersLF ?? [])].map((t) => t.id),
+    ids: [...SETUP_CATALOG.boosters.map((t) => t.id), ...lfIds(SETUP_CATALOG.boostersLF)],
     drawn: 7, // 4人 = players + 3
   },
   {
     key: "roundScoring",
     label: "ラウンド",
-    ids: [...SETUP_CATALOG.roundScoring, ...(SETUP_CATALOG.roundScoringLF ?? [])].map((t) => t.id),
+    ids: [...SETUP_CATALOG.roundScoring.map((t) => t.id), ...lfIds(SETUP_CATALOG.roundScoringLF)],
     drawn: 6,
   },
   {
     key: "finalScoring",
     label: "最終",
-    ids: [...SETUP_CATALOG.finalScoring, ...(SETUP_CATALOG.finalScoringLF ?? [])].map((t) => t.id),
+    ids: [...SETUP_CATALOG.finalScoring.map((t) => t.id), ...lfIds(SETUP_CATALOG.finalScoringLF)],
     drawn: 2,
   },
   {
@@ -78,11 +86,11 @@ const POOL: Array<{
     label: "LF船",
     // 船の基本技術3種のうち3ヶ所 + 金枠同盟8枚から4枚 + アーティファクト13枚から4枚
     ids: [
-      ...(SETUP_CATALOG.standardTechLF ?? []).map((t) => t.id),
-      ...(SETUP_CATALOG.federationsGold ?? []).map((t) => t.id),
-      ...(SETUP_CATALOG.artifacts ?? []).map((t) => t.id),
+      ...lfIds(SETUP_CATALOG.standardTechLF),
+      ...lfIds(SETUP_CATALOG.federationsGold),
+      ...lfIds(SETUP_CATALOG.artifacts),
     ],
-    drawn: 3 + 4 + 4,
+    drawn: LF ? 3 + 4 + 4 : 0,
   },
 ];
 
@@ -98,7 +106,8 @@ type Row = {
   byCat: Partial<Record<SetupWeightKey, number>>;
 };
 
-const rows: Row[] = FACTIONS.map((f) => {
+const playable = new Set(factionIdsForMode(LF));
+const rows: Row[] = FACTIONS.filter((f) => playable.has(f.id)).map((f) => {
   let posCount = 0;
   let negCount = 0;
   let posSum = 0;
@@ -109,7 +118,7 @@ const rows: Row[] = FACTIONS.map((f) => {
   for (const cat of POOL) {
     let sum = 0;
     for (const id of cat.ids) {
-      const v = TILE_FACTION_WEIGHTS[id]?.[f.id] ?? 0;
+      const v = tileFactionWeights(id, LF)?.[f.id] ?? 0;
       if (v === 0) continue;
       sum += v;
       if (v > 0) {
@@ -121,7 +130,10 @@ const rows: Row[] = FACTIONS.map((f) => {
       }
     }
     // 期待値: プール平均 × 出る枚数 × 評価指数
-    const e = (sum / cat.ids.length) * cat.drawn * DEFAULT_SETUP_WEIGHTS[cat.key];
+    const e =
+      cat.ids.length === 0 || cat.drawn === 0
+        ? 0
+        : (sum / cat.ids.length) * cat.drawn * DEFAULT_SETUP_WEIGHTS[cat.key];
     byCat[cat.key] = e;
     expected += e;
   }
@@ -131,10 +143,10 @@ const rows: Row[] = FACTIONS.map((f) => {
   // フリー枠は研究列の最大値（techPositionCell が計算する）。
   const TECH_POSITIONS: TechPosition[] = ["terra", "nav", "ai", "gaia", "eco", "sci", "free"];
   let techSum = 0;
-  for (const tileId of Object.keys(TECH_POSITION_WEIGHTS)) {
+  for (const tileId of Object.keys(techPositionTable(LF))) {
     let s = 0;
     for (const pos of TECH_POSITIONS) {
-      const v = techPositionCell(tileId, pos)?.[f.id] ?? 0;
+      const v = techPositionCell(tileId, pos, LF)?.[f.id] ?? 0;
       if (v === 0) continue;
       s += v;
       // 枚数・素点はデータに書いてある研究列だけ数える（フリーは派生なので重複させない）
@@ -171,7 +183,10 @@ rows.sort((a, b) => b.expected - a.expected);
 
 const pad = (s: string, n: number) => s + "　".repeat(Math.max(0, n - [...s].length));
 
-console.log("テーブルだけから見た種族の強さ（セットアップは引いていない）\n");
+console.log(
+  `テーブルだけから見た種族の強さ（${LF ? "拡張版 Lost Fleet・18種族" : "通常版・基本14種族"}、` +
+    `4人・セットアップは引いていない）\n`
+);
 console.log("種族　　　　　　　　 母星色    枚数(+/-)   素点(+/-)     期待値");
 console.log("".padEnd(68, "-"));
 for (const r of rows) {

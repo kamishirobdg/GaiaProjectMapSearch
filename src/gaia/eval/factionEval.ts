@@ -17,7 +17,7 @@ import {
   roundTimingOf,
   ROUND_TIMING_BASE,
   techPositionCell,
-  TILE_FACTION_WEIGHTS,
+  tileFactionWeights,
   type FactionId,
   type TechPosition,
 } from "./factionWeights";
@@ -89,10 +89,11 @@ export function setupFactionTileHits(
   weights?: SetupWeights
 ): SetupTileHit[] {
   const w = weights ?? DEFAULT_SETUP_WEIGHTS;
+  const lf = result.mode === "lostFleet";
   const out: SetupTileHit[] = [];
-  const push = (category: SetupWeightKey, tileId: string | undefined, table: any, slot?: string) => {
+  const push = (category: SetupWeightKey, tileId: string | undefined, slot?: string) => {
     if (!tileId) return;
-    const src = table[tileId];
+    const src = tileFactionWeights(tileId, lf);
     if (!src) return;
     const scale = w[category];
     const byFaction: Partial<Record<FactionId, number>> = {};
@@ -107,13 +108,13 @@ export function setupFactionTileHits(
   };
 
   for (const [track, id] of Object.entries(result.advancedTech.byTrack)) {
-    push("advanced", id, TILE_FACTION_WEIGHTS, track);
+    push("advanced", id, track);
   }
-  push("advExtension", result.advancedTech.extension, TILE_FACTION_WEIGHTS);
-  for (const id of result.boosters.available) push("booster", id, TILE_FACTION_WEIGHTS);
+  push("advExtension", result.advancedTech.extension);
+  for (const id of result.boosters.available) push("booster", id);
   // ラウンド得点は「何ラウンド目か」で倍率が変わる（2026-07-31）。
   result.roundScoring.forEach((id, i) => {
-    const src = TILE_FACTION_WEIGHTS[id];
+    const src = tileFactionWeights(id, lf);
     if (!src) return;
     const timing = roundTimingOf(id, i);
     const byFaction: Partial<Record<FactionId, number>> = {};
@@ -126,15 +127,15 @@ export function setupFactionTileHits(
     }
     if (any) out.push({ tileId: id, category: "roundScoring", slot: `R${i + 1}`, byFaction });
   });
-  for (const id of result.finalScoring) push("finalScoring", id, TILE_FACTION_WEIGHTS);
-  push("federation", result.federationLv5, TILE_FACTION_WEIGHTS);
-  if (result.mode === "lostFleet") {
-    for (const id of Object.values(result.shipTech ?? {})) push("lfShip", id, TILE_FACTION_WEIGHTS);
-    for (const id of Object.values(result.goldFederations ?? {})) push("lfShip", id, TILE_FACTION_WEIGHTS);
-    for (const id of result.artifacts ?? []) push("lfShip", id, TILE_FACTION_WEIGHTS);
+  for (const id of result.finalScoring) push("finalScoring", id);
+  push("federation", result.federationLv5);
+  if (lf) {
+    for (const id of Object.values(result.shipTech ?? {})) push("lfShip", id);
+    for (const id of Object.values(result.goldFederations ?? {})) push("lfShip", id);
+    for (const id of result.artifacts ?? []) push("lfShip", id);
   }
   // 標準技術は「どこに置かれたか」で価値が変わる（研究列6つ＋フリー枠）。
-  // 2026-07-31: トラック下とフリー枠を1つの表（TECH_POSITION_WEIGHTS）へ統合。
+  // テーブルは拡張ごとに別（techPositionCell の第3引数）。
   const stdSlots: Array<{ id: string; pos: TechPosition }> = [
     ...(RESEARCH_TRACK_IDS as readonly ResearchTrackId[]).map((track) => ({
       id: result.standardTech.byTrack[track],
@@ -143,7 +144,7 @@ export function setupFactionTileHits(
     ...result.standardTech.free.map((id) => ({ id, pos: "free" as TechPosition })),
   ];
   for (const { id, pos } of stdSlots) {
-    const cell = techPositionCell(id, pos);
+    const cell = techPositionCell(id, pos, lf);
     if (!cell) continue;
     const scale = w.standardTech;
     const byFaction: Partial<Record<FactionId, number>> = {};
@@ -168,12 +169,13 @@ export function setupFactionBreakdown(
   weights?: SetupWeights
 ): SetupFactionBreakdown {
   const w = weights ?? DEFAULT_SETUP_WEIGHTS;
+  const lf = result.mode === "lostFleet";
   const byCategory = {} as Record<SetupWeightKey, FactionScores>;
   for (const k of SETUP_WEIGHT_KEYS) byCategory[k] = zeroScores();
 
   const add = (cat: SetupWeightKey, tileId: string | undefined) => {
     if (!tileId) return;
-    const tw = TILE_FACTION_WEIGHTS[tileId];
+    const tw = tileFactionWeights(tileId, lf);
     if (!tw) return;
     for (const [f, v] of Object.entries(tw)) byCategory[cat][f as FactionId] += v ?? 0;
   };
@@ -187,7 +189,7 @@ export function setupFactionBreakdown(
   // タイル1枚ごとに丸める（roundScoringContrib）。**このカテゴリだけ係数の適用が
   // ここで完結している**ので、下の一括スケールでは飛ばすこと。
   result.roundScoring.forEach((id, i) => {
-    const tw = TILE_FACTION_WEIGHTS[id];
+    const tw = tileFactionWeights(id, lf);
     if (!tw) return;
     const timing = roundTimingOf(id, i);
     for (const [f, v] of Object.entries(tw)) {
@@ -196,7 +198,7 @@ export function setupFactionBreakdown(
   });
   for (const id of result.finalScoring) add("finalScoring", id);
   add("federation", result.federationLv5); // 現行DRAFTでは全0
-  if (result.mode === "lostFleet") {
+  if (lf) {
     for (const id of Object.values(result.shipTech ?? {})) add("lfShip", id);
     for (const id of Object.values(result.goldFederations ?? {})) add("lfShip", id);
     for (const id of result.artifacts ?? []) add("lfShip", id);
@@ -206,7 +208,7 @@ export function setupFactionBreakdown(
   // 2026-07-31: トラック下とフリー枠を1つの表へ統合し、係数も1つにした。
   const addStd = (id: string | undefined, pos: TechPosition) => {
     if (!id) return;
-    const cell = techPositionCell(id, pos);
+    const cell = techPositionCell(id, pos, lf);
     if (!cell) return;
     for (const [f, v] of Object.entries(cell)) byCategory.standardTech[f as FactionId] += v ?? 0;
   };
