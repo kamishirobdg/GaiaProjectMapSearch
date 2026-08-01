@@ -68,6 +68,29 @@ for (const tile of TILES) {
   );
 }
 
+// --- 2b. 値の分布（目盛りが使い切れているか）------------------------------
+{
+  const hist = new Map<number, number>();
+  for (const tile of TILES) {
+    for (const t of TRACKS) {
+      for (const f of ids) {
+        const v = cell(tile, t, f);
+        hist.set(v, (hist.get(v) ?? 0) + 1);
+      }
+    }
+  }
+  const total = TILES.length * TRACKS.length * ids.length;
+  console.log(`\n■ 値の分布（全 ${total} セル）\n`);
+  const keys = [...hist.keys()].sort((a, b) => a - b);
+  for (const k of keys) {
+    const n = hist.get(k)!;
+    const bar = "#".repeat(Math.max(1, Math.round((n / total) * 120)));
+    console.log(`  ${String(k).padStart(3)}: ${String(n).padStart(4)}  ${bar}`);
+  }
+  const nonZero = total - (hist.get(0) ?? 0);
+  console.log(`  非ゼロ ${nonZero} / ${total} (${((100 * nonZero) / total).toFixed(0)}%)`);
+}
+
 // --- 3. 種族ペアの類似度 ---------------------------------------------------
 // 42次元（9タイル×6列… 実際は TILES.length × 6）のベクトルとして見る。
 function vec(f: FactionId): number[] {
