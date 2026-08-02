@@ -160,7 +160,10 @@ def template(lf):
     names = [n for n, fid in FACTION_ORDER if lf or fid not in LF_FACTIONS]
     ids = [fid for _, fid in FACTION_ORDER if lf or fid not in LF_FACTIONS]
 
+    # BOM を付ける。Windows の Excel は BOM 無しの UTF-8 を cp932 と解釈して
+    # 種族名が化ける（読み込み側は utf-8-sig を最初に試すので往復できる）。
     out = io.StringIO()
+    out.write(chr(0xFEFF))
     w = csv.writer(out, lineterminator="\n")
     w.writerow(["対応表", "タイル", "ラウンド"] + names)
     for tid in order:
