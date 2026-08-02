@@ -164,6 +164,9 @@ const UI = {
     goldFed: "金枠同盟",
     artifactsLabel: "アーティファクト（トワイライト）",
     researchTracks: "研究トラック",
+    layoutLabel: "レイアウト",
+    layoutScroll: "横スクロール",
+    layoutFit: "画面幅に収める",
     advanced: "上級",
     standard: "標準",
     freeStandard: "標準タイル（フリー枠）",
@@ -260,6 +263,9 @@ const UI = {
     goldFed: "Gold federation",
     artifactsLabel: "Artifacts (Twilight)",
     researchTracks: "Research tracks",
+    layoutLabel: "Layout",
+    layoutScroll: "Scroll",
+    layoutFit: "Fit width",
     advanced: "Adv",
     standard: "Std",
     freeStandard: "Standard tiles (free row)",
@@ -449,7 +455,8 @@ function TileImage({ imageId, alt }: { imageId: string; alt: string }) {
       onError={() => setFailed(true)}
       // alignSelf: flex 親の align-items:stretch で横に引き伸ばされて縦横比が
       // 崩れるのを防ぐ（経済調整タイル 212x349 が横長に見えていた不具合）
-      style={{ maxWidth: 110, maxHeight: 110, width: "auto", height: "auto", display: "block", borderRadius: 4, alignSelf: "flex-start" }}
+      // maxWidth の変数は研究トラックの "fit" レイアウトだけが流す（既定は 110px）
+      style={{ maxWidth: "var(--setup-tile-max, 110px)", maxHeight: 110, width: "auto", height: "auto", display: "block", borderRadius: 4, alignSelf: "flex-start" }}
     />
   );
 }
@@ -506,7 +513,11 @@ ${pickLabel ?? ""}` : tooltip}
         // 指定のある枠はひと目で分かるように背景を変える（2026-07-30 要望）
         background: pinned ? "#e7f6ea" : "#fafafa",
         minWidth: 0,
-        width: "fit-content",
+        // 変数は研究トラックの "fit" レイアウトだけが 100% を流す（既定は fit-content）。
+        // padding(6px 8px) を幅に含めないと、100% のときに列から 16px はみ出す
+        // （既定の fit-content では中身に合わせるので見た目は変わらない。2026-08-02）
+        width: "var(--setup-tile-w, fit-content)",
+        boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
         alignItems: "flex-start",
@@ -527,7 +538,7 @@ ${pickLabel ?? ""}` : tooltip}
           alt={id}
           onError={() => setFailed(true)}
           style={{
-            ...(full ? {} : { maxWidth: 110, maxHeight: 110 }),
+            ...(full ? {} : { maxWidth: "var(--setup-tile-max, 110px)", maxHeight: 110 }),
             width: "auto",
             height: "auto",
             display: "block",
@@ -549,6 +560,20 @@ ${pickLabel ?? ""}` : tooltip}
 type ExtFaceMode = "random" | "vp25" | "shuttle";
 type EconFaceMode = "random" | "A" | "B";
 
+/**
+ * 研究トラックの並べ方（2026-08-02 要望）。
+ *
+ * - "scroll" … 列幅を TILE_COL_W(128px) に固定して横スクロール（従来）。
+ *   タイルは大きいままだが、Android（幅393px）では2列ずつしか見えず、
+ *   6トラックを見比べるのに何度もスワイプが要る。
+ * - "fit"    … 6列を画面幅へ収める。列が均等に縮み、広い画面では 128px で止まる。
+ *
+ * **既定は "scroll"（従来のまま）**。切り替えは研究トラックの見出し横のボタンで、
+ * 選択は localStorage（LS.layout）に持つ＝いつでも元に戻せる。
+ * 幅は CSS だけで決める（JS で画面幅を測らない）ので、SSR とのちらつきが出ない。
+ */
+type SetupLayout = "scroll" | "fit";
+
 
 // Setup-only settings persisted across visits (the seed is deliberately NOT
 // remembered, same as the map page's fixed-seed field). Players and expansion
@@ -559,6 +584,7 @@ const LS = {
   tileRules: "gaia_setup_tilerules",
   bulkTrials: "gaia_setup_bulk_trials",
   bulkCriterion: "gaia_setup_bulk_criterion",
+  layout: "gaia_setup_layout",
 } as const;
 
 function lsGet(key: string): string | null {
@@ -676,6 +702,8 @@ export default function SetupView() {
   // 全スロット共通のタイル指定（固定/除外/候補）。2026-07-30。
   // 既定は「上級技術のキュレーション済み除外」入り（2026-07-30 ユーザー確定）。
   const [tileRules, setTileRules] = React.useState<TileRules>(() => defaultAdvancedTileRules());
+  // 研究トラックの並べ方（SetupLayout 参照）。既定は従来どおり横スクロール。
+  const [layout, setLayout] = React.useState<SetupLayout>("scroll");
   // ----- 一括探索（2026-07-31）-----
   //
   // Map の検索と同じ体験（大量生成 → 上位をランキング）。Map は評価が重いので
@@ -756,6 +784,8 @@ export default function SetupView() {
     if (Number.isFinite(bt) && bt >= 1) setBulkTrials(Math.min(BULK_TRIALS_MAX, Math.floor(bt)));
     const bc = lsGet(LS.bulkCriterion);
     if (bc === "topBalance" || bc === "neutralBalance") setBulkCriterion(bc);
+    const ly = lsGet(LS.layout);
+    if (ly === "scroll" || ly === "fit") setLayout(ly);
     // 共有リンク（?s=）: マップの ?h= と同じ作法。初回にトークンを ref へ捕捉して
     // アドレスバーから除去し（Strict Mode の2回目実行でも ref から再適用）、
     // 上の localStorage 復元より後に view-only で上書きする。
@@ -1501,21 +1531,46 @@ export default function SetupView() {
           旧「回避/強制」プルダウンは全スロットのタイル指定へ統合したので廃止
           （キュレーション済みの除外はタイル指定の既定値に入っている。2026-07-30）。 */}
       <section>
-        <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.researchTracks}</div>
+        <div style={{ fontWeight: 700, marginBottom: 6, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <span>{t.researchTracks}</span>
+          <button
+            type="button"
+            onClick={() => {
+              const next: SetupLayout = layout === "fit" ? "scroll" : "fit";
+              setLayout(next);
+              lsSet(LS.layout, next);
+            }}
+            style={{
+              fontSize: 11,
+              fontWeight: 400,
+              padding: "2px 8px",
+              borderRadius: 6,
+              border: T.borderSoft,
+              background: "#fff",
+              cursor: "pointer",
+            }}
+          >
+            {`${t.layoutLabel}: ${layout === "fit" ? t.layoutFit : t.layoutScroll}`}
+          </button>
+        </div>
         {/* 列はタイル幅ちょうど（TILE_COL_W）で、余った幅に広がらないようにする。
             以前は grid の 1fr で引き伸ばしていたので、広い画面だと列間が
             300px 以上空いて読みづらかった（2026-07-31 指摘）。
-            6トラックは盤面と同じく必ず横一列に並べたいので折り返さず、
-            入りきらない幅ではこの節だけ横スクロールさせる。 */}
+            6トラックは盤面と同じく必ず横一列に並べたいので折り返さない。
+            "scroll"（既定）は列幅を固定して、入りきらない幅ではこの節だけ横スクロール。
+            "fit" は6列を画面幅へ収める（2026-08-02 要望。Android で2列ずつしか
+            見えなかったため）。"fit" のときだけ CSS 変数を流して、タイルの枠と画像を
+            列幅に追従させる —— 変数を置かない他の節は 110px のままで影響しない。 */}
         <div
           style={{
             display: "flex",
             flexWrap: "nowrap",
             gap: 8,
             alignItems: "flex-start",
-            overflowX: "auto",
+            overflowX: layout === "fit" ? "visible" : "auto",
             paddingBottom: 4,
-          }}
+            ...(layout === "fit" ? { "--setup-tile-w": "100%", "--setup-tile-max": "100%" } : {}),
+          } as React.CSSProperties}
         >
           {RESEARCH_TRACK_IDS.map((track) => {
             const showEconTop = track === "eco" && lf && result.mode === "lostFleet";
@@ -1526,12 +1581,26 @@ export default function SetupView() {
                   : t.faceB
                 : "";
             return (
-              <div key={track} style={{ width: TILE_COL_W, flex: "0 0 auto", display: "flex", flexDirection: "column", gap: 6 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.8 }}>
+              <div
+                key={track}
+                style={{
+                  // "fit" は6列で幅を分け合う（広い画面では TILE_COL_W で止める）。
+                  // minWidth:0 が無いと flex 子が中身の幅より縮まない。
+                  ...(layout === "fit"
+                    ? { flex: "1 1 0", minWidth: 0, maxWidth: TILE_COL_W }
+                    : { width: TILE_COL_W, flex: "0 0 auto" }),
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                }}
+              >
+                <div style={{ fontSize: layout === "fit" ? 11 : 12, fontWeight: 700, opacity: 0.8 }}>
                   {lang === "ja" ? TRACK_LABEL[track].ja : TRACK_LABEL[track].en}
                 </div>
-                {/* トラック上部スロット（列の縦位置を揃えるため全列で高さを確保） */}
-                <div style={{ minHeight: 148, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+                {/* トラック上部スロット（列の縦位置を揃えるため全列で高さを確保）。
+                    "fit" では列が細いぶんタイルも小さくなるので確保する高さを下げる
+                    （96 は暫定値。実機で見て詰める。2026-08-02） */}
+                <div style={{ minHeight: layout === "fit" ? 96 : 148, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
                   {track === "terra" ? tileCell(result.federationLv5, t.fedTag, false, { slotId: "fed", title: t.federationLv5, kind: "fed" }) : null}
                   {showEconTop && result.mode === "lostFleet" ? (
                     <div
@@ -1545,7 +1614,8 @@ ${pickHint}`}
                         padding: "6px 8px",
                         fontSize: 12,
                         background: econFaceMode !== "random" ? "#e7f6ea" : "#fafafa",
-                        width: "fit-content",
+                        width: "var(--setup-tile-w, fit-content)",
+                        boxSizing: "border-box", // tileCell と同じ理由（padding を幅に含める）
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "flex-start",
