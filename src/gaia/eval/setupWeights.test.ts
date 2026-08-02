@@ -26,10 +26,12 @@ import {
 } from "./setupWeights";
 import {
   FACTION_IDS,
-  ROUND_SCORING_TIMING,
-  ROUND_TIMING_BASE,
+  LF_FACTION_IDS,
+  ROUND_SCORING_WEIGHTS_BASE,
+  ROUND_SCORING_WEIGHTS_LF,
+  roundScoringCell,
   STD_TECH_SCALE,
-  TILE_FACTION_WEIGHTS,
+  type FactionId,
 } from "./factionWeights";
 
 function syntheticSetup(partial?: Partial<SetupResult>): SetupResult {
@@ -206,54 +208,60 @@ describe("serializeSetupWeights", () => {
   });
 });
 
-// ラウンド得点の「何ラウンド目か」（2026-07-31 要望）。序盤向きのタイルは早い
-// ラウンドほど、終盤向きのタイルは遅いラウンドほど高く評価する。
-describe("ラウンド得点の並び順", () => {
+// ラウンド得点は「タイル×ラウンド×種族」の表で持つ（2026-08-02。曲線
+// ROUND_SCORING_TIMING は廃止した）。表がラウンドごとの値を直に持つので、ここでは
+// **表の構造と、表の値がそのまま評価へ出ること**だけを固定する。
+// 「序盤向きは早いラウンドほど高い」といった中身の性質は固定しない —— 投入時の雛形は
+// 全ラウンド同値（案1）で、これからユーザーが値を入れて変えていくため。
+describe("ラウンド得点の表（タイル×ラウンド×種族）", () => {
   /** 指定タイルだけを6ラウンドに並べたセットアップ（他カテゴリは同じ）。 */
   const withRounds = (ids: string[]) => syntheticSetup({ roundScoring: ids });
 
-  it("序盤向き（RS01 鉱山建設）は早いラウンドほど高い", () => {
-    const early = setupFactionBreakdown(withRounds(["RS01", "TS4x", "TS4x", "TS4x", "TS4x", "TS4x"]));
-    const late = setupFactionBreakdown(withRounds(["TS4x", "TS4x", "TS4x", "TS4x", "TS4x", "RS01"]));
-    // RS01 は lantids/xenos/geodens に +1
-    expect(early.byCategory.roundScoring.lantids).toBeGreaterThan(
-      late.byCategory.roundScoring.lantids
-    );
-  });
+  const BASE_IDS = ["RS01", "RS02", "RS03", "RS04", "RS05", "RS06", "RS07", "RS08", "RS09"];
+  const LF_IDS = [...BASE_IDS, "RS10", "RS11", "RS12"];
 
-  it("終盤向き（RS08 同盟タイル獲得）は遅いラウンドほど高い", () => {
-    const early = setupFactionBreakdown(withRounds(["RS08", "TS4x", "TS4x", "TS4x", "TS4x", "TS4x"]));
-    const late = setupFactionBreakdown(withRounds(["TS4x", "TS4x", "TS4x", "TS4x", "TS4x", "RS08"]));
-    // RS08 は ivits に +2
-    expect(late.byCategory.roundScoring.ivits).toBeGreaterThan(
-      early.byCategory.roundScoring.ivits
-    );
-  });
-
-  it("一定（RS07 研究1レベル）はどのラウンドでも同じ", () => {
-    const a = setupFactionBreakdown(withRounds(["RS07", "TS4x", "TS4x", "TS4x", "TS4x", "TS4x"]));
-    const b = setupFactionBreakdown(withRounds(["TS4x", "TS4x", "TS4x", "TS4x", "TS4x", "RS07"]));
-    expect(a.byCategory.roundScoring.firaks).toBe(b.byCategory.roundScoring.firaks);
-  });
-
-  it("どの曲線も6ラウンドの合計が同じ（＝並び順は平均では得も損もしない）", () => {
-    // 曲線そのものの不変条件を見る。スコア経由だとタイルごとの重みの違いが混ざる
-    // （2026-08-01 に書き換え。以前は「RS01 と RS07 が同じ重み」に依存していた）。
-    for (const [id, curve] of Object.entries(ROUND_SCORING_TIMING)) {
-      expect(curve).toHaveLength(6);
-      expect(`${id}:${curve.reduce((a, b) => a + b, 0)}`).toBe(`${id}:${6 * ROUND_TIMING_BASE}`);
+  it("通常版9タイル・拡張版12タイルが、それぞれ6ラウンドぶんを持つ", () => {
+    for (const [name, table, ids] of [
+      ["BASE", ROUND_SCORING_WEIGHTS_BASE, BASE_IDS],
+      ["LF", ROUND_SCORING_WEIGHTS_LF, LF_IDS],
+    ] as const) {
+      expect(`${name}:${Object.keys(table).sort().join(",")}`).toBe(`${name}:${ids.join(",")}`);
+      for (const [id, rounds] of Object.entries(table)) {
+        expect(`${name}/${id}:${rounds.length}`).toBe(`${name}/${id}:6`);
+      }
     }
-    // 同じタイルを6ラウンド並べたぶんは、素通し（倍率10）を6枚並べたのと同じになる。
-    const early = setupFactionBreakdown(withRounds(Array(6).fill("RS01")));
+  });
+
+  it("通常版の表に LF4種族は入れない（基本版では選べない）", () => {
+    for (const [id, rounds] of Object.entries(ROUND_SCORING_WEIGHTS_BASE)) {
+      rounds.forEach((cells, i) => {
+        for (const f of Object.keys(cells)) {
+          expect(`${id}/R${i + 1}/${f}:${LF_FACTION_IDS.has(f as FactionId)}`).toBe(
+            `${id}/R${i + 1}/${f}:false`
+          );
+        }
+      });
+    }
+  });
+
+  it("表の値がそのまま評価へ出る（係数を掛けるだけ・丸めなし）", () => {
+    const b = setupFactionBreakdown(withRounds(Array(6).fill("RS01")));
     const w = DEFAULT_SETUP_WEIGHTS.roundScoring;
     for (const f of FACTION_IDS) {
-      const flatSum = 6 * (TILE_FACTION_WEIGHTS.RS01?.[f] ?? 0) * w;
-      // タイル1枚ごとの丸めぶんだけズレうる（6枚で最大±3）。
-      expect(Math.abs(early.byCategory.roundScoring[f] - flatSum)).toBeLessThanOrEqual(3);
+      const want =
+        [0, 1, 2, 3, 4, 5].reduce((a, i) => a + (roundScoringCell("RS01", i, false)?.[f] ?? 0), 0) * w;
+      expect(`${f}:${b.byCategory.roundScoring[f]}`).toBe(`${f}:${want}`);
     }
   });
 
-  it("評価値に小数を出さない（倍率は10分率で最後にまとめて割る）", () => {
+  it("表に無いタイルは寄与しない（RS10-12 は拡張版だけ）", () => {
+    expect(roundScoringCell("RS10", 0, false)).toBeUndefined();
+    expect(roundScoringCell("RS10", 0, true)).toBeDefined();
+    // ラウンドが範囲外でも落ちない
+    expect(roundScoringCell("RS01", 6, true)).toBeUndefined();
+  });
+
+  it("評価値に小数を出さない（倍率の割り算が無くなった）", () => {
     const b = setupFactionBreakdown(withRounds(["RS01", "RS08", "RS07", "RS04", "RS09", "RS02"]));
     for (const f of FACTION_IDS) {
       expect(Number.isInteger(b.byCategory.roundScoring[f])).toBe(true);

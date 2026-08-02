@@ -14,8 +14,7 @@ import {
   FACTION_IDS,
   factionIdsForMode,
   factionsForMode,
-  roundTimingOf,
-  ROUND_TIMING_BASE,
+  roundScoringCell,
   techPositionCell,
   tileFactionWeights,
   type FactionId,
@@ -41,19 +40,6 @@ function zeroScores(): FactionScores {
   const out = {} as FactionScores;
   for (const f of FACTION_IDS) out[f] = 0;
   return out;
-}
-
-/**
- * ラウンド得点タイル1枚ぶんの寄与（2026-08-01）。
- *
- * 倍率は10分率なので、係数が10の倍数でないと `重み × 倍率 × 係数 / 10` は
- * 小数になる（既定の係数は 4 = ROUND_SCORING_SCALE）。評価値に小数を出さない
- * ため、**タイル1枚ごとに丸める**。合計してから丸めるのではなくこの順にするのは、
- * 内訳表の合計（setupFactionBreakdown）とタイルの強調表示
- * （setupFactionTileHits）を必ず一致させるため —— 両方がこの関数を通る。
- */
-function roundScoringContrib(weight: number, timing: number, scale: number): number {
-  return Math.round((weight * timing * scale) / ROUND_TIMING_BASE);
 }
 
 /**
@@ -112,15 +98,15 @@ export function setupFactionTileHits(
   }
   push("advExtension", result.advancedTech.extension);
   for (const id of result.boosters.available) push("booster", id);
-  // ラウンド得点は「何ラウンド目か」で倍率が変わる（2026-07-31）。
+  // ラウンド得点は「何ラウンド目か」で値が変わる（2026-08-02 に曲線から
+  // タイル×ラウンド×種族の表へ移した。roundScoringCell）。
   result.roundScoring.forEach((id, i) => {
-    const src = tileFactionWeights(id, lf);
+    const src = roundScoringCell(id, i, lf);
     if (!src) return;
-    const timing = roundTimingOf(id, i);
     const byFaction: Partial<Record<FactionId, number>> = {};
     let any = false;
     for (const [f, v] of Object.entries(src)) {
-      const val = roundScoringContrib(v ?? 0, timing, w.roundScoring);
+      const val = (v ?? 0) * w.roundScoring;
       if (val === 0) continue;
       byFaction[f as FactionId] = val;
       any = true;
@@ -185,15 +171,14 @@ export function setupFactionBreakdown(
   add("advExtension", result.advancedTech.extension);
   for (const id of result.boosters.available) add("booster", id);
   // ラウンド得点は ×2タイルが2回出るので枚数分加算しつつ、**何ラウンド目に出たかで
-  // 倍率を掛ける**（2026-07-31 要望）。倍率は10分率なので、係数まで掛けてから
-  // タイル1枚ごとに丸める（roundScoringContrib）。**このカテゴリだけ係数の適用が
-  // ここで完結している**ので、下の一括スケールでは飛ばすこと。
+  // 値が変わる**（2026-08-02 に曲線を廃止し、タイル×ラウンド×種族の表へ移した）。
+  // 倍率の掛け算が無くなって整数のまま足せるので、係数は下の一括スケールで掛ける
+  // ＝他のカテゴリと同じ扱いになった（以前はここで丸めるため特別扱いしていた）。
   result.roundScoring.forEach((id, i) => {
-    const tw = tileFactionWeights(id, lf);
+    const tw = roundScoringCell(id, i, lf);
     if (!tw) return;
-    const timing = roundTimingOf(id, i);
     for (const [f, v] of Object.entries(tw)) {
-      byCategory.roundScoring[f as FactionId] += roundScoringContrib(v ?? 0, timing, w.roundScoring);
+      byCategory.roundScoring[f as FactionId] += v ?? 0;
     }
   });
   for (const id of result.finalScoring) add("finalScoring", id);
@@ -220,10 +205,8 @@ export function setupFactionBreakdown(
   // 係数を掛けてから合算する（表示の内訳と合計が必ず一致するようにする）。
   const total = zeroScores();
   for (const k of SETUP_WEIGHT_KEYS) {
-    // ラウンド得点は上で係数まで適用済み（タイルごとに丸めるため）。二重に掛けない。
-    const scale = k === "roundScoring" ? 1 : w[k];
     for (const f of FACTION_IDS) {
-      byCategory[k][f] *= scale;
+      byCategory[k][f] *= w[k];
       total[f] += byCategory[k][f];
     }
   }

@@ -78,7 +78,8 @@ export const SETUP_WEIGHT_BASE = 5;
 /**
  * ラウンド得点の既定係数。上級技術やブースターと違い、そのタイルが効くのは
  * 6ラウンドのうち1ラウンドだけなので、1枚あたりの影響力を基準より軽くする
- * （基準の 0.8 倍）。何ラウンド目に出たかの倍率は ROUND_SCORING_TIMING が別に掛ける。
+ * （基準の 0.8 倍）。何ラウンド目に出たかの差は ROUND_SCORING_WEIGHTS_BASE / _LF が
+ * ラウンドごとの値として直に持つ（2026-08-02 に曲線を廃止した）。
  */
 export const ROUND_SCORING_SCALE = 4;
 export const DEFAULT_SETUP_WEIGHTS: SetupWeights = {

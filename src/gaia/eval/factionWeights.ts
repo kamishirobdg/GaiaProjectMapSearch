@@ -537,63 +537,250 @@ export function tileFactionWeights(
 export const STD_TECH_SCALE = 6;
 
 /**
- * ラウンド得点の「何ラウンド目か」による価値の上下（2026-07-31、2026-08-02 に精査）。
+ * ラウンド得点の重みテーブル（タイル → ラウンド(0始まり) → 種族 → 値）。
  *
- * 同じタイルでも、何ラウンド目に出たかで実際に稼げる点が変わる。
- * 種族ごとの相性（TILE_FACTION_WEIGHTS）とは独立なので、掛け算で分ける:
- *   寄与 = TILE_FACTION_WEIGHTS[タイル][種族] × 倍率[ラウンド] × 係数 / 10
+ * ★ここが編集用の正本テーブル。**曲線（ROUND_SCORING_TIMING）は 2026-08-02 に廃止**し、
+ * 「何ラウンド目に出たか」の差はこの表がラウンドごとの値として直に持つ。倍率の
+ * 掛け算が無くなったので、寄与は
+ *   寄与 = roundScoringCell(タイル, ラウンド)[種族] × 係数（roundScoring）
+ * になり、丸めが要らない（10分率をやめたので小数が出ない）。
  *
- * 倍率は10分率（10＝素通り）。**どの曲線も6ラウンドの合計が60**（＝平均10）なので、
- * 「どのラウンドに出るかは等確率」と見れば全体のスケールは変わらない。
+ * 曲線では表せなかった種族差を入れられるのが狙い。たとえば「R1 に同盟を作れるのは
+ * ダー・シュワーム人だけ」は、曲線（種族共通）では RS08 全体を落とすしかなく、
+ * その埋め合わせを TILE_FACTION_WEIGHTS 側へ押し込むほかなかった。
  *
- * **2026-08-02 の方針（ユーザー確定）: 全体を後半寄りに倒す。**
- * 以前は「その行動が起きやすいラウンド」だけを見ていたが、後半ほど資源も行動数も
- * 多いので、同じタイルでも後半のほうが数が出る。さらに後半のタイルは「そこへ狙って
- * 合わせる」ことができ、R1 には合わせる余地がない。そのぶん序盤型の右下がりを緩め、
- * 中盤型の山を1ラウンド右へずらした。
+ * **表の作り方（2026-08-02 ユーザー確定・案1）**: いまの共通評価値
+ * （TILE_FACTION_WEIGHTS の RS 行）を**全ラウンドへ複製した状態**から始め、変えたい
+ * セルだけ直す。曲線の値は出発点に混ぜていない —— 混ぜると「どこまでが曲線由来か」が
+ * 分からなくなるため。したがって**投入直後はラウンド差がゼロ**で、以前あった
+ * 序盤型/中盤型/終盤型の差はいったん消えている（ユーザーが値を入れて復元する）。
  *
- * 終盤型が2つあるのは **R1 の現実性が違う**ため（ユーザー確定）:
- *   - LATE（学院・惑星首府）… R1 でも現実的に達成できることがよくあるので緩い。
- *   - LATE_HARD（同盟）… R1 に同盟を作れるのはダー・シュワーム人（と、戦略的価値は
- *     低いがグリーン人）だけで、他の種族にとってはほぼ0価値。
+ * 通常版 9タイル×6ラウンド×14種族＝756セル、拡張版 12×6×18＝1296セル。
+ * 手で写すと取り違えるので CSV から機械生成する（標準技術と同じ運用）:
+ *   雛形   python scripts/gen_round_scoring_table.py --template [--lf] > out.csv
+ *   生成   python scripts/gen_round_scoring_table.py <csv>      → 中身を差し替え
+ *   検算   python scripts/gen_round_scoring_table.py <csv> --check（全セル・両方向）
+ *
+ * 通常版と拡張版で分ける理由は標準技術と同じ（拡張の有無で場に出るタイルの母集団が
+ * 変わり、同じタイルでも相対的な影響力が変わる）。RS04 は物理2枚なので2枠に出る
+ * ことがあり、その場合は枠ごとに引いて両方を足す。
  */
-const TIMING_EARLY = [12, 11, 11, 10, 9, 7];
-const TIMING_MID = [6, 8, 11, 13, 12, 10];
-const TIMING_LATE = [6, 8, 9, 11, 13, 13];
-const TIMING_LATE_HARD = [1, 5, 9, 13, 16, 16];
-const TIMING_FLAT = [10, 10, 10, 10, 10, 10];
+export type RoundScoringTable = Record<
+  string,
+  ReadonlyArray<Partial<Record<FactionId, number>>>
+>;
 
-/** ラウンド得点タイル → ラウンド別倍率（10分率）。記載なし＝素通り（FLAT）。 */
-export const ROUND_SCORING_TIMING: Record<string, readonly number[]> = {
-  // 序盤: 鉱山は序盤ほど数が出るが、終盤も資源を使い切って建てられる
-  RS01: TIMING_EARLY, // 鉱山建設 +2VP
-  // 中盤: 交易所・研究所への改良
-  RS02: TIMING_MID, // 交易所建設 +3VP
-  RS03: TIMING_MID, // 交易所建設 +4VP
-  RS12: TIMING_MID, // 研究所建設 +4VP
-  // 終盤: 学院・惑星首府は資源が要るが、R1 でも狙えなくはない。
-  // 惑星改造もここ（2026-08-02 ユーザー指示。段階を積むには先に鉱山と改造技術が要る）
-  RS04: TIMING_LATE, // 学院・惑星首府建設 +5VP
-  RS09: TIMING_LATE, // 惑星改造1段階 +2VP
-  // 終盤（R1 はほぼ不可能）: 同盟はパワー値7ぶんの建造物が要る
-  RS08: TIMING_LATE_HARD, // 同盟タイル獲得 +5VP
-  // 一定: どのラウンドでも同じように取れる（2026-08-02 ユーザー指示で
-  // ガイア鉱山と未入植系を中盤/序盤からここへ移した）
-  RS07: TIMING_FLAT, // 研究1レベル +2VP
-  RS05: TIMING_FLAT, // ガイア惑星に鉱山建設 +3VP
-  RS06: TIMING_FLAT, // ガイア惑星に鉱山建設 +4VP
-  RS10: TIMING_FLAT, // 未入植の宙域で鉱山建設 +3VP
-  RS11: TIMING_FLAT, // 未入植の種類の惑星に鉱山建設 +3VP
+/**
+ * ★編集用の正本（**通常版**）。基本14種族ぶん。
+ * RS10/RS11/RS12 は Lost Fleet の3枚なので、この表には入れない。
+ */
+export const ROUND_SCORING_WEIGHTS_BASE: RoundScoringTable = {
+  // RS01 鉱山建設 +2VP
+  RS01: [
+    { lantids: 2, xenos: 1, geodens: 1 }, // R1
+    { lantids: 2, xenos: 1, geodens: 1 }, // R2
+    { lantids: 2, xenos: 1, geodens: 1 }, // R3
+    { lantids: 2, xenos: 1, geodens: 1 }, // R4
+    { lantids: 2, xenos: 1, geodens: 1 }, // R5
+    { lantids: 2, xenos: 1, geodens: 1 }, // R6
+  ],
+  // RS02 交易所建設 +3VP
+  RS02: [
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R1
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R2
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R3
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R4
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R5
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R6
+  ],
+  // RS03 交易所建設 +4VP
+  RS03: [
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R1
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R2
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R3
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R4
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R5
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R6
+  ],
+  // RS04 学院・惑星首府建設 +5VP ×2
+  RS04: [
+    { ambas: 1, bescods: 1, nevlas: 1, itars: 1 }, // R1
+    { ambas: 1, bescods: 1, nevlas: 1, itars: 1 }, // R2
+    { ambas: 1, bescods: 1, nevlas: 1, itars: 1 }, // R3
+    { ambas: 1, bescods: 1, nevlas: 1, itars: 1 }, // R4
+    { ambas: 1, bescods: 1, nevlas: 1, itars: 1 }, // R5
+    { ambas: 1, bescods: 1, nevlas: 1, itars: 1 }, // R6
+  ],
+  // RS05 ガイア惑星に鉱山建設 +3VP
+  RS05: [
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2 }, // R1
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2 }, // R2
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2 }, // R3
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2 }, // R4
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2 }, // R5
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2 }, // R6
+  ],
+  // RS06 ガイア惑星に鉱山建設 +4VP
+  RS06: [
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2 }, // R1
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2 }, // R2
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2 }, // R3
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2 }, // R4
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2 }, // R5
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2 }, // R6
+  ],
+  // RS07 研究1レベル +2VP
+  RS07: [
+    { lantids: 1, gleens: -1, firaks: 2, bescods: 2, nevlas: 1, itars: 2 }, // R1
+    { lantids: 1, gleens: -1, firaks: 2, bescods: 2, nevlas: 1, itars: 2 }, // R2
+    { lantids: 1, gleens: -1, firaks: 2, bescods: 2, nevlas: 1, itars: 2 }, // R3
+    { lantids: 1, gleens: -1, firaks: 2, bescods: 2, nevlas: 1, itars: 2 }, // R4
+    { lantids: 1, gleens: -1, firaks: 2, bescods: 2, nevlas: 1, itars: 2 }, // R5
+    { lantids: 1, gleens: -1, firaks: 2, bescods: 2, nevlas: 1, itars: 2 }, // R6
+  ],
+  // RS08 同盟タイル獲得 +5VP
+  RS08: [
+    { xenos: 2, gleens: 1, ambas: 1, ivits: 2 }, // R1
+    { xenos: 2, gleens: 1, ambas: 1, ivits: 2 }, // R2
+    { xenos: 2, gleens: 1, ambas: 1, ivits: 2 }, // R3
+    { xenos: 2, gleens: 1, ambas: 1, ivits: 2 }, // R4
+    { xenos: 2, gleens: 1, ambas: 1, ivits: 2 }, // R5
+    { xenos: 2, gleens: 1, ambas: 1, ivits: 2 }, // R6
+  ],
+  // RS09 惑星改造1段階 +2VP
+  RS09: [
+    { xenos: 1, geodens: 2 }, // R1
+    { xenos: 1, geodens: 2 }, // R2
+    { xenos: 1, geodens: 2 }, // R3
+    { xenos: 1, geodens: 2 }, // R4
+    { xenos: 1, geodens: 2 }, // R5
+    { xenos: 1, geodens: 2 }, // R6
+  ],
 };
 
-/** ラウンド別倍率の基準（10分率の 10）。 */
-export const ROUND_TIMING_BASE = 10;
+/** ★編集用の正本（**拡張版**）。18種族ぶん。RS10/RS11/RS12 が加わる。 */
+export const ROUND_SCORING_WEIGHTS_LF: RoundScoringTable = {
+  // RS01 鉱山建設 +2VP
+  RS01: [
+    { lantids: 2, xenos: 1, geodens: 1, spaceGiants: 2, darkanians: 2 }, // R1
+    { lantids: 2, xenos: 1, geodens: 1, spaceGiants: 2, darkanians: 2 }, // R2
+    { lantids: 2, xenos: 1, geodens: 1, spaceGiants: 2, darkanians: 2 }, // R3
+    { lantids: 2, xenos: 1, geodens: 1, spaceGiants: 2, darkanians: 2 }, // R4
+    { lantids: 2, xenos: 1, geodens: 1, spaceGiants: 2, darkanians: 2 }, // R5
+    { lantids: 2, xenos: 1, geodens: 1, spaceGiants: 2, darkanians: 2 }, // R6
+  ],
+  // RS02 交易所建設 +3VP
+  RS02: [
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R1
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R2
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R3
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R4
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R5
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R6
+  ],
+  // RS03 交易所建設 +4VP
+  RS03: [
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R1
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R2
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R3
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R4
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R5
+    { taklons: 1, hadschHallas: 1, firaks: 2, nevlas: 1 }, // R6
+  ],
+  // RS04 学院・惑星首府建設 +5VP ×2
+  RS04: [
+    { ambas: 1, bescods: 1, nevlas: 1, itars: 1, tinkerroids: -1 }, // R1
+    { ambas: 1, bescods: 1, nevlas: 1, itars: 1, tinkerroids: -1 }, // R2
+    { ambas: 1, bescods: 1, nevlas: 1, itars: 1, tinkerroids: -1 }, // R3
+    { ambas: 1, bescods: 1, nevlas: 1, itars: 1, tinkerroids: -1 }, // R4
+    { ambas: 1, bescods: 1, nevlas: 1, itars: 1, tinkerroids: -1 }, // R5
+    { ambas: 1, bescods: 1, nevlas: 1, itars: 1, tinkerroids: -1 }, // R6
+  ],
+  // RS05 ガイア惑星に鉱山建設 +3VP
+  RS05: [
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2, spaceGiants: -1, tinkerroids: -1, darkanians: -1 }, // R1
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2, spaceGiants: -1, tinkerroids: -1, darkanians: -1 }, // R2
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2, spaceGiants: -1, tinkerroids: -1, darkanians: -1 }, // R3
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2, spaceGiants: -1, tinkerroids: -1, darkanians: -1 }, // R4
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2, spaceGiants: -1, tinkerroids: -1, darkanians: -1 }, // R5
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2, spaceGiants: -1, tinkerroids: -1, darkanians: -1 }, // R6
+  ],
+  // RS06 ガイア惑星に鉱山建設 +4VP
+  RS06: [
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2, spaceGiants: -1, tinkerroids: -1, darkanians: -1 }, // R1
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2, spaceGiants: -1, tinkerroids: -1, darkanians: -1 }, // R2
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2, spaceGiants: -1, tinkerroids: -1, darkanians: -1 }, // R3
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2, spaceGiants: -1, tinkerroids: -1, darkanians: -1 }, // R4
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2, spaceGiants: -1, tinkerroids: -1, darkanians: -1 }, // R5
+    { terrans: 2, gleens: 2, balTaks: 1, itars: 2, spaceGiants: -1, tinkerroids: -1, darkanians: -1 }, // R6
+  ],
+  // RS07 研究1レベル +2VP
+  RS07: [
+    { lantids: 1, gleens: -1, firaks: 2, bescods: 2, nevlas: 1, itars: 2 }, // R1
+    { lantids: 1, gleens: -1, firaks: 2, bescods: 2, nevlas: 1, itars: 2 }, // R2
+    { lantids: 1, gleens: -1, firaks: 2, bescods: 2, nevlas: 1, itars: 2 }, // R3
+    { lantids: 1, gleens: -1, firaks: 2, bescods: 2, nevlas: 1, itars: 2 }, // R4
+    { lantids: 1, gleens: -1, firaks: 2, bescods: 2, nevlas: 1, itars: 2 }, // R5
+    { lantids: 1, gleens: -1, firaks: 2, bescods: 2, nevlas: 1, itars: 2 }, // R6
+  ],
+  // RS08 同盟タイル獲得 +5VP
+  RS08: [
+    { xenos: 2, gleens: 1, ambas: 1, ivits: 2, moweyds: 1 }, // R1
+    { xenos: 2, gleens: 1, ambas: 1, ivits: 2, moweyds: 1 }, // R2
+    { xenos: 2, gleens: 1, ambas: 1, ivits: 2, moweyds: 1 }, // R3
+    { xenos: 2, gleens: 1, ambas: 1, ivits: 2, moweyds: 1 }, // R4
+    { xenos: 2, gleens: 1, ambas: 1, ivits: 2, moweyds: 1 }, // R5
+    { xenos: 2, gleens: 1, ambas: 1, ivits: 2, moweyds: 1 }, // R6
+  ],
+  // RS09 惑星改造1段階 +2VP
+  RS09: [
+    { xenos: 1, geodens: 2, moweyds: 1, spaceGiants: 2, tinkerroids: 1, darkanians: -1 }, // R1
+    { xenos: 1, geodens: 2, moweyds: 1, spaceGiants: 2, tinkerroids: 1, darkanians: -1 }, // R2
+    { xenos: 1, geodens: 2, moweyds: 1, spaceGiants: 2, tinkerroids: 1, darkanians: -1 }, // R3
+    { xenos: 1, geodens: 2, moweyds: 1, spaceGiants: 2, tinkerroids: 1, darkanians: -1 }, // R4
+    { xenos: 1, geodens: 2, moweyds: 1, spaceGiants: 2, tinkerroids: 1, darkanians: -1 }, // R5
+    { xenos: 1, geodens: 2, moweyds: 1, spaceGiants: 2, tinkerroids: 1, darkanians: -1 }, // R6
+  ],
+  // RS10 未入植の宙域で鉱山建設 +3VP
+  RS10: [
+    { lantids: 1, xenos: 1, taklons: 1, ambas: 1, balTaks: -2, darkanians: 2 }, // R1
+    { lantids: 1, xenos: 1, taklons: 1, ambas: 1, balTaks: -2, darkanians: 2 }, // R2
+    { lantids: 1, xenos: 1, taklons: 1, ambas: 1, balTaks: -2, darkanians: 2 }, // R3
+    { lantids: 1, xenos: 1, taklons: 1, ambas: 1, balTaks: -2, darkanians: 2 }, // R4
+    { lantids: 1, xenos: 1, taklons: 1, ambas: 1, balTaks: -2, darkanians: 2 }, // R5
+    { lantids: 1, xenos: 1, taklons: 1, ambas: 1, balTaks: -2, darkanians: 2 }, // R6
+  ],
+  // RS11 未入植の種類の惑星に鉱山建設 +3VP
+  RS11: [
+    { gleens: 1, geodens: 2, spaceGiants: 2, tinkerroids: 1, darkanians: 2 }, // R1
+    { gleens: 1, geodens: 2, spaceGiants: 2, tinkerroids: 1, darkanians: 2 }, // R2
+    { gleens: 1, geodens: 2, spaceGiants: 2, tinkerroids: 1, darkanians: 2 }, // R3
+    { gleens: 1, geodens: 2, spaceGiants: 2, tinkerroids: 1, darkanians: 2 }, // R4
+    { gleens: 1, geodens: 2, spaceGiants: 2, tinkerroids: 1, darkanians: 2 }, // R5
+    { gleens: 1, geodens: 2, spaceGiants: 2, tinkerroids: 1, darkanians: 2 }, // R6
+  ],
+  // RS12 研究所建設 +4VP
+  RS12: [
+    { lantids: 1, gleens: -1, firaks: 2, bescods: 1 }, // R1
+    { lantids: 1, gleens: -1, firaks: 2, bescods: 1 }, // R2
+    { lantids: 1, gleens: -1, firaks: 2, bescods: 1 }, // R3
+    { lantids: 1, gleens: -1, firaks: 2, bescods: 1 }, // R4
+    { lantids: 1, gleens: -1, firaks: 2, bescods: 1 }, // R5
+    { lantids: 1, gleens: -1, firaks: 2, bescods: 1 }, // R6
+  ],
+};
 
-/** そのタイルが n ラウンド目（0始まり）に出たときの倍率。 */
-export function roundTimingOf(tileId: string, roundIndex: number): number {
-  const curve = ROUND_SCORING_TIMING[tileId];
-  if (!curve) return ROUND_TIMING_BASE;
-  return curve[roundIndex] ?? ROUND_TIMING_BASE;
+/**
+ * そのタイルが n ラウンド目（0始まり）に出たときの種族別の値。
+ * 表に無いタイル（通常版の RS10-12 など）は undefined ＝寄与なし。
+ */
+export function roundScoringCell(
+  tileId: string,
+  roundIndex: number,
+  lostFleet: boolean
+): Partial<Record<FactionId, number>> | undefined {
+  const table = lostFleet ? ROUND_SCORING_WEIGHTS_LF : ROUND_SCORING_WEIGHTS_BASE;
+  return table[tileId]?.[roundIndex];
 }
 
 /**
@@ -706,8 +893,11 @@ export const TILE_FACTION_WEIGHTS: Record<string, Partial<Record<FactionId, numb
   RB14: { terrans: 2, balTaks: 2, itars: 1, gleens: 1 }, // 収入：パワー2／特別：ガイア計画（即変換）
 
   // ===== ラウンド得点（9＋LF3、copies>1は枚数分加算） =====
-  // 効くのは6ラウンドのうち1つだけなので、上級技術より1枚の重みは軽い。
-  // ROUND_SCORING_TIMING で「何ラウンド目に出たか」の倍率が別に掛かる。
+  // **★2026-08-02: この RS 行はもう評価に使われない。** ラウンド得点の正本は
+  // ROUND_SCORING_WEIGHTS_BASE / _LF（タイル×ラウンド×種族）へ移した。
+  // ここを直しても評価は変わらないので、直すのは向こうの表のほう。
+  // 残してあるのは雛形生成（gen_round_scoring_table.py --template）の入力と、
+  // 「ラウンド差を付ける前はどの値だったか」の記録のため。
   RS01: { lantids: 2, spaceGiants: 2, darkanians: 2, xenos: 1, geodens: 1 }, // 鉱山建設 +2VP
   RS02: { firaks: 2, hadschHallas: 1, nevlas: 1, taklons: 1 }, // 交易所建設 +3VP
   RS03: { firaks: 2, hadschHallas: 1, nevlas: 1, taklons: 1 }, // 交易所建設 +4VP
