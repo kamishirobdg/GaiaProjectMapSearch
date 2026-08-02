@@ -80,12 +80,15 @@ def read_csv(path):
 
 
 def parse(rows):
-    """CSV -> {tileId: [{factionId: value} × 6]}（0 は落とす）"""
+    """CSV -> ({tileId: [{factionId: value} × 6]}, 拡張版か)（0 は落とす）"""
     header = rows[0]
     cols = header[3:]
     unknown = [c for c in cols if c not in FACTION]
     if unknown:
         sys.exit("未知の種族列: %r" % unknown)
+    # 拡張版かどうかは**ヘッダの列**で決める。値の非ゼロで判定すると、LF4種族の値が
+    # たまたま全部 0 の表を通常版と読み違えて、別のテーブルへ突き合わせてしまう。
+    lf = any(FACTION[c] in LF_FACTIONS for c in cols)
 
     data = {}
     for row in rows[1:]:
@@ -104,7 +107,15 @@ def parse(rows):
         tid = TILE[tile][0]
         data.setdefault(tid, [None] * 6)[ROUNDS.index(rnd)] = cells
 
-    order = TILE_ORDER_LF if any(t in data for t in ("RS10", "RS11", "RS12")) else TILE_ORDER_BASE
+    # 列と行の食い違いはここで止める（通常版の表に LF 種族の値が混ざるのを防ぐ）。
+    has_lf_tiles = any(t in data for t in ("RS10", "RS11", "RS12"))
+    if lf != has_lf_tiles:
+        sys.exit(
+            "拡張版の判定が食い違います（LF4種族の列=%s / RS10-12 の行=%s）。"
+            "通常版は14種族×9タイル、拡張版は18種族×12タイルで揃えてください。"
+            % (lf, has_lf_tiles)
+        )
+    order = TILE_ORDER_LF if lf else TILE_ORDER_BASE
     missing = [t for t in order if t not in data]
     if missing:
         sys.exit("CSV に無いタイル: %r" % missing)
@@ -112,11 +123,11 @@ def parse(rows):
         gap = [ROUNDS[i] for i, c in enumerate(per_round) if c is None]
         if gap:
             sys.exit("%s に無いラウンド: %r" % (tid, gap))
-    return data
+    return data, lf
 
 
-def emit(data):
-    order = TILE_ORDER_LF if any(t in data for t in ("RS10", "RS11", "RS12")) else TILE_ORDER_BASE
+def emit(data, lf):
+    order = TILE_ORDER_LF if lf else TILE_ORDER_BASE
     out = []
     for tid in order:
         out.append("  // %s %s" % (tid, LABEL_BY_ID[tid]))
@@ -202,24 +213,26 @@ def check(data, export_name):
 def main():
     # Windows のコンソール既定は cp932 なので、BOM(﻿) を書こうとすると
     # UnicodeEncodeError で落ちる（`> foo.csv` のリダイレクトでも同じ）。
-    # 出力は常に UTF-8 に固定する。
-    try:
-        sys.stdout.reconfigure(encoding="utf-8")
-    except AttributeError:  # Python 3.6 以前
-        pass
+    # エラー文の日本語も化けるので、stderr も含めて UTF-8 に固定する。
+    for s in (sys.stdout, sys.stderr):
+        try:
+            s.reconfigure(encoding="utf-8")
+        except AttributeError:  # Python 3.6 以前
+            pass
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     if "--template" in sys.argv:
         sys.stdout.write(template("--lf" in sys.argv))
         return
     if not args:
         sys.exit("usage: gen_round_scoring_table.py [--template [--lf]] | <csv> [--check]")
-    data = parse(read_csv(args[0]))
+    data, lf = parse(read_csv(args[0]))
+    name = "ROUND_SCORING_WEIGHTS_LF" if lf else "ROUND_SCORING_WEIGHTS_BASE"
     if "--check" in sys.argv:
-        # 種族列に LF4 が含まれていれば拡張版のテーブルと突き合わせる
-        lf = any(f in LF_FACTIONS for per_round in data.values() for cells in per_round for f in cells)
-        check(data, "ROUND_SCORING_WEIGHTS_LF" if lf else "ROUND_SCORING_WEIGHTS_BASE")
+        check(data, name)
     else:
-        sys.stdout.write(emit(data) + "\n")
+        # どちらのテーブル向けかは標準エラーへ（標準出力は貼り付ける中身だけにする）
+        sys.stderr.write("→ %s の中身と差し替えてください\n" % name)
+        sys.stdout.write(emit(data, lf) + "\n")
 
 
 if __name__ == "__main__":

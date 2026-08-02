@@ -57,6 +57,7 @@ FACTION = {
     "ティンカーロイド": "tinkerroids", "ダルカニア人": "darkanians",
 }
 TILE_ORDER = ["TS1", "TS2", "TS3", "TS4", "TS5", "TS6", "TS7", "TS8", "TS9"]
+LF_FACTIONS = ["moweyds", "spaceGiants", "tinkerroids", "darkanians"]
 
 
 def read_csv(path):
@@ -70,12 +71,16 @@ def read_csv(path):
 
 
 def parse(rows):
-    """CSV -> {tileId: {trackId: {factionId: value}}}（0 は落とす）"""
+    """CSV -> ({tileId: {trackId: {factionId: value}}}, 拡張版か)（0 は落とす）"""
     header = rows[0]
     cols = header[3:]
     unknown = [c for c in cols if c not in FACTION]
     if unknown:
         sys.exit("未知の種族列: %r" % unknown)
+    # 拡張版かどうかは**ヘッダの列**で決める。値の非ゼロで判定すると、LF4種族の値が
+    # たまたま全部 0 の表を通常版と読み違えて、別のテーブルへ突き合わせてしまう
+    # （タイル数は BASE/LF とも9枚なので、行では見分けが付かない）。
+    lf = any(FACTION[c] in LF_FACTIONS for c in cols)
     track_by_ja = {ja: tid for ja, tid, _ in TRACK}
 
     data = {}
@@ -101,7 +106,7 @@ def parse(rows):
         gap = [tid_ for _, tid_, _ in TRACK if tid_ not in tile]
         if gap:
             sys.exit("%s に無い研究列: %r" % (tid, gap))
-    return data
+    return data, lf
 
 
 def emit(data):
@@ -165,18 +170,23 @@ def check(data, export_name):
 
 
 def main():
+    # Windows のコンソール既定は cp932 で、日本語のエラー文やタイル名が化ける
+    # （gen_round_scoring_table.py と同じ理由）。出力は UTF-8 に固定する。
+    for s in (sys.stdout, sys.stderr):
+        try:
+            s.reconfigure(encoding="utf-8")
+        except AttributeError:  # Python 3.6 以前
+            pass
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     if not args:
         sys.exit(__doc__ or "usage: gen_tech_position_table.py <csv> [--check]")
-    data = parse(read_csv(args[0]))
+    data, lf = parse(read_csv(args[0]))
+    name = "TECH_POSITION_WEIGHTS_LF" if lf else "TECH_POSITION_WEIGHTS_BASE"
     if "--check" in sys.argv:
-        # 種族列に LF4 が含まれていれば拡張版のテーブルと突き合わせる
-        lf = any(
-            f in ("moweyds", "spaceGiants", "tinkerroids", "darkanians")
-            for tile in data.values() for cells in tile.values() for f in cells
-        )
-        check(data, "TECH_POSITION_WEIGHTS_LF" if lf else "TECH_POSITION_WEIGHTS_BASE")
+        check(data, name)
     else:
+        # どちらのテーブル向けかは標準エラーへ（標準出力は貼り付ける中身だけにする）
+        sys.stderr.write("→ %s の中身と差し替えてください\n" % name)
         sys.stdout.write(emit(data) + "\n")
 
 
