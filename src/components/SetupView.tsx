@@ -1563,16 +1563,21 @@ export default function SetupView() {
             列幅に追従させる —— 変数を置かない他の節は 110px のままで影響しない。 */}
         <div
           style={{
-            display: "flex",
-            flexWrap: "nowrap",
-            gap: 8,
-            alignItems: "flex-start",
+            // 6トラック×4段の grid。**列ごとの縦積み（flex）ではなく grid にしてある**のは、
+            // 段の高さを列をまたいで揃えるため。flex だとトラック名の行数（航行=1行 /
+            // ガイアプロジェクト=3行）と「指定」バッジの有無（枠 77px / 61px）で
+            // 列ごとに高さがずれ、タイルがガタガタに並んでいた（2026-08-02 指摘）。
+            display: "grid",
+            gridTemplateColumns:
+              layout === "fit" ? `repeat(6, minmax(0, ${TILE_COL_W}px))` : `repeat(6, ${TILE_COL_W}px)`,
+            gap: "6px 8px",
+            alignItems: "start",
             overflowX: layout === "fit" ? "visible" : "auto",
             paddingBottom: 4,
             ...(layout === "fit" ? { "--setup-tile-w": "100%", "--setup-tile-max": "100%" } : {}),
           } as React.CSSProperties}
         >
-          {RESEARCH_TRACK_IDS.map((track) => {
+          {RESEARCH_TRACK_IDS.map((track, ci) => {
             const showEconTop = track === "eco" && lf && result.mode === "lostFleet";
             const econFaceLabel =
               showEconTop && result.mode === "lostFleet"
@@ -1580,27 +1585,36 @@ export default function SetupView() {
                   ? t.faceA
                   : t.faceB
                 : "";
+            const col = ci + 1;
             return (
-              <div
-                key={track}
-                style={{
-                  // "fit" は6列で幅を分け合う（広い画面では TILE_COL_W で止める）。
-                  // minWidth:0 が無いと flex 子が中身の幅より縮まない。
-                  ...(layout === "fit"
-                    ? { flex: "1 1 0", minWidth: 0, maxWidth: TILE_COL_W }
-                    : { width: TILE_COL_W, flex: "0 0 auto" }),
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 6,
-                }}
-              >
-                <div style={{ fontSize: layout === "fit" ? 11 : 12, fontWeight: 700, opacity: 0.8 }}>
+              <React.Fragment key={track}>
+                {/* 1段目: トラック名。行数が列ごとに違うので**下端で**そろえる
+                    （上端でそろえると、名前が3行の列だけタイルが下がる） */}
+                <div
+                  style={{
+                    gridColumn: col,
+                    gridRow: 1,
+                    alignSelf: "end",
+                    fontSize: layout === "fit" ? 11 : 12,
+                    fontWeight: 700,
+                    opacity: 0.8,
+                  }}
+                >
                   {lang === "ja" ? TRACK_LABEL[track].ja : TRACK_LABEL[track].en}
                 </div>
-                {/* トラック上部スロット（列の縦位置を揃えるため全列で高さを確保）。
-                    "fit" では列が細いぶんタイルも小さくなるので確保する高さを下げる
-                    （96 は暫定値。実機で見て詰める。2026-08-02） */}
-                <div style={{ minHeight: layout === "fit" ? 96 : 148, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+                {/* 2段目: トラック上部スロット（同盟タイル／経済調整タイルの面）。
+                    段の高さは中身がいちばん高い列で決まるので、以前のような
+                    minHeight での高さ確保は要らなくなった */}
+                <div
+                  style={{
+                    gridColumn: col,
+                    gridRow: 2,
+                    alignSelf: "end",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "flex-end",
+                  }}
+                >
                   {track === "terra" ? tileCell(result.federationLv5, t.fedTag, false, { slotId: "fed", title: t.federationLv5, kind: "fed" }) : null}
                   {showEconTop && result.mode === "lostFleet" ? (
                     <div
@@ -1635,9 +1649,16 @@ ${pickHint}`}
                     </div>
                   ) : null}
                 </div>
-                {tileCell(result.advancedTech.byTrack[track], t.advanced, false, { slotId: `adv:${track}`, title: `${t.advanced} / ${lang === "ja" ? TRACK_LABEL[track].ja : TRACK_LABEL[track].en}`, kind: "adv" })}
-                {tileCell(result.standardTech.byTrack[track], t.standard, false, { slotId: `std:${track}`, title: `${t.standard} / ${lang === "ja" ? TRACK_LABEL[track].ja : TRACK_LABEL[track].en}`, kind: "std" })}
-              </div>
+                {/* 3・4段目: 上級／標準。「指定」バッジが付くと枠が高くなる
+                    （実測 77px / 61px）ので、段でそろえないと標準タイルの高さが
+                    列ごとにずれる */}
+                <div style={{ gridColumn: col, gridRow: 3 }}>
+                  {tileCell(result.advancedTech.byTrack[track], t.advanced, false, { slotId: `adv:${track}`, title: `${t.advanced} / ${lang === "ja" ? TRACK_LABEL[track].ja : TRACK_LABEL[track].en}`, kind: "adv" })}
+                </div>
+                <div style={{ gridColumn: col, gridRow: 4 }}>
+                  {tileCell(result.standardTech.byTrack[track], t.standard, false, { slotId: `std:${track}`, title: `${t.standard} / ${lang === "ja" ? TRACK_LABEL[track].ja : TRACK_LABEL[track].en}`, kind: "std" })}
+                </div>
+              </React.Fragment>
             );
           })}
         </div>
