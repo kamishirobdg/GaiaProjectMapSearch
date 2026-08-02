@@ -518,6 +518,8 @@ ${pickLabel ?? ""}` : tooltip}
         // （既定の fit-content では中身に合わせるので見た目は変わらない。2026-08-02）
         width: "var(--setup-tile-w, fit-content)",
         boxSizing: "border-box",
+        // 「指定」バッジを画像へ重ねるための基準（2026-08-02）
+        position: "relative",
         display: "flex",
         flexDirection: "column",
         alignItems: "flex-start",
@@ -525,10 +527,32 @@ ${pickLabel ?? ""}` : tooltip}
         ...(mark ? { boxShadow: `0 0 0 3px ${mark}55`, outline: "none" } : {}),
       }}
     >
-      {tag || pinned ? (
-        <span style={{ fontSize: 11, opacity: 0.7, display: "flex", gap: 4, alignItems: "center" }}>
-          {tag ?? ""}
-          {pinned ? <span title={pickLabel} style={{ color: "#1b6b2f", fontWeight: 700 }}>指定</span> : null}
+      {tag ? (
+        <span style={{ fontSize: 11, opacity: 0.7, display: "flex", gap: 4, alignItems: "center" }}>{tag}</span>
+      ) : null}
+      {/* 「指定」バッジは画像の右上へ重ねる（2026-08-02 確定）。ラベル行に並べていた
+          ころは指定のある枠だけ 16px 高くなり、研究トラックの段がそろわなかった。
+          目印としての背景色（#e7f6ea）と緑の枠線はそのまま残してある。
+          クリックは枠が受けるので pointerEvents は殺す。 */}
+      {pinned ? (
+        <span
+          title={pickLabel}
+          style={{
+            position: "absolute",
+            top: 2,
+            right: 2,
+            fontSize: 9,
+            lineHeight: "12px",
+            fontWeight: 700,
+            color: "#1b6b2f",
+            background: "rgba(255,255,255,0.82)",
+            border: "1px solid #8fc79f",
+            borderRadius: 4,
+            padding: "0 2px",
+            pointerEvents: "none",
+          }}
+        >
+          指定
         </span>
       ) : null}
       {!failed ? (
