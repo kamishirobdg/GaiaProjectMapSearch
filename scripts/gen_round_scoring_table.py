@@ -200,6 +200,13 @@ def check(data, export_name):
 
 
 def main():
+    # Windows のコンソール既定は cp932 なので、BOM(﻿) を書こうとすると
+    # UnicodeEncodeError で落ちる（`> foo.csv` のリダイレクトでも同じ）。
+    # 出力は常に UTF-8 に固定する。
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except AttributeError:  # Python 3.6 以前
+        pass
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     if "--template" in sys.argv:
         sys.stdout.write(template("--lf" in sys.argv))
