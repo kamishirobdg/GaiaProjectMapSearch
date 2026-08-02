@@ -7,7 +7,11 @@
 シード値から盤面を決定論的に組み立て、ハード制約（満たさない盤面は却下）で絞り込み、
 ソフト評価（重み付きスコア）で順位付けして上位 K 件を提示する。
 
-Next.js 16 / React 19 / TypeScript strict。Vercel にデプロイ済み。
+Next.js 16 / React 19 / TypeScript strict。
+
+本番は **https://gaia-project-map-search.vercel.app/board** （一般公開はしていない）。
+`release/v1.01` を `main` へ push すると Vercel が自動でデプロイする
+（`git push origin release/v1.01:main`）。
 
 ## セットアップ
 
