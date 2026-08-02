@@ -635,6 +635,7 @@ function SmallTile({ id, lang, lf, size }: { id: string; lang: Lang; lf: boolean
 
 /** SetupResult を小さなタイル画像でコンパクトに描画する読み取り専用ボード。 */
 export function SetupBoard({ result, lang, compact }: { result: SetupResult; lang: Lang; compact?: boolean }) {
+  const t = UI[lang];
   const lf = result.mode === "lostFleet";
   const size = compact ? 54 : 96;
   const row: React.CSSProperties = { display: "flex", flexWrap: "wrap", gap: 4, alignItems: "flex-start" };
@@ -655,39 +656,58 @@ export function SetupBoard({ result, lang, compact }: { result: SetupResult; lan
 
       {result.standardTech.free && result.standardTech.free.length > 0 ? (
         <div>
-          <div style={head}>free tech</div>
+          <div style={head}>{t.freeStandard}</div>
           <div style={row}>{result.standardTech.free.map((id, i) => <SmallTile key={`f${i}`} id={id} lang={lang} lf={lf} size={size} />)}</div>
         </div>
       ) : null}
 
       <div>
-        <div style={head}>scoring</div>
-        <div style={row}>
-          {result.roundScoring.map((id, i) => <SmallTile key={`r${i}`} id={id} lang={lang} lf={lf} size={size} />)}
-          {result.finalScoring.map((id, i) => <SmallTile key={`fs${i}`} id={id} lang={lang} lf={lf} size={size} />)}
-        </div>
+        <div style={head}>{t.roundScoring}</div>
+        <div style={row}>{result.roundScoring.map((id, i) => <SmallTile key={`r${i}`} id={id} lang={lang} lf={lf} size={size} />)}</div>
       </div>
 
       <div>
-        <div style={head}>boosters</div>
-        <div style={row}>{result.boosters.available.map((id, i) => <SmallTile key={`b${i}`} id={id} lang={lang} lf={lf} size={size} />)}</div>
+        <div style={head}>{t.finalScoring}</div>
+        <div style={row}>{result.finalScoring.map((id, i) => <SmallTile key={`fs${i}`} id={id} lang={lang} lf={lf} size={size} />)}</div>
       </div>
 
-      {lf && result.ships ? (
+      {lf && result.advancedTech.extension ? (
         <div>
-          <div style={head}>LF ships</div>
+          <div style={head}>{t.scoringExtension}</div>
           <div style={row}>
-            {result.advancedTech.extension ? <SmallTile id={result.advancedTech.extension} lang={lang} lf={lf} size={size} /> : null}
-            {result.ships.map((ship) => (
-              <React.Fragment key={ship}>
-                {result.goldFederations?.[ship] ? <SmallTile id={result.goldFederations[ship]!} lang={lang} lf={lf} size={size} /> : null}
-                {result.shipTech?.[ship] ? <SmallTile id={result.shipTech[ship]!} lang={lang} lf={lf} size={size} /> : null}
-              </React.Fragment>
-            ))}
-            {(result.artifacts ?? []).map((id, i) => <SmallTile key={`a${i}`} id={id} lang={lang} lf={lf} size={size} />)}
+            <SmallTile id={result.advancedTech.extension} lang={lang} lf={lf} size={size} />
           </div>
         </div>
       ) : null}
+
+      {lf && result.ships ? (
+        <div>
+          <div style={head}>{t.ships}</div>
+          {/* 船ごとに縦へまとめる（Setup 本体の船カードと同じ「金枠同盟 → 基本技術」の順）。
+              以前は全部を1行に流していたので、どのタイルがどの船のものか分からなかった。 */}
+          <div style={row}>
+            {result.ships.map((ship) => (
+              <div key={ship} style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "center" }}>
+                <div style={{ fontSize: 9, opacity: 0.6 }}>{lang === "ja" ? SHIP_LABEL[ship].ja : SHIP_LABEL[ship].en}</div>
+                {result.goldFederations?.[ship] ? <SmallTile id={result.goldFederations[ship]!} lang={lang} lf={lf} size={size} /> : null}
+                {result.shipTech?.[ship] ? <SmallTile id={result.shipTech[ship]!} lang={lang} lf={lf} size={size} /> : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {lf && result.artifacts && result.artifacts.length > 0 ? (
+        <div>
+          <div style={head}>{t.artifactsLabel}</div>
+          <div style={row}>{result.artifacts.map((id, i) => <SmallTile key={`a${i}`} id={id} lang={lang} lf={lf} size={size} />)}</div>
+        </div>
+      ) : null}
+
+      <div>
+        <div style={head}>{t.boosters}</div>
+        <div style={row}>{result.boosters.available.map((id, i) => <SmallTile key={`b${i}`} id={id} lang={lang} lf={lf} size={size} />)}</div>
+      </div>
     </div>
   );
 }
