@@ -5,12 +5,14 @@
 ## リリース状況
 
 - 2026-07-30: `release/v1.01` を `main` へ FF push（89コミット、`719fd5e..3c4722f`）。
-- **その後のコミットが未push**（マーカーのセル単位化・Setup/List の評価表示と
-  条件プロファイル・評価指数の再配分・タイル指定・標準技術の base/LF 分割など）。
-  件数は `git rev-list --count origin/main..release/v1.01` で数える
-  （ここに数字を書くと毎コミットで古くなるのでやめた）。
-  次に push するときは `git push origin release/v1.01:main`
-  （origin/main は release/v1.01 の祖先なので FF で通る）。push＝Vercel本番デプロイ。
+- **2026-08-02: 67コミットを FF push（`3c4722f..e25db3c`）**。マーカーのセル単位化・
+  Setup/List の評価表示と条件プロファイル・評価指数の再配分・タイル指定・標準技術の
+  base/LF 分割・ラウンド得点のタイミング・研究トラックのレイアウト切替まで。
+  下の「デプロイ直後にやること」を本番で消化する。
+- 次も `git push origin release/v1.01:main`（origin/main は release/v1.01 の祖先なので
+  FF で通る）。push＝Vercel本番デプロイ。未pushの件数は
+  `git rev-list --count origin/main..release/v1.01` で数える（ここに数字を書くと
+  毎コミットで古くなるのでやめた）。
 
 ## デプロイ前に見ておくこと（2026-08-02 に仕分け）
 
