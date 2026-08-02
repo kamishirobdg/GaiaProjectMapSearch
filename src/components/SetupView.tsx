@@ -533,25 +533,10 @@ ${pickLabel ?? ""}` : tooltip}
       {/* 「指定」バッジは画像の右上へ重ねる（2026-08-02 確定）。ラベル行に並べていた
           ころは指定のある枠だけ 16px 高くなり、研究トラックの段がそろわなかった。
           目印としての背景色（#e7f6ea）と緑の枠線はそのまま残してある。
-          クリックは枠が受けるので pointerEvents は殺す。 */}
+          見た目は .setup-pin-badge（SetupView の <style>）にある —— 狭い画面で
+          文字を消して丸にするのに @media が要るため、インラインにできない。 */}
       {pinned ? (
-        <span
-          title={pickLabel}
-          style={{
-            position: "absolute",
-            top: 2,
-            right: 2,
-            fontSize: 9,
-            lineHeight: "12px",
-            fontWeight: 700,
-            color: "#1b6b2f",
-            background: "rgba(255,255,255,0.82)",
-            border: "1px solid #8fc79f",
-            borderRadius: 4,
-            padding: "0 2px",
-            pointerEvents: "none",
-          }}
-        >
+        <span className="setup-pin-badge" title={pickLabel}>
           指定
         </span>
       ) : null}
@@ -1544,8 +1529,17 @@ export default function SetupView() {
         </div>
       ) : null}
 
-      {/* マーカーの点滅。要素自体に付けるのでレイアウトが変わっても追従する。 */}
-      <style>{`@keyframes setupTileBlink{0%,100%{opacity:1}50%{opacity:.45}} .setup-tile-marked{animation:setupTileBlink 1.1s ease-in-out infinite}`}</style>
+      {/* マーカーの点滅。要素自体に付けるのでレイアウトが変わっても追従する。
+          「指定」バッジは画像へ重ねる（TileCellView）。**狭い画面では文字を消して
+          緑の丸にする**（2026-08-02 ユーザー確定・案B）—— バッジは 24x14px の
+          固定サイズなので、本番375px の列52px（画像35px）では画像の横幅の7割を
+          覆ってしまう。丸なら 8px（23%）で済む。指定の有無は枠の背景色（#e7f6ea）と
+          緑の枠線でも分かるので、文字が消えても見分けは付く。
+          閾値 560px は「fit で列が 80px を切るあたり」＝スマホだけが対象になる幅
+          （列幅 ≒ (画面幅 - 23 - gap8*5) / 6）。 */}
+      <style>{`@keyframes setupTileBlink{0%,100%{opacity:1}50%{opacity:.45}} .setup-tile-marked{animation:setupTileBlink 1.1s ease-in-out infinite}
+.setup-pin-badge{position:absolute;top:2px;right:2px;font-size:9px;line-height:12px;font-weight:700;color:#1b6b2f;background:rgba(255,255,255,.82);border:1px solid #8fc79f;border-radius:4px;padding:0 2px;pointer-events:none}
+@media (max-width:560px){.setup-pin-badge{width:8px;height:8px;padding:0;font-size:0;line-height:0;border-radius:50%;background:#1b6b2f;border-color:rgba(255,255,255,.9)}}`}</style>
       <GlobalBar
         active="setup"
         players={players}
