@@ -42,3 +42,7 @@ next-env.d.ts
 
 # サブエージェントが作る一時 worktree（リポジトリのコピーがまるごと入る）
 /.claude/worktrees/
+
+# scripts/ の .py を import して検証すると出る
+__pycache__/
+*.pyc
