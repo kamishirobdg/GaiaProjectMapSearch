@@ -1669,16 +1669,17 @@ ${pickHint}`}
                     </div>
                   ) : null}
                 </div>
-                {/* 3・4段目: 上級／標準。「指定」バッジが付くと枠が高くなる
-                    （実測 77px / 61px）ので、段でそろえないと列ごとにずれる。
+                {/* 3・4段目: 上級／標準。**タイル名のタグは出さない**（2026-08-02 確定）
+                    —— 狭い幅では文字より絵柄を優先する。上級か標準かは絵柄で見分けが
+                    付くうえ、段の位置でも決まっている（ホバーの tooltip には残る）。
                     **セルは alignSelf:stretch ＋ display:grid** にしてある —— 既定の
-                    上端そろえだと枠の下端がバッジの有無でずれるので、枠自体を
+                    上端そろえだと枠の下端が中身の高さでずれるので、枠自体を
                     段の高さまで伸ばして下端までそろえる（子が1つなので grid で足りる）。 */}
                 <div style={{ gridColumn: col, gridRow: 3, alignSelf: "stretch", display: "grid" }}>
-                  {tileCell(result.advancedTech.byTrack[track], t.advanced, false, { slotId: `adv:${track}`, title: `${t.advanced} / ${lang === "ja" ? TRACK_LABEL[track].ja : TRACK_LABEL[track].en}`, kind: "adv" })}
+                  {tileCell(result.advancedTech.byTrack[track], undefined, false, { slotId: `adv:${track}`, title: `${t.advanced} / ${lang === "ja" ? TRACK_LABEL[track].ja : TRACK_LABEL[track].en}`, kind: "adv" })}
                 </div>
                 <div style={{ gridColumn: col, gridRow: 4, alignSelf: "stretch", display: "grid" }}>
-                  {tileCell(result.standardTech.byTrack[track], t.standard, false, { slotId: `std:${track}`, title: `${t.standard} / ${lang === "ja" ? TRACK_LABEL[track].ja : TRACK_LABEL[track].en}`, kind: "std" })}
+                  {tileCell(result.standardTech.byTrack[track], undefined, false, { slotId: `std:${track}`, title: `${t.standard} / ${lang === "ja" ? TRACK_LABEL[track].ja : TRACK_LABEL[track].en}`, kind: "std" })}
                 </div>
               </React.Fragment>
             );
