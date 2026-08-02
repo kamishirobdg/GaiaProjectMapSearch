@@ -15,7 +15,8 @@ import { STD_TECH_SCALE } from "./factionWeights";
  * - advExtension  得点ボード拡張部の追加上級技術（取得条件が通常の上級と違うため別枠。
  *                 2026-07-30 ユーザー要望）
  * - booster       ラウンドブースター（使用分のみ）
- * - roundScoring  ラウンド得点（×2タイルは枚数分入る。何ラウンド目かで倍率が変わる）
+ * - roundScoring  ラウンド得点（×2タイルは枚数分入る。何ラウンド目に出たかで値が変わる
+ *                 ―― 2026-08-02 に曲線を廃止し、表がラウンドごとの値を直に持つ）
  * - finalScoring  最終得点計算
  * - federation    同盟タイル（惑星改造 研究レベル5）
  * - standardTech  標準技術9枚（TECH_POSITION_WEIGHTS 経由。トラック下もフリー枠も
