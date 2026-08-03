@@ -16,13 +16,9 @@
 #       いまの tileWeights.ts と CSV を全セル突き合わせる（両方向）。
 #
 # 値は **VP 換算**（2026-08-03 ユーザー確定）。「そのタイルが場に出ていて、この種族が
-# 使えたら何点分の価値があるか」。カテゴリごとに中央値が違う（下の CATEGORY 参照）——
+# 使えたら何点分の価値があるか」。素点は**タイルごと**に持つ（下の TILE_VP）——
 # ブースターは1ラウンドぶんの収入とパス得点、最終得点は順位点の期待値、というように
 # 1枚の重みがそもそも違うため。
-#
-# 雛形の作り方: 既存の相性値（TILE_FACTION_WEIGHTS、-2..+2）を
-#     素点 = カテゴリの中央値 + 刻み × 相性値
-#   で写像する。
 #
 # CSV の形（1行目がヘッダ）:
 #   カテゴリ, 対応表, タイル, <種族名を人数分>
@@ -36,12 +32,78 @@ import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# カテゴリ名 → (SETUP_CATALOG のキー群, 中央値, 刻み, 拡張専用か)
+# カテゴリ名 → (SETUP_CATALOG のキー群, 拡張専用か)
 CATEGORY = {
-    "ブースター": (["boosters", "boostersLF"], 6, 2, False),
-    "最終得点": (["finalScoring", "finalScoringLF"], 9, 2, False),
-    "同盟タイル": (["federations"], 8, 2, False),
-    "LF船": (["standardTechLF", "federationsGold", "artifacts"], 10, 2, True),
+    "ブースター": (["boosters", "boostersLF"], False),
+    "最終得点": (["finalScoring", "finalScoringLF"], False),
+    "同盟タイル": (["federations"], False),
+    "LF船": (["standardTechLF", "federationsGold", "artifacts"], True),
+}
+
+# 雛形の作り方（2026-08-04 にタイルごとの素点へ変えた。他の3本と同じ形）:
+#     値 = TILE_VP[タイル] × (1 + TEMPLATE_RATIO × 相性値(-2..+2))
+# 値は別モデル（Fable）の独立見積もりと突き合わせて確定した。
+# 資源の換算は 鉱石1 ≒ 1VP / クレ1 ≒ 0.4VP / 知識1 ≒ 1.5VP / QIC1 ≒ 1.5VP /
+# パワー1 ≒ 0.5VP。
+TEMPLATE_RATIO = 0.25
+TILE_VP = {
+    # --- ブースター: そのブースターを持っている1ラウンドの価値 ---
+    "RB01": 3,   # 鉱石1＋知識1
+    "RB02": 2,   # クレ2＋QIC1
+    "RB03": 2,   # パワートークン2＋鉱石1
+    "RB04": 3,   # クレ2／特別:鉱山建設（改造1無料）
+    "RB05": 3,   # パワー2／特別:鉱山orガイア（距離+3）
+    "RB06": 6,   # 鉱石1／パス:鉱山×1VP … 鉱山5個
+    "RB07": 6,   # 知識1／パス:研究所×3VP … 研究所1.7個
+    "RB08": 6,   # 鉱石1／パス:交易所×2VP … 交易所2.5個
+    "RB09": 8,   # パワー4／パス:学院・首府×4VP … 1.5個
+    "RB10": 4,   # クレ4／パス:ガイア惑星×1VP … 2.5個
+    "RB11": 7,   # 鉱石1／パス:ガイアフォーマー×3VP … 2個（LF）
+    "RB12": 5,   # 鉱石1／パス:惑星種類×1VP … 4種（LF）
+    "RB13": 4,   # クレ3／パス:深宇宙×2VP … 1.5宙域（LF）
+    "RB14": 4,   # パワー2／特別:ガイア計画（即変換。トークンを拘束しない）（LF）
+    # --- 最終得点: 4人戦の順位点（18/12/6/0）の期待値9を基準に、狙いやすさで前後 ---
+    "FS01": 10,  # 同盟内の建造物 最多 … 衛星で調整できるぶん上振れ
+    "FS02": 10,  # 通常の拡大と一致し狙いやすい
+    "FS03": 10,  # 惑星種類 … 種類5前提なら並より上を狙える
+    "FS04": 9,   # 種族・マップ依存で調整しにくい
+    "FS05": 10,  # 宙域4前提で伸ばせる
+    "FS06": 9,   # ダー・シュワームがいると大きくブレる
+    "FS07": 9,   # 小惑星 最多 … 数が限られ差をつけにくい（LF）
+    "FS08": 8,   # 首府⇔学院の距離 … 両方必須で0点のリスク（LF）
+    "FS09": 9,   # 深宇宙宙域 最多 … 深宇宙前提の拡張が要る（LF）
+    # --- 同盟タイル（惑星改造Lv5）: そのタイル1枚を得たときの価値 ---
+    "FED12": 12,  # 12VP（両面灰色）
+    "FED8Q": 10,  # 8VP＋QIC1
+    "FED8PT": 9,  # 8VP＋パワートークン2
+    "FED7O": 9,   # 7VP＋鉱石2
+    "FED7C": 9,   # 7VP＋クレ6
+    "FED6K": 9,   # 6VP＋知識2
+    # --- LF船に乗るタイル ---
+    "TSL1": 6,   # 2段階無料改造＋鉱山建設（コスト免除＋テンポ）
+    "TSL2": 5,   # 基本到達距離+1（恒久。QIC2〜3個ぶんの節約と配置の自由）
+    "TSL3": 6,   # 即時:鉱石1＋知識3
+    "FEDG1": 12,  # 12VP（緑面ありで技術・Lv5にも使える）
+    "FEDG2": 7,   # 任意の技術タイル1枚
+    "FEDG3": 7,   # 距離無限の鉱山建設（要地を確保できる）
+    "FEDG4": 7,   # 3段階無料改造＋鉱山建設
+    "FEDG5": 8,   # 4VP＋鉱石2＋QIC1
+    "FEDG6": 10,  # 4VP＋知識4
+    "FEDG7": 9,   # 7VP＋パワートークン2（エリアIII直行）
+    "FEDG8": 11,  # 8VP＋クレ8
+    "ART01": 8,   # 7VP（小惑星の鉱山扱い＝種類にも効く）
+    "ART02": 8,   # 7VP（原始惑星の鉱山扱い）
+    "ART03": 9,   # 科学レベル×3VP … レベル3前後
+    "ART04": 8,   # ガイア計画レベル×3VP … 2〜3
+    "ART05": 7,   # Lv3以上の研究エリア×3VP … 2〜3エリア
+    "ART06": 6,   # 深宇宙宙域×3VP … 2宙域
+    "ART07": 7,   # 3VP＋惑星種類×1VP … 種類4
+    "ART08": 10,  # 同盟タイル1枚の恩恵を再取得（手持ちの最良＝8〜12VP級）
+    "ART09": 6,   # 即時:知識3＋QIC1
+    "ART10": 4,   # 即時:クレ5＋鉱石2
+    "ART11": 4,   # 即時:クレ3＋鉱石3
+    "ART12": 6,   # 収入:パワー駒2（エリアIII）× 残り3R
+    "ART13": 8,   # 収入:知識1＋鉱石1 × 残り3R
 }
 # 通常版に出ないカタログ（拡張版の CSV にだけ載せる）
 LF_ONLY_GROUPS = {"boostersLF", "finalScoringLF", "standardTechLF", "federationsGold", "artifacts"}
@@ -111,14 +173,14 @@ def rows_for(lf):
     """CSV に出す行の並び: [(カテゴリ, id, ラベル, 中央値, 刻み)]"""
     catalog = dump_catalog()
     out = []
-    for cat, (groups, base, step, lf_only) in CATEGORY.items():
+    for cat, (groups, lf_only) in CATEGORY.items():
         if lf_only and not lf:
             continue
         for g in groups:
             if g in LF_ONLY_GROUPS and not lf:
                 continue
             for t in catalog.get(g, []):
-                out.append((cat, t["id"], t["label"], base, step))
+                out.append((cat, t["id"], t["label"]))
     return out
 
 
@@ -132,9 +194,11 @@ def template(lf):
     out.write(chr(0xFEFF))
     w = csv.writer(out, lineterminator="\n")
     w.writerow(["カテゴリ", "対応表", "タイル"] + names)
-    for cat, tid, label, base, step in rows_for(lf):
+    for cat, tid, label in rows_for(lf):
         src = weights.get(tid, {})
-        w.writerow([cat, tid, label] + [base + step * int(src.get(fid, 0)) for fid in ids])
+        base = TILE_VP[tid]
+        row = [max(1, round(base * (1 + TEMPLATE_RATIO * int(src.get(fid, 0))))) for fid in ids]
+        w.writerow([cat, tid, label] + row)
     return out.getvalue()
 
 

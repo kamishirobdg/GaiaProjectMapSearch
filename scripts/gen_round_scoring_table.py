@@ -31,10 +31,27 @@ import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# 雛形の写像（2026-08-03 に VP 換算へ移行）。相性 -2..+2 → 6..14。
-# 中央値10＝「そのラウンドで狙って取れば10点ぶん」。刻み2で種族差を出す。
-TEMPLATE_BASE = 10
-TEMPLATE_STEP = 2
+# 雛形の作り方（2026-08-04 にタイルごとの素点へ変えた。他の3本と同じ形）:
+#     値 = TILE_VP[タイル] × (1 + TEMPLATE_RATIO × 相性値(-2..+2))
+#
+# 素点は「**そのラウンドに狙って動いた場合**に得られる点数」。全6ラウンドを1枚に
+# 合わせられるわけではないので、1ラウンドぶんで数える。値は別モデル（Fable）の
+# 独立見積もりと突き合わせて確定した（2026-08-04）。
+TEMPLATE_RATIO = 0.25
+TILE_VP = {
+    "RS01": 5,  # 鉱山建設+2VP … 狙ったラウンドで鉱山2〜3個
+    "RS02": 5,  # 交易所建設+3VP … 交易所1〜2個
+    "RS03": 6,  # 交易所建設+4VP … 交易所1.5個
+    "RS04": 6,  # 学院・惑星首府+5VP … 1個（まれに2個）
+    "RS05": 4,  # ガイア惑星に鉱山+3VP … 1〜2個
+    "RS06": 5,  # ガイア惑星に鉱山+4VP … 1.3個
+    "RS07": 5,  # 研究1レベル+2VP … 2〜3レベル
+    "RS08": 5,  # 同盟タイル獲得+5VP … 1枚（まれに2枚）
+    "RS09": 5,  # 惑星改造1段階+2VP … 2〜3段階
+    "RS10": 6,  # 未入植の宙域で鉱山+3VP … 2個（序盤の拡張と噛み合う。LF）
+    "RS11": 6,  # 未入植の種類の惑星に鉱山+3VP … 2個（LF）
+    "RS12": 5,  # 研究所建設+4VP … 1〜1.5個（LF）
+}
 
 # タイル名（data.ts の label と同じ）→ (id, 表示用の短いラベル)
 TILE = {
@@ -184,8 +201,11 @@ def template(lf):
     w.writerow(["対応表", "タイル", "ラウンド"] + names)
     for tid in order:
         src = weights.get(tid, {})
+        base = TILE_VP[tid]
         for rnd in ROUNDS:
-            row = [TEMPLATE_BASE + TEMPLATE_STEP * int(src.get(fid, 0)) for fid in ids]
+            row = [
+                max(1, round(base * (1 + TEMPLATE_RATIO * int(src.get(fid, 0))))) for fid in ids
+            ]
             w.writerow([tid, NAME_BY_ID[tid], rnd] + row)
     return out.getvalue()
 

@@ -133,9 +133,10 @@ export const DEFAULT_SETUP_WEIGHTS: SetupWeights = {
 /**
  * 種族スコアの最終スケール（2026-08-04 ユーザー確定）。
  *
- * 表の値は VP 換算なので、場に出ている全タイルを足すと種族あたり3540〜4284になる。
+ * 表の値は VP 換算なので、場に出ている全タイルを足すと種族あたり2400〜3100になる。
  * これを **100前後へ落として Map 側の評価値（100前後）と同じ土俵に乗せる**ための除数。
- * 実測（`_probe_score_range.ts`、4人LF 300件）で中央値4038だったので 40。
+ * 実測（`_probe_score_range.ts`、4人LF 300件）の中央値に合わせてある。
+ * 2026-08-04 に 40 → 28（素点をタイルごとの実感ベースへ直して全体が下がったため）。
  *
  * 桁を揃えるためだけのもので、**Map と Setup のどちらを重く見るかとは役割が別**
  * （そちらは List の評価指数にある倍率で振る）。カテゴリ係数を全部いじるより、
@@ -145,7 +146,7 @@ export const DEFAULT_SETUP_WEIGHTS: SetupWeights = {
  * 0.6〜1.2 の範囲になる）。整数へ丸めると種族差が消えてしまうので、
  * 表示側で小数第1位まで出す（FactionEvalPanel の fmt1）。
  */
-export const SETUP_SCORE_DIVISOR = 40;
+export const SETUP_SCORE_DIVISOR = 28;
 
 /** 評価指数の入力範囲（基準10に合わせて -90..90）。 */
 export const SETUP_WEIGHT_MIN = -90;

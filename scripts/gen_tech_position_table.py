@@ -61,11 +61,30 @@ LF_FACTIONS = ["moweyds", "spaceGiants", "tinkerroids", "darkanians"]
 NAME_BY_ID = {v[0]: k for k, v in TILE.items()}
 LABEL_BY_ID = {v[0]: v[1] for v in TILE.values()}
 
-# 雛形の写像（2026-08-03 に VP 換算へ移行）。既存の相性値 → 12 + 2×v。
-# 中央値12＝「この列の下に置かれたこのタイルを取れれば12点ぶん」。上級技術（24）の
-# 半分にしてある —— 9枚すべてが場に出て取りやすい代わり、1枚の効果は上級より小さい。
-TEMPLATE_BASE = 12
-TEMPLATE_STEP = 2
+# 雛形の作り方（2026-08-04 にタイルごとの素点へ変えた。gen_advanced_tech_table.py と
+# 同じ形）。共通の中央値だと相性0のセルが全部同じ値に張り付き、「取れたら何点か」が
+# 入らないため:
+#     値 = TILE_VP[タイル] × (1 + TEMPLATE_RATIO × 相性値(-2..+2))
+#
+# 素点は「**R2 前後で取れた場合**にそのタイルが生む VP」の見込み。標準技術は研究を
+# 進めれば早期に取れるので、収入系は5〜6ラウンド効く。資源の換算はおよそ
+# 鉱石1 ≒ 1VP / クレジット1 ≒ 0.4VP / 知識1 ≒ 1.5VP / QIC1 ≒ 1.5VP / パワー1 ≒ 0.5VP。
+# 値は別モデル（Fable）の独立見積もりと突き合わせて確定した（2026-08-04）。
+TEMPLATE_RATIO = 0.25
+TILE_VP = {
+    # --- 収入系: 5〜6ラウンドぶん ---
+    "TS5": 9,   # 鉱石1＋パワー1 × 6R … 鉱石6＋パワー6
+    "TS6": 11,  # 知識1＋クレ1 × 6R … 知識6（9）＋クレ6（2.4）
+    "TS8": 10,  # クレ4 × 6R … クレ24
+    # --- 即時 ---
+    "TS1": 3,   # 鉱石1＋QIC1
+    "TS2": 5,   # 惑星種類×知識1 … 取得時の種類3個ぶん
+    "TS4": 7,   # 7VP そのもの
+    # --- アクション・誘発 ---
+    "TS9": 7,   # パワー4 × 5〜6回（アクションを1つ使うぶん割引）
+    "TS7": 8,   # ガイア惑星に鉱山＋3VP … 取得後に建てるガイア鉱山2.5個
+    "TS3": 4,   # 首府・学院のパワー値4 … 同盟形成とチャージの間接効果のみ
+}
 
 
 def read_csv(path):
@@ -161,8 +180,17 @@ def dump_from_ts(export_name, module=None):
     return json.loads(res.stdout.strip().splitlines()[-1])
 
 
+# 2026-08-03 の雛形が使っていた写像（中央値12 ＋ 刻み2 × 相性値）。
+# 下の template() は、いまのテーブルからこの式で**相性値を逆算**してから、
+# タイルごとの素点へ掛け直す。列ごと・種族ごとの差はユーザーが 2026-08-01 に
+# 入れた実データなので、素点へ移すときも保つ必要があるため。
+# **CSV に値を入れ始めたら --template は使わないこと**（この逆算が成り立たなくなる）。
+LEGACY_BASE = 12
+LEGACY_STEP = 2
+
+
 def template(lf):
-    """いまの TECH_POSITION_WEIGHTS を VP レンジへ写像した雛形 CSV。"""
+    """いまのテーブルから相性値を逆算し、タイルごとの素点で作り直した雛形 CSV。"""
     src = dump_from_ts("TECH_POSITION_WEIGHTS_LF" if lf else "TECH_POSITION_WEIGHTS_BASE")
     names = [n for n in FACTION if lf or FACTION[n] not in LF_FACTIONS]
     ids = [FACTION[n] for n in names]
@@ -173,9 +201,13 @@ def template(lf):
     w = csv.writer(out, lineterminator="\n")
     w.writerow(["対応表", "タイル", "研究"] + names)
     for tid in TILE_ORDER:
+        base = TILE_VP[tid]
         for ja, trk, _ in TRACK:
             cells = src.get(tid, {}).get(trk, {})
-            row = [TEMPLATE_BASE + TEMPLATE_STEP * int(cells.get(fid, 0)) for fid in ids]
+            row = []
+            for fid in ids:
+                aff = (cells.get(fid, LEGACY_BASE) - LEGACY_BASE) / LEGACY_STEP
+                row.append(max(1, round(base * (1 + TEMPLATE_RATIO * aff))))
             w.writerow([tid, NAME_BY_ID[tid], ja] + row)
     return out.getvalue()
 
