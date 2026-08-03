@@ -31,7 +31,11 @@ import {
 import { advancedTechCell } from "./advancedTechWeights";
 import { tileValueCell } from "./tileWeights";
 import type { ResearchTrackId } from "@/gaia/setup/types";
-import { DEFAULT_SETUP_WEIGHTS, SETUP_WEIGHT_BASE } from "./setupWeights";
+import {
+  DEFAULT_SETUP_WEIGHTS,
+  SETUP_SCORE_DIVISOR,
+  SETUP_WEIGHT_BASE,
+} from "./setupWeights";
 import { countMapPlanets, mapFactionScoresFromCounts } from "./mapFaction";
 import { makeSearchPlacementFromSeed } from "@/gaia/ssot/searchPlacementConfig";
 
@@ -76,13 +80,16 @@ describe("scoreSetupFactions", () => {
 
     // ブースター2枚＋最終2枚＋同盟1枚は素の合計×基準係数。上級技術だけは係数が
     // 別なので分けて掛ける（2026-08-03。VP 換算で桁が違うため）。
+    // 最後に SETUP_SCORE_DIVISOR で割るのは全カテゴリ共通（2026-08-04）。
     const flatPart = (f: FactionId) =>
-      advPart(f) * DEFAULT_SETUP_WEIGHTS.advanced +
-      (sumOf(["RB01", "RB02"], f) + sumOf(["FS02", "FS06"], f) + sumOf(["FED12"], f)) *
-        SETUP_WEIGHT_BASE;
+      (advPart(f) * DEFAULT_SETUP_WEIGHTS.advanced +
+        (sumOf(["RB01", "RB02"], f) + sumOf(["FS02", "FS06"], f) + sumOf(["FED12"], f)) *
+          SETUP_WEIGHT_BASE) /
+      SETUP_SCORE_DIVISOR;
     for (const f of ["firaks", "ivits", "terrans"] as const) {
       const rounds = setupFactionBreakdown(s).byCategory.roundScoring[f];
-      expect(scores[f]).toBe(flatPart(f) + rounds + scoreStandardTech(s)[f]);
+      // 最終スケールの割り算で浮動小数の誤差が出るので toBeCloseTo で見る。
+      expect(scores[f]).toBeCloseTo(flatPart(f) + rounds + scoreStandardTech(s)[f], 6);
     }
 
     // ×2 タイルは枚数分入る: RS07 が2枚あるぶんと1枚のぶんの差が1枚ぶんに等しい。
@@ -114,8 +121,9 @@ describe("scoreSetupFactions", () => {
     const diff =
       cell("TS7", "gaia") + cell("TS5", "eco") - (cell("TS5", "gaia") + cell("TS7", "eco"));
     expect(diff).toBeGreaterThan(0); // ガイア列に置く方が terrans に効く
-    expect(scoreStandardTech(onGaia).terrans - scoreStandardTech(onEco).terrans).toBe(
-      diff * STD_TECH_SCALE
+    expect(scoreStandardTech(onGaia).terrans - scoreStandardTech(onEco).terrans).toBeCloseTo(
+      (diff * STD_TECH_SCALE) / SETUP_SCORE_DIVISOR,
+      6
     );
   });
 

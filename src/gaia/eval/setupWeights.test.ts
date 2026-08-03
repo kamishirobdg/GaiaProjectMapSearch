@@ -11,8 +11,10 @@ import { describe, expect, it } from "vitest";
 import { RESEARCH_TRACK_IDS, type ResearchTrackId, type SetupResult } from "@/gaia/setup/types";
 import { scoreSetupFactions, setupFactionBreakdown, setupFactionTileHits } from "./factionEval";
 import {
+  ADV_EXTENSION_SCALE,
   ADVANCED_TECH_SCALE,
   DEFAULT_SETUP_WEIGHTS,
+  SETUP_SCORE_DIVISOR,
   LF_ONLY_WEIGHT_KEYS,
   ROUND_SCORING_SCALE,
   SETUP_WEIGHT_BASE,
@@ -70,15 +72,15 @@ function withWeight(k: keyof SetupWeights, v: number): SetupWeights {
 describe("DEFAULT_SETUP_WEIGHTS", () => {
   it("既定は基準どおり（技術は重く、ラウンド得点と上級技術は軽い）", () => {
     // 2026-08-01: カテゴリの「1枚あたりの効き具合」を係数で表すことにしたので、
-    // 既定値が一律ではなくなった。2026-08-03: 上級技術だけ値が VP 換算になり、
-    // 桁を合わせるために係数を下げたので、基準から外れるのは3つ。
+    // 既定値が一律ではなくなった。2026-08-04 時点で基準から外れるのは4つ。
     expect(DEFAULT_SETUP_WEIGHTS.standardTech).toBe(STD_TECH_SCALE);
     expect(DEFAULT_SETUP_WEIGHTS.roundScoring).toBe(ROUND_SCORING_SCALE);
     expect(DEFAULT_SETUP_WEIGHTS.advanced).toBe(ADVANCED_TECH_SCALE);
-    expect(DEFAULT_SETUP_WEIGHTS.advExtension).toBe(ADVANCED_TECH_SCALE);
-    // 2026-08-03: VP 換算へ移したカテゴリは値の幅が広いぶん係数を下げて桁を
-    // 合わせている（移行が終われば係数は原則1になる）ので、
-    // 「技術の係数は基準より大きい」といった大小関係はもう固定しない。
+    expect(DEFAULT_SETUP_WEIGHTS.advExtension).toBe(ADV_EXTENSION_SCALE);
+    // 追加上級は通常の上級の 1/3（拡張部の1枚を3〜4人で奪い合うため。2026-08-04）。
+    expect(ADVANCED_TECH_SCALE).toBe(ADV_EXTENSION_SCALE * 3);
+    // VP 換算では係数は桁合わせの道具なので、「技術の係数は基準より大きい」と
+    // いった大小関係はもう固定しない（値の幅が影響力を決める）。
     expect(ROUND_SCORING_SCALE).toBeLessThan(SETUP_WEIGHT_BASE);
     expect(ADVANCED_TECH_SCALE).toBeLessThan(SETUP_WEIGHT_BASE);
     for (const k of ["booster", "finalScoring", "federation", "lfShip"] as const) {
@@ -87,13 +89,17 @@ describe("DEFAULT_SETUP_WEIGHTS", () => {
     expect(isDefaultWeights(DEFAULT_SETUP_WEIGHTS)).toBe(true);
   });
 
-  // 評価値から小数を消すのが基準100の目的（2026-07-31）。タイルの重みは整数なので、
-  // 係数が 100 / 50 / 25 なら内訳も総合も必ず整数になる。
-  it("既定の係数では評価値に小数が出ない", () => {
+  // 2026-08-04: 最終スケール（SETUP_SCORE_DIVISOR）で 100前後へ落とすようになり、
+  // **評価値に小数が出るのが正常**になった（整数へ丸めると、1枚しか出ない
+  // カテゴリで種族差が消えてしまう）。代わりに「割る前は整数」を固定する。
+  it("最終スケールを戻すと整数になる（表の値も係数も整数なので）", () => {
     const b = setupFactionBreakdown(syntheticSetup({ mode: "lostFleet" }), DEFAULT_SETUP_WEIGHTS);
     for (const f of FACTION_IDS) {
-      expect(Number.isInteger(b.total[f])).toBe(true);
-      for (const k of SETUP_WEIGHT_KEYS) expect(Number.isInteger(b.byCategory[k][f])).toBe(true);
+      for (const k of SETUP_WEIGHT_KEYS) {
+        const raw = b.byCategory[k][f] * SETUP_SCORE_DIVISOR;
+        // 浮動小数の誤差ぶんだけ緩める（1e-6 は 1/40 の丸め誤差より十分小さい）。
+        expect(Math.abs(raw - Math.round(raw))).toBeLessThan(1e-6);
+      }
     }
   });
 
@@ -181,8 +187,14 @@ describe("setupFactionBreakdown", () => {
     const want = advancedTechExtensionCell("AT02", true)?.firaks ?? 0;
     expect(want).toBeGreaterThan(0);
     // 追加上級の係数だけが効き、通常の上級は動かない。
-    expect(base.byCategory.advExtension.firaks).toBe(want * DEFAULT_SETUP_WEIGHTS.advExtension);
-    expect(scaled.byCategory.advExtension.firaks).toBe(want * SETUP_WEIGHT_BASE * 2);
+    expect(base.byCategory.advExtension.firaks).toBeCloseTo(
+      (want * DEFAULT_SETUP_WEIGHTS.advExtension) / SETUP_SCORE_DIVISOR,
+      6
+    );
+    expect(scaled.byCategory.advExtension.firaks).toBeCloseTo(
+      (want * SETUP_WEIGHT_BASE * 2) / SETUP_SCORE_DIVISOR,
+      6
+    );
     expect(scaled.byCategory.advanced.firaks).toBe(base.byCategory.advanced.firaks);
   });
 });
@@ -261,8 +273,10 @@ describe("ラウンド得点の表（タイル×ラウンド×種族）", () => 
     const w = DEFAULT_SETUP_WEIGHTS.roundScoring;
     for (const f of FACTION_IDS) {
       const want =
-        [0, 1, 2, 3, 4, 5].reduce((a, i) => a + (roundScoringCell("RS01", i, false)?.[f] ?? 0), 0) * w;
-      expect(`${f}:${b.byCategory.roundScoring[f]}`).toBe(`${f}:${want}`);
+        ([0, 1, 2, 3, 4, 5].reduce((a, i) => a + (roundScoringCell("RS01", i, false)?.[f] ?? 0), 0) *
+          w) /
+        SETUP_SCORE_DIVISOR;
+      expect(b.byCategory.roundScoring[f]).toBeCloseTo(want, 6);
     }
   });
 
@@ -273,11 +287,11 @@ describe("ラウンド得点の表（タイル×ラウンド×種族）", () => 
     expect(roundScoringCell("RS01", 6, true)).toBeUndefined();
   });
 
-  it("評価値に小数を出さない（倍率の割り算が無くなった）", () => {
+  it("最終スケールを戻すと整数になる（曲線の割り算はもう無い）", () => {
     const b = setupFactionBreakdown(withRounds(["RS01", "RS08", "RS07", "RS04", "RS09", "RS02"]));
     for (const f of FACTION_IDS) {
-      expect(Number.isInteger(b.byCategory.roundScoring[f])).toBe(true);
-      expect(Number.isInteger(b.total[f])).toBe(true);
+      const raw = b.byCategory.roundScoring[f] * SETUP_SCORE_DIVISOR;
+      expect(Math.abs(raw - Math.round(raw))).toBeLessThan(1e-6);
     }
   });
 });
@@ -345,8 +359,9 @@ describe("上級技術の表（タイル×研究列×種族）", () => {
     const w = DEFAULT_SETUP_WEIGHTS.advanced;
     for (const f of FACTION_IDS) {
       const want =
-        byTrack.reduce((a, [t, id]) => a + (advancedTechCell(id, t, false)?.[f] ?? 0), 0) * w;
-      expect(`${f}:${b.byCategory.advanced[f]}`).toBe(`${f}:${want}`);
+        (byTrack.reduce((a, [t, id]) => a + (advancedTechCell(id, t, false)?.[f] ?? 0), 0) * w) /
+        SETUP_SCORE_DIVISOR;
+      expect(b.byCategory.advanced[f]).toBeCloseTo(want, 6);
     }
   });
 

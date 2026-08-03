@@ -246,7 +246,7 @@ export function tileFactionWeights(
  * 原則1にし、影響力は VP の幅そのもので決める）。
  * 実測は scripts/_probe_category_influence.ts。整数なので評価値に小数は出ない。
  */
-export const STD_TECH_SCALE = 3;
+export const STD_TECH_SCALE = 9;
 
 /**
  * タイル id → 種族別重み。DRAFT — 全値レビュー対象（編集用の正本）。

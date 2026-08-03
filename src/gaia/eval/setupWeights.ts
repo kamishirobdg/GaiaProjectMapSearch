@@ -84,7 +84,7 @@ export const SETUP_WEIGHT_DISPLAY_ORDER: readonly SetupWeightKey[] = [
  * 種族あたり1288〜1544（`_probe_score_range.ts`）で、従来の狙い「100前後」から
  * 大きく外れている。場に出ている全タイルを取れる前提で足しているため。
  */
-export const SETUP_WEIGHT_BASE = 3;
+export const SETUP_WEIGHT_BASE = 9;
 /**
  * ラウンド得点の既定係数。そのタイルが効くのは6ラウンドのうち1ラウンドだけなので、
  * 1枚あたりの影響力は基準より軽い。何ラウンド目に出たかの差は
@@ -96,7 +96,7 @@ export const SETUP_WEIGHT_BASE = 3;
  * 6.6 に戻してある。**桁合わせのための暫定値**（全カテゴリの VP 化が終わったら
  * 係数は原則1にし、影響力は VP の幅そのもので決める）。
  */
-export const ROUND_SCORING_SCALE = 2;
+export const ROUND_SCORING_SCALE = 6;
 /**
  * 上級技術（と得点ボード拡張部の追加上級）の既定係数（2026-08-03）。
  *
@@ -109,10 +109,19 @@ export const ROUND_SCORING_SCALE = 2;
  * `scripts/_probe_category_influence.ts` で測り直して決める。全カテゴリを VP 換算へ
  * 移し終えたら、係数は原則1（値そのものが点数を表す）になる。
  */
-export const ADVANCED_TECH_SCALE = 2;
+export const ADVANCED_TECH_SCALE = 6;
+/**
+ * 得点ボード拡張部の追加上級（Lost Fleet）の既定係数（2026-08-04 ユーザー確定）。
+ *
+ * **通常の上級技術の 1/3**。拡張部に置かれるのは1枚だけで、それを3〜4人で
+ * 奪い合うため、1人あたりの期待値は 1/3〜1/4 になる（3人戦基準で 1/3）。
+ * 表の値は通常の上級と同じ（advancedTechWeights.ts の6列の最大値）なので、
+ * 「取れる見込みの低さ」はこの係数で表す。
+ */
+export const ADV_EXTENSION_SCALE = 2;
 export const DEFAULT_SETUP_WEIGHTS: SetupWeights = {
   advanced: ADVANCED_TECH_SCALE,
-  advExtension: ADVANCED_TECH_SCALE,
+  advExtension: ADV_EXTENSION_SCALE,
   booster: SETUP_WEIGHT_BASE,
   roundScoring: ROUND_SCORING_SCALE,
   finalScoring: SETUP_WEIGHT_BASE,
@@ -120,6 +129,23 @@ export const DEFAULT_SETUP_WEIGHTS: SetupWeights = {
   standardTech: STD_TECH_SCALE,
   lfShip: SETUP_WEIGHT_BASE,
 };
+
+/**
+ * 種族スコアの最終スケール（2026-08-04 ユーザー確定）。
+ *
+ * 表の値は VP 換算なので、場に出ている全タイルを足すと種族あたり3540〜4284になる。
+ * これを **100前後へ落として Map 側の評価値（100前後）と同じ土俵に乗せる**ための除数。
+ * 実測（`_probe_score_range.ts`、4人LF 300件）で中央値4038だったので 40。
+ *
+ * 桁を揃えるためだけのもので、**Map と Setup のどちらを重く見るかとは役割が別**
+ * （そちらは List の評価指数にある倍率で振る）。カテゴリ係数を全部いじるより、
+ * ここ1つで桁を動かせるほうが後から追いやすい。
+ *
+ * 割り算なので**評価値に小数が出る**（追加上級のように1枚しか出ないカテゴリは
+ * 0.6〜1.2 の範囲になる）。整数へ丸めると種族差が消えてしまうので、
+ * 表示側で小数第1位まで出す（FactionEvalPanel の fmt1）。
+ */
+export const SETUP_SCORE_DIVISOR = 40;
 
 /** 評価指数の入力範囲（基準10に合わせて -90..90）。 */
 export const SETUP_WEIGHT_MIN = -90;

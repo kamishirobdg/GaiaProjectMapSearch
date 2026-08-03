@@ -20,6 +20,7 @@ import { buildSetupFromSeed, defaultAdvancedTileRules } from "../src/gaia/setup/
 import { setupFactionTileHits } from "../src/gaia/eval/factionEval";
 import {
   DEFAULT_SETUP_WEIGHTS,
+  SETUP_SCORE_DIVISOR,
   SETUP_WEIGHT_DISPLAY_ORDER,
   type SetupWeightKey,
   type SetupWeights,
@@ -54,17 +55,19 @@ const LABEL: Record<SetupWeightKey, string> = {
   federation: "同盟",
 };
 
-const ONES: SetupWeights = {
-  advanced: 1,
-  advExtension: 1,
-  booster: 1,
-  roundScoring: 1,
-  finalScoring: 1,
-  federation: 1,
-  standardTech: 1,
-  lfShip: 1,
+// 「VP そのまま」を見るには、breakdown が最後に掛ける最終スケール
+// （1/SETUP_SCORE_DIVISOR）を打ち消す係数を渡す（2026-08-04）。
+const RAW_VP: SetupWeights = {
+  advanced: SETUP_SCORE_DIVISOR,
+  advExtension: SETUP_SCORE_DIVISOR,
+  booster: SETUP_SCORE_DIVISOR,
+  roundScoring: SETUP_SCORE_DIVISOR,
+  finalScoring: SETUP_SCORE_DIVISOR,
+  federation: SETUP_SCORE_DIVISOR,
+  standardTech: SETUP_SCORE_DIVISOR,
+  lfShip: SETUP_SCORE_DIVISOR,
 };
-const weights = SCALED ? DEFAULT_SETUP_WEIGHTS : ONES;
+const weights = SCALED ? DEFAULT_SETUP_WEIGHTS : RAW_VP;
 
 function mean(xs: number[]) {
   return xs.length === 0 ? 0 : xs.reduce((a, b) => a + b, 0) / xs.length;

@@ -26,6 +26,7 @@ import { roundScoringCell } from "./roundScoringWeights";
 import { tileValueCell } from "./tileWeights";
 import {
   DEFAULT_SETUP_WEIGHTS,
+  SETUP_SCORE_DIVISOR,
   SETUP_WEIGHT_KEYS,
   type SetupWeightKey,
   type SetupWeights,
@@ -94,7 +95,8 @@ export function setupFactionTileHits(
     const byFaction: Partial<Record<FactionId, number>> = {};
     let any = false;
     for (const [f, v] of Object.entries(src)) {
-      const val = (v ?? 0) * scale;
+      // 合計（setupFactionBreakdown）と同じスケールにする。
+      const val = ((v ?? 0) * scale) / SETUP_SCORE_DIVISOR;
       if (val === 0) continue;
       byFaction[f as FactionId] = val;
       any = true;
@@ -206,11 +208,13 @@ export function setupFactionBreakdown(
   }
   for (const id of result.standardTech.free) addStd(id, "free");
 
-  // 係数を掛けてから合算する（表示の内訳と合計が必ず一致するようにする）。
+  // 係数を掛け、最後に SETUP_SCORE_DIVISOR で割ってから合算する
+  // （表示の内訳と合計が必ず一致するようにする）。割り算は最後の1回だけなので、
+  // 内訳の和と合計は丸め前の値でぴったり一致する。
   const total = zeroScores();
   for (const k of SETUP_WEIGHT_KEYS) {
     for (const f of FACTION_IDS) {
-      byCategory[k][f] *= w[k];
+      byCategory[k][f] = (byCategory[k][f] * w[k]) / SETUP_SCORE_DIVISOR;
       total[f] += byCategory[k][f];
     }
   }

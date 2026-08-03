@@ -39,8 +39,11 @@ import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# 雛形の写像。相性 -2..+2 → 18..30。
-TEMPLATE_BASE = 24
+# 雛形の写像。相性 -2..+2 → 12..24。
+# 中央値は 2026-08-04 に 24 → 18 へ下げた（ユーザー: 24 はかなり高い）。
+# 上級技術は取得に同盟タイル1枚を払うので、その対価を差し引くと 18 程度、
+# 標準技術（12）の1.5倍、という位置づけ。
+TEMPLATE_BASE = 18
 TEMPLATE_STEP = 3
 
 # タイル名（data.ts の label と同じ）→ id。並びは SETUP_CATALOG と同じ挙動順。
