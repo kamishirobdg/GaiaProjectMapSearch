@@ -31,6 +31,11 @@ import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+# 雛形の写像（2026-08-03 に VP 換算へ移行）。相性 -2..+2 → 6..14。
+# 中央値10＝「そのラウンドで狙って取れば10点ぶん」。刻み2で種族差を出す。
+TEMPLATE_BASE = 10
+TEMPLATE_STEP = 2
+
 # タイル名（data.ts の label と同じ）→ (id, 表示用の短いラベル)
 TILE = {
     "鉱山建設 +2VP": ("RS01", "鉱山建設 +2VP"),
@@ -140,11 +145,11 @@ def emit(data, lf):
     return "\n".join(out)
 
 
-def dump_from_ts(export_name):
-    """factionWeights.ts の実体を JSON で取り出す（tsx 経由）。"""
+def dump_from_ts(export_name, module="roundScoringWeights"):
+    """src/gaia/eval/<module>.ts の実体を JSON で取り出す（tsx 経由）。"""
     tmp = os.path.join(REPO, "scripts", "_dump_round_table.ts")
     with io.open(tmp, "w", encoding="utf-8", newline="\n") as f:
-        f.write('import { %s } from "../src/gaia/eval/factionWeights";\n' % export_name)
+        f.write('import { %s } from "../src/gaia/eval/%s";\n' % (export_name, module))
         f.write("console.log(JSON.stringify(%s));\n" % export_name)
     try:
         res = subprocess.run(
@@ -166,7 +171,7 @@ def template(lf):
     曲線（旧 ROUND_SCORING_TIMING）は掛けない —— 曲線は廃止したので、出発点に
     混ぜると「どこまでが曲線由来か」が分からなくなるため。
     """
-    weights = dump_from_ts("TILE_FACTION_WEIGHTS")
+    weights = dump_from_ts("TILE_FACTION_WEIGHTS", "factionWeights")
     order = TILE_ORDER_LF if lf else TILE_ORDER_BASE
     names = [n for n, fid in FACTION_ORDER if lf or fid not in LF_FACTIONS]
     ids = [fid for _, fid in FACTION_ORDER if lf or fid not in LF_FACTIONS]
@@ -180,8 +185,76 @@ def template(lf):
     for tid in order:
         src = weights.get(tid, {})
         for rnd in ROUNDS:
-            w.writerow([tid, NAME_BY_ID[tid], rnd] + [src.get(fid, 0) for fid in ids])
+            row = [TEMPLATE_BASE + TEMPLATE_STEP * int(src.get(fid, 0)) for fid in ids]
+            w.writerow([tid, NAME_BY_ID[tid], rnd] + row)
     return out.getvalue()
+
+
+FILE_HEADER = '''// src/gaia/eval/roundScoringWeights.ts
+//
+// ラウンド得点の重みテーブル（タイル → ラウンド(0始まり) → 種族 → 値）。
+// **自動生成ファイル**:
+//   python scripts/gen_round_scoring_table.py --emit-file <このパス> <base.csv> <lf.csv>
+// 手で直さず、CSV を直して生成し直すこと（検算は `<csv> --check`）。
+//
+// 値は **VP 換算**（2026-08-03 ユーザー確定。全カテゴリを同じ物差しへ移す途中）。
+// 「そのラウンドにこのタイルが出たとき、この種族が狙って取れば何点分か」。
+// 中央値は10で、噛み合う種族ほど高い。
+//
+// 曲線（旧 ROUND_SCORING_TIMING）は 2026-08-02 に廃止した。「何ラウンド目に出たか」
+// の差はこの表がラウンドごとの値として直に持つので、倍率の掛け算も丸めも要らない。
+// 曲線では表せなかった種族差（R1 に同盟を作れるのはダー・シュワーム人だけ、など）を
+// 入れられるのが狙い。
+//
+// 通常版 9タイル×6ラウンド×14種族＝756セル / 拡張版 12×6×18＝1296セル。
+// RS04 は物理2枚なので2枠に出ることがあり、その場合は枠ごとに引いて両方を足す。
+
+import type { FactionId } from "./factionWeights";
+
+export type RoundScoringTable = Record<
+  string,
+  ReadonlyArray<Partial<Record<FactionId, number>>>
+>;
+
+'''
+
+FILE_FOOTER = '''
+/**
+ * そのタイルが n ラウンド目（0始まり）に出たときの種族別の値。
+ * 表に無いタイル（通常版の RS10-12 など）は undefined ＝寄与なし。
+ */
+export function roundScoringCell(
+  tileId: string,
+  roundIndex: number,
+  lostFleet: boolean
+): Partial<Record<FactionId, number>> | undefined {
+  const table = lostFleet ? ROUND_SCORING_WEIGHTS_LF : ROUND_SCORING_WEIGHTS_BASE;
+  return table[tileId]?.[roundIndex];
+}
+'''
+
+
+def emit_file(path, base_csv, lf_csv):
+    base, base_is_lf = parse(read_csv(base_csv))
+    lf, lf_is_lf = parse(read_csv(lf_csv))
+    if base_is_lf or not lf_is_lf:
+        sys.exit("引数は「通常版の CSV」「拡張版の CSV」の順で渡してください")
+    body = (
+        FILE_HEADER
+        + "/** ★通常版（基本14種族×9枚）。CSV から生成。 */\n"
+        + "export const ROUND_SCORING_WEIGHTS_BASE: RoundScoringTable = {\n"
+        + emit(base, False)
+        + "\n};\n\n"
+        + "/** ★拡張版（18種族×12枚）。CSV から生成。 */\n"
+        + "export const ROUND_SCORING_WEIGHTS_LF: RoundScoringTable = {\n"
+        + emit(lf, True)
+        + "\n};\n"
+        + FILE_FOOTER
+    )
+    with io.open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write(body)
+    sys.stderr.write("書き出しました: %s（通常版%dタイル / 拡張版%dタイル）\n"
+                     % (path, len(base), len(lf)))
 
 
 def check(data, export_name):
@@ -223,8 +296,16 @@ def main():
     if "--template" in sys.argv:
         sys.stdout.write(template("--lf" in sys.argv))
         return
+    if "--emit-file" in sys.argv:
+        if len(args) != 3:
+            sys.exit("usage: gen_round_scoring_table.py --emit-file <out.ts> <base.csv> <lf.csv>")
+        emit_file(args[0], args[1], args[2])
+        return
     if not args:
-        sys.exit("usage: gen_round_scoring_table.py [--template [--lf]] | <csv> [--check]")
+        sys.exit(
+            "usage: gen_round_scoring_table.py [--template [--lf]] | <csv> [--check]\n"
+            "       gen_round_scoring_table.py --emit-file <out.ts> <base.csv> <lf.csv>"
+        )
     data, lf = parse(read_csv(args[0]))
     name = "ROUND_SCORING_WEIGHTS_LF" if lf else "ROUND_SCORING_WEIGHTS_BASE"
     if "--check" in sys.argv:

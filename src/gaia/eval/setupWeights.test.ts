@@ -28,9 +28,6 @@ import {
 import {
   FACTION_IDS,
   LF_FACTION_IDS,
-  ROUND_SCORING_WEIGHTS_BASE,
-  ROUND_SCORING_WEIGHTS_LF,
-  roundScoringCell,
   STD_TECH_SCALE,
   type FactionId,
 } from "./factionWeights";
@@ -40,6 +37,11 @@ import {
   advancedTechCell,
   advancedTechExtensionCell,
 } from "./advancedTechWeights";
+import {
+  ROUND_SCORING_WEIGHTS_BASE,
+  ROUND_SCORING_WEIGHTS_LF,
+  roundScoringCell,
+} from "./roundScoringWeights";
 
 function syntheticSetup(partial?: Partial<SetupResult>): SetupResult {
   return {
