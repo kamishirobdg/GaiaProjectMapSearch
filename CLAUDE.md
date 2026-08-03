@@ -12,6 +12,17 @@
 - `git push` は Vercelデプロイを意味する。**指示があるまで push しない**。
 - 挙動が変わる仕様は、実装前に選択肢を提示して確定してから着手。
 
+## 重みテーブル（2026-08-04）
+
+- 種族別評価の重みは **`data/weights/*.csv` が正本**。`src/gaia/eval/` の
+  `advancedTechWeights.ts` / `techPositionWeights.ts` / `roundScoringWeights.ts` /
+  `tileWeights.ts` は**自動生成物なので手で編集しない**（CSV を直して
+  `scripts/gen_*_table.py --emit-file` で作り直す）。手順は `data/weights/README.md`。
+- 値は **VP 換算**（そのタイルを取れたら何点分か）。合計は最後に
+  `SETUP_SCORE_DIVISOR`（40）で割られ、種族あたり100前後になる。
+- **値を変えたら影響力を測り直す**（`_probe_category_influence.ts`）。
+  狙いの順は 技術 > LF船 > 上級 > ブースター > ラウンド > 最終 > 追加上級 > 同盟。
+
 ## 互換の鉄則
 
 - 検索条件キー・保存データのキーは「**無効時フィールド省略**」のスプレッド構築

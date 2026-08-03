@@ -137,7 +137,10 @@ src/gaia/
   templates/, data/templates/ 評価側 slotCenters / 表示側 TemplateDef
   sectorTiles_*.ts            セクタータイル定義
 src/workers/boardSearch.worker.ts  検索の実行先
+data/weights/                 種族別評価の重み CSV（**正本**。src/gaia/eval の
+                              *Weights.ts はここから自動生成する。README.md 参照）
 scripts/
+  gen_*_table.py              CSV -> 重みテーブル(.ts) の生成と検算
   regression-snapshot.ts      ベースライン生成 CLI
   check-coord-consistency.ts  座標整合性チェック CLI
   _probe_*.ts                 過去の調査に使った使い捨てスクリプト

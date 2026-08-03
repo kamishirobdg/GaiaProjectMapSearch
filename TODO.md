@@ -300,7 +300,9 @@
   | ラウンド得点 | `roundScoringWeights.ts` | `gen_round_scoring_table.py` | 10 | 2 | 756 / 1296 |
   | ブースター/最終/同盟/LF船 | `tileWeights.ts` | `gen_tile_weights_table.py` | 6/9/8/10 | 2 | 308 / 954 |
 
-  どのスクリプトも同じ使い方:
+  **CSV の正本は `data/weights/`**（2026-08-04 に配置。手順は同ディレクトリの
+  README.md）。`<表>_base.csv` / `<表>_lf.csv` の8本で、生成先の .ts は
+  自動生成物なので手で編集しない。どのスクリプトも同じ使い方:
   `--template [--lf]` で雛形CSV / `--emit-file <out.ts> <base.csv> <lf.csv>` で反映 /
   `<csv> --check` で全セル突き合わせ（両方向）。
   - **いまの中身はどれも雛形**（既存の相性値 -2..+2 を「中央値＋刻み×v」で写像し、
