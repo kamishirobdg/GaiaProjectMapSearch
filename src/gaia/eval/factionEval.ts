@@ -6,7 +6,8 @@
 // スコアの意味: scoreSetupFactions は「そのセットアップで各種族がどれだけ
 // 有利か」の相対値（タイル重みの単純合計、ラウンド得点は枚数分加算）。
 // 標準技術9種は「どのトラックの下に付くか」で価値が変わるため、
-// TRACK_AFFINITY × TECH_PREF の積で別途加算する（2026-07-25、scoreStandardTech）。
+// TECH_POSITION_WEIGHTS[タイル][配置][種族] を引く（2026-07-31 に
+// TRACK_AFFINITY × TECH_PREF の積から1つの表へ統合した）。
 
 import type { SetupResult } from "@/gaia/setup/types";
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
@@ -43,9 +44,10 @@ function zeroScores(): FactionScores {
 }
 
 /**
- * 標準技術の寄与（2026-07-25 案1）。トラック下の6枚は編集用テーブル
- * TECH_TRACK_WEIGHTS[タイル][研究列] を引く。自由列3枚はタイル有用度のみ
- * （低係数）。係数は評価指数（stdTrack / stdFree）で、既定は従来の定数と同値。
+ * 標準技術の寄与だけを取り出す（内訳表の1列ぶん）。
+ * 値は TECH_POSITION_WEIGHTS[タイル][配置][種族]（2026-07-31 に統合）。
+ * フリー枠は研究列6つの最大値として自動で決まる（techPositionCell）。
+ * 係数は評価指数 standardTech の1つ（旧 stdTrack / stdFree は廃止）。
  */
 export function scoreStandardTech(result: SetupResult, weights?: SetupWeights): FactionScores {
   const b = setupFactionBreakdown(result, weights);
