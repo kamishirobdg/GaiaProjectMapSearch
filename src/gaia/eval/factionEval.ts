@@ -15,11 +15,13 @@ import {
   FACTION_IDS,
   factionIdsForMode,
   factionsForMode,
-  techPositionCell,
   tileFactionWeights,
   type FactionId,
-  type TechPosition,
 } from "./factionWeights";
+import {
+  techPositionCell,
+  type TechPosition,
+} from "./techPositionWeights";
 import { advancedTechCell, advancedTechExtensionCell } from "./advancedTechWeights";
 import { roundScoringCell } from "./roundScoringWeights";
 import {

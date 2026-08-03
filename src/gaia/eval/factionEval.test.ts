@@ -22,11 +22,13 @@ import {
   factionIdsForMode,
   LF_FACTION_IDS,
   STD_TECH_SCALE,
-  techPositionCell,
-  techPositionTable,
   TILE_FACTION_WEIGHTS,
   type FactionId,
 } from "./factionWeights";
+import {
+  techPositionCell,
+  techPositionTable,
+} from "./techPositionWeights";
 import { advancedTechCell } from "./advancedTechWeights";
 import type { ResearchTrackId } from "@/gaia/setup/types";
 import { DEFAULT_SETUP_WEIGHTS, SETUP_WEIGHT_BASE } from "./setupWeights";

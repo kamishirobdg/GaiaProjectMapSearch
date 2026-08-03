@@ -76,7 +76,9 @@ describe("DEFAULT_SETUP_WEIGHTS", () => {
     expect(DEFAULT_SETUP_WEIGHTS.roundScoring).toBe(ROUND_SCORING_SCALE);
     expect(DEFAULT_SETUP_WEIGHTS.advanced).toBe(ADVANCED_TECH_SCALE);
     expect(DEFAULT_SETUP_WEIGHTS.advExtension).toBe(ADVANCED_TECH_SCALE);
-    expect(STD_TECH_SCALE).toBeGreaterThan(SETUP_WEIGHT_BASE);
+    // 2026-08-03: VP 換算へ移したカテゴリは値の幅が広いぶん係数を下げて桁を
+    // 合わせている（移行が終われば係数は原則1になる）ので、
+    // 「技術の係数は基準より大きい」といった大小関係はもう固定しない。
     expect(ROUND_SCORING_SCALE).toBeLessThan(SETUP_WEIGHT_BASE);
     expect(ADVANCED_TECH_SCALE).toBeLessThan(SETUP_WEIGHT_BASE);
     for (const k of ["booster", "finalScoring", "federation", "lfShip"] as const) {

@@ -11,9 +11,11 @@
 import {
   FACTIONS,
   factionIdsForMode,
-  techPositionTable,
   type FactionId,
 } from "../src/gaia/eval/factionWeights";
+import {
+  techPositionTable,
+} from "../src/gaia/eval/techPositionWeights";
 import { RESEARCH_TRACK_IDS, type ResearchTrackId } from "../src/gaia/setup/types";
 
 const LF = process.argv.includes("--lf");

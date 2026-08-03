@@ -58,6 +58,14 @@ FACTION = {
 }
 TILE_ORDER = ["TS1", "TS2", "TS3", "TS4", "TS5", "TS6", "TS7", "TS8", "TS9"]
 LF_FACTIONS = ["moweyds", "spaceGiants", "tinkerroids", "darkanians"]
+NAME_BY_ID = {v[0]: k for k, v in TILE.items()}
+LABEL_BY_ID = {v[0]: v[1] for v in TILE.values()}
+
+# 雛形の写像（2026-08-03 に VP 換算へ移行）。既存の相性値 → 12 + 2×v。
+# 中央値12＝「この列の下に置かれたこのタイルを取れれば12点ぶん」。上級技術（24）の
+# 半分にしてある —— 9枚すべてが場に出て取りやすい代わり、1枚の効果は上級より小さい。
+TEMPLATE_BASE = 12
+TEMPLATE_STEP = 2
 
 
 def read_csv(path):
@@ -125,11 +133,21 @@ def emit(data):
     return "\n".join(out)
 
 
-def dump_from_ts(export_name):
-    """factionWeights.ts の実体を JSON で取り出す（tsx 経由）。"""
+def weights_module():
+    """
+    テーブルの置き場。2026-08-03 に factionWeights.ts から techPositionWeights.ts へ
+    分離したので、**分離前（＝移行の初回に雛形を作るとき）だけ**旧置き場から読む。
+    """
+    p = os.path.join(REPO, "src", "gaia", "eval", "techPositionWeights.ts")
+    return "techPositionWeights" if os.path.exists(p) else "factionWeights"
+
+
+def dump_from_ts(export_name, module=None):
+    """src/gaia/eval/<module>.ts の実体を JSON で取り出す（tsx 経由）。"""
+    module = module or weights_module()
     tmp = os.path.join(REPO, "scripts", "_dump_tech_table.ts")
     with io.open(tmp, "w", encoding="utf-8", newline="\n") as f:
-        f.write('import { %s } from "../src/gaia/eval/factionWeights";\n' % export_name)
+        f.write('import { %s } from "../src/gaia/eval/%s";\n' % (export_name, module))
         f.write("console.log(JSON.stringify(%s));\n" % export_name)
     try:
         res = subprocess.run(
@@ -141,6 +159,143 @@ def dump_from_ts(export_name):
     if res.returncode != 0:
         sys.exit("ダンプに失敗しました:\n" + (res.stderr or ""))
     return json.loads(res.stdout.strip().splitlines()[-1])
+
+
+def template(lf):
+    """いまの TECH_POSITION_WEIGHTS を VP レンジへ写像した雛形 CSV。"""
+    src = dump_from_ts("TECH_POSITION_WEIGHTS_LF" if lf else "TECH_POSITION_WEIGHTS_BASE")
+    names = [n for n in FACTION if lf or FACTION[n] not in LF_FACTIONS]
+    ids = [FACTION[n] for n in names]
+
+    # BOM を付ける（Excel が cp932 と誤読しないように）。
+    out = io.StringIO()
+    out.write(chr(0xFEFF))
+    w = csv.writer(out, lineterminator="\n")
+    w.writerow(["対応表", "タイル", "研究"] + names)
+    for tid in TILE_ORDER:
+        for ja, trk, _ in TRACK:
+            cells = src.get(tid, {}).get(trk, {})
+            row = [TEMPLATE_BASE + TEMPLATE_STEP * int(cells.get(fid, 0)) for fid in ids]
+            w.writerow([tid, NAME_BY_ID[tid], ja] + row)
+    return out.getvalue()
+
+
+FILE_HEADER = '''// src/gaia/eval/techPositionWeights.ts
+//
+// 標準技術の重みテーブル（タイル → 研究列 → 種族 → 値）。**自動生成ファイル**:
+//   python scripts/gen_tech_position_table.py --emit-file <このパス> <base.csv> <lf.csv>
+// 手で直さず、CSV を直して生成し直すこと（検算は `<csv> --check`）。
+//
+// 値は **VP 換算**（2026-08-03 ユーザー確定。全カテゴリを同じ物差しへ移す途中）。
+// 「その列の下に置かれたこのタイルを取れたら何点分か」。中央値は12で、上級技術（24）の
+// 半分 —— 9枚すべてが場に出て取りやすい代わり、1枚の効果は上級より小さい。
+//
+// **研究列6つだけを書く。フリー枠は書かない**。ルールブック p13「技術タイルの獲得」:
+// 研究エリアの真下の6枚はその研究エリアでのみマーカーを進められ、進められない場合は
+// 進展分が失われる。フリー枠の3枚は任意の研究エリア1つを進められる。つまりフリー枠は
+// 常にトラック配置の完全な上位互換で、利益は「登りたい列を選べる」ことに尽きる。だから
+//   free = そのタイルの研究列6つのうち最大値
+// が正しく、techPositionCell() がそれを計算する（データには持たない）。
+//
+// 通常版 9タイル×6列×14種族＝756セル / 拡張版 9×6×18＝972セル。
+// 拡張の有無で場に出るタイルの母集団が変わるので表を分ける。
+
+import type { ResearchTrackId } from "@/gaia/setup/types";
+import type { FactionId } from "./factionWeights";
+
+/** 標準技術の置き場所: 研究列6つ、または列に紐付かないフリー枠。 */
+export type TechPosition = ResearchTrackId | "free";
+
+export type TechPositionTable = Record<
+  string,
+  Partial<Record<ResearchTrackId, Partial<Record<FactionId, number>>>>
+>;
+
+'''
+
+FILE_FOOTER = '''
+const TECH_TRACK_POSITIONS: readonly ResearchTrackId[] = [
+  "terra",
+  "nav",
+  "ai",
+  "gaia",
+  "eco",
+  "sci",
+];
+
+/** その拡張で使う標準技術のテーブル。 */
+export function techPositionTable(lostFleet: boolean): TechPositionTable {
+  return lostFleet ? TECH_POSITION_WEIGHTS_LF : TECH_POSITION_WEIGHTS_BASE;
+}
+
+/** `${base|lf}:${tileId}` → 計算した free 枠のセル（初回だけ作る）。 */
+const freeCellCache = new Map<string, Partial<Record<FactionId, number>>>();
+
+function computeFreeCell(tileId: string, lostFleet: boolean): Partial<Record<FactionId, number>> {
+  const tile = techPositionTable(lostFleet)[tileId];
+  const out: Partial<Record<FactionId, number>> = {};
+  if (!tile) return out;
+  const seen = new Set<FactionId>();
+  for (const pos of TECH_TRACK_POSITIONS) {
+    for (const f of Object.keys(tile[pos] ?? {}) as FactionId[]) seen.add(f);
+  }
+  for (const f of seen) {
+    // 6列すべての最大値を取る（記載のない列は0）。
+    let best = 0;
+    for (const pos of TECH_TRACK_POSITIONS) {
+      const v = tile[pos]?.[f] ?? 0;
+      if (v > best) best = v;
+    }
+    if (best !== 0) out[f] = best;
+  }
+  return out;
+}
+
+/**
+ * 標準技術1枚ぶんの重み（配置ごと）。**参照はここを通すこと。**
+ * フリー枠はデータに持たず、研究列6つの最大値として計算する（上の設計メモ参照）。
+ * 副作用として、**編集するのは研究列だけでよい**（フリー枠は自動で追随する）。
+ */
+export function techPositionCell(
+  tileId: string,
+  pos: TechPosition,
+  lostFleet: boolean
+): Partial<Record<FactionId, number>> | undefined {
+  const table = techPositionTable(lostFleet);
+  if (pos !== "free") return table[tileId]?.[pos];
+  if (!table[tileId]) return undefined;
+  const key = `${lostFleet ? "lf" : "base"}:${tileId}`;
+  let cell = freeCellCache.get(key);
+  if (!cell) {
+    cell = computeFreeCell(tileId, lostFleet);
+    freeCellCache.set(key, cell);
+  }
+  return cell;
+}
+'''
+
+
+def emit_file(path, base_csv, lf_csv):
+    base, base_is_lf = parse(read_csv(base_csv))
+    lf, lf_is_lf = parse(read_csv(lf_csv))
+    if base_is_lf or not lf_is_lf:
+        sys.exit("引数は「通常版の CSV」「拡張版の CSV」の順で渡してください")
+    body = (
+        FILE_HEADER
+        + "/** ★通常版（基本14種族×9枚）。CSV から生成。 */\n"
+        + "export const TECH_POSITION_WEIGHTS_BASE: TechPositionTable = {\n"
+        + emit(base)
+        + "\n};\n\n"
+        + "/** ★拡張版（18種族×9枚）。CSV から生成。 */\n"
+        + "export const TECH_POSITION_WEIGHTS_LF: TechPositionTable = {\n"
+        + emit(lf)
+        + "\n};\n"
+        + FILE_FOOTER
+    )
+    with io.open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write(body)
+    sys.stderr.write("書き出しました: %s（通常版%dタイル / 拡張版%dタイル）\n"
+                     % (path, len(base), len(lf)))
 
 
 def check(data, export_name):
@@ -178,8 +333,19 @@ def main():
         except AttributeError:  # Python 3.6 以前
             pass
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if "--template" in sys.argv:
+        sys.stdout.write(template("--lf" in sys.argv))
+        return
+    if "--emit-file" in sys.argv:
+        if len(args) != 3:
+            sys.exit("usage: gen_tech_position_table.py --emit-file <out.ts> <base.csv> <lf.csv>")
+        emit_file(args[0], args[1], args[2])
+        return
     if not args:
-        sys.exit(__doc__ or "usage: gen_tech_position_table.py <csv> [--check]")
+        sys.exit(
+            "usage: gen_tech_position_table.py [--template [--lf]] | <csv> [--check]\n"
+            "       gen_tech_position_table.py --emit-file <out.ts> <base.csv> <lf.csv>"
+        )
     data, lf = parse(read_csv(args[0]))
     name = "TECH_POSITION_WEIGHTS_LF" if lf else "TECH_POSITION_WEIGHTS_BASE"
     if "--check" in sys.argv:

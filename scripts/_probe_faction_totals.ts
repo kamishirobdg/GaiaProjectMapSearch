@@ -18,12 +18,14 @@
 import {
   FACTIONS,
   factionIdsForMode,
-  techPositionCell,
-  techPositionTable,
   tileFactionWeights,
   type FactionId,
-  type TechPosition,
 } from "../src/gaia/eval/factionWeights";
+import {
+  techPositionCell,
+  techPositionTable,
+  type TechPosition,
+} from "../src/gaia/eval/techPositionWeights";
 import { SETUP_CATALOG } from "../src/gaia/setup/data";
 import {
   DEFAULT_SETUP_WEIGHTS,

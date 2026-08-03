@@ -14,11 +14,13 @@ import { RESEARCH_TRACK_IDS, type ResearchTrackId } from "@/gaia/setup/types";
 import {
   FACTION_IDS,
   LF_FACTION_IDS,
+} from "./factionWeights";
+import {
   TECH_POSITION_WEIGHTS_BASE,
   TECH_POSITION_WEIGHTS_LF,
   techPositionCell,
   techPositionTable,
-} from "./factionWeights";
+} from "./techPositionWeights";
 
 const TILE_IDS = ["TS1", "TS2", "TS3", "TS4", "TS5", "TS6", "TS7", "TS8", "TS9"] as const;
 const TRACKS = RESEARCH_TRACK_IDS as readonly ResearchTrackId[];
