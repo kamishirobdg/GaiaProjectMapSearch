@@ -22,7 +22,6 @@ import {
   factionIdsForMode,
   LF_FACTION_IDS,
   STD_TECH_SCALE,
-  TILE_FACTION_WEIGHTS,
   type FactionId,
 } from "./factionWeights";
 import {
@@ -30,6 +29,7 @@ import {
   techPositionTable,
 } from "./techPositionWeights";
 import { advancedTechCell } from "./advancedTechWeights";
+import { tileValueCell } from "./tileWeights";
 import type { ResearchTrackId } from "@/gaia/setup/types";
 import { DEFAULT_SETUP_WEIGHTS, SETUP_WEIGHT_BASE } from "./setupWeights";
 import { countMapPlanets, mapFactionScoresFromCounts } from "./mapFaction";
@@ -62,7 +62,7 @@ describe("scoreSetupFactions", () => {
     // 期待値は**テーブルから組み立てる**。重みの値は見直しで動くので、
     // ベタ書きすると値を直すたびにテストが落ちる（2026-08-01 に書き換え）。
     const sumOf = (ids: readonly string[], f: FactionId) =>
-      ids.reduce((a, id) => a + (TILE_FACTION_WEIGHTS[id]?.[f] ?? 0), 0);
+      ids.reduce((a, id) => a + (tileValueCell(id, false)?.[f] ?? 0), 0);
     // 上級技術は「どの研究列の下に置かれたか」で値が変わるので、列ごとに引く
     // （2026-08-03。syntheticSetup の advancedTech.byTrack と同じ組み合わせ）。
     const advByTrack: Record<ResearchTrackId, string> = {
@@ -74,11 +74,12 @@ describe("scoreSetupFactions", () => {
         0
       );
 
-    // ブースター2枚＋最終2枚は素の合計×基準係数。上級技術だけは値が VP 換算で
-    // 係数が別なので分けて掛ける（2026-08-03）。
+    // ブースター2枚＋最終2枚＋同盟1枚は素の合計×基準係数。上級技術だけは係数が
+    // 別なので分けて掛ける（2026-08-03。VP 換算で桁が違うため）。
     const flatPart = (f: FactionId) =>
       advPart(f) * DEFAULT_SETUP_WEIGHTS.advanced +
-      (sumOf(["RB01", "RB02"], f) + sumOf(["FS02", "FS06"], f)) * SETUP_WEIGHT_BASE;
+      (sumOf(["RB01", "RB02"], f) + sumOf(["FS02", "FS06"], f) + sumOf(["FED12"], f)) *
+        SETUP_WEIGHT_BASE;
     for (const f of ["firaks", "ivits", "terrans"] as const) {
       const rounds = setupFactionBreakdown(s).byCategory.roundScoring[f];
       expect(scores[f]).toBe(flatPart(f) + rounds + scoreStandardTech(s)[f]);

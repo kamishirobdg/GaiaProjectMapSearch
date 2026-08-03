@@ -15,7 +15,6 @@ import {
   FACTION_IDS,
   factionIdsForMode,
   factionsForMode,
-  tileFactionWeights,
   type FactionId,
 } from "./factionWeights";
 import {
@@ -24,6 +23,7 @@ import {
 } from "./techPositionWeights";
 import { advancedTechCell, advancedTechExtensionCell } from "./advancedTechWeights";
 import { roundScoringCell } from "./roundScoringWeights";
+import { tileValueCell } from "./tileWeights";
 import {
   DEFAULT_SETUP_WEIGHTS,
   SETUP_WEIGHT_KEYS,
@@ -103,7 +103,7 @@ export function setupFactionTileHits(
   };
   const push = (category: SetupWeightKey, tileId: string | undefined, slot?: string) => {
     if (!tileId) return;
-    pushCell(category, tileId, tileFactionWeights(tileId, lf), slot);
+    pushCell(category, tileId, tileValueCell(tileId, lf), slot);
   };
 
   // 上級技術は「どの研究列の下に置かれたか」で価値が変わる（2026-08-03。標準技術と
@@ -168,7 +168,7 @@ export function setupFactionBreakdown(
   };
   const add = (cat: SetupWeightKey, tileId: string | undefined) => {
     if (!tileId) return;
-    addCell(cat, tileFactionWeights(tileId, lf));
+    addCell(cat, tileValueCell(tileId, lf));
   };
 
   // 上級技術は「どの研究列の下に置かれたか」で価値が変わる（2026-08-03。値は VP 換算。
@@ -272,6 +272,9 @@ export type SetupColorPref = {
  *
  * **重みを変えたらこのスクリプトを再実行して係数と文言を合わせ直すこと。**
  * 2026-08-01 の全タイル見直しで 0.25 → 0.3（掛け先の振れ幅が 53.1 → 37.7 に縮んだ）。
+ * 2026-08-03 の VP 換算後も再測して **0.3 のまま据え置き**: 掛け先の振れ幅は
+ * 37.7 → 45.8 に増えたが基準値の振れ幅も一緒に増えたので、互角になる係数は
+ * 0.330（pref=1 で topBalance ×0.8 / neutralBalance ×0.9）。目盛りの文言も従来どおり。
  */
 export const SETUP_COLOR_PREF_W = 0.3;
 

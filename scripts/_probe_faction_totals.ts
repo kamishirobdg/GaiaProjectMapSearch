@@ -18,9 +18,9 @@
 import {
   FACTIONS,
   factionIdsForMode,
-  tileFactionWeights,
   type FactionId,
 } from "../src/gaia/eval/factionWeights";
+import { tileValueCell } from "../src/gaia/eval/tileWeights";
 import {
   techPositionCell,
   techPositionTable,
@@ -120,7 +120,7 @@ const rows: Row[] = FACTIONS.filter((f) => playable.has(f.id)).map((f) => {
   for (const cat of POOL) {
     let sum = 0;
     for (const id of cat.ids) {
-      const v = tileFactionWeights(id, LF)?.[f.id] ?? 0;
+      const v = tileValueCell(id, LF)?.[f.id] ?? 0;
       if (v === 0) continue;
       sum += v;
       if (v > 0) {
