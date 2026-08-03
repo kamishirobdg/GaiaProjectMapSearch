@@ -21,6 +21,7 @@ import {
   type FactionId,
   type TechPosition,
 } from "./factionWeights";
+import { advancedTechCell, advancedTechExtensionCell } from "./advancedTechWeights";
 import {
   DEFAULT_SETUP_WEIGHTS,
   SETUP_WEIGHT_KEYS,
@@ -79,14 +80,18 @@ export function setupFactionTileHits(
   const w = weights ?? DEFAULT_SETUP_WEIGHTS;
   const lf = result.mode === "lostFleet";
   const out: SetupTileHit[] = [];
-  const push = (category: SetupWeightKey, tileId: string | undefined, slot?: string) => {
-    if (!tileId) return;
-    const src = tileFactionWeights(tileId, lf);
+  /** 引いたセル1つを、係数を掛けて1エントリにする（非ゼロが1つも無ければ出さない）。 */
+  const pushCell = (
+    category: SetupWeightKey,
+    tileId: string,
+    src: Partial<Record<FactionId, number>> | undefined,
+    slot?: string
+  ) => {
     if (!src) return;
     const scale = w[category];
     const byFaction: Partial<Record<FactionId, number>> = {};
     let any = false;
-    for (const [f, v] of Object.entries(src as Record<string, number | undefined>)) {
+    for (const [f, v] of Object.entries(src)) {
       const val = (v ?? 0) * scale;
       if (val === 0) continue;
       byFaction[f as FactionId] = val;
@@ -94,26 +99,31 @@ export function setupFactionTileHits(
     }
     if (any) out.push({ tileId, category, slot, byFaction });
   };
+  const push = (category: SetupWeightKey, tileId: string | undefined, slot?: string) => {
+    if (!tileId) return;
+    pushCell(category, tileId, tileFactionWeights(tileId, lf), slot);
+  };
 
-  for (const [track, id] of Object.entries(result.advancedTech.byTrack)) {
-    push("advanced", id, track);
+  // 上級技術は「どの研究列の下に置かれたか」で価値が変わる（2026-08-03。標準技術と
+  // 同じ理屈 —— その列をレベル4まで上げないと取れないので、登らない列の1枚は
+  // 事実上取れない）。値は VP 換算（advancedTechWeights.ts）。
+  for (const track of RESEARCH_TRACK_IDS as readonly ResearchTrackId[]) {
+    const id = result.advancedTech.byTrack[track];
+    if (id) pushCell("advanced", id, advancedTechCell(id, track, lf), track);
   }
-  push("advExtension", result.advancedTech.extension);
+  // 得点ボード拡張部の1枚は研究列に紐付かないので6列の最大値を使う。
+  if (result.advancedTech.extension) {
+    pushCell(
+      "advExtension",
+      result.advancedTech.extension,
+      advancedTechExtensionCell(result.advancedTech.extension, lf)
+    );
+  }
   for (const id of result.boosters.available) push("booster", id);
   // ラウンド得点は「何ラウンド目か」で値が変わる（2026-08-02 に曲線から
   // タイル×ラウンド×種族の表へ移した。roundScoringCell）。
   result.roundScoring.forEach((id, i) => {
-    const src = roundScoringCell(id, i, lf);
-    if (!src) return;
-    const byFaction: Partial<Record<FactionId, number>> = {};
-    let any = false;
-    for (const [f, v] of Object.entries(src)) {
-      const val = (v ?? 0) * w.roundScoring;
-      if (val === 0) continue;
-      byFaction[f as FactionId] = val;
-      any = true;
-    }
-    if (any) out.push({ tileId: id, category: "roundScoring", slot: `R${i + 1}`, byFaction });
+    pushCell("roundScoring", id, roundScoringCell(id, i, lf), `R${i + 1}`);
   });
   for (const id of result.finalScoring) push("finalScoring", id);
   push("federation", result.federationLv5);
@@ -132,18 +142,7 @@ export function setupFactionTileHits(
     ...result.standardTech.free.map((id) => ({ id, pos: "free" as TechPosition })),
   ];
   for (const { id, pos } of stdSlots) {
-    const cell = techPositionCell(id, pos, lf);
-    if (!cell) continue;
-    const scale = w.standardTech;
-    const byFaction: Partial<Record<FactionId, number>> = {};
-    let any = false;
-    for (const [f, v] of Object.entries(cell)) {
-      const val = (v ?? 0) * scale;
-      if (val === 0) continue;
-      byFaction[f as FactionId] = val;
-      any = true;
-    }
-    if (any) out.push({ tileId: id, category: "standardTech", slot: pos, byFaction });
+    pushCell("standardTech", id, techPositionCell(id, pos, lf), pos);
   }
   return out;
 }
@@ -161,28 +160,32 @@ export function setupFactionBreakdown(
   const byCategory = {} as Record<SetupWeightKey, FactionScores>;
   for (const k of SETUP_WEIGHT_KEYS) byCategory[k] = zeroScores();
 
+  const addCell = (cat: SetupWeightKey, cell: Partial<Record<FactionId, number>> | undefined) => {
+    if (!cell) return;
+    for (const [f, v] of Object.entries(cell)) byCategory[cat][f as FactionId] += v ?? 0;
+  };
   const add = (cat: SetupWeightKey, tileId: string | undefined) => {
     if (!tileId) return;
-    const tw = tileFactionWeights(tileId, lf);
-    if (!tw) return;
-    for (const [f, v] of Object.entries(tw)) byCategory[cat][f as FactionId] += v ?? 0;
+    addCell(cat, tileFactionWeights(tileId, lf));
   };
 
-  for (const id of Object.values(result.advancedTech.byTrack)) add("advanced", id);
+  // 上級技術は「どの研究列の下に置かれたか」で価値が変わる（2026-08-03。値は VP 換算。
+  // advancedTechWeights.ts）。標準技術と同じ理屈で、その列を登らない種族は取れない。
+  for (const track of RESEARCH_TRACK_IDS as readonly ResearchTrackId[]) {
+    const id = result.advancedTech.byTrack[track];
+    if (id) addCell("advanced", advancedTechCell(id, track, lf));
+  }
   // 得点ボード拡張部の追加上級は取得条件が通常の上級と違うので別カテゴリ。
-  add("advExtension", result.advancedTech.extension);
+  // 研究列に紐付かない＝どの列を登っていても取りに行けるので6列の最大値を使う。
+  if (result.advancedTech.extension) {
+    addCell("advExtension", advancedTechExtensionCell(result.advancedTech.extension, lf));
+  }
   for (const id of result.boosters.available) add("booster", id);
   // ラウンド得点は ×2タイルが2回出るので枚数分加算しつつ、**何ラウンド目に出たかで
   // 値が変わる**（2026-08-02 に曲線を廃止し、タイル×ラウンド×種族の表へ移した）。
   // 倍率の掛け算が無くなって整数のまま足せるので、係数は下の一括スケールで掛ける
   // ＝他のカテゴリと同じ扱いになった（以前はここで丸めるため特別扱いしていた）。
-  result.roundScoring.forEach((id, i) => {
-    const tw = roundScoringCell(id, i, lf);
-    if (!tw) return;
-    for (const [f, v] of Object.entries(tw)) {
-      byCategory.roundScoring[f as FactionId] += v ?? 0;
-    }
-  });
+  result.roundScoring.forEach((id, i) => addCell("roundScoring", roundScoringCell(id, i, lf)));
   for (const id of result.finalScoring) add("finalScoring", id);
   add("federation", result.federationLv5); // 現行DRAFTでは全0
   if (lf) {
@@ -194,10 +197,7 @@ export function setupFactionBreakdown(
   // 標準技術は「どこに置かれたか」で価値が変わる（研究列6つ＋フリー枠）。
   // 2026-07-31: トラック下とフリー枠を1つの表へ統合し、係数も1つにした。
   const addStd = (id: string | undefined, pos: TechPosition) => {
-    if (!id) return;
-    const cell = techPositionCell(id, pos, lf);
-    if (!cell) return;
-    for (const [f, v] of Object.entries(cell)) byCategory.standardTech[f as FactionId] += v ?? 0;
+    if (id) addCell("standardTech", techPositionCell(id, pos, lf));
   };
   for (const track of RESEARCH_TRACK_IDS as readonly ResearchTrackId[]) {
     addStd(result.standardTech.byTrack[track], track);

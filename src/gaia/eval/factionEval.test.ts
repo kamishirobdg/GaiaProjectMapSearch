@@ -27,7 +27,9 @@ import {
   TILE_FACTION_WEIGHTS,
   type FactionId,
 } from "./factionWeights";
-import { SETUP_WEIGHT_BASE } from "./setupWeights";
+import { advancedTechCell } from "./advancedTechWeights";
+import type { ResearchTrackId } from "@/gaia/setup/types";
+import { DEFAULT_SETUP_WEIGHTS, SETUP_WEIGHT_BASE } from "./setupWeights";
 import { countMapPlanets, mapFactionScoresFromCounts } from "./mapFaction";
 import { makeSearchPlacementFromSeed } from "@/gaia/ssot/searchPlacementConfig";
 
@@ -57,14 +59,24 @@ describe("scoreSetupFactions", () => {
     const scores = scoreSetupFactions(s);
     // 期待値は**テーブルから組み立てる**。重みの値は見直しで動くので、
     // ベタ書きすると値を直すたびにテストが落ちる（2026-08-01 に書き換え）。
-    const advTiles = ["AT02", "AT03", "AT13", "AT06", "AT07", "AT09"] as const;
     const sumOf = (ids: readonly string[], f: FactionId) =>
       ids.reduce((a, id) => a + (TILE_FACTION_WEIGHTS[id]?.[f] ?? 0), 0);
+    // 上級技術は「どの研究列の下に置かれたか」で値が変わるので、列ごとに引く
+    // （2026-08-03。syntheticSetup の advancedTech.byTrack と同じ組み合わせ）。
+    const advByTrack: Record<ResearchTrackId, string> = {
+      terra: "AT02", nav: "AT03", ai: "AT13", gaia: "AT06", eco: "AT07", sci: "AT09",
+    };
+    const advPart = (f: FactionId) =>
+      (Object.entries(advByTrack) as Array<[ResearchTrackId, string]>).reduce(
+        (a, [track, id]) => a + (advancedTechCell(id, track, false)?.[f] ?? 0),
+        0
+      );
 
-    // 上級6枚＋ブースター2枚＋最終2枚は素の合計×基準係数。
+    // ブースター2枚＋最終2枚は素の合計×基準係数。上級技術だけは値が VP 換算で
+    // 係数が別なので分けて掛ける（2026-08-03）。
     const flatPart = (f: FactionId) =>
-      (sumOf(advTiles, f) + sumOf(["RB01", "RB02"], f) + sumOf(["FS02", "FS06"], f)) *
-      SETUP_WEIGHT_BASE;
+      advPart(f) * DEFAULT_SETUP_WEIGHTS.advanced +
+      (sumOf(["RB01", "RB02"], f) + sumOf(["FS02", "FS06"], f)) * SETUP_WEIGHT_BASE;
     for (const f of ["firaks", "ivits", "terrans"] as const) {
       const rounds = setupFactionBreakdown(s).byCategory.roundScoring[f];
       expect(scores[f]).toBe(flatPart(f) + rounds + scoreStandardTech(s)[f]);

@@ -8,9 +8,10 @@
 //   - 保存形式は「既定と異なるキーだけ」（全部既定ならキーごと消す）
 
 import { describe, expect, it } from "vitest";
-import type { SetupResult } from "@/gaia/setup/types";
+import { RESEARCH_TRACK_IDS, type ResearchTrackId, type SetupResult } from "@/gaia/setup/types";
 import { scoreSetupFactions, setupFactionBreakdown, setupFactionTileHits } from "./factionEval";
 import {
+  ADVANCED_TECH_SCALE,
   DEFAULT_SETUP_WEIGHTS,
   LF_ONLY_WEIGHT_KEYS,
   ROUND_SCORING_SCALE,
@@ -33,6 +34,12 @@ import {
   STD_TECH_SCALE,
   type FactionId,
 } from "./factionWeights";
+import {
+  ADVANCED_TECH_WEIGHTS_BASE,
+  ADVANCED_TECH_WEIGHTS_LF,
+  advancedTechCell,
+  advancedTechExtensionCell,
+} from "./advancedTechWeights";
 
 function syntheticSetup(partial?: Partial<SetupResult>): SetupResult {
   return {
@@ -59,21 +66,18 @@ function withWeight(k: keyof SetupWeights, v: number): SetupWeights {
 }
 
 describe("DEFAULT_SETUP_WEIGHTS", () => {
-  it("既定は基準どおり（技術は重く、ラウンド得点は軽い）", () => {
+  it("既定は基準どおり（技術は重く、ラウンド得点と上級技術は軽い）", () => {
     // 2026-08-01: カテゴリの「1枚あたりの効き具合」を係数で表すことにしたので、
-    // 既定値が一律ではなくなった。基準から外れるのはこの2つだけ。
+    // 既定値が一律ではなくなった。2026-08-03: 上級技術だけ値が VP 換算になり、
+    // 桁を合わせるために係数を下げたので、基準から外れるのは3つ。
     expect(DEFAULT_SETUP_WEIGHTS.standardTech).toBe(STD_TECH_SCALE);
     expect(DEFAULT_SETUP_WEIGHTS.roundScoring).toBe(ROUND_SCORING_SCALE);
+    expect(DEFAULT_SETUP_WEIGHTS.advanced).toBe(ADVANCED_TECH_SCALE);
+    expect(DEFAULT_SETUP_WEIGHTS.advExtension).toBe(ADVANCED_TECH_SCALE);
     expect(STD_TECH_SCALE).toBeGreaterThan(SETUP_WEIGHT_BASE);
     expect(ROUND_SCORING_SCALE).toBeLessThan(SETUP_WEIGHT_BASE);
-    for (const k of [
-      "advanced",
-      "advExtension",
-      "booster",
-      "finalScoring",
-      "federation",
-      "lfShip",
-    ] as const) {
+    expect(ADVANCED_TECH_SCALE).toBeLessThan(SETUP_WEIGHT_BASE);
+    for (const k of ["booster", "finalScoring", "federation", "lfShip"] as const) {
       expect(DEFAULT_SETUP_WEIGHTS[k]).toBe(SETUP_WEIGHT_BASE);
     }
     expect(isDefaultWeights(DEFAULT_SETUP_WEIGHTS)).toBe(true);
@@ -168,9 +172,13 @@ describe("setupFactionBreakdown", () => {
     });
     const base = setupFactionBreakdown(s, DEFAULT_SETUP_WEIGHTS);
     const scaled = setupFactionBreakdown(s, withWeight("advExtension", SETUP_WEIGHT_BASE * 2));
-    // firaks は AT02 で +2。追加上級の係数だけが効き、通常の上級は動かない。
-    expect(base.byCategory.advExtension.firaks).toBe(2 * SETUP_WEIGHT_BASE);
-    expect(scaled.byCategory.advExtension.firaks).toBe(4 * SETUP_WEIGHT_BASE);
+    // 期待値は表から組み立てる（値のレビューで動くのでベタ書きしない）。拡張部は
+    // 研究列に紐付かないので6列の最大値（advancedTechExtensionCell）。
+    const want = advancedTechExtensionCell("AT02", true)?.firaks ?? 0;
+    expect(want).toBeGreaterThan(0);
+    // 追加上級の係数だけが効き、通常の上級は動かない。
+    expect(base.byCategory.advExtension.firaks).toBe(want * DEFAULT_SETUP_WEIGHTS.advExtension);
+    expect(scaled.byCategory.advExtension.firaks).toBe(want * SETUP_WEIGHT_BASE * 2);
     expect(scaled.byCategory.advanced.firaks).toBe(base.byCategory.advanced.firaks);
   });
 });
@@ -267,6 +275,80 @@ describe("ラウンド得点の表（タイル×ラウンド×種族）", () => 
       expect(Number.isInteger(b.byCategory.roundScoring[f])).toBe(true);
       expect(Number.isInteger(b.total[f])).toBe(true);
     }
+  });
+});
+
+// 上級技術は「タイル×研究列×種族」の表で持つ（2026-08-03。値は VP 換算）。
+// 標準技術と同じく、ここで固定するのは**表の構造と、値がそのまま評価へ出ること**
+// だけ。「相性の良い列ほど高い」といった中身の性質は固定しない —— 投入時の雛形は
+// 全列同値で、これからユーザーが列ごとの差を入れていくため。
+describe("上級技術の表（タイル×研究列×種族）", () => {
+  const BASE_IDS = [
+    "AT01", "AT02", "AT03", "AT04", "AT05", "AT06", "AT07", "AT08",
+    "AT09", "AT10", "AT11", "AT12", "AT13", "AT14", "AT15",
+  ];
+  const LF_ONLY = ["AT16", "AT17", "AT18", "AT19", "AT20", "AT21"];
+  const TRACKS = RESEARCH_TRACK_IDS as readonly ResearchTrackId[];
+
+  it("通常版15タイル・拡張版21タイルが、それぞれ6列ぶんを持つ", () => {
+    expect(Object.keys(ADVANCED_TECH_WEIGHTS_BASE).sort().join(",")).toBe(BASE_IDS.join(","));
+    expect(Object.keys(ADVANCED_TECH_WEIGHTS_LF).sort().join(",")).toBe(
+      [...BASE_IDS, ...LF_ONLY].sort().join(",")
+    );
+    for (const [name, table] of [
+      ["BASE", ADVANCED_TECH_WEIGHTS_BASE],
+      ["LF", ADVANCED_TECH_WEIGHTS_LF],
+    ] as const) {
+      for (const [id, tile] of Object.entries(table)) {
+        const n = TRACKS.filter((t) => tile[t]).length;
+        expect(`${name}/${id}:${n}`).toBe(`${name}/${id}:6`);
+      }
+    }
+  });
+
+  it("通常版の表に LF4種族と LF6枚は入れない", () => {
+    for (const [id, tile] of Object.entries(ADVANCED_TECH_WEIGHTS_BASE)) {
+      expect(LF_ONLY).not.toContain(id);
+      for (const trk of TRACKS) {
+        for (const f of Object.keys(tile[trk] ?? {})) {
+          expect(`${id}/${trk}/${f}:${LF_FACTION_IDS.has(f as FactionId)}`).toBe(
+            `${id}/${trk}/${f}:false`
+          );
+        }
+      }
+    }
+  });
+
+  it("拡張部は研究列6つの最大値（どの列を登っていても取りに行けるため）", () => {
+    for (const id of Object.keys(ADVANCED_TECH_WEIGHTS_LF)) {
+      const cell = advancedTechExtensionCell(id, true) ?? {};
+      for (const f of FACTION_IDS) {
+        const best = Math.max(0, ...TRACKS.map((t) => advancedTechCell(id, t, true)?.[f] ?? 0));
+        expect(`${id}/${f}:${cell[f] ?? 0}`).toBe(`${id}/${f}:${best}`);
+      }
+    }
+  });
+
+  it("表の値がそのまま評価へ出る（係数を掛けるだけ）", () => {
+    const byTrack: Array<[ResearchTrackId, string]> = [
+      ["terra", "AT02"], ["nav", "AT03"], ["ai", "AT13"],
+      ["gaia", "AT06"], ["eco", "AT07"], ["sci", "AT09"],
+    ];
+    const s = syntheticSetup({
+      advancedTech: { byTrack: Object.fromEntries(byTrack) as Record<ResearchTrackId, string> },
+    });
+    const b = setupFactionBreakdown(s);
+    const w = DEFAULT_SETUP_WEIGHTS.advanced;
+    for (const f of FACTION_IDS) {
+      const want =
+        byTrack.reduce((a, [t, id]) => a + (advancedTechCell(id, t, false)?.[f] ?? 0), 0) * w;
+      expect(`${f}:${b.byCategory.advanced[f]}`).toBe(`${f}:${want}`);
+    }
+  });
+
+  it("通常版では LF6枚は寄与しない", () => {
+    expect(advancedTechCell("AT16", "terra", false)).toBeUndefined();
+    expect(advancedTechCell("AT16", "terra", true)).toBeDefined();
   });
 });
 

@@ -83,9 +83,22 @@ export const SETUP_WEIGHT_BASE = 5;
  * ラウンドごとの値として直に持つ（2026-08-02 に曲線を廃止した）。
  */
 export const ROUND_SCORING_SCALE = 4;
+/**
+ * 上級技術（と得点ボード拡張部の追加上級）の既定係数（2026-08-03）。
+ *
+ * このカテゴリだけ値が **VP 換算**（1枚あたり20〜30点）になったので、他カテゴリの
+ * 「噛み合い ±2」と同じ係数では桁が合わない。雛形の状態で実測すると、係数5では
+ * 種族間SD 26.7（占有率32%）で単独1位になり、狙いの順（技術 > LF船 > 上級）から
+ * 大きく外れる。2 に下げると 10.7 で技術15.6 に次ぐ位置に収まる。
+ *
+ * **暫定値**。VP 換算の値はこれからユーザーが入れ直すので、値が固まったら
+ * `scripts/_probe_category_influence.ts` で測り直して決める。全カテゴリを VP 換算へ
+ * 移し終えたら、係数は原則1（値そのものが点数を表す）になる。
+ */
+export const ADVANCED_TECH_SCALE = 2;
 export const DEFAULT_SETUP_WEIGHTS: SetupWeights = {
-  advanced: SETUP_WEIGHT_BASE,
-  advExtension: SETUP_WEIGHT_BASE,
+  advanced: ADVANCED_TECH_SCALE,
+  advExtension: ADVANCED_TECH_SCALE,
   booster: SETUP_WEIGHT_BASE,
   roundScoring: ROUND_SCORING_SCALE,
   finalScoring: SETUP_WEIGHT_BASE,

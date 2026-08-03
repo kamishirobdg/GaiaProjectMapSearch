@@ -836,7 +836,12 @@ export function roundScoringCell(
 // ---------------------------------------------------------------------------
 export const TILE_FACTION_WEIGHTS: Record<string, Partial<Record<FactionId, number>>> = {
   // ===== 上級技術（15＋LF6） =====
-  // 一度取れば最後まで効く。ラウンド得点（1ラウンドだけ）より1枚の重みは大きい。
+  // **★2026-08-03: この AT 行はもう評価に使われない。** 上級技術の正本は
+  // ADVANCED_TECH_WEIGHTS_BASE / _LF（タイル×研究列×種族、VP 換算。
+  // src/gaia/eval/advancedTechWeights.ts）へ移した。ここを直しても評価は変わらない。
+  // 残してあるのは雛形生成（gen_advanced_tech_table.py --template）の入力と、
+  // 「研究列ごとの差を付ける前はどの相性値だったか」の記録のため
+  // （ラウンド得点の RS 行と同じ扱い）。
   AT01: { ivits: 2, xenos: 2, moweyds: 2, ambas: 1, gleens: 1 }, // パス時：同盟タイル×3VP
   // AT02/RS07: 技術タイルの獲得には研究1レベルが付くので、技術タイルを多く取る
   // 勢力（イタル人=PIで反復、フィラク族=研究所の建て直し、マッドアンドロイド=毎ラウンド無料の1レベル）が伸びる。
