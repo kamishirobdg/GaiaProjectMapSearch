@@ -12,6 +12,7 @@
 // 「Map と Setup のバランス」）、倍率の入力欄はまだ出していない。
 
 import React from "react";
+import Link from "next/link";
 import GlobalBar from "@/components/GlobalBar";
 import { PageBody, Panel, T } from "@/components/ui/layout";
 import {
@@ -23,6 +24,7 @@ import {
 } from "@/app/board/persistence";
 import { listSavedSetups, type SavedSetup } from "@/lib/setupHistory";
 import { buildMapPool } from "@/lib/mapCandidates";
+import { deriveSetupSettings, setupSettingsOf } from "@/lib/pairPlan";
 import { mapValueByFaction } from "@/gaia/eval/mapFaction";
 import { scoreSetupFactions, type FactionScores } from "@/gaia/eval/factionEval";
 import { buildSetupFromSeed } from "@/gaia/setup/buildSetup";
@@ -41,6 +43,15 @@ type Lang = "ja" | "en";
 /** ランキングから候補に載せるマップの上限（List と同じ）。 */
 const RANKED_MAP_CAP = 200;
 
+/**
+ * マップ／セットアップの選択は **List のペア選択と同じキーを共有する**（2026-08-04）。
+ * List で組を選んでから Total を開けばそのまま出るし、逆も同じ。別々に持つと
+ * 「List で選んだのに Total では選び直し」になって、シード値だけの選択肢を
+ * もう一度探すはめになる。
+ */
+const LS_PAIR_MAP = "gaia_list_pair_map";
+const LS_PAIR_SETUP = "gaia_list_pair_setup";
+
 const UI = {
   ja: {
     title: "種族別総合評価",
@@ -55,7 +66,11 @@ const UI = {
     mapScore: "Map",
     setupScore: "Setup",
     total: "合計",
-    pinned: "ピン留め",
+    pinned: "★ ピン留め",
+    others: "その他（スコア順／新しい順）",
+    score: "スコア",
+    used: "使用済み",
+    toList: "→ List でマップとセットアップの組を探す（選択はこのタブと共有）",
     balanceNote:
       "合算は 1:1（Map と Setup を同じ重みで足す）。どちらを重く見るかは検討中で、倍率の指定はまだ入れていない。",
     noBreakdown:
@@ -75,7 +90,11 @@ const UI = {
     mapScore: "Map",
     setupScore: "Setup",
     total: "Total",
-    pinned: "Pinned",
+    pinned: "★ Pinned",
+    others: "Others (by score / newest)",
+    score: "Score",
+    used: "used",
+    toList: "→ Find a map/setup pair on the List tab (the selection is shared)",
     balanceNote:
       "Totals are 1:1 for now; the map/setup balance is still under review, so there is no weight input yet.",
     noBreakdown: "This map has no stored evaluation breakdown, so its map score is 0 (older candidate).",
@@ -93,6 +112,14 @@ function breakdownOf(c: PersistedCandidate | null): any {
 function fmt(n: number): string {
   const r = Math.round(n * 10) / 10;
   return Number.isInteger(r) ? String(r) : r.toFixed(1);
+}
+
+/** 保存日（シードだけでは見分けが付かないので選択肢に添える）。 */
+function dateOf(ms: number | undefined): string {
+  if (!ms) return "";
+  const d = new Date(ms);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())}`;
 }
 
 export default function TotalView() {
@@ -122,6 +149,11 @@ export default function TotalView() {
       if (p != null) setPlayers(p);
       const e = readSharedExpansion();
       if (e != null) setExpansion(e);
+      // List のペア選択を引き継ぐ（List で組を選んでから来たらそのまま出る）
+      const m = localStorage.getItem(LS_PAIR_MAP);
+      if (m) setMapId(m);
+      const s = localStorage.getItem(LS_PAIR_SETUP);
+      if (s) setSetupId(s);
     } catch {
       // ignore
     }
@@ -164,6 +196,13 @@ export default function TotalView() {
     };
   }, []);
 
+  const lf = expansion === "lostFleet";
+
+  // **上のバーで選んだ人数・拡張に合うものだけを出す**（2026-08-04 実機で指摘）。
+  // 混ざっていると、基本版を選んでいるのに LF のセットアップが選べてしまい、
+  // LF船ぶんが乗った Setup 値と基本版のマップ値を足すことになる。
+  // 判定は List のペア提案と同じ（pairPlan の setupSettingsOf / deriveSetupSettings）。
+  // 基本版のマップは 3人・4人で同じテンプレートなので人数では絞らない。
   const selectableMaps = React.useMemo<PersistedCandidate[]>(
     () =>
       buildMapPool({
@@ -171,21 +210,58 @@ export default function TotalView() {
         ranked: rankedMaps,
         templateIdBySearchKey,
         topOverall: topOverallMap,
+      }).filter((c) => {
+        const tid = templateIdBySearchKey[c.searchKey] ?? "";
+        if (!tid) return false;
+        const s = deriveSetupSettings(tid);
+        return s.lf === lf && (s.lf ? s.players === players : true);
       }),
-    [pinnedMaps, rankedMaps, topOverallMap, templateIdBySearchKey]
+    [pinnedMaps, rankedMaps, topOverallMap, templateIdBySearchKey, lf, players]
   );
 
   // ピン留めを先に、続けて新しい順（List の保存リストと同じ並び）。
   const selectableSetups = React.useMemo<SavedSetup[]>(
     () =>
       setups
-        .slice()
+        .filter((r) => {
+          const s = setupSettingsOf(r);
+          return s.lf === lf && s.players === players;
+        })
         .sort(
           (a, b) =>
             Number(b.pinned) - Number(a.pinned) || (b.updatedAt ?? 0) - (a.updatedAt ?? 0)
         ),
-    [setups]
+    [setups, lf, players]
   );
+
+  // 人数・拡張を変えて選択が候補から外れたら解除する（古い選択のまま値だけ
+  // 出し続けると、どの条件の組を見ているのか分からなくなる）。
+  React.useEffect(() => {
+    if (mapId && !selectableMaps.some((c) => c.id === mapId)) setMapId("");
+  }, [selectableMaps, mapId]);
+  React.useEffect(() => {
+    if (setupId && !selectableSetups.some((r) => r.id === setupId)) setSetupId("");
+  }, [selectableSetups, setupId]);
+
+  /** 選択は List のペア選択と共有する（書き込みはユーザー操作のときだけ）。 */
+  const changeMapId = React.useCallback((v: string) => {
+    setMapId(v);
+    try {
+      if (v) localStorage.setItem(LS_PAIR_MAP, v);
+      else localStorage.removeItem(LS_PAIR_MAP);
+    } catch {
+      // ignore
+    }
+  }, []);
+  const changeSetupId = React.useCallback((v: string) => {
+    setSetupId(v);
+    try {
+      if (v) localStorage.setItem(LS_PAIR_SETUP, v);
+      else localStorage.removeItem(LS_PAIR_SETUP);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const onGlobalSelect = React.useCallback((p: number, e: Expansion) => {
     setPlayers(p);
@@ -203,6 +279,24 @@ export default function TotalView() {
     }
   }, []);
 
+  // ピン留めを別グループにする（シード値だけの一覧では見分けが付かないため）。
+  const mapGroups = React.useMemo(() => {
+    const pin = selectableMaps.filter((c) => c.pinned);
+    const rest = selectableMaps.filter((c) => !c.pinned);
+    return [
+      ...(pin.length ? [{ label: t.pinned, rows: pin }] : []),
+      ...(rest.length ? [{ label: t.others, rows: rest }] : []),
+    ];
+  }, [selectableMaps, t]);
+  const setupGroups = React.useMemo(() => {
+    const pin = selectableSetups.filter((r) => r.pinned);
+    const rest = selectableSetups.filter((r) => !r.pinned);
+    return [
+      ...(pin.length ? [{ label: t.pinned, rows: pin }] : []),
+      ...(rest.length ? [{ label: t.others, rows: rest }] : []),
+    ];
+  }, [selectableSetups, t]);
+
   const selectedMap = selectableMaps.find((c) => c.id === mapId) ?? null;
   const selectedSetup = selectableSetups.find((r) => r.id === setupId) ?? null;
 
@@ -211,7 +305,6 @@ export default function TotalView() {
     const bd = breakdownOf(selectedMap);
     const mapScores: FactionScores = mapValueByFaction(bd);
     const setupScores = scoreSetupFactions(buildSetupFromSeed(selectedSetup.input), evalWeights);
-    const lf = expansion === "lostFleet";
     return factionsForMode(lf)
       .map((f) => ({
         id: f.id as FactionId,
@@ -222,7 +315,7 @@ export default function TotalView() {
         total: (mapScores[f.id] ?? 0) + (setupScores[f.id] ?? 0),
       }))
       .sort((a, b) => b.total - a.total);
-  }, [selectedMap, selectedSetup, evalWeights, expansion, lang]);
+  }, [selectedMap, selectedSetup, evalWeights, lf, lang]);
 
   const mapHasBreakdown = selectedMap ? !!breakdownOf(selectedMap) : true;
 
@@ -266,15 +359,18 @@ export default function TotalView() {
               ) : (
                 <select
                   value={mapId}
-                  onChange={(e) => setMapId(e.target.value)}
-                  style={{ minWidth: 260, fontSize: 12 }}
+                  onChange={(e) => changeMapId(e.target.value)}
+                  style={{ minWidth: 300, fontSize: 12 }}
                 >
                   <option value="">—</option>
-                  {selectableMaps.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.pinned ? "★ " : ""}
-                      {t.seed} {c.seed} / {fmt(Number(c.score))}
-                    </option>
+                  {mapGroups.map((g) => (
+                    <optgroup key={g.label} label={g.label}>
+                      {g.rows.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {t.seed} {c.seed}｜{t.score} {fmt(Number(c.score))}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               )}
@@ -287,21 +383,30 @@ export default function TotalView() {
               ) : (
                 <select
                   value={setupId}
-                  onChange={(e) => setSetupId(e.target.value)}
-                  style={{ minWidth: 260, fontSize: 12 }}
+                  onChange={(e) => changeSetupId(e.target.value)}
+                  style={{ minWidth: 300, fontSize: 12 }}
                 >
                   <option value="">—</option>
-                  {selectableSetups.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.pinned ? "★ " : ""}
-                      {t.seed} {r.seed}
-                      {r.input.mode === "lostFleet" ? " / LF" : ""}
-                      {r.input.playerCount ? ` / ${r.input.playerCount}p` : ""}
-                    </option>
+                  {setupGroups.map((g) => (
+                    <optgroup key={g.label} label={g.label}>
+                      {g.rows.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {t.seed} {r.seed}｜{dateOf(r.updatedAt ?? r.createdAt)}
+                          {r.used ? `｜${t.used}` : ""}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               )}
             </label>
+          </div>
+
+          {/* 選択は List のペア提案と共有している（どちらで選んでも両方に出る） */}
+          <div style={{ fontSize: 11, marginTop: 8 }}>
+            <Link href="/list" style={{ color: "#2733cc" }}>
+              {t.toList}
+            </Link>
           </div>
 
           <div style={{ fontSize: 11, opacity: 0.6, marginTop: 8 }}>{t.balanceNote}</div>

@@ -101,6 +101,7 @@ const UI = {
     pairNote: "探索の向きと基準を選ぶと、条件に合う候補を上位5件まで提示します（種族重みはDRAFT）",
     pairMap: "マップ",
     pairNoMap: "（マップなし）",
+    toTotal: "→ この組を Total タブ（種族別総合評価）で見る",
     pairCriterion: "基準",
     crit1: "1: 逆優位（マップ上位種族が弱い）",
     crit2: "2: 上位バランス（人数+2種族が拮抗）",
@@ -166,6 +167,7 @@ const UI = {
     pairNote: "Pick a direction and criterion to get up to 5 ranked candidates (faction weights are DRAFT)",
     pairMap: "Map",
     pairNoMap: "(no map)",
+    toTotal: "→ See this pair on the Total tab (faction totals)",
     pairCriterion: "Criterion",
     crit1: "1: Oppose map (map's top factions weak)",
     crit2: "2: Top balance (players+2 factions close)",
@@ -1027,6 +1029,15 @@ export default function ListView() {
               ) : null}
               </div>
               {pairMsg ? <span style={{ color: "#b3261e" }}>{pairMsg}</span> : null}
+              {/* 選んだ組はそのまま Total タブで開ける（選択は localStorage 共有。
+                  2026-08-04）。どちらかが未選択のときは出さない。 */}
+              {pairMapId && pairSetupId ? (
+                <div style={{ fontSize: 11, marginTop: 4 }}>
+                  <Link href="/total" style={{ color: "#2733cc" }}>
+                    {t.toTotal}
+                  </Link>
+                </div>
+              ) : null}
             </div>
           </Panel>
           {/* 保存済み条件（Map/Setup と同じ操作。条件ごとに提案・ログが分かれる） */}
