@@ -99,10 +99,13 @@ SETUP_WEIGHT_DISPLAY_ORDER.forEach((k, i) => {
 console.log("".padEnd(60, "-"));
 console.log(`合計スコアの種族間SD（参考）: ${mean(totalWithinSd).toFixed(1)}`);
 
-// 狙いの順序と実測の順序を並べて出す
+// 目安の順序と実測の順序を並べて出す。**一致させるために係数を微調整することは
+// しない**（2026-08-04 ユーザー判断）。VP 換算でタイルごとの素点を入れたぶん実測は
+// 前後するのが正常で、たとえば最終得点は全員の順位で大きく差が付くので上位に来る。
 const want = SETUP_WEIGHT_DISPLAY_ORDER.map((k) => LABEL[k]);
 const got = SETUP_WEIGHT_DISPLAY_ORDER.map((k, i) => ({ k, a: aVals[i] }))
   .sort((x, y) => y.a - x.a)
   .map((x) => LABEL[x.k]);
-console.log(`\n狙い: ${want.join(" > ")}`);
+console.log(`\n目安: ${want.join(" > ")}`);
 console.log(`実測: ${got.join(" > ")}`);
+console.log("（順が違っても直す必要はない。表示順は評価表の列の並びでもある）");
