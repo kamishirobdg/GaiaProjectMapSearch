@@ -43,7 +43,8 @@ import {
   type FactionScores,
   type RecommendCriterion,
 } from "@/gaia/eval/factionEval";
-import { FACTIONS, type FactionId } from "@/gaia/eval/factionWeights";
+import { FACTIONS, FACTION_IDS, type FactionId } from "@/gaia/eval/factionWeights";
+import { mapValueByFaction } from "@/gaia/eval/mapFaction";
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
 import { SetupBoard } from "@/components/SetupView";
 import FactionEvalPanel, {
@@ -102,6 +103,7 @@ const UI = {
     pairMap: "マップ",
     pairNoMap: "（マップなし）",
     toTotal: "→ この組を Total タブ（種族別総合評価）で見る",
+    totalStrong: "合計の上位4種族",
     pairCriterion: "基準",
     crit1: "1: 逆優位（マップ上位種族が弱い）",
     crit2: "2: 上位バランス（人数+2種族が拮抗）",
@@ -168,6 +170,7 @@ const UI = {
     pairMap: "Map",
     pairNoMap: "(no map)",
     toTotal: "→ See this pair on the Total tab (faction totals)",
+    totalStrong: "Top 4 by total",
     pairCriterion: "Criterion",
     crit1: "1: Oppose map (map's top factions weak)",
     crit2: "2: Top balance (players+2 factions close)",
@@ -231,6 +234,28 @@ function topFactionText(scores: FactionScores, n: number, lang: Lang, lf: boolea
   const ids = topFactions(scores, n, lf);
   return ids
     .map((f) => `${factionLabel(f, lang)} ${scores[f] >= 0 ? "+" : ""}${Math.round(scores[f])}`)
+    .join(" / ");
+}
+
+/**
+ * Map と Setup を足した合計の上位N種族（2026-08-04）。足し方は Total タブと同じ
+ * 1:1 で、提案を見た時点で「この組ならどの種族が強いか」が分かるようにするための
+ * 要約。詳しい内訳は Total タブで見る。
+ *
+ * Map ぶんは候補が持つ評価内訳から取るので、**内訳を持たない古い候補では出せない**
+ * （呼び出し側で null を返す）。
+ */
+function topTotalText(
+  mapScores: FactionScores,
+  setupScores: FactionScores,
+  n: number,
+  lang: Lang,
+  lf: boolean
+): string {
+  const total = {} as FactionScores;
+  for (const f of FACTION_IDS) total[f] = (mapScores[f] ?? 0) + (setupScores[f] ?? 0);
+  return topFactions(total, n, lf)
+    .map((f) => `${factionLabel(f, lang)} ${Math.round(total[f])}`)
     .join(" / ");
 }
 
@@ -1317,6 +1342,26 @@ export default function ListView() {
                     <span style={{ opacity: 0.7 }}>{t.setupStrong}:</span>{" "}
                     {topFactionText(rec.setupScores, 5, lang, recSettings.lf)}
                   </div>
+                  {/* Map と Setup を足した合計の上位4種族（2026-08-04 要望）。提案を見た
+                      時点で「この組ならどの種族が強いか」が分かるようにする。内訳は
+                      Total タブで見る。評価内訳を持たない古い候補では出さない。 */}
+                  {(() => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const bd = (selected as any)?.evaluation?.breakdown ?? null;
+                    if (!bd) return null;
+                    return (
+                      <div>
+                        <span style={{ opacity: 0.7 }}>{t.totalStrong}:</span>{" "}
+                        {topTotalText(
+                          mapValueByFaction(bd),
+                          rec.setupScores,
+                          4,
+                          lang,
+                          recSettings.lf
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* 提案中のマップとセットアップを画像で表示（ミニ盤面＋縮小セットアップ）。2026-07-24 */}
                   {(() => {
