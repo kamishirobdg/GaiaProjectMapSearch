@@ -294,6 +294,12 @@ const RANKED_MAP_CAP = 200;
 const LS_LIST_DIR = "gaia_list_pair_dir";
 const LS_LIST_SRC = "gaia_list_setup_source";
 const LS_LIST_SETUP = "gaia_list_pair_setup";
+/**
+ * 「この組を Total で見る」で Total タブへ渡す提案そのもの（2026-08-04）。
+ * 上の LS_LIST_MAP / LS_LIST_SETUP は探索の**起点**なので、提案された結果とは別。
+ * mapToSetup で出たセットアップは保存リストに無く id が無いため、入力ごと渡す。
+ */
+const LS_TOTAL_PENDING = "gaia_total_pending";
 const LS_TILE_MODE = "gaia_tile_mode";
 const LS_LIST_MAP = "gaia_list_pair_map";
 const LS_LIST_MAP_LABEL = "gaia_list_pair_map_label";
@@ -1054,15 +1060,6 @@ export default function ListView() {
               ) : null}
               </div>
               {pairMsg ? <span style={{ color: "#b3261e" }}>{pairMsg}</span> : null}
-              {/* 選んだ組はそのまま Total タブで開ける（選択は localStorage 共有。
-                  2026-08-04）。どちらかが未選択のときは出さない。 */}
-              {pairMapId && pairSetupId ? (
-                <div style={{ fontSize: 11, marginTop: 4 }}>
-                  <Link href="/total" style={{ color: "#2733cc" }}>
-                    {t.toTotal}
-                  </Link>
-                </div>
-              ) : null}
             </div>
           </Panel>
           {/* 保存済み条件（Map/Setup と同じ操作。条件ごとに提案・ログが分かれる） */}
@@ -1359,6 +1356,24 @@ export default function ListView() {
                           lang,
                           recSettings.lf
                         )}
+                        {"　"}
+                        {/* この提案そのものを Total タブへ渡す（2026-08-04）。提案の
+                            セットアップは保存リストに無いので、入力ごと localStorage
+                            へ置いてから遷移する。 */}
+                        <Link
+                          href="/total"
+                          onClick={() => {
+                            try {
+                              localStorage.setItem(
+                                LS_TOTAL_PENDING,
+                                JSON.stringify({ mapId: pairResultMapId, setupInput: rec.input })
+                              );
+                            } catch {}
+                          }}
+                          style={{ color: "#2733cc" }}
+                        >
+                          {t.toTotal}
+                        </Link>
                       </div>
                     );
                   })()}

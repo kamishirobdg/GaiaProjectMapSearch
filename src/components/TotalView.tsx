@@ -27,7 +27,7 @@ import { buildMapPool } from "@/lib/mapCandidates";
 import { deriveSetupSettings, setupSettingsOf } from "@/lib/pairPlan";
 import { mapValueByFaction } from "@/gaia/eval/mapFaction";
 import { scoreSetupFactions, type FactionScores } from "@/gaia/eval/factionEval";
-import { buildSetupFromSeed } from "@/gaia/setup/buildSetup";
+import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
 import { factionsForMode, type FactionId } from "@/gaia/eval/factionWeights";
 import { factionHomeBg, useSetupWeights } from "@/components/FactionEvalPanel";
 import {
@@ -52,6 +52,18 @@ const RANKED_MAP_CAP = 200;
 const LS_PAIR_MAP = "gaia_list_pair_map";
 const LS_PAIR_SETUP = "gaia_list_pair_setup";
 
+/**
+ * List の「この組を Total で見る」から渡ってくる**提案そのもの**（2026-08-04）。
+ *
+ * 上の LS_PAIR_* は提案の**起点**（どのマップから探したか／どのセットアップから
+ * 探したか）であって、**提案された結果ではない**。mapToSetup 方向で出てきた
+ * セットアップは保存リストに無く id を持たないので、id では渡せない。
+ * そこで「マップの id ＋ セットアップの入力そのもの」をここに置いて受け渡す。
+ */
+const LS_TOTAL_PENDING = "gaia_total_pending";
+/** 保存リストに無い「List から渡ってきたセットアップ」を指す選択値。 */
+const PENDING_ID = "__pending__";
+
 const UI = {
   ja: {
     title: "種族別総合評価",
@@ -70,6 +82,8 @@ const UI = {
     others: "その他（スコア順／新しい順）",
     score: "スコア",
     used: "使用済み",
+    fromList: "List の提案",
+    proposal: "提案されたセットアップ",
     toList: "→ List でマップとセットアップの組を探す（選択はこのタブと共有）",
     balanceNote:
       "合算は 1:1（Map と Setup を同じ重みで足す）。どちらを重く見るかは検討中で、倍率の指定はまだ入れていない。",
@@ -94,6 +108,8 @@ const UI = {
     others: "Others (by score / newest)",
     score: "Score",
     used: "used",
+    fromList: "From the List tab",
+    proposal: "proposed setup",
     toList: "→ Find a map/setup pair on the List tab (the selection is shared)",
     balanceNote:
       "Totals are 1:1 for now; the map/setup balance is still under review, so there is no weight input yet.",
@@ -135,6 +151,8 @@ export default function TotalView() {
   const [setups, setSetups] = React.useState<SavedSetup[]>([]);
   const [mapId, setMapId] = React.useState<string>("");
   const [setupId, setSetupId] = React.useState<string>("");
+  /** List の提案から渡ってきたセットアップ（保存リストに無いので入力ごと持つ）。 */
+  const [pendingSetup, setPendingSetup] = React.useState<BuildSetupInput | null>(null);
 
   const t = UI[lang];
 
@@ -149,11 +167,22 @@ export default function TotalView() {
       if (p != null) setPlayers(p);
       const e = readSharedExpansion();
       if (e != null) setExpansion(e);
-      // List のペア選択を引き継ぐ（List で組を選んでから来たらそのまま出る）
+      // List のペア選択（＝提案の起点）を引き継ぐ
       const m = localStorage.getItem(LS_PAIR_MAP);
       if (m) setMapId(m);
       const s = localStorage.getItem(LS_PAIR_SETUP);
       if (s) setSetupId(s);
+      // 「この組を Total で見る」から来た場合は、そちらを優先する。
+      // 提案されたセットアップは保存リストに無いので入力ごと受け取る。
+      const raw = localStorage.getItem(LS_TOTAL_PENDING);
+      if (raw) {
+        const o = JSON.parse(raw) as { mapId?: string; setupInput?: BuildSetupInput };
+        if (o?.mapId) setMapId(String(o.mapId));
+        if (o?.setupInput?.seed) {
+          setPendingSetup(o.setupInput);
+          setSetupId(PENDING_ID);
+        }
+      }
     } catch {
       // ignore
     }
@@ -239,8 +268,11 @@ export default function TotalView() {
   React.useEffect(() => {
     if (mapId && !selectableMaps.some((c) => c.id === mapId)) setMapId("");
   }, [selectableMaps, mapId]);
+  // List から渡ってきたぶん（PENDING_ID）は保存リストに無いので、この判定から外す。
   React.useEffect(() => {
-    if (setupId && !selectableSetups.some((r) => r.id === setupId)) setSetupId("");
+    if (setupId && setupId !== PENDING_ID && !selectableSetups.some((r) => r.id === setupId)) {
+      setSetupId("");
+    }
   }, [selectableSetups, setupId]);
 
   /** 選択は List のペア選択と共有する（書き込みはユーザー操作のときだけ）。 */
@@ -256,8 +288,9 @@ export default function TotalView() {
   const changeSetupId = React.useCallback((v: string) => {
     setSetupId(v);
     try {
-      if (v) localStorage.setItem(LS_PAIR_SETUP, v);
-      else localStorage.removeItem(LS_PAIR_SETUP);
+      // PENDING（List の提案）は保存リストの id ではないので共有キーへは書かない。
+      if (v && v !== PENDING_ID) localStorage.setItem(LS_PAIR_SETUP, v);
+      else if (!v) localStorage.removeItem(LS_PAIR_SETUP);
     } catch {
       // ignore
     }
@@ -300,11 +333,20 @@ export default function TotalView() {
   const selectedMap = selectableMaps.find((c) => c.id === mapId) ?? null;
   const selectedSetup = selectableSetups.find((r) => r.id === setupId) ?? null;
 
+  /** List から渡ってきたセットアップが、いまの人数・拡張に合っているか。 */
+  const pendingMatches =
+    !!pendingSetup &&
+    (pendingSetup.mode === "lostFleet") === lf &&
+    (pendingSetup.playerCount ?? 4) === players;
+
+  const setupInput: BuildSetupInput | null =
+    setupId === PENDING_ID ? (pendingMatches ? pendingSetup : null) : (selectedSetup?.input ?? null);
+
   const rows = React.useMemo(() => {
-    if (!selectedMap || !selectedSetup) return null;
+    if (!selectedMap || !setupInput) return null;
     const bd = breakdownOf(selectedMap);
     const mapScores: FactionScores = mapValueByFaction(bd);
-    const setupScores = scoreSetupFactions(buildSetupFromSeed(selectedSetup.input), evalWeights);
+    const setupScores = scoreSetupFactions(buildSetupFromSeed(setupInput), evalWeights);
     return factionsForMode(lf)
       .map((f) => ({
         id: f.id as FactionId,
@@ -315,7 +357,7 @@ export default function TotalView() {
         total: (mapScores[f.id] ?? 0) + (setupScores[f.id] ?? 0),
       }))
       .sort((a, b) => b.total - a.total);
-  }, [selectedMap, selectedSetup, evalWeights, lf, lang]);
+  }, [selectedMap, setupInput, evalWeights, lf, lang]);
 
   const mapHasBreakdown = selectedMap ? !!breakdownOf(selectedMap) : true;
 
@@ -378,7 +420,7 @@ export default function TotalView() {
 
             <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
               <span style={{ fontWeight: 700 }}>{t.setup}</span>
-              {selectableSetups.length === 0 ? (
+              {selectableSetups.length === 0 && !pendingMatches ? (
                 <span style={{ opacity: 0.6 }}>{t.noSetup}</span>
               ) : (
                 <select
@@ -387,6 +429,15 @@ export default function TotalView() {
                   style={{ minWidth: 300, fontSize: 12 }}
                 >
                   <option value="">—</option>
+                  {/* List の「この組を Total で見る」で渡ってきたぶん。保存リストには
+                      無いので、ここだけ入力から直に選択肢を作る。 */}
+                  {pendingMatches && pendingSetup ? (
+                    <optgroup label={t.fromList}>
+                      <option value={PENDING_ID}>
+                        {t.seed} {pendingSetup.seed}｜{t.proposal}
+                      </option>
+                    </optgroup>
+                  ) : null}
                   {setupGroups.map((g) => (
                     <optgroup key={g.label} label={g.label}>
                       {g.rows.map((r) => (
