@@ -158,6 +158,23 @@ describe("weightEdits", () => {
     expect(lines).toHaveLength(3);
   });
 
+  it("edits を渡すと、指定内容が # コメントで添う（値だけでは由来を追えないため）", () => {
+    const f = factionsFor(false)[0];
+    const tile = advanced.tiles(false)[0];
+    const e = edits({
+      base: { [baseKey("advanced_tech", false, tile.id, f.id)]: 20 },
+      matrix: { [matrixKey("advanced_tech", false, f.id, "nav")]: 50 },
+    });
+
+    const text = formatDiffs(collectDiffs(e), e);
+    expect(text).toContain(`# base advanced_tech:base:${tile.id}:${f.id} = 20`);
+    expect(text).toContain(`# matrix advanced_tech:base:${f.id}:nav = 50`);
+    // 反映側は # 行を読み飛ばすので、値の行はコメントより前にまとまっている
+    const lines = text.trimEnd().split("\n");
+    const firstComment = lines.findIndex((l, i) => i > 0 && l.startsWith("#"));
+    expect(lines.slice(1, firstComment).some((l) => l.startsWith("["))).toBe(true);
+  });
+
   it("拡張版の編集は通常版に混ざらない", () => {
     const e = edits({ matrix: { [matrixKey("advanced_tech", true, "moweyds", "nav")]: 0 } });
     const diffs = collectDiffs(e);

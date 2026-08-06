@@ -210,9 +210,13 @@ export function collectDiffs(edits: WeightEdits): WeightDiff[] {
  * 差分テキスト。`scripts/apply_weight_edits.py` が読む形。
  * 表と版が変わるところで `[advanced_tech lf]` の見出しを挟み、
  * 各行は `タイル,軸,種族,値`（軸なしの表は `-`）。
+ *
+ * `edits` を渡すと**指定内容そのもの**（どの倍率・基準値を入れたか）を末尾に
+ * `#` コメントで添える。値だけでは「基準値を変えたのか倍率を指定したのか」を
+ * 後から区別できず、2026-08-06 に差分の由来を追えなくなったため。
+ * apply スクリプトは `#` 行を読み飛ばすので、付けても反映には影響しない。
  */
-export function formatDiffs(diffs: WeightDiff[]): string {
-  if (diffs.length === 0) return "";
+export function formatDiffs(diffs: WeightDiff[], edits?: WeightEdits): string {
   const lines: string[] = ["# gaia-weights v1"];
   let scope = "";
   for (const d of diffs) {
@@ -222,6 +226,17 @@ export function formatDiffs(diffs: WeightDiff[]): string {
       scope = s;
     }
     lines.push(`${d.tile},${d.axis},${d.faction},${d.to}`);
+  }
+
+  const spec: string[] = [];
+  if (edits) {
+    for (const [k, v] of Object.entries(edits.matrix)) spec.push(`# matrix ${k} = ${v}`);
+    for (const [k, v] of Object.entries(edits.base)) spec.push(`# base ${k} = ${v}`);
+    for (const [k, v] of Object.entries(edits.cell)) spec.push(`# cell ${k} = ${v}`);
+  }
+  if (diffs.length === 0 && spec.length === 0) return "";
+  if (spec.length > 0) {
+    lines.push("#", `# --- 指定内容 ${spec.length} 件（反映には使わない記録） ---`, ...spec);
   }
   return lines.join("\n") + "\n";
 }

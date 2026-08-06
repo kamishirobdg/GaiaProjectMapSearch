@@ -112,7 +112,9 @@ export default function WeightsEditor() {
   }, []);
 
   const diffs = React.useMemo(() => collectDiffs(edits), [edits]);
-  const diffText = React.useMemo(() => formatDiffs(diffs), [diffs]);
+  // 指定内容も添える（差分の値だけでは、基準値を変えたのか倍率を指定したのかを
+  // 後から区別できないため）。
+  const diffText = React.useMemo(() => formatDiffs(diffs, edits), [diffs, edits]);
 
   // 表・版を変えたらタイル選択と選択セルを戻す（並びが変わるため）。
   const switchTable = (id: WeightTableId) => {
