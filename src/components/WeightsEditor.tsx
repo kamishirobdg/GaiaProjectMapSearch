@@ -30,7 +30,7 @@ import {
   finalValueOf,
   formatDiffs,
   matrixKey,
-  multiplierOf,
+  rawMultiplierOf,
   storedValue,
   type WeightEdits,
 } from "@/gaia/eval/weightEdits";
@@ -302,8 +302,9 @@ export default function WeightsEditor() {
               const want: Sel = { kind: "matrix", faction: f.id, axis: a.key };
               return (
                 <React.Fragment key={a.key}>
+                  {/* 未指定は「−」。100 と出すと「基準値に揃える」の意味に見えるため。 */}
                   {cellBox(
-                    mul === undefined ? "100" : String(mul),
+                    mul === undefined ? "−" : String(mul),
                     isSel(sel, want),
                     mul !== undefined,
                     () => setSel(isSel(sel, want) ? null : want),
@@ -449,10 +450,12 @@ export default function WeightsEditor() {
       ) : (
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
           {MULTIPLIERS.map((m) => {
+            // 未指定のときはどのボタンも点けない（「触っていない＝いまの列差のまま」と
+            // 「100% を指定した＝基準値に揃える」は別なので、100 を既定にはしない）。
             const cur =
               sel.kind === "matrix"
-                ? (edits.matrix[matrixKey(tableId, lf, sel.faction, sel.axis)] ?? 100)
-                : multiplierOf(edits, tableId, lf, sel.tile, sel.axis, sel.faction);
+                ? edits.matrix[matrixKey(tableId, lf, sel.faction, sel.axis)]
+                : rawMultiplierOf(edits, tableId, lf, sel.tile, sel.axis, sel.faction);
             return (
               <button
                 key={m}

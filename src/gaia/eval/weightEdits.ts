@@ -74,19 +74,17 @@ export function storedValue(
 }
 
 /**
- * 基準値。編集があればそれ、無ければ現在の表の軸横断の最大値。
- * 最大値を採るのは「取れたら何点か」という値の定義（data/weights/README.md）に
- * 沿うため —— 列差が入った表を読み直しても基準値が目減りしない。
+ * 表そのものが持っている基準値（軸横断の最大値）。編集は見ない。
+ * 最大値を採るのは「素直に取れたら何点か」という値の定義
+ * （data/weights/README.md）に沿うため —— 列差が入った表を読み直しても
+ * 基準値が目減りしない。
  */
-export function baseValueOf(
+export function storedBaseOf(
   meta: WeightTableMeta,
-  edits: WeightEdits,
   lf: boolean,
   tile: string,
   faction: FactionId,
 ): number {
-  const edited = edits.base[baseKey(meta.id, lf, tile, faction)];
-  if (edited !== undefined) return edited;
   if (meta.axes.length === 0) return storedValue(meta, lf, tile, "", faction);
   let max = 0;
   for (const a of meta.axes) {
@@ -96,23 +94,44 @@ export function baseValueOf(
   return max;
 }
 
-/** 倍率。セル個別 → マトリクス → 100 の順に見る。 */
-export function multiplierOf(
+/** 基準値。編集があればそれ、無ければ表の値。 */
+export function baseValueOf(
+  meta: WeightTableMeta,
+  edits: WeightEdits,
+  lf: boolean,
+  tile: string,
+  faction: FactionId,
+): number {
+  return (
+    edits.base[baseKey(meta.id, lf, tile, faction)] ?? storedBaseOf(meta, lf, tile, faction)
+  );
+}
+
+/**
+ * **明示的に指定された**倍率。セル個別 → マトリクスの順に見て、
+ * どちらも無ければ undefined（＝この列は触っていない）。
+ */
+export function rawMultiplierOf(
   edits: WeightEdits,
   table: WeightTableId,
   lf: boolean,
   tile: string,
   axis: string,
   faction: FactionId,
-): number {
+): number | undefined {
   const c = edits.cell[cellKey(table, lf, tile, axis, faction)];
   if (c !== undefined) return c;
-  const m = edits.matrix[matrixKey(table, lf, faction, axis)];
-  if (m !== undefined) return m;
-  return 100;
+  return edits.matrix[matrixKey(table, lf, faction, axis)];
 }
 
-/** 画面に出す（＝CSV へ書き戻す）最終値。 */
+/**
+ * 画面に出す（＝CSV へ書き戻す）最終値。
+ *
+ * **触っていない列は表の値をそのまま残す**のが要点。基準値は軸横断の最大なので、
+ * ここで一律に「基準値 × 100%」を掛けると、列差の入った表（標準技術・通常版など）で
+ * 触っていない列まで最大値へ持ち上がり、編集していないセルが差分に出てしまう
+ * （2026-08-06 に実際に起きた）。基準値を変えたときも、列差は比率で保つ。
+ */
 export function finalValueOf(
   meta: WeightTableMeta,
   edits: WeightEdits,
@@ -123,8 +142,15 @@ export function finalValueOf(
 ): number {
   const base = baseValueOf(meta, edits, lf, tile, faction);
   if (meta.axes.length === 0) return base;
-  const mul = multiplierOf(edits, meta.id, lf, tile, axis, faction);
-  return Math.round((base * mul) / 100);
+
+  const mul = rawMultiplierOf(edits, meta.id, lf, tile, axis, faction);
+  if (mul !== undefined) return Math.round((base * mul) / 100);
+
+  // 倍率を触っていない列: いまの列差を保ったまま、基準値を変えたぶんだけ比例させる。
+  const stored = storedValue(meta, lf, tile, axis, faction);
+  const storedBase = storedBaseOf(meta, lf, tile, faction);
+  if (storedBase === 0 || base === storedBase) return stored;
+  return Math.round((stored * base) / storedBase);
 }
 
 export type WeightDiff = {
