@@ -37,6 +37,9 @@ import {
 import type { FactionId } from "@/gaia/eval/factionWeights";
 
 const LS_KEY = "gaia_weight_edits";
+// 「このタイルは見た」の記録。編集とは別キーにしてあるので、差分を CSV へ反映して
+// 「全消去」を押してもチェックは残る（どこまで進んだかの記録は消したくないため）。
+const LS_REVIEWED = "gaia_weight_reviewed";
 
 const HEAD_W = 68;
 const CELL_W = 44;
@@ -70,19 +73,24 @@ export default function WeightsEditor() {
   const [edits, setEdits] = React.useState<WeightEdits>(EMPTY_EDITS);
   const [sel, setSel] = React.useState<Sel>(null);
   const [showDiff, setShowDiff] = React.useState(false);
+  /** `${table}:${exp}:${tile}` → 確認済み。 */
+  const [reviewed, setReviewed] = React.useState<Record<string, true>>({});
 
   // 復元は起動時の1回だけ。書き込みは操作ハンドラ側で行う（Strict Mode の
   // 二重実行で復元前の既定値が保存を上書きしないようにするため）。
   React.useEffect(() => {
     try {
       const raw = localStorage.getItem(LS_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as Partial<WeightEdits>;
-      setEdits({
-        matrix: parsed.matrix ?? {},
-        base: parsed.base ?? {},
-        cell: parsed.cell ?? {},
-      });
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<WeightEdits>;
+        setEdits({
+          matrix: parsed.matrix ?? {},
+          base: parsed.base ?? {},
+          cell: parsed.cell ?? {},
+        });
+      }
+      const rawReviewed = localStorage.getItem(LS_REVIEWED);
+      if (rawReviewed) setReviewed(JSON.parse(rawReviewed) as Record<string, true>);
     } catch {
       /* 壊れていたら既定のまま始める */
     }
@@ -149,6 +157,39 @@ export default function WeightsEditor() {
     if (!window.confirm("編集をすべて消します。よろしいですか？")) return;
     commit({ matrix: {}, base: {}, cell: {} });
     setSel(null);
+  };
+
+  // ---- 確認済みチェック ------------------------------------------------
+
+  const reviewKey = (tileId: string) => `${tableId}:${lf ? "lf" : "base"}:${tileId}`;
+  const isReviewed = (tileId: string) => reviewed[reviewKey(tileId)] === true;
+  const reviewedCount = tiles.filter((t) => isReviewed(t.id)).length;
+
+  /** 表の選択ボタンに出す進捗（いま選んでいる版のぶん）。 */
+  const progress = React.useMemo(() => {
+    const exp = lf ? "lf" : "base";
+    const out: Record<string, { done: number; total: number }> = {};
+    for (const t of WEIGHT_TABLES) {
+      const list = t.tiles(lf);
+      out[t.id] = {
+        done: list.filter((x) => reviewed[`${t.id}:${exp}:${x.id}`]).length,
+        total: list.length,
+      };
+    }
+    return out;
+  }, [lf, reviewed]);
+
+  const toggleReviewed = (tileId: string) => {
+    const key = reviewKey(tileId);
+    const next = { ...reviewed };
+    if (next[key]) delete next[key];
+    else next[key] = true;
+    setReviewed(next);
+    try {
+      localStorage.setItem(LS_REVIEWED, JSON.stringify(next));
+    } catch {
+      /* 保存できなくてもチェック自体は画面に残る */
+    }
   };
 
   // ---- 見た目の部品 --------------------------------------------------
@@ -479,6 +520,15 @@ export default function WeightsEditor() {
         </Link>
         <strong style={{ fontSize: 13 }}>重み編集</strong>
         <span style={{ fontSize: 11, color: "#666" }}>変更 {diffs.length} セル</span>
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: reviewedCount === tiles.length ? "#1a7f37" : "#666",
+          }}
+        >
+          確認 {reviewedCount}/{tiles.length}
+        </span>
       </div>
 
       <div style={{ padding: "6px 8px", display: "flex", gap: 4, flexWrap: "wrap" }}>
@@ -498,6 +548,17 @@ export default function WeightsEditor() {
             }}
           >
             {t.ja}
+            <span
+              style={{
+                fontSize: 9,
+                marginLeft: 3,
+                fontWeight: 400,
+                color:
+                  progress[t.id].done === progress[t.id].total ? "#1a7f37" : "#999",
+              }}
+            >
+              {progress[t.id].done}/{progress[t.id].total}
+            </span>
           </button>
         ))}
       </div>
@@ -574,6 +635,7 @@ export default function WeightsEditor() {
           >
             {tiles.map((t) => (
               <option key={t.id} value={t.id}>
+                {isReviewed(t.id) ? "✓ " : ""}
                 {t.group ? `[${t.group}] ` : ""}
                 {t.id} {t.ja}
               </option>
@@ -585,6 +647,20 @@ export default function WeightsEditor() {
             style={navBtn}
           >
             ▶
+          </button>
+          <button
+            type="button"
+            onClick={() => tile && toggleReviewed(tile.id)}
+            title={tile && isReviewed(tile.id) ? "確認済みを外す" : "確認済みにする"}
+            style={{
+              ...navBtn,
+              fontWeight: 700,
+              color: tile && isReviewed(tile.id) ? "#fff" : "#bbb",
+              background: tile && isReviewed(tile.id) ? "#1a7f37" : "#fff",
+              borderColor: tile && isReviewed(tile.id) ? "#1a7f37" : "#ccc",
+            }}
+          >
+            ✓
           </button>
         </div>
       ) : null}
