@@ -77,10 +77,12 @@ export type WeightTableMeta = {
 
 // 研究列の並びは RESEARCH_TRACK_IDS と同じ。CSV の3列目は日本語なので、
 // 差分テキストには **TS 側のキー**（terra/nav/...）を出して照合を安定させる。
+// 列見出しは**狭い画面の列幅（40px）に収まる長さ**にしてある（2026-08-06）。
+// 「惑星改造」「人工知能」のままだと4文字で列からはみ出す。
 const TRACK_JA: Record<ResearchTrackId, string> = {
-  terra: "惑星改造",
+  terra: "惑改",
   nav: "航行",
-  ai: "人工知能",
+  ai: "AI",
   gaia: "ガイア",
   eco: "経済",
   sci: "科学",

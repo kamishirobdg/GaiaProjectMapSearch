@@ -41,8 +41,15 @@ const LS_KEY = "gaia_weight_edits";
 // 「全消去」を押してもチェックは残る（どこまで進んだかの記録は消したくないため）。
 const LS_REVIEWED = "gaia_weight_reviewed";
 
-const HEAD_W = 68;
-const CELL_W = 44;
+// 幅の目安（2026-08-06 に実測して詰めた）。行見出し62＋基準30＋セル40×6＝332px、
+// 外側の padding 12px を足して 344px。360px 幅の端末でも横スクロールが出ない。
+// **枠線は幅に含める**（box-sizing: border-box）—— content-box のままだと
+// セルごとに 2px ずつ増えて、宣言366pxに対し371px描画され12pxはみ出していた。
+const HEAD_W = 62;
+const CELL_W = 40;
+const BASE_W = 30;
+/** グリッドのセル共通。枠線を幅へ含めないと列の合計が合わない。 */
+const BORDER_BOX: React.CSSProperties = { boxSizing: "border-box" };
 
 /** 行の左端に出す母星色（SetupView の色帯と同じ系統）。 */
 const HOME_BG: Record<string, string> = {
@@ -199,6 +206,7 @@ export default function WeightsEditor() {
   const factionCell = (f: (typeof factions)[number]) => (
     <div
       style={{
+        ...BORDER_BOX,
         width: HEAD_W,
         minWidth: HEAD_W,
         display: "flex",
@@ -232,6 +240,7 @@ export default function WeightsEditor() {
     <div style={{ display: "flex", position: "sticky", top: 0, background: "#fff", zIndex: 2 }}>
       <div
         style={{
+          ...BORDER_BOX,
           width: HEAD_W,
           minWidth: HEAD_W,
           position: "sticky",
@@ -246,6 +255,7 @@ export default function WeightsEditor() {
         <div
           key={a.key}
           style={{
+            ...BORDER_BOX,
             width: CELL_W,
             minWidth: CELL_W,
             textAlign: "center",
@@ -274,6 +284,7 @@ export default function WeightsEditor() {
       type="button"
       onClick={onClick}
       style={{
+        ...BORDER_BOX,
         width: CELL_W,
         minWidth: CELL_W,
         height: 26,
@@ -325,12 +336,13 @@ export default function WeightsEditor() {
 
   const tileGrid = tile ? (
     <div style={{ overflowX: "auto" }}>
-      <div style={{ minWidth: HEAD_W + 34 + meta.axes.length * CELL_W }}>
+      <div style={{ minWidth: HEAD_W + BASE_W + meta.axes.length * CELL_W }}>
         {headerRow(
           <div
             style={{
-              width: 34,
-              minWidth: 34,
+              ...BORDER_BOX,
+              width: BASE_W,
+              minWidth: BASE_W,
               textAlign: "center",
               fontSize: 9,
               fontWeight: 700,
@@ -352,8 +364,9 @@ export default function WeightsEditor() {
                 type="button"
                 onClick={() => setSel(isSel(sel, baseWant) ? null : baseWant)}
                 style={{
-                  width: 34,
-                  minWidth: 34,
+                  ...BORDER_BOX,
+                  width: BASE_W,
+                  minWidth: BASE_W,
                   height: 26,
                   fontSize: 11,
                   fontWeight: baseEdited ? 700 : 400,
@@ -693,7 +706,7 @@ export default function WeightsEditor() {
         </div>
       ) : null}
 
-      <div style={{ padding: "0 8px", flex: 1 }}>
+      <div style={{ padding: "0 6px", flex: 1 }}>
         {!hasAxis ? flatGrid : mode === "matrix" ? matrixGrid : tileGrid}
       </div>
 
