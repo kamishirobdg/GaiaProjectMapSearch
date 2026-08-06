@@ -81,7 +81,9 @@ def main():
     vp_table, tile_col = source_of(path)
 
     # 新しい素点を決める。--add-vp は全タイル一律、--vp は個別指定。
-    new_vp = {}
+    # `--vp AT03=15` は旧素点を TILE_VP から読む。gen 側を先に書き換えてしまったときは
+    # `--vp AT03=14:15` のように旧素点を明示できる。
+    new_vp, old_vp = {}, {}
     mode = None
     for a in args[1:]:
         if a == "--dry-run":
@@ -98,7 +100,11 @@ def main():
             tid, _, val = a.partition("=")
             if tid not in vp_table:
                 sys.exit("素点表にないタイル: %s" % tid)
-            new_vp[tid] = int(val)
+            if ":" in val:
+                old_s, _, new_s = val.partition(":")
+                old_vp[tid], new_vp[tid] = int(old_s), int(new_s)
+            else:
+                new_vp[tid] = int(val)
         else:
             sys.exit("読めない引数: %s" % a)
 
@@ -117,7 +123,7 @@ def main():
         tid = row[tile_col]
         if tid not in new_vp:
             continue
-        old, new = vp_table[tid], new_vp[tid]
+        old, new = old_vp.get(tid, vp_table[tid]), new_vp[tid]
         if old == new:
             continue
         for c in range(FIRST_FACTION_COL, len(row)):
@@ -136,7 +142,7 @@ def main():
         b, a = before[tid], after[tid]
         sys.stderr.write(
             "%-6s 素点 %2d → %2d   平均 %.1f → %.1f   最大 %d → %d\n"
-            % (tid, vp_table[tid], new_vp[tid], statistics.mean(b), statistics.mean(a),
+            % (tid, old_vp.get(tid, vp_table[tid]), new_vp[tid], statistics.mean(b), statistics.mean(a),
                max(b), max(a))
         )
 
