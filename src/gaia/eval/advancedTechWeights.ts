@@ -80,30 +80,30 @@ export const ADVANCED_TECH_WEIGHTS_BASE: AdvancedTechTable = {
   },
   // AT03 アクション：QIC1＋クレジット5
   AT03: {
-    terra: { terrans: 8, lantids: 11, xenos: 15, gleens: 6, taklons: 18, ambas: 15, hadschHallas: 22, ivits: 18, geodens: 15, balTaks: 9, firaks: 15, bescods: 11, nevlas: 15, itars: 11 }, // 惑星改造
-    nav:   { terrans: 15, lantids: 15, xenos: 15, gleens: 12, taklons: 18, ambas: 15, hadschHallas: 22, ivits: 14, geodens: 15, firaks: 15, bescods: 15, nevlas: 15, itars: 15 }, // 航行
-    ai:    { terrans: 15, lantids: 15, xenos: 15, gleens: 12, taklons: 18, ambas: 15, hadschHallas: 22, ivits: 18, geodens: 15, balTaks: 18, firaks: 15, bescods: 15, nevlas: 15, itars: 15 }, // 人工知能
-    gaia:  { terrans: 15, lantids: 8, xenos: 11, gleens: 12, taklons: 5, ambas: 11, hadschHallas: 11, ivits: 18, geodens: 8, balTaks: 18, firaks: 8, bescods: 15, nevlas: 4, itars: 15 }, // ガイア計画
-    eco:   { terrans: 11, lantids: 15, xenos: 15, gleens: 9, taklons: 18, ambas: 15, hadschHallas: 22, ivits: 18, geodens: 15, balTaks: 18, firaks: 15, bescods: 15, nevlas: 15, itars: 15 }, // 経済
-    sci:   { terrans: 8, lantids: 11, xenos: 8, gleens: 6, taklons: 9, ambas: 8, hadschHallas: 11, ivits: 9, geodens: 11, balTaks: 9, firaks: 15, bescods: 11, nevlas: 11, itars: 15 }, // 科学
+    terra: { terrans: 17, lantids: 23, xenos: 32, gleens: 13, taklons: 38, ambas: 32, hadschHallas: 47, ivits: 38, geodens: 32, balTaks: 19, firaks: 32, bescods: 23, nevlas: 32, itars: 23 }, // 惑星改造
+    nav:   { terrans: 32, lantids: 32, xenos: 32, gleens: 26, taklons: 38, ambas: 32, hadschHallas: 47, ivits: 30, geodens: 32, balTaks: 1, firaks: 32, bescods: 32, nevlas: 32, itars: 32 }, // 航行
+    ai:    { terrans: 32, lantids: 32, xenos: 32, gleens: 26, taklons: 38, ambas: 32, hadschHallas: 47, ivits: 38, geodens: 32, balTaks: 38, firaks: 32, bescods: 32, nevlas: 32, itars: 32 }, // 人工知能
+    gaia:  { terrans: 32, lantids: 17, xenos: 23, gleens: 26, taklons: 11, ambas: 23, hadschHallas: 23, ivits: 38, geodens: 17, balTaks: 38, firaks: 17, bescods: 32, nevlas: 9, itars: 32 }, // ガイア計画
+    eco:   { terrans: 23, lantids: 32, xenos: 32, gleens: 19, taklons: 38, ambas: 32, hadschHallas: 47, ivits: 38, geodens: 32, balTaks: 38, firaks: 32, bescods: 32, nevlas: 32, itars: 32 }, // 経済
+    sci:   { terrans: 17, lantids: 23, xenos: 17, gleens: 13, taklons: 19, ambas: 17, hadschHallas: 23, ivits: 19, geodens: 23, balTaks: 19, firaks: 32, bescods: 23, nevlas: 23, itars: 32 }, // 科学
   },
   // AT07 アクション：鉱石3
   AT07: {
-    terra: { terrans: 7, lantids: 10, xenos: 13, gleens: 8, taklons: 13, ambas: 13, hadschHallas: 13, ivits: 13, geodens: 16, balTaks: 7, firaks: 13, bescods: 10, nevlas: 13, itars: 10 }, // 惑星改造
-    nav:   { terrans: 13, lantids: 13, xenos: 13, gleens: 16, taklons: 13, ambas: 13, hadschHallas: 13, ivits: 10, geodens: 16, firaks: 13, bescods: 13, nevlas: 13, itars: 13 }, // 航行
-    ai:    { terrans: 13, lantids: 13, xenos: 13, gleens: 16, taklons: 13, ambas: 13, hadschHallas: 13, ivits: 13, geodens: 16, balTaks: 13, firaks: 13, bescods: 13, nevlas: 13, itars: 13 }, // 人工知能
-    gaia:  { terrans: 13, lantids: 7, xenos: 10, gleens: 16, taklons: 3, ambas: 10, hadschHallas: 7, ivits: 13, geodens: 8, balTaks: 13, firaks: 7, bescods: 13, nevlas: 3, itars: 13 }, // ガイア計画
-    eco:   { terrans: 10, lantids: 13, xenos: 13, gleens: 12, taklons: 13, ambas: 13, hadschHallas: 13, ivits: 13, geodens: 16, balTaks: 13, firaks: 13, bescods: 13, nevlas: 13, itars: 13 }, // 経済
-    sci:   { terrans: 7, lantids: 10, xenos: 7, gleens: 8, taklons: 7, ambas: 7, hadschHallas: 7, ivits: 7, geodens: 12, balTaks: 7, firaks: 13, bescods: 10, nevlas: 10, itars: 13 }, // 科学
+    terra: { terrans: 15, lantids: 22, xenos: 28, gleens: 17, taklons: 28, ambas: 28, hadschHallas: 28, ivits: 28, geodens: 34, balTaks: 15, firaks: 28, bescods: 22, nevlas: 28, itars: 22 }, // 惑星改造
+    nav:   { terrans: 28, lantids: 28, xenos: 28, gleens: 34, taklons: 28, ambas: 28, hadschHallas: 28, ivits: 22, geodens: 34, balTaks: 1, firaks: 28, bescods: 28, nevlas: 28, itars: 28 }, // 航行
+    ai:    { terrans: 28, lantids: 28, xenos: 28, gleens: 34, taklons: 28, ambas: 28, hadschHallas: 28, ivits: 28, geodens: 34, balTaks: 28, firaks: 28, bescods: 28, nevlas: 28, itars: 28 }, // 人工知能
+    gaia:  { terrans: 28, lantids: 15, xenos: 22, gleens: 34, taklons: 6, ambas: 22, hadschHallas: 15, ivits: 28, geodens: 17, balTaks: 28, firaks: 15, bescods: 28, nevlas: 6, itars: 28 }, // ガイア計画
+    eco:   { terrans: 22, lantids: 28, xenos: 28, gleens: 26, taklons: 28, ambas: 28, hadschHallas: 28, ivits: 28, geodens: 34, balTaks: 28, firaks: 28, bescods: 28, nevlas: 28, itars: 28 }, // 経済
+    sci:   { terrans: 15, lantids: 22, xenos: 15, gleens: 17, taklons: 15, ambas: 15, hadschHallas: 15, ivits: 15, geodens: 26, balTaks: 15, firaks: 28, bescods: 22, nevlas: 22, itars: 28 }, // 科学
   },
   // AT13 アクション：知識3
   AT13: {
-    terra: { terrans: 9, lantids: 17, xenos: 18, gleens: 9, taklons: 18, ambas: 18, hadschHallas: 18, ivits: 18, geodens: 18, balTaks: 9, firaks: 22, bescods: 17, nevlas: 22, itars: 14 }, // 惑星改造
-    nav:   { terrans: 18, lantids: 22, xenos: 18, gleens: 18, taklons: 18, ambas: 18, hadschHallas: 18, ivits: 14, geodens: 18, firaks: 22, bescods: 22, nevlas: 22, itars: 18 }, // 航行
-    ai:    { terrans: 18, lantids: 22, xenos: 18, gleens: 18, taklons: 18, ambas: 18, hadschHallas: 18, ivits: 18, geodens: 18, balTaks: 18, firaks: 22, bescods: 22, nevlas: 22, itars: 18 }, // 人工知能
-    gaia:  { terrans: 18, lantids: 11, xenos: 14, gleens: 18, taklons: 5, ambas: 14, hadschHallas: 9, ivits: 18, geodens: 9, balTaks: 18, firaks: 11, bescods: 22, nevlas: 6, itars: 18 }, // ガイア計画
-    eco:   { terrans: 14, lantids: 22, xenos: 18, gleens: 14, taklons: 18, ambas: 18, hadschHallas: 18, ivits: 18, geodens: 18, balTaks: 18, firaks: 22, bescods: 22, nevlas: 22, itars: 18 }, // 経済
-    sci:   { terrans: 9, lantids: 17, xenos: 9, gleens: 9, taklons: 9, ambas: 9, hadschHallas: 9, ivits: 9, geodens: 14, balTaks: 9, firaks: 22, bescods: 17, nevlas: 17, itars: 18 }, // 科学
+    terra: { terrans: 11, lantids: 21, xenos: 22, gleens: 11, taklons: 22, ambas: 22, hadschHallas: 22, ivits: 22, geodens: 22, balTaks: 11, firaks: 27, bescods: 21, nevlas: 27, itars: 17 }, // 惑星改造
+    nav:   { terrans: 22, lantids: 27, xenos: 22, gleens: 22, taklons: 22, ambas: 22, hadschHallas: 22, ivits: 17, geodens: 22, balTaks: 1, firaks: 27, bescods: 27, nevlas: 27, itars: 22 }, // 航行
+    ai:    { terrans: 22, lantids: 27, xenos: 22, gleens: 22, taklons: 22, ambas: 22, hadschHallas: 22, ivits: 22, geodens: 22, balTaks: 22, firaks: 27, bescods: 27, nevlas: 27, itars: 22 }, // 人工知能
+    gaia:  { terrans: 22, lantids: 13, xenos: 17, gleens: 22, taklons: 6, ambas: 17, hadschHallas: 11, ivits: 22, geodens: 11, balTaks: 22, firaks: 13, bescods: 27, nevlas: 7, itars: 22 }, // ガイア計画
+    eco:   { terrans: 17, lantids: 27, xenos: 22, gleens: 17, taklons: 22, ambas: 22, hadschHallas: 22, ivits: 22, geodens: 22, balTaks: 22, firaks: 27, bescods: 27, nevlas: 27, itars: 22 }, // 経済
+    sci:   { terrans: 11, lantids: 21, xenos: 11, gleens: 11, taklons: 11, ambas: 11, hadschHallas: 11, ivits: 11, geodens: 17, balTaks: 11, firaks: 27, bescods: 21, nevlas: 21, itars: 22 }, // 科学
   },
   // AT01 パス時：同盟タイル×3VP
   AT01: {
@@ -219,30 +219,30 @@ export const ADVANCED_TECH_WEIGHTS_LF: AdvancedTechTable = {
   },
   // AT03 アクション：QIC1＋クレジット5
   AT03: {
-    terra: { terrans: 15, lantids: 15, xenos: 15, gleens: 12, taklons: 18, ambas: 15, hadschHallas: 22, ivits: 18, geodens: 15, balTaks: 18, firaks: 15, bescods: 15, nevlas: 15, itars: 15, moweyds: 15, spaceGiants: 15, tinkerroids: 15, darkanians: 15 }, // 惑星改造
-    nav:   { terrans: 15, lantids: 15, xenos: 15, gleens: 12, taklons: 18, ambas: 15, hadschHallas: 22, ivits: 18, geodens: 15, firaks: 15, bescods: 15, nevlas: 15, itars: 15, moweyds: 15, spaceGiants: 15, tinkerroids: 15, darkanians: 15 }, // 航行
-    ai:    { terrans: 15, lantids: 15, xenos: 15, gleens: 12, taklons: 18, ambas: 15, hadschHallas: 22, ivits: 18, geodens: 15, balTaks: 18, firaks: 15, bescods: 15, nevlas: 15, itars: 15, moweyds: 15, spaceGiants: 15, tinkerroids: 15, darkanians: 15 }, // 人工知能
-    gaia:  { terrans: 15, lantids: 15, xenos: 15, gleens: 12, taklons: 18, ambas: 15, hadschHallas: 22, ivits: 18, geodens: 15, balTaks: 18, firaks: 15, bescods: 15, nevlas: 15, itars: 15, moweyds: 15, spaceGiants: 15, tinkerroids: 15, darkanians: 15 }, // ガイア計画
-    eco:   { terrans: 15, lantids: 15, xenos: 15, gleens: 12, taklons: 18, ambas: 15, hadschHallas: 22, ivits: 18, geodens: 15, balTaks: 18, firaks: 15, bescods: 15, nevlas: 15, itars: 15, moweyds: 15, spaceGiants: 15, tinkerroids: 15, darkanians: 15 }, // 経済
-    sci:   { terrans: 15, lantids: 15, xenos: 15, gleens: 12, taklons: 18, ambas: 15, hadschHallas: 22, ivits: 18, geodens: 15, balTaks: 18, firaks: 15, bescods: 15, nevlas: 15, itars: 15, moweyds: 15, spaceGiants: 15, tinkerroids: 15, darkanians: 15 }, // 科学
+    terra: { terrans: 32, lantids: 32, xenos: 32, gleens: 26, taklons: 38, ambas: 32, hadschHallas: 47, ivits: 38, geodens: 32, balTaks: 38, firaks: 32, bescods: 32, nevlas: 32, itars: 32, moweyds: 32, spaceGiants: 32, tinkerroids: 32, darkanians: 32 }, // 惑星改造
+    nav:   { terrans: 32, lantids: 32, xenos: 32, gleens: 26, taklons: 38, ambas: 32, hadschHallas: 47, ivits: 38, geodens: 32, balTaks: 1, firaks: 32, bescods: 32, nevlas: 32, itars: 32, moweyds: 32, spaceGiants: 32, tinkerroids: 32, darkanians: 32 }, // 航行
+    ai:    { terrans: 32, lantids: 32, xenos: 32, gleens: 26, taklons: 38, ambas: 32, hadschHallas: 47, ivits: 38, geodens: 32, balTaks: 38, firaks: 32, bescods: 32, nevlas: 32, itars: 32, moweyds: 32, spaceGiants: 32, tinkerroids: 32, darkanians: 32 }, // 人工知能
+    gaia:  { terrans: 32, lantids: 32, xenos: 32, gleens: 26, taklons: 38, ambas: 32, hadschHallas: 47, ivits: 38, geodens: 32, balTaks: 38, firaks: 32, bescods: 32, nevlas: 32, itars: 32, moweyds: 32, spaceGiants: 32, tinkerroids: 32, darkanians: 32 }, // ガイア計画
+    eco:   { terrans: 32, lantids: 32, xenos: 32, gleens: 26, taklons: 38, ambas: 32, hadschHallas: 47, ivits: 38, geodens: 32, balTaks: 38, firaks: 32, bescods: 32, nevlas: 32, itars: 32, moweyds: 32, spaceGiants: 32, tinkerroids: 32, darkanians: 32 }, // 経済
+    sci:   { terrans: 32, lantids: 32, xenos: 32, gleens: 26, taklons: 38, ambas: 32, hadschHallas: 47, ivits: 38, geodens: 32, balTaks: 38, firaks: 32, bescods: 32, nevlas: 32, itars: 32, moweyds: 32, spaceGiants: 32, tinkerroids: 32, darkanians: 32 }, // 科学
   },
   // AT07 アクション：鉱石3
   AT07: {
-    terra: { terrans: 13, lantids: 13, xenos: 13, gleens: 16, taklons: 13, ambas: 13, hadschHallas: 13, ivits: 13, geodens: 16, balTaks: 13, firaks: 13, bescods: 13, nevlas: 13, itars: 13, moweyds: 13, spaceGiants: 20, tinkerroids: 16, darkanians: 13 }, // 惑星改造
-    nav:   { terrans: 13, lantids: 13, xenos: 13, gleens: 16, taklons: 13, ambas: 13, hadschHallas: 13, ivits: 13, geodens: 16, firaks: 13, bescods: 13, nevlas: 13, itars: 13, moweyds: 13, spaceGiants: 20, tinkerroids: 16, darkanians: 13 }, // 航行
-    ai:    { terrans: 13, lantids: 13, xenos: 13, gleens: 16, taklons: 13, ambas: 13, hadschHallas: 13, ivits: 13, geodens: 16, balTaks: 13, firaks: 13, bescods: 13, nevlas: 13, itars: 13, moweyds: 13, spaceGiants: 20, tinkerroids: 16, darkanians: 13 }, // 人工知能
-    gaia:  { terrans: 13, lantids: 13, xenos: 13, gleens: 16, taklons: 13, ambas: 13, hadschHallas: 13, ivits: 13, geodens: 16, balTaks: 13, firaks: 13, bescods: 13, nevlas: 13, itars: 13, moweyds: 13, spaceGiants: 20, tinkerroids: 16, darkanians: 13 }, // ガイア計画
-    eco:   { terrans: 13, lantids: 13, xenos: 13, gleens: 16, taklons: 13, ambas: 13, hadschHallas: 13, ivits: 13, geodens: 16, balTaks: 13, firaks: 13, bescods: 13, nevlas: 13, itars: 13, moweyds: 13, spaceGiants: 20, tinkerroids: 16, darkanians: 13 }, // 経済
-    sci:   { terrans: 13, lantids: 13, xenos: 13, gleens: 16, taklons: 13, ambas: 13, hadschHallas: 13, ivits: 13, geodens: 16, balTaks: 13, firaks: 13, bescods: 13, nevlas: 13, itars: 13, moweyds: 13, spaceGiants: 20, tinkerroids: 16, darkanians: 13 }, // 科学
+    terra: { terrans: 28, lantids: 28, xenos: 28, gleens: 34, taklons: 28, ambas: 28, hadschHallas: 28, ivits: 28, geodens: 34, balTaks: 28, firaks: 28, bescods: 28, nevlas: 28, itars: 28, moweyds: 28, spaceGiants: 43, tinkerroids: 34, darkanians: 28 }, // 惑星改造
+    nav:   { terrans: 28, lantids: 28, xenos: 28, gleens: 34, taklons: 28, ambas: 28, hadschHallas: 28, ivits: 28, geodens: 34, balTaks: 1, firaks: 28, bescods: 28, nevlas: 28, itars: 28, moweyds: 28, spaceGiants: 43, tinkerroids: 34, darkanians: 28 }, // 航行
+    ai:    { terrans: 28, lantids: 28, xenos: 28, gleens: 34, taklons: 28, ambas: 28, hadschHallas: 28, ivits: 28, geodens: 34, balTaks: 28, firaks: 28, bescods: 28, nevlas: 28, itars: 28, moweyds: 28, spaceGiants: 43, tinkerroids: 34, darkanians: 28 }, // 人工知能
+    gaia:  { terrans: 28, lantids: 28, xenos: 28, gleens: 34, taklons: 28, ambas: 28, hadschHallas: 28, ivits: 28, geodens: 34, balTaks: 28, firaks: 28, bescods: 28, nevlas: 28, itars: 28, moweyds: 28, spaceGiants: 43, tinkerroids: 34, darkanians: 28 }, // ガイア計画
+    eco:   { terrans: 28, lantids: 28, xenos: 28, gleens: 34, taklons: 28, ambas: 28, hadschHallas: 28, ivits: 28, geodens: 34, balTaks: 28, firaks: 28, bescods: 28, nevlas: 28, itars: 28, moweyds: 28, spaceGiants: 43, tinkerroids: 34, darkanians: 28 }, // 経済
+    sci:   { terrans: 28, lantids: 28, xenos: 28, gleens: 34, taklons: 28, ambas: 28, hadschHallas: 28, ivits: 28, geodens: 34, balTaks: 28, firaks: 28, bescods: 28, nevlas: 28, itars: 28, moweyds: 28, spaceGiants: 43, tinkerroids: 34, darkanians: 28 }, // 科学
   },
   // AT13 アクション：知識3
   AT13: {
-    terra: { terrans: 18, lantids: 22, xenos: 18, gleens: 18, taklons: 18, ambas: 18, hadschHallas: 18, ivits: 18, geodens: 18, balTaks: 18, firaks: 22, bescods: 22, nevlas: 22, itars: 18, moweyds: 18, spaceGiants: 18, tinkerroids: 22, darkanians: 18 }, // 惑星改造
-    nav:   { terrans: 18, lantids: 22, xenos: 18, gleens: 18, taklons: 18, ambas: 18, hadschHallas: 18, ivits: 18, geodens: 18, firaks: 22, bescods: 22, nevlas: 22, itars: 18, moweyds: 18, spaceGiants: 18, tinkerroids: 22, darkanians: 18 }, // 航行
-    ai:    { terrans: 18, lantids: 22, xenos: 18, gleens: 18, taklons: 18, ambas: 18, hadschHallas: 18, ivits: 18, geodens: 18, balTaks: 18, firaks: 22, bescods: 22, nevlas: 22, itars: 18, moweyds: 18, spaceGiants: 18, tinkerroids: 22, darkanians: 18 }, // 人工知能
-    gaia:  { terrans: 18, lantids: 22, xenos: 18, gleens: 18, taklons: 18, ambas: 18, hadschHallas: 18, ivits: 18, geodens: 18, balTaks: 18, firaks: 22, bescods: 22, nevlas: 22, itars: 18, moweyds: 18, spaceGiants: 18, tinkerroids: 22, darkanians: 18 }, // ガイア計画
-    eco:   { terrans: 18, lantids: 22, xenos: 18, gleens: 18, taklons: 18, ambas: 18, hadschHallas: 18, ivits: 18, geodens: 18, balTaks: 18, firaks: 22, bescods: 22, nevlas: 22, itars: 18, moweyds: 18, spaceGiants: 18, tinkerroids: 22, darkanians: 18 }, // 経済
-    sci:   { terrans: 18, lantids: 22, xenos: 18, gleens: 18, taklons: 18, ambas: 18, hadschHallas: 18, ivits: 18, geodens: 18, balTaks: 18, firaks: 22, bescods: 22, nevlas: 22, itars: 18, moweyds: 18, spaceGiants: 18, tinkerroids: 22, darkanians: 18 }, // 科学
+    terra: { terrans: 22, lantids: 27, xenos: 22, gleens: 22, taklons: 22, ambas: 22, hadschHallas: 22, ivits: 22, geodens: 22, balTaks: 22, firaks: 27, bescods: 27, nevlas: 27, itars: 22, moweyds: 22, spaceGiants: 22, tinkerroids: 27, darkanians: 22 }, // 惑星改造
+    nav:   { terrans: 22, lantids: 27, xenos: 22, gleens: 22, taklons: 22, ambas: 22, hadschHallas: 22, ivits: 22, geodens: 22, balTaks: 1, firaks: 27, bescods: 27, nevlas: 27, itars: 22, moweyds: 22, spaceGiants: 22, tinkerroids: 27, darkanians: 22 }, // 航行
+    ai:    { terrans: 22, lantids: 27, xenos: 22, gleens: 22, taklons: 22, ambas: 22, hadschHallas: 22, ivits: 22, geodens: 22, balTaks: 22, firaks: 27, bescods: 27, nevlas: 27, itars: 22, moweyds: 22, spaceGiants: 22, tinkerroids: 27, darkanians: 22 }, // 人工知能
+    gaia:  { terrans: 22, lantids: 27, xenos: 22, gleens: 22, taklons: 22, ambas: 22, hadschHallas: 22, ivits: 22, geodens: 22, balTaks: 22, firaks: 27, bescods: 27, nevlas: 27, itars: 22, moweyds: 22, spaceGiants: 22, tinkerroids: 27, darkanians: 22 }, // ガイア計画
+    eco:   { terrans: 22, lantids: 27, xenos: 22, gleens: 22, taklons: 22, ambas: 22, hadschHallas: 22, ivits: 22, geodens: 22, balTaks: 22, firaks: 27, bescods: 27, nevlas: 27, itars: 22, moweyds: 22, spaceGiants: 22, tinkerroids: 27, darkanians: 22 }, // 経済
+    sci:   { terrans: 22, lantids: 27, xenos: 22, gleens: 22, taklons: 22, ambas: 22, hadschHallas: 22, ivits: 22, geodens: 22, balTaks: 22, firaks: 27, bescods: 27, nevlas: 27, itars: 22, moweyds: 22, spaceGiants: 22, tinkerroids: 27, darkanians: 22 }, // 科学
   },
   // AT01 パス時：同盟タイル×3VP
   AT01: {
