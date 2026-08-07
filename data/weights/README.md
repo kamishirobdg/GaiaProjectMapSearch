@@ -8,7 +8,7 @@
 | CSV | 生成先（自動生成・手で触らない） | 生成スクリプト | 中央値 | 刻み | セル数 |
 | --- | --- | --- | --- | --- | --- |
 | `advanced_tech_base.csv` | `src/gaia/eval/advancedTechWeights.ts` | `gen_advanced_tech_table.py` | 18 | 3 | 1260 |
-| `advanced_tech_lf.csv` | 同上 | 同上 | 18 | 3 | 2268 |
+| `advanced_tech_lf.csv` | 同上 | 同上 | 18 | 3 | 3024（研究列6＋拡張部の面2） |
 | `tech_position_base.csv` | `src/gaia/eval/techPositionWeights.ts` | `gen_tech_position_table.py` | 12 | 2 | 756 |
 | `tech_position_lf.csv` | 同上 | 同上 | 12 | 2 | 972 |
 | `round_scoring_base.csv` | `src/gaia/eval/roundScoringWeights.ts` | `gen_round_scoring_table.py` | 10 | 2 | 756 |
@@ -21,6 +21,14 @@
 
 `_base` は通常版（基本14種族）、`_lf` は拡張版（18種族）。拡張の有無で場に出る
 タイルの母集団が変わり、同じタイルでも相対的な影響力が変わるので表を分けてある。
+
+`advanced_tech_lf.csv` だけ研究列6つ（惑星/航法/人工知能/ガイア/経済/科学）に
+加えて **`vp25`（25点）/ `shuttle`（3船）** の2軸を持つ（2026-08-08 追加）。これは
+得点ボード拡張部（研究列に紐付かない7枚目の上級技術スロット）に置かれたときの
+価値で、拡張部の面が2人=25VP面固定／3・4人=探査シャトル面（2ゲーム目以降は
+ランダム選択も可）と分かれているため、面ごとに別々の値を入れる。値が入っていない
+（0の）タイルは実行時に研究列6つの最大値へ自動フォールバックする
+（`advancedTechExtensionCell`）。
 
 ## 値の意味
 

@@ -1,7 +1,8 @@
 # scripts/gen_advanced_tech_table.py
 #
 # 上級技術の重みテーブル（ADVANCED_TECH_WEIGHTS_BASE / _LF）を CSV から生成する。
-# 通常版 15タイル×6列×14種族＝1260セル、拡張版 21×6×18＝2268セル。
+# 通常版 15タイル×6列×14種族＝1260セル、拡張版 21×8軸×18種族＝3024セル
+# （2026-08-08: 拡張版だけ研究列6つに加えて得点ボード拡張部の面 vp25/shuttle を持つ）。
 # 手で写すと必ず取り違えるため（gen_tech_position_table.py と同じ作り）。
 #
 #   python scripts/gen_advanced_tech_table.py --template [--lf]
@@ -145,6 +146,14 @@ TRACK = [
     ("経済", "eco", "経済"),
     ("科学", "sci", "科学"),
 ]
+# 得点ボード拡張部（研究列に紐付かない7枚目）専用の軸。**拡張版CSVだけ**に出る
+# （2026-08-08 追加）。拡張部の面は2人=25VP面固定／3・4人=探査シャトル面
+# （2ゲーム目以降ランダム選択可。docs/setup-lostfleet-spec.md §2.2）。
+EXT_TRACK = [
+    ("25点", "vp25", "拡張部:25VP面"),
+    ("3船", "shuttle", "拡張部:シャトル面"),
+]
+TRACK_ALL = TRACK + EXT_TRACK
 
 # 並び順は FACTIONS と同じ（基本14 → LF4）
 FACTION_ORDER = [
@@ -180,7 +189,7 @@ def parse(rows):
         sys.exit("未知の種族列: %r" % unknown)
     # 拡張版かどうかは**ヘッダの列**で決める（gen_round_scoring_table.py と同じ理由）。
     lf = any(FACTION[c] in LF_FACTIONS for c in cols)
-    track_by_ja = {ja: tid for ja, tid, _ in TRACK}
+    track_by_ja = {ja: tid for ja, tid, _ in TRACK_ALL}
 
     data = {}
     for row in rows[1:]:
@@ -191,6 +200,8 @@ def parse(rows):
             sys.exit("未知のタイル: %r" % tile)
         if track not in track_by_ja:
             sys.exit("未知の研究列: %r" % track)
+        if not lf and track_by_ja[track] in ("vp25", "shuttle"):
+            sys.exit("通常版に拡張部の軸（25点/3船）は不要です: %r" % tile)
         cells = {}
         for name, v in zip(cols, row[3:]):
             n = int(v.strip())
@@ -210,8 +221,9 @@ def parse(rows):
     missing = [t for t in order if t not in data]
     if missing:
         sys.exit("CSV に無いタイル: %r" % missing)
+    required = TRACK_ALL if lf else TRACK
     for tid, tile in data.items():
-        gap = [tid_ for _, tid_, _ in TRACK if tid_ not in tile]
+        gap = [tid_ for _, tid_, _ in required if tid_ not in tile]
         if gap:
             sys.exit("%s に無い研究列: %r" % (tid, gap))
     return data, lf
@@ -219,14 +231,15 @@ def parse(rows):
 
 def emit(data, lf):
     order = TILE_ORDER_LF if lf else TILE_ORDER_BASE
+    tracks = TRACK_ALL if lf else TRACK
     out = []
     for tid in order:
         out.append("  // %s %s" % (tid, NAME_BY_ID[tid]))
         out.append("  %s: {" % tid)
-        for _, trk, trk_label in TRACK:
+        for _, trk, trk_label in tracks:
             cells = data[tid][trk]
             body = ", ".join("%s: %d" % (k, v) for k, v in cells.items())
-            pad = " " * (5 - len(trk))
+            pad = " " * max(0, 5 - len(trk))
             inner = "{ %s }" % body if body else "{}"
             out.append("    %s:%s %s, // %s" % (trk, pad, inner, trk_label))
         out.append("  },")
@@ -260,6 +273,7 @@ def template(lf):
     order = TILE_ORDER_LF if lf else TILE_ORDER_BASE
     names = [n for n, fid in FACTION_ORDER if lf or fid not in LF_FACTIONS]
     ids = [fid for _, fid in FACTION_ORDER if lf or fid not in LF_FACTIONS]
+    tracks = TRACK_ALL if lf else TRACK
 
     # BOM を付ける。Windows の Excel は BOM 無しの UTF-8 を cp932 と解釈して
     # 種族名が化ける（読み込み側は utf-8-sig を最初に試すので往復できる）。
@@ -270,7 +284,7 @@ def template(lf):
     for tid in order:
         src = weights.get(tid, {})
         base = TILE_VP[tid]
-        for ja, _, _ in TRACK:
+        for ja, _, _ in tracks:
             row = [
                 max(1, round(base * (1 + TEMPLATE_RATIO * int(src.get(fid, 0))))) for fid in ids
             ]
@@ -291,15 +305,22 @@ FILE_HEADER = '''// src/gaia/eval/advancedTechWeights.ts
 // 織り込むため —— 上級技術はその列をレベル4まで上げないと取れないので、
 // 登らない列に置かれた1枚は事実上取れない。
 //
-// 通常版 15タイル×6列×14種族＝1260セル / 拡張版 21×6×18＝2268セル。
+// 拡張版だけ、6つの研究列に加えて **vp25 / shuttle**（得点ボード拡張部の面。
+// 2026-08-08 追加）を持つ。拡張部の7枚目は研究列に紐付かないので、代わりに
+// 面（2人=25VP面固定／3・4人=探査シャトル面）ごとの価値を入れる。
+//
+// 通常版 15タイル×6列×14種族＝1260セル / 拡張版 21×8軸×18種族＝3024セル。
 // 拡張の有無で場に出るタイルの母集団が変わるので、標準技術と同じく表を分ける。
 
 import type { ResearchTrackId } from "@/gaia/setup/types";
 import type { FactionId } from "./factionWeights";
 
+/** 拡張部の面。2人=25VP面固定／3・4人=探査シャトル面（ランダム選択も可）。 */
+export type ExtensionFace = "vp25" | "shuttle";
+
 export type AdvancedTechTable = Record<
   string,
-  Partial<Record<ResearchTrackId, Partial<Record<FactionId, number>>>>
+  Partial<Record<ResearchTrackId | ExtensionFace, Partial<Record<FactionId, number>>>>
 >;
 
 '''
@@ -329,16 +350,23 @@ const extensionCellCache = new Map<string, Partial<Record<FactionId, number>>>()
 /**
  * 得点ボード拡張部に置かれた1枚の重み（Lost Fleet のみ）。
  *
- * 拡張部の上級技術は研究列に紐付かない＝どの列を登っていても取りに行けるので、
- * **研究列6つの最大値**を使う（標準技術のフリー枠と同じ理屈。techPositionCell 参照）。
- * 取得条件そのものが通常の上級と違う点は、評価指数 advExtension の係数側で見る。
+ * 2026-08-08: 拡張部の面（vp25/shuttle）ごとの値をCSVへ持つようにしたので、
+ * 面が分かっていて値も入っていればそれを使う。面が未指定（呼び出し側が
+ * 拡張版のセットアップ結果を持たない場合など）、またはそのタイルにまだ
+ * 値が無い場合は**研究列6つの最大値**にフォールバックする（旧来の近似。
+ * 標準技術のフリー枠と同じ理屈。techPositionCell 参照）。
  */
 export function advancedTechExtensionCell(
   tileId: string,
-  lostFleet: boolean
+  lostFleet: boolean,
+  face?: ExtensionFace
 ): Partial<Record<FactionId, number>> | undefined {
   const tile = advancedTechTable(lostFleet)[tileId];
   if (!tile) return undefined;
+  if (face) {
+    const faceCell = tile[face];
+    if (faceCell && Object.keys(faceCell).length > 0) return faceCell;
+  }
   const key = `${lostFleet ? "lf" : "base"}:${tileId}`;
   let cell = extensionCellCache.get(key);
   if (cell) return cell;

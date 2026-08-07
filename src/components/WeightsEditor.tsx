@@ -115,7 +115,8 @@ export default function WeightsEditor() {
   const meta = weightTableOf(tableId);
   const factions = React.useMemo(() => factionsFor(lf), [lf]);
   const tiles = React.useMemo(() => meta.tiles(lf), [meta, lf]);
-  const hasAxis = meta.axes.length > 0;
+  const axes = React.useMemo(() => meta.axes(lf), [meta, lf]);
+  const hasAxis = axes.length > 0;
   const tile: WeightTile | undefined = tiles[Math.min(tileIdx, tiles.length - 1)];
 
   const commit = React.useCallback((next: WeightEdits) => {
@@ -137,7 +138,7 @@ export default function WeightsEditor() {
     setTableId(id);
     setTileIdx(0);
     setSel(null);
-    if (weightTableOf(id).axes.length === 0) setMode("tile");
+    if (weightTableOf(id).axes(lf).length === 0) setMode("tile");
   };
   const switchLf = (v: boolean) => {
     setLf(v);
@@ -206,12 +207,13 @@ export default function WeightsEditor() {
 
     const nextBase = { ...edits.base };
     const nextCell = { ...edits.cell };
-    const axes = meta.axes.map((a) => a.key);
+    // 通常版に無い軸（拡張版だけの「25点」「3船」）はコピー元が無いので触らない。
+    const copyAxisKeys = meta.axes(false).map((a) => a.key);
     for (const t of commonTiles) {
       for (const f of commonFactions) {
         const baseVp = baseValueOf(meta, edits, false, t.id, f.id);
         nextBase[baseKey(tableId, true, t.id, f.id)] = baseVp;
-        for (const axisKey of axes) {
+        for (const axisKey of copyAxisKeys) {
           const baseFinal = finalValueOf(meta, edits, false, t.id, axisKey, f.id);
           const mul = baseVp === 0 ? 0 : Math.round((baseFinal / baseVp) * 100);
           nextCell[cellKey(tableId, true, t.id, axisKey, f.id)] = mul;
@@ -305,7 +307,7 @@ export default function WeightsEditor() {
         }}
       />
       {extra}
-      {meta.axes.map((a) => (
+      {axes.map((a) => (
         <div
           key={a.key}
           style={{
@@ -359,12 +361,12 @@ export default function WeightsEditor() {
 
   const matrixGrid = (
     <div style={{ overflowX: "auto" }}>
-      <div style={{ minWidth: HEAD_W + meta.axes.length * CELL_W }}>
+      <div style={{ minWidth: HEAD_W + axes.length * CELL_W }}>
         {headerRow()}
         {factions.map((f) => (
           <div key={f.id} style={{ display: "flex", height: 26 }}>
             {factionCell(f)}
-            {meta.axes.map((a) => {
+            {axes.map((a) => {
               const mul = edits.matrix[matrixKey(tableId, lf, f.id, a.key)];
               const want: Sel = { kind: "matrix", faction: f.id, axis: a.key };
               return (
@@ -390,7 +392,7 @@ export default function WeightsEditor() {
 
   const tileGrid = tile ? (
     <div style={{ overflowX: "auto" }}>
-      <div style={{ minWidth: HEAD_W + BASE_W + meta.axes.length * CELL_W }}>
+      <div style={{ minWidth: HEAD_W + BASE_W + axes.length * CELL_W }}>
         {headerRow(
           <div
             style={{
@@ -433,7 +435,7 @@ export default function WeightsEditor() {
               >
                 {base}
               </button>
-              {meta.axes.map((a) => {
+              {axes.map((a) => {
                 const now = storedValue(meta, lf, tile.id, a.key, f.id);
                 const next = finalValueOf(meta, edits, lf, tile.id, a.key, f.id);
                 const want: Sel = { kind: "cell", tile: tile.id, axis: a.key, faction: f.id };
@@ -487,11 +489,11 @@ export default function WeightsEditor() {
     const fname = (id: FactionId) =>
       factions.find((f) => f.id === id)?.labelJa ?? FACTION_SHORT_JA[id] ?? id;
     if (sel.kind === "matrix") {
-      const axis = meta.axes.find((a) => a.key === sel.axis)?.ja ?? sel.axis;
+      const axis = axes.find((a) => a.key === sel.axis)?.ja ?? sel.axis;
       return `${fname(sel.faction)} × ${axis}（全タイル）`;
     }
     if (sel.kind === "base") return `${fname(sel.faction)} の基準値`;
-    const axis = meta.axes.find((a) => a.key === sel.axis)?.ja ?? sel.axis;
+    const axis = axes.find((a) => a.key === sel.axis)?.ja ?? sel.axis;
     return `${fname(sel.faction)} × ${axis}（このタイルだけ）`;
   })();
 

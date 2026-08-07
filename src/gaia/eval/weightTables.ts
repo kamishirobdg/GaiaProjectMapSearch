@@ -56,8 +56,12 @@ export type WeightTableMeta = {
   id: WeightTableId;
   ja: string;
   en: string;
-  /** 軸の見出し。tile_weights は空配列＝軸なし（基準値だけを編集する）。 */
-  axes: WeightAxis[];
+  /**
+   * 軸の見出し。tile_weights は空配列＝軸なし（基準値だけを編集する）。
+   * `lf` を引数に取るのは advanced_tech の拡張版だけ研究列6つに加えて
+   * 得点ボード拡張部の面（vp25/shuttle）を持つため（2026-08-08）。
+   */
+  axes: (lf: boolean) => WeightAxis[];
   /** 軸そのものの呼び名（画面の見出しに出す）。 */
   axisJa: string;
   axisEn: string;
@@ -101,6 +105,16 @@ const TRACK_AXES: WeightAxis[] = RESEARCH_TRACK_IDS.map((id) => ({
   ja: TRACK_JA[id],
   en: TRACK_EN[id],
 }));
+
+// 得点ボード拡張部（研究列に紐付かない7枚目）の面。拡張版だけに出る
+// （2人=25VP面固定／3・4人=探査シャトル面。gen_advanced_tech_table.py の
+// EXT_TRACK と同じ。2026-08-08 追加）。
+const EXTENSION_AXES: WeightAxis[] = [
+  { key: "vp25", ja: "25点", en: "25VP" },
+  { key: "shuttle", ja: "3船", en: "Shuttle" },
+];
+const ADVANCED_TECH_AXES = (lf: boolean): WeightAxis[] =>
+  lf ? [...TRACK_AXES, ...EXTENSION_AXES] : TRACK_AXES;
 
 /** ラウンドは R1..R6。表の側は配列なので添字へ直して引く。 */
 const ROUND_AXES: WeightAxis[] = [1, 2, 3, 4, 5, 6].map((n) => ({
@@ -177,22 +191,26 @@ export const WEIGHT_TABLES: WeightTableMeta[] = [
     id: "advanced_tech",
     ja: "上級技術",
     en: "Advanced tech",
-    axes: TRACK_AXES,
+    axes: ADVANCED_TECH_AXES,
     axisJa: "研究列",
     axisEn: "Track",
     tiles: (lf) => tilesFrom(lf ? ADVANCED_TECH_WEIGHTS_LF : ADVANCED_TECH_WEIGHTS_BASE),
     cell: (tileId, axisKey, faction, lf) =>
       (lf ? ADVANCED_TECH_WEIGHTS_LF : ADVANCED_TECH_WEIGHTS_BASE)[tileId]?.[
-        axisKey as ResearchTrackId
+        axisKey as ResearchTrackId | "vp25" | "shuttle"
       ]?.[faction],
-    noteJa: "得点ボード拡張部の1枚は6列の最大値を自動で使う（列に紐付かないため）。",
-    noteEn: "The scoring-board extension slot auto-uses the max of the six tracks.",
+    noteJa:
+      "拡張版の「25点」「3船」は得点ボード拡張部（列に紐付かない7枚目）の面ごとの評価。" +
+      "未入力のタイルは6列の最大値を自動で使う。",
+    noteEn:
+      'LF-only "25pt"/"3ship" columns are the scoring-board extension slot per face. ' +
+      "Tiles without a value fall back to the max of the six tracks.",
   },
   {
     id: "tech_position",
     ja: "標準技術",
     en: "Standard tech",
-    axes: TRACK_AXES,
+    axes: () => TRACK_AXES,
     axisJa: "研究列",
     axisEn: "Track",
     tiles: (lf) => tilesFrom(lf ? TECH_POSITION_WEIGHTS_LF : TECH_POSITION_WEIGHTS_BASE),
@@ -207,7 +225,7 @@ export const WEIGHT_TABLES: WeightTableMeta[] = [
     id: "round_scoring",
     ja: "ラウンド得点",
     en: "Round scoring",
-    axes: ROUND_AXES,
+    axes: () => ROUND_AXES,
     axisJa: "ラウンド",
     axisEn: "Round",
     tiles: (lf) => tilesFrom(lf ? ROUND_SCORING_WEIGHTS_LF : ROUND_SCORING_WEIGHTS_BASE),
@@ -223,7 +241,7 @@ export const WEIGHT_TABLES: WeightTableMeta[] = [
     id: "tile_weights",
     ja: "ブースター他",
     en: "Boosters etc.",
-    axes: [],
+    axes: () => [],
     axisJa: "—",
     axisEn: "—",
     tiles: (lf) => tilesFrom(lf ? TILE_VALUE_WEIGHTS_LF : TILE_VALUE_WEIGHTS_BASE),

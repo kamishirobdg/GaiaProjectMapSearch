@@ -115,12 +115,13 @@ export function setupFactionTileHits(
     const id = result.advancedTech.byTrack[track];
     if (id) pushCell("advanced", id, advancedTechCell(id, track, lf), track);
   }
-  // 得点ボード拡張部の1枚は研究列に紐付かないので6列の最大値を使う。
+  // 得点ボード拡張部の1枚は研究列に紐付かない代わりに拡張部の面（vp25/shuttle）で
+  // 価値が変わる（2026-08-08。値が無ければ6列の最大値にフォールバック）。
   if (result.advancedTech.extension) {
     pushCell(
       "advExtension",
       result.advancedTech.extension,
-      advancedTechExtensionCell(result.advancedTech.extension, lf)
+      advancedTechExtensionCell(result.advancedTech.extension, lf, result.extensionFace)
     );
   }
   for (const id of result.boosters.available) push("booster", id);
@@ -180,9 +181,13 @@ export function setupFactionBreakdown(
     if (id) addCell("advanced", advancedTechCell(id, track, lf));
   }
   // 得点ボード拡張部の追加上級は取得条件が通常の上級と違うので別カテゴリ。
-  // 研究列に紐付かない＝どの列を登っていても取りに行けるので6列の最大値を使う。
+  // 研究列に紐付かない代わりに拡張部の面（vp25/shuttle）で価値が変わる
+  // （2026-08-08。値が無ければ6列の最大値にフォールバック）。
   if (result.advancedTech.extension) {
-    addCell("advExtension", advancedTechExtensionCell(result.advancedTech.extension, lf));
+    addCell(
+      "advExtension",
+      advancedTechExtensionCell(result.advancedTech.extension, lf, result.extensionFace)
+    );
   }
   for (const id of result.boosters.available) add("booster", id);
   // ラウンド得点は ×2タイルが2回出るので枚数分加算しつつ、**何ラウンド目に出たかで

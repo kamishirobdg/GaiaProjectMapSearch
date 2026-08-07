@@ -42,7 +42,7 @@ function edits(patch: Partial<WeightEdits>): WeightEdits {
 function findColumnDiff(meta: typeof standard, lf: boolean) {
   for (const tile of meta.tiles(lf)) {
     for (const f of factionsFor(lf)) {
-      const vals = meta.axes.map((a) => storedValue(meta, lf, tile.id, a.key, f.id));
+      const vals = meta.axes(lf).map((a) => storedValue(meta, lf, tile.id, a.key, f.id));
       if (new Set(vals).size > 1) return { tile: tile.id, faction: f.id, vals };
     }
   }
@@ -77,7 +77,7 @@ describe("weightEdits", () => {
 
     for (const tile of advanced.tiles(false)) {
       expect(finalValueOf(advanced, e, false, tile.id, "nav", f.id)).toBe(0);
-      for (const a of advanced.axes) {
+      for (const a of advanced.axes(false)) {
         if (a.key === "nav") continue;
         expect(finalValueOf(advanced, e, false, tile.id, a.key, f.id)).toBe(
           storedValue(advanced, false, tile.id, a.key, f.id),
@@ -114,7 +114,7 @@ describe("weightEdits", () => {
     const storedBase = storedBaseOf(standard, false, tile, faction);
     const e = edits({ base: { [baseKey("tech_position", false, tile, faction)]: storedBase * 2 } });
 
-    for (const a of standard.axes) {
+    for (const a of standard.axes(false)) {
       const stored = storedValue(standard, false, tile, a.key, faction);
       expect(finalValueOf(standard, e, false, tile, a.key, faction)).toBe(
         Math.round((stored * storedBase * 2) / storedBase),
@@ -135,7 +135,7 @@ describe("weightEdits", () => {
   it("軸の無い表は基準値がそのまま最終値になる", () => {
     const f = factionsFor(false)[0];
     const tile = tileValues.tiles(false)[0];
-    expect(tileValues.axes).toHaveLength(0);
+    expect(tileValues.axes(false)).toHaveLength(0);
 
     const e = edits({ base: { [baseKey("tile_weights", false, tile.id, f.id)]: 7 } });
     expect(finalValueOf(tileValues, e, false, tile.id, "", f.id)).toBe(7);

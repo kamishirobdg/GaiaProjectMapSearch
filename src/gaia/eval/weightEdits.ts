@@ -85,9 +85,10 @@ export function storedBaseOf(
   tile: string,
   faction: FactionId,
 ): number {
-  if (meta.axes.length === 0) return storedValue(meta, lf, tile, "", faction);
+  const axes = meta.axes(lf);
+  if (axes.length === 0) return storedValue(meta, lf, tile, "", faction);
   let max = 0;
-  for (const a of meta.axes) {
+  for (const a of axes) {
     const v = storedValue(meta, lf, tile, a.key, faction);
     if (v > max) max = v;
   }
@@ -141,7 +142,7 @@ export function finalValueOf(
   faction: FactionId,
 ): number {
   const base = baseValueOf(meta, edits, lf, tile, faction);
-  if (meta.axes.length === 0) return base;
+  if (meta.axes(lf).length === 0) return base;
 
   const mul = rawMultiplierOf(edits, meta.id, lf, tile, axis, faction);
   if (mul !== undefined) return Math.round((base * mul) / 100);
@@ -190,7 +191,8 @@ export function collectDiffs(edits: WeightEdits): WeightDiff[] {
   for (const { table, lf } of touchedScopes(edits)) {
     const meta = weightTableOf(table);
     const factions = factionsFor(lf);
-    const axes = meta.axes.length > 0 ? meta.axes.map((a) => a.key) : ["-"];
+    const metaAxes = meta.axes(lf);
+    const axes = metaAxes.length > 0 ? metaAxes.map((a) => a.key) : ["-"];
     for (const tile of meta.tiles(lf)) {
       for (const axis of axes) {
         for (const f of factions) {

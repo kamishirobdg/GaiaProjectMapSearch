@@ -39,6 +39,10 @@ TRACK_JA = {
     "gaia": "ガイア",
     "eco": "経済",
     "sci": "科学",
+    # 得点ボード拡張部の面（advanced_tech の拡張版だけに出る。gen_advanced_tech_table.py
+    # の EXT_TRACK と同じ。2026-08-08 追加）。
+    "vp25": "25点",
+    "shuttle": "3船",
 }
 
 ROUND_JA = {"R%d" % n: "R%d" % n for n in range(1, 7)}
