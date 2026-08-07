@@ -40,6 +40,9 @@ const LS_KEY = "gaia_weight_edits";
 // 「このタイルは見た」の記録。編集とは別キーにしてあるので、差分を CSV へ反映して
 // 「全消去」を押してもチェックは残る（どこまで進んだかの記録は消したくないため）。
 const LS_REVIEWED = "gaia_weight_reviewed";
+// 「全消去」は誤タップで全編集が飛ぶため、2段階（アーム→確定）にする。
+// アーム状態は放置すると意図せぬ誤確定になり得るので一定時間で自動解除する。
+const CLEAR_ARM_MS = 4000;
 
 // 幅の目安（2026-08-06 に実測して詰めた）。行見出し62＋基準30＋セル40×6＝332px、
 // 外側の padding 12px を足して 344px。360px 幅の端末でも横スクロールが出ない。
@@ -82,6 +85,12 @@ export default function WeightsEditor() {
   const [showDiff, setShowDiff] = React.useState(false);
   /** `${table}:${exp}:${tile}` → 確認済み。 */
   const [reviewed, setReviewed] = React.useState<Record<string, true>>({});
+  /** 「全消去」の2段階確認: 1回目のタップでアームし、一定時間内の2回目で確定する。 */
+  const [clearArmed, setClearArmed] = React.useState(false);
+  const clearArmTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  React.useEffect(() => () => {
+    if (clearArmTimer.current) clearTimeout(clearArmTimer.current);
+  }, []);
 
   // 復元は起動時の1回だけ。書き込みは操作ハンドラ側で行う（Strict Mode の
   // 二重実行で復元前の既定値が保存を上書きしないようにするため）。
@@ -162,9 +171,54 @@ export default function WeightsEditor() {
     commit(next);
   };
 
+  /** 1回目のタップ＝アーム、`CLEAR_ARM_MS` 以内の2回目＝確定。他は自動解除。 */
   const clearAll = () => {
-    if (!window.confirm("編集をすべて消します。よろしいですか？")) return;
+    if (!clearArmed) {
+      setClearArmed(true);
+      if (clearArmTimer.current) clearTimeout(clearArmTimer.current);
+      clearArmTimer.current = setTimeout(() => setClearArmed(false), CLEAR_ARM_MS);
+      return;
+    }
+    if (clearArmTimer.current) clearTimeout(clearArmTimer.current);
+    setClearArmed(false);
     commit({ matrix: {}, base: {}, cell: {} });
+    setSel(null);
+  };
+
+  /**
+   * 拡張版の全タイル・全軸へ通常版の値をコピーする（対象は通常版にもいる種族のみ、
+   * 拡張種族＝LF専用種族は触らない）。基準値をそのままコピーし、軸の倍率は
+   * 「通常版でのその軸の最終値 ÷ 通常版の基準値」を% へ丸めて複製することで、
+   * 拡張版の基準値が通常版と違っていても列差の形を保つ。
+   */
+  const copyBaseToLf = () => {
+    const baseTileIds = new Set(meta.tiles(false).map((t) => t.id));
+    const commonTiles = meta.tiles(true).filter((t) => baseTileIds.has(t.id));
+    const commonFactions = factionsFor(false);
+    if (commonTiles.length === 0) return;
+    if (
+      !window.confirm(
+        `${meta.ja}の拡張版へ通常版の値をコピーします（対象タイル${commonTiles.length}枚 × 種族${commonFactions.length}）。` +
+          "拡張版でいま入力中の値は上書きされます。よろしいですか？",
+      )
+    )
+      return;
+
+    const nextBase = { ...edits.base };
+    const nextCell = { ...edits.cell };
+    const axes = meta.axes.map((a) => a.key);
+    for (const t of commonTiles) {
+      for (const f of commonFactions) {
+        const baseVp = baseValueOf(meta, edits, false, t.id, f.id);
+        nextBase[baseKey(tableId, true, t.id, f.id)] = baseVp;
+        for (const axisKey of axes) {
+          const baseFinal = finalValueOf(meta, edits, false, t.id, axisKey, f.id);
+          const mul = baseVp === 0 ? 0 : Math.round((baseFinal / baseVp) * 100);
+          nextCell[cellKey(tableId, true, t.id, axisKey, f.id)] = mul;
+        }
+      }
+    }
+    commit({ matrix: edits.matrix, base: nextBase, cell: nextCell });
     setSel(null);
   };
 
@@ -722,13 +776,32 @@ export default function WeightsEditor() {
         >
           {showDiff ? "差分を隠す" : "差分を出す"}
         </button>
-        <button
-          type="button"
-          onClick={clearAll}
-          style={{ ...navBtn, padding: "6px 10px", fontSize: 12, marginLeft: "auto" }}
-        >
-          全消去
-        </button>
+        <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+          {lf ? (
+            <button
+              type="button"
+              onClick={copyBaseToLf}
+              style={{ ...navBtn, padding: "6px 10px", fontSize: 12 }}
+            >
+              全コピー
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={clearAll}
+            style={{
+              ...navBtn,
+              padding: "6px 10px",
+              fontSize: 12,
+              fontWeight: clearArmed ? 700 : 400,
+              color: clearArmed ? "#fff" : "#222",
+              background: clearArmed ? "#c62828" : "#fff",
+              borderColor: clearArmed ? "#c62828" : "#ccc",
+            }}
+          >
+            {clearArmed ? "本当に消す？" : "全消去"}
+          </button>
+        </div>
       </div>
 
       {showDiff ? (
