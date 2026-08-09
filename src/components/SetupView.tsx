@@ -5,8 +5,6 @@ import React from "react";
 import {
   buildSetupFromSeed,
   defaultAdvancedTileRules,
-  SHIP_DISTANCE_TECH,
-  REBELLION_GOLD_TECH_FED,
   type BuildSetupInput,
 } from "@/gaia/setup/buildSetup";
 import {
@@ -205,8 +203,6 @@ const UI = {
     unmarkUsed: "使用済み解除",
     deleteRow: "削除",
     restoreHint: "クリックで表示",
-    avoidShort: "回避",
-    forceShort: "強制",
     currentBadge: "表示中",
     warnDistForceDup: "「基本到達距離＋1」の強制は1隻のみ適用されます（先頭の船が優先）",
     warnDistAvoidAll: "3人以上では3隻すべての回避は満たせません（満たせない分は無視）",
@@ -304,8 +300,6 @@ const UI = {
     unmarkUsed: "Unmark used",
     deleteRow: "Delete",
     restoreHint: "Click to view",
-    avoidShort: "avoid",
-    forceShort: "force",
     currentBadge: "Shown",
     warnDistForceDup: "Only one ship can force \"Base range +1\" (first ship wins)",
     warnDistAvoidAll: "With 3+ players, avoiding it on all three ships cannot be satisfied (unmet ones are ignored)",
@@ -956,13 +950,6 @@ export default function SetupView() {
   const isDefaultParams = React.useCallback((params: typeof conditionParams) => {
     const su: any = (params as any)?.setup ?? {};
     const noRules =
-      !su.avoidRules?.length &&
-      !su.forceRules?.length &&
-      Object.keys(su.forceTileRules ?? {}).length === 0 &&
-      Object.keys(su.allowTileRules ?? {}).length === 0 &&
-      !su.shipDistanceAvoid?.length &&
-      !su.shipDistanceForce?.length &&
-      !su.rebellionGoldFed &&
       su.extensionFaceMode === undefined &&
       su.econFaceMode === undefined &&
       JSON.stringify(su.tileRules ?? defaultAdvancedTileRules()) ===
@@ -1018,12 +1005,6 @@ export default function SetupView() {
       const parts: string[] = [];
       parts.push(su.mode === "lostFleet" ? t.modeLF : t.modeBase);
       parts.push(`${t.players}${su.playerCount ?? 4}`);
-      // 旧「回避/強制」プルダウンのフィールドは UI からもう設定されない（共有リンクで
-      // 古い条件を復元したときだけ入る）。0件なら行ごと出ないのでそのまま残してある。
-      const nAvoid = (su.avoidRules?.length ?? 0) + Object.keys(su.allowTileRules ?? {}).length;
-      const nForce = (su.forceRules?.length ?? 0) + Object.keys(su.forceTileRules ?? {}).length;
-      if (nAvoid > 0) parts.push(`${t.avoidShort}${nAvoid}`);
-      if (nForce > 0) parts.push(`${t.forceShort}${nForce}`);
       // いまの指定はこちら（全スロット共通のタイル指定）。除外は既定との差を数える
       // （countTileRules のコメント参照）。
       const nTile = countTileRules(su.tileRules as TileRules | undefined, defaultAdvancedTileRules());
@@ -1032,9 +1013,6 @@ export default function SetupView() {
       if (nTile.exclude > 0) parts.push(`${t.modeExclude}${nTile.exclude}`);
       if (su.extensionFaceMode) parts.push(`${t.extFaceModeLabel}:${su.extensionFaceMode}`);
       if (su.econFaceMode) parts.push(`${t.econFaceModeLabel}:${su.econFaceMode}`);
-      const nShip =
-        (su.shipDistanceAvoid?.length ?? 0) + (su.shipDistanceForce?.length ?? 0) + (su.rebellionGoldFed ? 1 : 0);
-      if (nShip > 0) parts.push(`船ルール${nShip}`);
       const w = (params as any)?.evalWeights ?? {};
       const diff = Object.keys(w).filter((k) => (w as any)[k] !== (DEFAULT_SETUP_WEIGHTS as any)[k]).length;
       if (diff > 0) parts.push(`指数${diff}`);

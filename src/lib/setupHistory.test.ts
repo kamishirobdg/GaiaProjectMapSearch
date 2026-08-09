@@ -39,7 +39,7 @@ describe("setupHistoryId", () => {
     // UI 側はスプレッド構築で off/empty を省略する。省略済み入力と
     // 明示フィールド付き入力は別 id になる（だからこそ UI 側の省略が鉄則）。
     const omitted: BuildSetupInput = { seed: "1", playerCount: 4 };
-    const explicit: BuildSetupInput = { seed: "1", playerCount: 4, avoidRules: [] };
+    const explicit: BuildSetupInput = { seed: "1", playerCount: 4, tileRules: {} };
     expect(setupHistoryId(omitted)).not.toBe(setupHistoryId(explicit));
   });
 });

@@ -8,8 +8,6 @@
 
 import type { BuildSetupInput } from "@/gaia/setup/buildSetup";
 import type { TileRuleMode, TileRules } from "@/gaia/setup/tileRules";
-import { AVOID_RULES } from "@/gaia/setup/buildSetup";
-import { TECH_SHIP_IDS, type ShipId } from "@/gaia/setup/types";
 import { stableStringify } from "@/app/board/persistence";
 
 export function encodeSetupToken(input: BuildSetupInput): string {
@@ -40,30 +38,6 @@ export function decodeSetupToken(token: string): BuildSetupInput | null {
 
     const players = Number(raw.playerCount);
     const lf = raw.mode === "lostFleet";
-
-    const ruleIds = new Set(AVOID_RULES.map((r) => r.id));
-    const strArr = (v: unknown, ok: (s: string) => boolean): string[] =>
-      Array.isArray(v) ? v.map(String).filter(ok) : [];
-    const strMap = (v: unknown, ok: (k: string, s: string) => boolean): Record<string, string> => {
-      const out: Record<string, string> = {};
-      if (v && typeof v === "object") {
-        for (const [k, s] of Object.entries(v)) {
-          if (typeof s === "string" && ok(k, s)) out[k] = s;
-        }
-      }
-      return out;
-    };
-    const tileOk = (ruleId: string, tile: string) =>
-      AVOID_RULES.some((r) => r.id === ruleId && r.tileIds.includes(tile));
-    const shipOk = (s: string) => (TECH_SHIP_IDS as readonly string[]).includes(s);
-
-    const avoidRules = strArr(raw.avoidRules, (s) => ruleIds.has(s));
-    const forceRules = strArr(raw.forceRules, (s) => ruleIds.has(s));
-    const forceTileRules = strMap(raw.forceTileRules, tileOk);
-    const allowTileRules = strMap(raw.allowTileRules, tileOk);
-    const shipDistanceAvoid = strArr(raw.shipDistanceAvoid, shipOk) as ShipId[];
-    const shipDistanceForce = strArr(raw.shipDistanceForce, shipOk) as ShipId[];
-    const gold = raw.rebellionGoldFed;
     const ext = raw.extensionFaceMode;
     const econ = raw.econFaceMode;
 
@@ -93,13 +67,6 @@ export function decodeSetupToken(token: string): BuildSetupInput | null {
         ? { extensionFaceMode: ext }
         : {}),
       ...(lf && (econ === "A" || econ === "B") ? { econFaceMode: econ } : {}),
-      ...(avoidRules.length > 0 ? { avoidRules } : {}),
-      ...(forceRules.length > 0 ? { forceRules } : {}),
-      ...(Object.keys(forceTileRules).length > 0 ? { forceTileRules } : {}),
-      ...(Object.keys(allowTileRules).length > 0 ? { allowTileRules } : {}),
-      ...(lf && shipDistanceAvoid.length > 0 ? { shipDistanceAvoid } : {}),
-      ...(lf && shipDistanceForce.length > 0 ? { shipDistanceForce } : {}),
-      ...(lf && (gold === "avoid" || gold === "force") ? { rebellionGoldFed: gold } : {}),
       ...(Object.keys(tileRules).length > 0 ? { tileRules } : {}),
     };
   } catch {

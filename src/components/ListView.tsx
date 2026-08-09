@@ -1658,9 +1658,6 @@ export default function ListView() {
             {pinnedSetups.map((r) => {
               const path = `/setup?s=${encodeSetupToken(r.input)}`;
               const key = `setup:${r.id}`;
-              const nAvoid = r.input.avoidRules?.length ?? 0;
-              const nForce =
-                (r.input.forceRules?.length ?? 0) + Object.keys(r.input.forceTileRules ?? {}).length;
               return (
                 <div
                   key={r.id}
@@ -1682,9 +1679,6 @@ export default function ListView() {
                   <span>
                     {t.players}: {r.input.playerCount ?? 4}
                   </span>
-                  {nAvoid + nForce > 0 ? (
-                    <span style={{ opacity: 0.7 }}>⚙{nAvoid + nForce}</span>
-                  ) : null}
                   {r.used ? <span style={{ opacity: 0.7 }}>{t.used}</span> : null}
                   <span style={{ opacity: 0.55 }}>{fmtWhen(r.createdAt, lang)}</span>
                   <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>

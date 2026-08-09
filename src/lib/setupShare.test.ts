@@ -15,12 +15,7 @@ describe("setup share token", () => {
       mode: "lostFleet",
       extensionFaceMode: "vp25",
       econFaceMode: "A",
-      avoidRules: ["gaia-no-gaiaVp"],
-      forceTileRules: { "eco-no-resourceAction": "AT13" },
-      allowTileRules: { "terra-no-fedPass": "AT01" },
-      shipDistanceAvoid: ["tfmars"],
-      shipDistanceForce: ["eclipse"],
-      rebellionGoldFed: "force",
+      tileRules: { "std:nav": { TS8: "fix" } },
     };
     const decoded = decodeSetupToken(encodeSetupToken(input));
     expect(decoded).toEqual(input);
@@ -41,13 +36,13 @@ describe("setup share token", () => {
     expect(decodeSetupToken(encodeSetupToken({ seed: "" } as BuildSetupInput))).toBeNull();
   });
 
-  it("drops unknown rule ids, out-of-set tiles and LF-only fields in base mode", () => {
+  it("drops unknown/legacy fields not in BuildSetupInput", () => {
     const dirty = {
       seed: "1",
       playerCount: 4,
-      avoidRules: ["no-such-rule", "gaia-no-gaiaVp"],
-      forceTileRules: { "eco-no-resourceAction": "AT99" },
-      // base モードなので LF 専用フィールドは落ちる
+      // 旧「回避/強制」フィールドは型から消えたので、古い共有リンクに残っていても
+      // 復元後は無視される（既知フィールドだけを拾い直す decodeSetupToken の仕様）。
+      avoidRules: ["gaia-no-gaiaVp"],
       shipDistanceForce: ["eclipse"],
       rebellionGoldFed: "force",
     };
@@ -55,7 +50,6 @@ describe("setup share token", () => {
     expect(decodeSetupToken(tok)).toEqual({
       seed: "1",
       playerCount: 4,
-      avoidRules: ["gaia-no-gaiaVp"],
     });
   });
 });
