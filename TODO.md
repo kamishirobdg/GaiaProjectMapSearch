@@ -89,9 +89,12 @@
     「数える」系ではなく「建設したときのトリガー」系なので除外対象外 —
     ランティダ人が他プレイヤーの入植済みガイア惑星に鉱山を置いても発動する。
     以前はこれもTS2などと同じ扱いで除外してしまい、
-    `TECH_POSITION_WEIGHTS_BASE.TS7` の lantids が全列0のままになっている
-    （CSV反映時に引き継がれた誤り）。AT14（同じ「鉱山を建設するたび＋3VP」効果、
-    lantids:2）と平仄を合わせて、次のユーザーの値レビューで直す。
+    `TECH_POSITION_WEIGHTS_BASE.TS7` の lantids が全列0のままになっていた
+    （CSV反映時に引き継がれた誤り）。**2026-08-09 確認: 解消済み**——
+    `data/weights/tech_position_base.csv` の TS7 lantids 行は非ゼロ
+    （惑星5/航法7/人工知能9/ガイア9/経済9/科学5）になっており、
+    生成物（`techPositionWeights.ts`）との突合も全一致。4cfc789（スマホ編集ページの
+    差分403件反映）で解消されたとみられる。
   - バル・タック人は**航法を進められない**。深宇宙・宙域系（AT17/AT21/FS05/FS09/
     RB13/RS10/ART06）を全部マイナスにした。以前は1つも入っていなかった。
   - スペースジャイアントの「無料2段階改造＋鉱山建設」は**ラウンドごとに1回**（p10）。
@@ -497,17 +500,12 @@
 
 - **スカウトの船別色**（要判断）: 現状マーカーは惑星色で統一。船ごとに色を割り当てるか、
   どの船由来かはポップアップだけで示すか。
-- **種族別重みの値レビューはユーザー作業**（`src/gaia/eval/factionWeights.ts`）。
-  正規化は行わない方針（案C）で確定。編集用テーブルは `TILE_FACTION_WEIGHTS`（86タイル）
-  / `TECH_POSITION_WEIGHTS_BASE` / `TECH_POSITION_WEIGHTS_LF`
-  / `ROUND_SCORING_WEIGHTS_BASE` / `ROUND_SCORING_WEIGHTS_LF`。
-  カテゴリ単位の効き具合は画面の「評価指数」から（既定は standardTech 6 /
-  roundScoring 4 / 他 5）。**2026-08-02 時点で残っているのは3つ**:
-  - 拡張種族ぶんの更新（`TILE_FACTION_WEIGHTS` / `TECH_POSITION_WEIGHTS_LF`）
-  - `TECH_POSITION_WEIGHTS_BASE.TS7` の lantids（全列0のまま。AT14 に合わせて 2 程度）
-  - **ラウンド得点表のラウンド差**（`ROUND_SCORING_WEIGHTS_*`。いまは全ラウンド同値の
-    雛形。CSV で編集するなら `scripts/gen_round_scoring_table.py`）
-  こちらから触ると編集が衝突するので、依頼があるまで手を出さない。
+- **種族別重みの値レビューはユーザー作業**。正規化は行わない方針（案C）で確定。
+  **2026-08-03 の全カテゴリ VP 換算以降、`TILE_FACTION_WEIGHTS` /
+  `TECH_POSITION_WEIGHTS_BASE` 等は評価に使われなくなった**（雛形生成の入力として
+  残置のみ）。正本は `data/weights/*.csv`（手順は同ディレクトリの README.md）。
+  値の入力状況は上の「要フィードバック」を参照。こちらから触ると編集が衝突するので、
+  依頼があるまで手を出さない。
 
 ## 検討事項（着手前にユーザー確認）
 
