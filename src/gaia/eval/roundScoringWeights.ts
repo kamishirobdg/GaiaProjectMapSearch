@@ -28,84 +28,84 @@ export type RoundScoringTable = Record<
 export const ROUND_SCORING_WEIGHTS_BASE: RoundScoringTable = {
   // RS01 鉱山建設 +2VP
   RS01: [
-    { terrans: 5, lantids: 8, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 6, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5 }, // R1
-    { terrans: 5, lantids: 8, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 6, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5 }, // R2
-    { terrans: 5, lantids: 8, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 6, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5 }, // R3
-    { terrans: 5, lantids: 8, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 6, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5 }, // R4
-    { terrans: 5, lantids: 8, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 6, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5 }, // R5
-    { terrans: 5, lantids: 8, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 6, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5 }, // R6
+    { terrans: 5, lantids: 5, xenos: 3, gleens: 6, taklons: 3, ambas: 5, hadschHallas: 3, ivits: 6, geodens: 6, balTaks: 3, bescods: 5, nevlas: 3 }, // R1
+    { terrans: 3, lantids: 3, xenos: 3, gleens: 6, taklons: 3, ambas: 5, hadschHallas: 3, ivits: 6, geodens: 6, balTaks: 3, bescods: 5, nevlas: 3 }, // R2
+    { terrans: 10, lantids: 10, xenos: 10, gleens: 9, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 12, geodens: 12, balTaks: 10, firaks: 12, bescods: 10, nevlas: 10, itars: 10 }, // R3
+    { terrans: 10, lantids: 10, xenos: 10, gleens: 9, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 12, geodens: 12, balTaks: 10, firaks: 12, bescods: 10, nevlas: 10, itars: 10 }, // R4
+    { terrans: 10, lantids: 10, xenos: 10, gleens: 6, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 12, geodens: 12, balTaks: 10, firaks: 12, bescods: 10, nevlas: 10, itars: 10 }, // R5
+    { terrans: 10, lantids: 10, xenos: 10, gleens: 6, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 12, geodens: 12, balTaks: 10, firaks: 12, bescods: 10, nevlas: 10, itars: 10 }, // R6
   ],
   // RS02 交易所建設 +3VP
   RS02: [
-    { terrans: 5, lantids: 5, xenos: 5, gleens: 5, taklons: 6, ambas: 5, hadschHallas: 6, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 5, nevlas: 6, itars: 5 }, // R1
-    { terrans: 5, lantids: 5, xenos: 5, gleens: 5, taklons: 6, ambas: 5, hadschHallas: 6, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 5, nevlas: 6, itars: 5 }, // R2
-    { terrans: 5, lantids: 5, xenos: 5, gleens: 5, taklons: 6, ambas: 5, hadschHallas: 6, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 5, nevlas: 6, itars: 5 }, // R3
-    { terrans: 5, lantids: 5, xenos: 5, gleens: 5, taklons: 6, ambas: 5, hadschHallas: 6, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 5, nevlas: 6, itars: 5 }, // R4
-    { terrans: 5, lantids: 5, xenos: 5, gleens: 5, taklons: 6, ambas: 5, hadschHallas: 6, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 5, nevlas: 6, itars: 5 }, // R5
-    { terrans: 5, lantids: 5, xenos: 5, gleens: 5, taklons: 6, ambas: 5, hadschHallas: 6, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 5, nevlas: 6, itars: 5 }, // R6
+    { terrans: 3, lantids: 3, xenos: 3, gleens: 3, taklons: 3, ambas: 3, hadschHallas: 6, ivits: 6, geodens: 3, balTaks: 3, firaks: 6, bescods: 6, nevlas: 6, itars: 3 }, // R1
+    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 6, hadschHallas: 12, ivits: 3, geodens: 3, balTaks: 3, firaks: 3, bescods: 6, nevlas: 3, itars: 3 }, // R2
+    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 6, hadschHallas: 12, ivits: 6, geodens: 6, balTaks: 6, firaks: 3, bescods: 6, nevlas: 6, itars: 6 }, // R3
+    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 6, hadschHallas: 12, ivits: 6, geodens: 6, balTaks: 6, firaks: 3, bescods: 6, nevlas: 6, itars: 6 }, // R4
+    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 6, hadschHallas: 12, ivits: 6, geodens: 6, balTaks: 6, firaks: 6, bescods: 6, nevlas: 6, itars: 6 }, // R5
+    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 6, hadschHallas: 12, ivits: 6, geodens: 6, balTaks: 6, firaks: 9, bescods: 6, nevlas: 9, itars: 9 }, // R6
   ],
   // RS03 交易所建設 +4VP
   RS03: [
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 8, ambas: 6, hadschHallas: 8, ivits: 6, geodens: 6, balTaks: 6, firaks: 9, bescods: 6, nevlas: 8, itars: 6 }, // R1
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 8, ambas: 6, hadschHallas: 8, ivits: 6, geodens: 6, balTaks: 6, firaks: 9, bescods: 6, nevlas: 8, itars: 6 }, // R2
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 8, ambas: 6, hadschHallas: 8, ivits: 6, geodens: 6, balTaks: 6, firaks: 9, bescods: 6, nevlas: 8, itars: 6 }, // R3
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 8, ambas: 6, hadschHallas: 8, ivits: 6, geodens: 6, balTaks: 6, firaks: 9, bescods: 6, nevlas: 8, itars: 6 }, // R4
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 8, ambas: 6, hadschHallas: 8, ivits: 6, geodens: 6, balTaks: 6, firaks: 9, bescods: 6, nevlas: 8, itars: 6 }, // R5
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 8, ambas: 6, hadschHallas: 8, ivits: 6, geodens: 6, balTaks: 6, firaks: 9, bescods: 6, nevlas: 8, itars: 6 }, // R6
+    { terrans: 4, lantids: 4, xenos: 4, gleens: 4, taklons: 4, ambas: 4, hadschHallas: 8, ivits: 8, geodens: 4, balTaks: 4, firaks: 8, bescods: 8, nevlas: 8, itars: 4 }, // R1
+    { terrans: 8, lantids: 8, xenos: 8, gleens: 8, taklons: 8, ambas: 8, hadschHallas: 16, ivits: 4, geodens: 4, balTaks: 4, firaks: 4, bescods: 8, nevlas: 4, itars: 4 }, // R2
+    { terrans: 8, lantids: 8, xenos: 8, gleens: 8, taklons: 8, ambas: 8, hadschHallas: 16, ivits: 8, geodens: 8, balTaks: 8, firaks: 4, bescods: 8, nevlas: 8, itars: 8 }, // R3
+    { terrans: 8, lantids: 8, xenos: 8, gleens: 8, taklons: 8, ambas: 8, hadschHallas: 16, ivits: 8, geodens: 8, balTaks: 8, firaks: 4, bescods: 8, nevlas: 8, itars: 8 }, // R4
+    { terrans: 8, lantids: 8, xenos: 8, gleens: 8, taklons: 8, ambas: 8, hadschHallas: 16, ivits: 8, geodens: 8, balTaks: 8, firaks: 8, bescods: 8, nevlas: 8, itars: 8 }, // R5
+    { terrans: 8, lantids: 8, xenos: 8, gleens: 8, taklons: 8, ambas: 8, hadschHallas: 16, ivits: 8, geodens: 8, balTaks: 8, firaks: 12, bescods: 8, nevlas: 12, itars: 12 }, // R6
   ],
   // RS04 学院・惑星首府建設 +5VP ×2
   RS04: [
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 8, hadschHallas: 6, ivits: 6, geodens: 6, balTaks: 6, firaks: 6, bescods: 8, nevlas: 8, itars: 8 }, // R1
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 8, hadschHallas: 6, ivits: 6, geodens: 6, balTaks: 6, firaks: 6, bescods: 8, nevlas: 8, itars: 8 }, // R2
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 8, hadschHallas: 6, ivits: 6, geodens: 6, balTaks: 6, firaks: 6, bescods: 8, nevlas: 8, itars: 8 }, // R3
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 8, hadschHallas: 6, ivits: 6, geodens: 6, balTaks: 6, firaks: 6, bescods: 8, nevlas: 8, itars: 8 }, // R4
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 8, hadschHallas: 6, ivits: 6, geodens: 6, balTaks: 6, firaks: 6, bescods: 8, nevlas: 8, itars: 8 }, // R5
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 8, hadschHallas: 6, ivits: 6, geodens: 6, balTaks: 6, firaks: 6, bescods: 8, nevlas: 8, itars: 8 }, // R6
+    { terrans: 5, lantids: 5, xenos: 5, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5 }, // R1
+    { terrans: 5, lantids: 5, xenos: 5, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5 }, // R2
+    { terrans: 5, lantids: 5, xenos: 5, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5 }, // R3
+    { terrans: 10, lantids: 10, xenos: 10, gleens: 10, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 5, geodens: 10, balTaks: 10, firaks: 10, bescods: 10, nevlas: 10, itars: 10 }, // R4
+    { terrans: 10, lantids: 10, xenos: 10, gleens: 10, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 5, geodens: 10, balTaks: 10, firaks: 10, bescods: 10, nevlas: 10, itars: 10 }, // R5
+    { terrans: 10, lantids: 10, xenos: 10, gleens: 10, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 5, geodens: 10, balTaks: 10, firaks: 10, bescods: 10, nevlas: 10, itars: 10 }, // R6
   ],
   // RS05 ガイア惑星に鉱山建設 +3VP
   RS05: [
-    { terrans: 6, lantids: 4, xenos: 4, gleens: 6, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 4, balTaks: 5, firaks: 4, bescods: 4, nevlas: 4, itars: 6 }, // R1
-    { terrans: 6, lantids: 4, xenos: 4, gleens: 6, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 4, balTaks: 5, firaks: 4, bescods: 4, nevlas: 4, itars: 6 }, // R2
-    { terrans: 6, lantids: 4, xenos: 4, gleens: 6, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 4, balTaks: 5, firaks: 4, bescods: 4, nevlas: 4, itars: 6 }, // R3
-    { terrans: 6, lantids: 4, xenos: 4, gleens: 6, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 4, balTaks: 5, firaks: 4, bescods: 4, nevlas: 4, itars: 6 }, // R4
-    { terrans: 6, lantids: 4, xenos: 4, gleens: 6, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 4, balTaks: 5, firaks: 4, bescods: 4, nevlas: 4, itars: 6 }, // R5
-    { terrans: 6, lantids: 4, xenos: 4, gleens: 6, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 4, balTaks: 5, firaks: 4, bescods: 4, nevlas: 4, itars: 6 }, // R6
+    { terrans: 3, lantids: 3, xenos: 6, gleens: 9, taklons: 3, ambas: 3, hadschHallas: 3, ivits: 3, geodens: 3, balTaks: 3, firaks: 3, bescods: 3, nevlas: 3, itars: 3 }, // R1
+    { terrans: 9, lantids: 6, xenos: 6, gleens: 9, taklons: 6, ambas: 6, hadschHallas: 6, ivits: 9, geodens: 6, balTaks: 9, firaks: 6, bescods: 6, nevlas: 6, itars: 3 }, // R2
+    { terrans: 12, lantids: 6, xenos: 6, gleens: 12, taklons: 6, ambas: 6, hadschHallas: 6, ivits: 12, geodens: 6, balTaks: 12, firaks: 6, bescods: 6, nevlas: 6, itars: 6 }, // R3
+    { terrans: 12, lantids: 6, xenos: 9, gleens: 12, taklons: 6, ambas: 6, hadschHallas: 6, ivits: 12, geodens: 6, balTaks: 12, firaks: 6, bescods: 6, nevlas: 6, itars: 6 }, // R4
+    { terrans: 12, lantids: 6, xenos: 9, gleens: 12, taklons: 6, ambas: 6, hadschHallas: 6, ivits: 12, geodens: 6, balTaks: 12, firaks: 6, bescods: 6, nevlas: 6, itars: 6 }, // R5
+    { terrans: 9, lantids: 6, xenos: 9, gleens: 9, taklons: 6, ambas: 6, hadschHallas: 6, ivits: 9, geodens: 6, balTaks: 9, firaks: 6, bescods: 6, nevlas: 6, itars: 9 }, // R6
   ],
   // RS06 ガイア惑星に鉱山建設 +4VP
   RS06: [
-    { terrans: 8, lantids: 5, xenos: 5, gleens: 8, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 6, firaks: 5, bescods: 5, nevlas: 5, itars: 8 }, // R1
-    { terrans: 8, lantids: 5, xenos: 5, gleens: 8, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 6, firaks: 5, bescods: 5, nevlas: 5, itars: 8 }, // R2
-    { terrans: 8, lantids: 5, xenos: 5, gleens: 8, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 6, firaks: 5, bescods: 5, nevlas: 5, itars: 8 }, // R3
-    { terrans: 8, lantids: 5, xenos: 5, gleens: 8, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 6, firaks: 5, bescods: 5, nevlas: 5, itars: 8 }, // R4
-    { terrans: 8, lantids: 5, xenos: 5, gleens: 8, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 6, firaks: 5, bescods: 5, nevlas: 5, itars: 8 }, // R5
-    { terrans: 8, lantids: 5, xenos: 5, gleens: 8, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 6, firaks: 5, bescods: 5, nevlas: 5, itars: 8 }, // R6
+    { terrans: 4, lantids: 4, xenos: 8, gleens: 12, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 4, balTaks: 4, firaks: 4, bescods: 4, nevlas: 4, itars: 4 }, // R1
+    { terrans: 12, lantids: 8, xenos: 8, gleens: 12, taklons: 8, ambas: 8, hadschHallas: 8, ivits: 12, geodens: 8, balTaks: 12, firaks: 8, bescods: 8, nevlas: 8, itars: 4 }, // R2
+    { terrans: 16, lantids: 8, xenos: 8, gleens: 16, taklons: 8, ambas: 8, hadschHallas: 8, ivits: 16, geodens: 8, balTaks: 16, firaks: 8, bescods: 8, nevlas: 8, itars: 8 }, // R3
+    { terrans: 16, lantids: 8, xenos: 12, gleens: 16, taklons: 8, ambas: 8, hadschHallas: 8, ivits: 16, geodens: 8, balTaks: 16, firaks: 8, bescods: 8, nevlas: 8, itars: 8 }, // R4
+    { terrans: 16, lantids: 8, xenos: 12, gleens: 16, taklons: 8, ambas: 8, hadschHallas: 8, ivits: 16, geodens: 8, balTaks: 16, firaks: 8, bescods: 8, nevlas: 8, itars: 8 }, // R5
+    { terrans: 12, lantids: 8, xenos: 12, gleens: 12, taklons: 8, ambas: 8, hadschHallas: 8, ivits: 12, geodens: 8, balTaks: 12, firaks: 8, bescods: 8, nevlas: 8, itars: 12 }, // R6
   ],
   // RS07 研究1レベル +2VP
   RS07: [
-    { terrans: 5, lantids: 6, xenos: 5, gleens: 4, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 8, nevlas: 6, itars: 8 }, // R1
-    { terrans: 5, lantids: 6, xenos: 5, gleens: 4, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 8, nevlas: 6, itars: 8 }, // R2
-    { terrans: 5, lantids: 6, xenos: 5, gleens: 4, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 8, nevlas: 6, itars: 8 }, // R3
-    { terrans: 5, lantids: 6, xenos: 5, gleens: 4, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 8, nevlas: 6, itars: 8 }, // R4
-    { terrans: 5, lantids: 6, xenos: 5, gleens: 4, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 8, nevlas: 6, itars: 8 }, // R5
-    { terrans: 5, lantids: 6, xenos: 5, gleens: 4, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 8, nevlas: 6, itars: 8 }, // R6
+    { terrans: 4, lantids: 6, xenos: 8, gleens: 4, taklons: 8, ambas: 8, hadschHallas: 8, ivits: 8, geodens: 8, balTaks: 8, firaks: 6, bescods: 8, nevlas: 8, itars: 8 }, // R1
+    { terrans: 2, lantids: 6, xenos: 2, gleens: 2, taklons: 2, ambas: 2, hadschHallas: 2, ivits: 2, geodens: 5, balTaks: 2, firaks: 6, bescods: 4, nevlas: 2, itars: 2 }, // R2
+    { terrans: 2, lantids: 9, xenos: 4, gleens: 4, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 5, balTaks: 2, firaks: 6, bescods: 2, nevlas: 2, itars: 8 }, // R3
+    { terrans: 2, lantids: 9, xenos: 4, gleens: 4, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 5, balTaks: 2, firaks: 9, bescods: 6, nevlas: 6, itars: 8 }, // R4
+    { terrans: 4, lantids: 12, xenos: 6, gleens: 6, taklons: 6, ambas: 6, hadschHallas: 6, ivits: 6, geodens: 8, balTaks: 8, firaks: 12, bescods: 6, nevlas: 6, itars: 8 }, // R5
+    { terrans: 8, lantids: 12, xenos: 8, gleens: 8, taklons: 8, ambas: 8, hadschHallas: 8, ivits: 8, geodens: 10, balTaks: 8, firaks: 12, bescods: 8, nevlas: 8, itars: 8 }, // R6
   ],
   // RS08 同盟タイル獲得 +5VP
   RS08: [
-    { terrans: 5, lantids: 5, xenos: 8, gleens: 6, taklons: 5, ambas: 6, hadschHallas: 5, ivits: 8, geodens: 5, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5 }, // R1
-    { terrans: 5, lantids: 5, xenos: 8, gleens: 6, taklons: 5, ambas: 6, hadschHallas: 5, ivits: 8, geodens: 5, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5 }, // R2
-    { terrans: 5, lantids: 5, xenos: 8, gleens: 6, taklons: 5, ambas: 6, hadschHallas: 5, ivits: 8, geodens: 5, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5 }, // R3
-    { terrans: 5, lantids: 5, xenos: 8, gleens: 6, taklons: 5, ambas: 6, hadschHallas: 5, ivits: 8, geodens: 5, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5 }, // R4
-    { terrans: 5, lantids: 5, xenos: 8, gleens: 6, taklons: 5, ambas: 6, hadschHallas: 5, ivits: 8, geodens: 5, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5 }, // R5
-    { terrans: 5, lantids: 5, xenos: 8, gleens: 6, taklons: 5, ambas: 6, hadschHallas: 5, ivits: 8, geodens: 5, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5 }, // R6
+    { ivits: 5 }, // R1
+    { ivits: 5 }, // R2
+    { terrans: 4, lantids: 4, xenos: 5, gleens: 5, taklons: 4, ambas: 5, hadschHallas: 4, ivits: 5, geodens: 4, balTaks: 4, firaks: 4, bescods: 5, nevlas: 4, itars: 4 }, // R3
+    { terrans: 8, lantids: 8, xenos: 10, gleens: 10, taklons: 8, ambas: 10, hadschHallas: 8, ivits: 10, geodens: 8, balTaks: 8, firaks: 8, bescods: 10, nevlas: 8, itars: 8 }, // R4
+    { terrans: 11, lantids: 11, xenos: 15, gleens: 15, taklons: 11, ambas: 15, hadschHallas: 11, ivits: 15, geodens: 11, balTaks: 11, firaks: 11, bescods: 15, nevlas: 11, itars: 11 }, // R5
+    { terrans: 15, lantids: 15, xenos: 20, gleens: 20, taklons: 15, ambas: 20, hadschHallas: 15, ivits: 20, geodens: 15, balTaks: 15, firaks: 15, bescods: 20, nevlas: 15, itars: 15 }, // R6
   ],
   // RS09 惑星改造1段階 +2VP
   RS09: [
-    { terrans: 5, lantids: 5, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 8, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5 }, // R1
-    { terrans: 5, lantids: 5, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 8, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5 }, // R2
-    { terrans: 5, lantids: 5, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 8, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5 }, // R3
-    { terrans: 5, lantids: 5, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 8, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5 }, // R4
-    { terrans: 5, lantids: 5, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 8, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5 }, // R5
-    { terrans: 5, lantids: 5, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 8, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5 }, // R6
+    { terrans: 2, lantids: 2, xenos: 2, gleens: 2, taklons: 2, ambas: 2, hadschHallas: 2, ivits: 2, geodens: 4, balTaks: 2, firaks: 2, bescods: 2, nevlas: 2, itars: 2 }, // R1
+    { terrans: 2, lantids: 2, xenos: 2, gleens: 2, taklons: 2, ambas: 2, hadschHallas: 2, ivits: 2, geodens: 6, balTaks: 2, firaks: 2, bescods: 2, nevlas: 2, itars: 2 }, // R2
+    { terrans: 2, lantids: 2, xenos: 2, gleens: 2, taklons: 2, ambas: 2, hadschHallas: 2, ivits: 2, geodens: 8, balTaks: 2, firaks: 2, bescods: 2, nevlas: 2, itars: 2 }, // R3
+    { terrans: 4, lantids: 4, xenos: 4, gleens: 4, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 8, balTaks: 4, firaks: 4, bescods: 4, nevlas: 4, itars: 4 }, // R4
+    { terrans: 4, lantids: 4, xenos: 4, gleens: 4, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 8, balTaks: 4, firaks: 4, bescods: 4, nevlas: 4, itars: 4 }, // R5
+    { terrans: 4, lantids: 4, xenos: 4, gleens: 4, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 8, balTaks: 4, firaks: 4, bescods: 4, nevlas: 4, itars: 4 }, // R6
   ],
 };
 
@@ -113,84 +113,84 @@ export const ROUND_SCORING_WEIGHTS_BASE: RoundScoringTable = {
 export const ROUND_SCORING_WEIGHTS_LF: RoundScoringTable = {
   // RS01 鉱山建設 +2VP
   RS01: [
-    { terrans: 5, lantids: 8, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 6, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5, moweyds: 5, spaceGiants: 8, tinkerroids: 5, darkanians: 8 }, // R1
-    { terrans: 5, lantids: 8, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 6, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5, moweyds: 5, spaceGiants: 8, tinkerroids: 5, darkanians: 8 }, // R2
-    { terrans: 5, lantids: 8, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 6, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5, moweyds: 5, spaceGiants: 8, tinkerroids: 5, darkanians: 8 }, // R3
-    { terrans: 5, lantids: 8, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 6, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5, moweyds: 5, spaceGiants: 8, tinkerroids: 5, darkanians: 8 }, // R4
-    { terrans: 5, lantids: 8, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 6, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5, moweyds: 5, spaceGiants: 8, tinkerroids: 5, darkanians: 8 }, // R5
-    { terrans: 5, lantids: 8, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 6, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5, moweyds: 5, spaceGiants: 8, tinkerroids: 5, darkanians: 8 }, // R6
+    { terrans: 5, lantids: 5, xenos: 3, gleens: 6, taklons: 3, ambas: 5, hadschHallas: 3, ivits: 6, geodens: 6, balTaks: 3, bescods: 5, nevlas: 3, moweyds: 5, spaceGiants: 8, tinkerroids: 5, darkanians: 8 }, // R1
+    { terrans: 3, lantids: 3, xenos: 3, gleens: 6, taklons: 3, ambas: 5, hadschHallas: 3, ivits: 6, geodens: 6, balTaks: 3, bescods: 5, nevlas: 3, moweyds: 5, spaceGiants: 8, tinkerroids: 5, darkanians: 8 }, // R2
+    { terrans: 10, lantids: 10, xenos: 10, gleens: 9, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 12, geodens: 12, balTaks: 10, firaks: 12, bescods: 10, nevlas: 10, itars: 10, moweyds: 5, spaceGiants: 8, tinkerroids: 5, darkanians: 8 }, // R3
+    { terrans: 10, lantids: 10, xenos: 10, gleens: 9, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 12, geodens: 12, balTaks: 10, firaks: 12, bescods: 10, nevlas: 10, itars: 10, moweyds: 5, spaceGiants: 8, tinkerroids: 5, darkanians: 8 }, // R4
+    { terrans: 10, lantids: 10, xenos: 10, gleens: 6, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 12, geodens: 12, balTaks: 10, firaks: 12, bescods: 10, nevlas: 10, itars: 10, moweyds: 5, spaceGiants: 8, tinkerroids: 5, darkanians: 8 }, // R5
+    { terrans: 10, lantids: 10, xenos: 10, gleens: 6, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 12, geodens: 12, balTaks: 10, firaks: 12, bescods: 10, nevlas: 10, itars: 10, moweyds: 5, spaceGiants: 8, tinkerroids: 5, darkanians: 8 }, // R6
   ],
   // RS02 交易所建設 +3VP
   RS02: [
-    { terrans: 5, lantids: 5, xenos: 5, gleens: 5, taklons: 6, ambas: 5, hadschHallas: 6, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 5, nevlas: 6, itars: 5, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R1
-    { terrans: 5, lantids: 5, xenos: 5, gleens: 5, taklons: 6, ambas: 5, hadschHallas: 6, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 5, nevlas: 6, itars: 5, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R2
-    { terrans: 5, lantids: 5, xenos: 5, gleens: 5, taklons: 6, ambas: 5, hadschHallas: 6, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 5, nevlas: 6, itars: 5, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R3
-    { terrans: 5, lantids: 5, xenos: 5, gleens: 5, taklons: 6, ambas: 5, hadschHallas: 6, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 5, nevlas: 6, itars: 5, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R4
-    { terrans: 5, lantids: 5, xenos: 5, gleens: 5, taklons: 6, ambas: 5, hadschHallas: 6, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 5, nevlas: 6, itars: 5, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R5
-    { terrans: 5, lantids: 5, xenos: 5, gleens: 5, taklons: 6, ambas: 5, hadschHallas: 6, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 5, nevlas: 6, itars: 5, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R6
+    { terrans: 3, lantids: 3, xenos: 3, gleens: 3, taklons: 3, ambas: 3, hadschHallas: 6, ivits: 6, geodens: 3, balTaks: 3, firaks: 6, bescods: 6, nevlas: 6, itars: 3, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R1
+    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 6, hadschHallas: 12, ivits: 3, geodens: 3, balTaks: 3, firaks: 3, bescods: 6, nevlas: 3, itars: 3, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R2
+    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 6, hadschHallas: 12, ivits: 6, geodens: 6, balTaks: 6, firaks: 3, bescods: 6, nevlas: 6, itars: 6, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R3
+    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 6, hadschHallas: 12, ivits: 6, geodens: 6, balTaks: 6, firaks: 3, bescods: 6, nevlas: 6, itars: 6, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R4
+    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 6, hadschHallas: 12, ivits: 6, geodens: 6, balTaks: 6, firaks: 6, bescods: 6, nevlas: 6, itars: 6, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R5
+    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 6, hadschHallas: 12, ivits: 6, geodens: 6, balTaks: 6, firaks: 9, bescods: 6, nevlas: 9, itars: 9, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R6
   ],
   // RS03 交易所建設 +4VP
   RS03: [
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 8, ambas: 6, hadschHallas: 8, ivits: 6, geodens: 6, balTaks: 6, firaks: 9, bescods: 6, nevlas: 8, itars: 6, moweyds: 6, spaceGiants: 6, tinkerroids: 6, darkanians: 6 }, // R1
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 8, ambas: 6, hadschHallas: 8, ivits: 6, geodens: 6, balTaks: 6, firaks: 9, bescods: 6, nevlas: 8, itars: 6, moweyds: 6, spaceGiants: 6, tinkerroids: 6, darkanians: 6 }, // R2
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 8, ambas: 6, hadschHallas: 8, ivits: 6, geodens: 6, balTaks: 6, firaks: 9, bescods: 6, nevlas: 8, itars: 6, moweyds: 6, spaceGiants: 6, tinkerroids: 6, darkanians: 6 }, // R3
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 8, ambas: 6, hadschHallas: 8, ivits: 6, geodens: 6, balTaks: 6, firaks: 9, bescods: 6, nevlas: 8, itars: 6, moweyds: 6, spaceGiants: 6, tinkerroids: 6, darkanians: 6 }, // R4
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 8, ambas: 6, hadschHallas: 8, ivits: 6, geodens: 6, balTaks: 6, firaks: 9, bescods: 6, nevlas: 8, itars: 6, moweyds: 6, spaceGiants: 6, tinkerroids: 6, darkanians: 6 }, // R5
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 8, ambas: 6, hadschHallas: 8, ivits: 6, geodens: 6, balTaks: 6, firaks: 9, bescods: 6, nevlas: 8, itars: 6, moweyds: 6, spaceGiants: 6, tinkerroids: 6, darkanians: 6 }, // R6
+    { terrans: 4, lantids: 4, xenos: 4, gleens: 4, taklons: 4, ambas: 4, hadschHallas: 8, ivits: 8, geodens: 4, balTaks: 4, firaks: 8, bescods: 8, nevlas: 8, itars: 4, moweyds: 7, spaceGiants: 7, tinkerroids: 7, darkanians: 7 }, // R1
+    { terrans: 8, lantids: 8, xenos: 8, gleens: 8, taklons: 8, ambas: 8, hadschHallas: 16, ivits: 4, geodens: 4, balTaks: 4, firaks: 4, bescods: 8, nevlas: 4, itars: 4, moweyds: 7, spaceGiants: 7, tinkerroids: 7, darkanians: 7 }, // R2
+    { terrans: 8, lantids: 8, xenos: 8, gleens: 8, taklons: 8, ambas: 8, hadschHallas: 16, ivits: 8, geodens: 8, balTaks: 8, firaks: 4, bescods: 8, nevlas: 8, itars: 8, moweyds: 7, spaceGiants: 7, tinkerroids: 7, darkanians: 7 }, // R3
+    { terrans: 8, lantids: 8, xenos: 8, gleens: 8, taklons: 8, ambas: 8, hadschHallas: 16, ivits: 8, geodens: 8, balTaks: 8, firaks: 4, bescods: 8, nevlas: 8, itars: 8, moweyds: 7, spaceGiants: 7, tinkerroids: 7, darkanians: 7 }, // R4
+    { terrans: 8, lantids: 8, xenos: 8, gleens: 8, taklons: 8, ambas: 8, hadschHallas: 16, ivits: 8, geodens: 8, balTaks: 8, firaks: 8, bescods: 8, nevlas: 8, itars: 8, moweyds: 7, spaceGiants: 7, tinkerroids: 7, darkanians: 7 }, // R5
+    { terrans: 8, lantids: 8, xenos: 8, gleens: 8, taklons: 8, ambas: 8, hadschHallas: 16, ivits: 8, geodens: 8, balTaks: 8, firaks: 12, bescods: 8, nevlas: 12, itars: 12, moweyds: 7, spaceGiants: 7, tinkerroids: 7, darkanians: 7 }, // R6
   ],
   // RS04 学院・惑星首府建設 +5VP ×2
   RS04: [
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 8, hadschHallas: 6, ivits: 6, geodens: 6, balTaks: 6, firaks: 6, bescods: 8, nevlas: 8, itars: 8, moweyds: 6, spaceGiants: 6, tinkerroids: 4, darkanians: 6 }, // R1
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 8, hadschHallas: 6, ivits: 6, geodens: 6, balTaks: 6, firaks: 6, bescods: 8, nevlas: 8, itars: 8, moweyds: 6, spaceGiants: 6, tinkerroids: 4, darkanians: 6 }, // R2
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 8, hadschHallas: 6, ivits: 6, geodens: 6, balTaks: 6, firaks: 6, bescods: 8, nevlas: 8, itars: 8, moweyds: 6, spaceGiants: 6, tinkerroids: 4, darkanians: 6 }, // R3
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 8, hadschHallas: 6, ivits: 6, geodens: 6, balTaks: 6, firaks: 6, bescods: 8, nevlas: 8, itars: 8, moweyds: 6, spaceGiants: 6, tinkerroids: 4, darkanians: 6 }, // R4
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 8, hadschHallas: 6, ivits: 6, geodens: 6, balTaks: 6, firaks: 6, bescods: 8, nevlas: 8, itars: 8, moweyds: 6, spaceGiants: 6, tinkerroids: 4, darkanians: 6 }, // R5
-    { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 8, hadschHallas: 6, ivits: 6, geodens: 6, balTaks: 6, firaks: 6, bescods: 8, nevlas: 8, itars: 8, moweyds: 6, spaceGiants: 6, tinkerroids: 4, darkanians: 6 }, // R6
+    { terrans: 5, lantids: 5, xenos: 5, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5, moweyds: 6, spaceGiants: 6, tinkerroids: 4, darkanians: 6 }, // R1
+    { terrans: 5, lantids: 5, xenos: 5, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5, moweyds: 6, spaceGiants: 6, tinkerroids: 4, darkanians: 6 }, // R2
+    { terrans: 5, lantids: 5, xenos: 5, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5, moweyds: 6, spaceGiants: 6, tinkerroids: 4, darkanians: 6 }, // R3
+    { terrans: 10, lantids: 10, xenos: 10, gleens: 10, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 5, geodens: 10, balTaks: 10, firaks: 10, bescods: 10, nevlas: 10, itars: 10, moweyds: 6, spaceGiants: 6, tinkerroids: 4, darkanians: 6 }, // R4
+    { terrans: 10, lantids: 10, xenos: 10, gleens: 10, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 5, geodens: 10, balTaks: 10, firaks: 10, bescods: 10, nevlas: 10, itars: 10, moweyds: 6, spaceGiants: 6, tinkerroids: 4, darkanians: 6 }, // R5
+    { terrans: 10, lantids: 10, xenos: 10, gleens: 10, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 5, geodens: 10, balTaks: 10, firaks: 10, bescods: 10, nevlas: 10, itars: 10, moweyds: 6, spaceGiants: 6, tinkerroids: 4, darkanians: 6 }, // R6
   ],
   // RS05 ガイア惑星に鉱山建設 +3VP
   RS05: [
-    { terrans: 6, lantids: 4, xenos: 4, gleens: 6, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 4, balTaks: 5, firaks: 4, bescods: 4, nevlas: 4, itars: 6, moweyds: 4, spaceGiants: 3, tinkerroids: 3, darkanians: 3 }, // R1
-    { terrans: 6, lantids: 4, xenos: 4, gleens: 6, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 4, balTaks: 5, firaks: 4, bescods: 4, nevlas: 4, itars: 6, moweyds: 4, spaceGiants: 3, tinkerroids: 3, darkanians: 3 }, // R2
-    { terrans: 6, lantids: 4, xenos: 4, gleens: 6, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 4, balTaks: 5, firaks: 4, bescods: 4, nevlas: 4, itars: 6, moweyds: 4, spaceGiants: 3, tinkerroids: 3, darkanians: 3 }, // R3
-    { terrans: 6, lantids: 4, xenos: 4, gleens: 6, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 4, balTaks: 5, firaks: 4, bescods: 4, nevlas: 4, itars: 6, moweyds: 4, spaceGiants: 3, tinkerroids: 3, darkanians: 3 }, // R4
-    { terrans: 6, lantids: 4, xenos: 4, gleens: 6, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 4, balTaks: 5, firaks: 4, bescods: 4, nevlas: 4, itars: 6, moweyds: 4, spaceGiants: 3, tinkerroids: 3, darkanians: 3 }, // R5
-    { terrans: 6, lantids: 4, xenos: 4, gleens: 6, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 4, balTaks: 5, firaks: 4, bescods: 4, nevlas: 4, itars: 6, moweyds: 4, spaceGiants: 3, tinkerroids: 3, darkanians: 3 }, // R6
+    { terrans: 3, lantids: 3, xenos: 6, gleens: 9, taklons: 3, ambas: 3, hadschHallas: 3, ivits: 3, geodens: 3, balTaks: 3, firaks: 3, bescods: 3, nevlas: 3, itars: 3, moweyds: 4, spaceGiants: 3, tinkerroids: 3, darkanians: 3 }, // R1
+    { terrans: 9, lantids: 6, xenos: 6, gleens: 9, taklons: 6, ambas: 6, hadschHallas: 6, ivits: 9, geodens: 6, balTaks: 9, firaks: 6, bescods: 6, nevlas: 6, itars: 3, moweyds: 4, spaceGiants: 3, tinkerroids: 3, darkanians: 3 }, // R2
+    { terrans: 12, lantids: 6, xenos: 6, gleens: 12, taklons: 6, ambas: 6, hadschHallas: 6, ivits: 12, geodens: 6, balTaks: 12, firaks: 6, bescods: 6, nevlas: 6, itars: 6, moweyds: 4, spaceGiants: 3, tinkerroids: 3, darkanians: 3 }, // R3
+    { terrans: 12, lantids: 6, xenos: 9, gleens: 12, taklons: 6, ambas: 6, hadschHallas: 6, ivits: 12, geodens: 6, balTaks: 12, firaks: 6, bescods: 6, nevlas: 6, itars: 6, moweyds: 4, spaceGiants: 3, tinkerroids: 3, darkanians: 3 }, // R4
+    { terrans: 12, lantids: 6, xenos: 9, gleens: 12, taklons: 6, ambas: 6, hadschHallas: 6, ivits: 12, geodens: 6, balTaks: 12, firaks: 6, bescods: 6, nevlas: 6, itars: 6, moweyds: 4, spaceGiants: 3, tinkerroids: 3, darkanians: 3 }, // R5
+    { terrans: 9, lantids: 6, xenos: 9, gleens: 9, taklons: 6, ambas: 6, hadschHallas: 6, ivits: 9, geodens: 6, balTaks: 9, firaks: 6, bescods: 6, nevlas: 6, itars: 9, moweyds: 4, spaceGiants: 3, tinkerroids: 3, darkanians: 3 }, // R6
   ],
   // RS06 ガイア惑星に鉱山建設 +4VP
   RS06: [
-    { terrans: 8, lantids: 5, xenos: 5, gleens: 8, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 6, firaks: 5, bescods: 5, nevlas: 5, itars: 8, moweyds: 5, spaceGiants: 4, tinkerroids: 4, darkanians: 4 }, // R1
-    { terrans: 8, lantids: 5, xenos: 5, gleens: 8, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 6, firaks: 5, bescods: 5, nevlas: 5, itars: 8, moweyds: 5, spaceGiants: 4, tinkerroids: 4, darkanians: 4 }, // R2
-    { terrans: 8, lantids: 5, xenos: 5, gleens: 8, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 6, firaks: 5, bescods: 5, nevlas: 5, itars: 8, moweyds: 5, spaceGiants: 4, tinkerroids: 4, darkanians: 4 }, // R3
-    { terrans: 8, lantids: 5, xenos: 5, gleens: 8, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 6, firaks: 5, bescods: 5, nevlas: 5, itars: 8, moweyds: 5, spaceGiants: 4, tinkerroids: 4, darkanians: 4 }, // R4
-    { terrans: 8, lantids: 5, xenos: 5, gleens: 8, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 6, firaks: 5, bescods: 5, nevlas: 5, itars: 8, moweyds: 5, spaceGiants: 4, tinkerroids: 4, darkanians: 4 }, // R5
-    { terrans: 8, lantids: 5, xenos: 5, gleens: 8, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 6, firaks: 5, bescods: 5, nevlas: 5, itars: 8, moweyds: 5, spaceGiants: 4, tinkerroids: 4, darkanians: 4 }, // R6
+    { terrans: 4, lantids: 4, xenos: 8, gleens: 12, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 4, balTaks: 4, firaks: 4, bescods: 4, nevlas: 4, itars: 4, moweyds: 5, spaceGiants: 4, tinkerroids: 4, darkanians: 4 }, // R1
+    { terrans: 12, lantids: 8, xenos: 8, gleens: 12, taklons: 8, ambas: 8, hadschHallas: 8, ivits: 12, geodens: 8, balTaks: 12, firaks: 8, bescods: 8, nevlas: 8, itars: 4, moweyds: 5, spaceGiants: 4, tinkerroids: 4, darkanians: 4 }, // R2
+    { terrans: 16, lantids: 8, xenos: 8, gleens: 16, taklons: 8, ambas: 8, hadschHallas: 8, ivits: 16, geodens: 8, balTaks: 16, firaks: 8, bescods: 8, nevlas: 8, itars: 8, moweyds: 5, spaceGiants: 4, tinkerroids: 4, darkanians: 4 }, // R3
+    { terrans: 16, lantids: 8, xenos: 12, gleens: 16, taklons: 8, ambas: 8, hadschHallas: 8, ivits: 16, geodens: 8, balTaks: 16, firaks: 8, bescods: 8, nevlas: 8, itars: 8, moweyds: 5, spaceGiants: 4, tinkerroids: 4, darkanians: 4 }, // R4
+    { terrans: 16, lantids: 8, xenos: 12, gleens: 16, taklons: 8, ambas: 8, hadschHallas: 8, ivits: 16, geodens: 8, balTaks: 16, firaks: 8, bescods: 8, nevlas: 8, itars: 8, moweyds: 5, spaceGiants: 4, tinkerroids: 4, darkanians: 4 }, // R5
+    { terrans: 12, lantids: 8, xenos: 12, gleens: 12, taklons: 8, ambas: 8, hadschHallas: 8, ivits: 12, geodens: 8, balTaks: 12, firaks: 8, bescods: 8, nevlas: 8, itars: 12, moweyds: 5, spaceGiants: 4, tinkerroids: 4, darkanians: 4 }, // R6
   ],
   // RS07 研究1レベル +2VP
   RS07: [
-    { terrans: 5, lantids: 6, xenos: 5, gleens: 4, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 8, nevlas: 6, itars: 8, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R1
-    { terrans: 5, lantids: 6, xenos: 5, gleens: 4, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 8, nevlas: 6, itars: 8, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R2
-    { terrans: 5, lantids: 6, xenos: 5, gleens: 4, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 8, nevlas: 6, itars: 8, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R3
-    { terrans: 5, lantids: 6, xenos: 5, gleens: 4, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 8, nevlas: 6, itars: 8, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R4
-    { terrans: 5, lantids: 6, xenos: 5, gleens: 4, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 8, nevlas: 6, itars: 8, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R5
-    { terrans: 5, lantids: 6, xenos: 5, gleens: 4, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 5, balTaks: 5, firaks: 8, bescods: 8, nevlas: 6, itars: 8, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R6
+    { terrans: 4, lantids: 6, xenos: 8, gleens: 4, taklons: 8, ambas: 8, hadschHallas: 8, ivits: 8, geodens: 8, balTaks: 8, firaks: 6, bescods: 8, nevlas: 8, itars: 8, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R1
+    { terrans: 2, lantids: 6, xenos: 2, gleens: 2, taklons: 2, ambas: 2, hadschHallas: 2, ivits: 2, geodens: 5, balTaks: 2, firaks: 6, bescods: 4, nevlas: 2, itars: 2, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R2
+    { terrans: 2, lantids: 9, xenos: 4, gleens: 4, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 5, balTaks: 2, firaks: 6, bescods: 2, nevlas: 2, itars: 8, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R3
+    { terrans: 2, lantids: 9, xenos: 4, gleens: 4, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 5, balTaks: 2, firaks: 9, bescods: 6, nevlas: 6, itars: 8, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R4
+    { terrans: 4, lantids: 12, xenos: 6, gleens: 6, taklons: 6, ambas: 6, hadschHallas: 6, ivits: 6, geodens: 8, balTaks: 8, firaks: 12, bescods: 6, nevlas: 6, itars: 8, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R5
+    { terrans: 8, lantids: 12, xenos: 8, gleens: 8, taklons: 8, ambas: 8, hadschHallas: 8, ivits: 8, geodens: 10, balTaks: 8, firaks: 12, bescods: 8, nevlas: 8, itars: 8, moweyds: 5, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R6
   ],
   // RS08 同盟タイル獲得 +5VP
   RS08: [
-    { terrans: 5, lantids: 5, xenos: 8, gleens: 6, taklons: 5, ambas: 6, hadschHallas: 5, ivits: 8, geodens: 5, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5, moweyds: 6, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R1
-    { terrans: 5, lantids: 5, xenos: 8, gleens: 6, taklons: 5, ambas: 6, hadschHallas: 5, ivits: 8, geodens: 5, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5, moweyds: 6, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R2
-    { terrans: 5, lantids: 5, xenos: 8, gleens: 6, taklons: 5, ambas: 6, hadschHallas: 5, ivits: 8, geodens: 5, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5, moweyds: 6, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R3
-    { terrans: 5, lantids: 5, xenos: 8, gleens: 6, taklons: 5, ambas: 6, hadschHallas: 5, ivits: 8, geodens: 5, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5, moweyds: 6, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R4
-    { terrans: 5, lantids: 5, xenos: 8, gleens: 6, taklons: 5, ambas: 6, hadschHallas: 5, ivits: 8, geodens: 5, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5, moweyds: 6, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R5
-    { terrans: 5, lantids: 5, xenos: 8, gleens: 6, taklons: 5, ambas: 6, hadschHallas: 5, ivits: 8, geodens: 5, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5, moweyds: 6, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R6
+    { ivits: 5, moweyds: 6, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R1
+    { ivits: 5, moweyds: 6, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R2
+    { terrans: 4, lantids: 4, xenos: 5, gleens: 5, taklons: 4, ambas: 5, hadschHallas: 4, ivits: 5, geodens: 4, balTaks: 4, firaks: 4, bescods: 5, nevlas: 4, itars: 4, moweyds: 6, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R3
+    { terrans: 8, lantids: 8, xenos: 10, gleens: 10, taklons: 8, ambas: 10, hadschHallas: 8, ivits: 10, geodens: 8, balTaks: 8, firaks: 8, bescods: 10, nevlas: 8, itars: 8, moweyds: 6, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R4
+    { terrans: 11, lantids: 11, xenos: 15, gleens: 15, taklons: 11, ambas: 15, hadschHallas: 11, ivits: 15, geodens: 11, balTaks: 11, firaks: 11, bescods: 15, nevlas: 11, itars: 11, moweyds: 6, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R5
+    { terrans: 15, lantids: 15, xenos: 20, gleens: 20, taklons: 15, ambas: 20, hadschHallas: 15, ivits: 20, geodens: 15, balTaks: 15, firaks: 15, bescods: 20, nevlas: 15, itars: 15, moweyds: 6, spaceGiants: 5, tinkerroids: 5, darkanians: 5 }, // R6
   ],
   // RS09 惑星改造1段階 +2VP
   RS09: [
-    { terrans: 5, lantids: 5, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 8, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5, moweyds: 6, spaceGiants: 8, tinkerroids: 6, darkanians: 4 }, // R1
-    { terrans: 5, lantids: 5, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 8, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5, moweyds: 6, spaceGiants: 8, tinkerroids: 6, darkanians: 4 }, // R2
-    { terrans: 5, lantids: 5, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 8, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5, moweyds: 6, spaceGiants: 8, tinkerroids: 6, darkanians: 4 }, // R3
-    { terrans: 5, lantids: 5, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 8, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5, moweyds: 6, spaceGiants: 8, tinkerroids: 6, darkanians: 4 }, // R4
-    { terrans: 5, lantids: 5, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 8, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5, moweyds: 6, spaceGiants: 8, tinkerroids: 6, darkanians: 4 }, // R5
-    { terrans: 5, lantids: 5, xenos: 6, gleens: 5, taklons: 5, ambas: 5, hadschHallas: 5, ivits: 5, geodens: 8, balTaks: 5, firaks: 5, bescods: 5, nevlas: 5, itars: 5, moweyds: 6, spaceGiants: 8, tinkerroids: 6, darkanians: 4 }, // R6
+    { terrans: 2, lantids: 2, xenos: 2, gleens: 2, taklons: 2, ambas: 2, hadschHallas: 2, ivits: 2, geodens: 4, balTaks: 2, firaks: 2, bescods: 2, nevlas: 2, itars: 2, moweyds: 6, spaceGiants: 8, tinkerroids: 6, darkanians: 4 }, // R1
+    { terrans: 2, lantids: 2, xenos: 2, gleens: 2, taklons: 2, ambas: 2, hadschHallas: 2, ivits: 2, geodens: 6, balTaks: 2, firaks: 2, bescods: 2, nevlas: 2, itars: 2, moweyds: 6, spaceGiants: 8, tinkerroids: 6, darkanians: 4 }, // R2
+    { terrans: 2, lantids: 2, xenos: 2, gleens: 2, taklons: 2, ambas: 2, hadschHallas: 2, ivits: 2, geodens: 8, balTaks: 2, firaks: 2, bescods: 2, nevlas: 2, itars: 2, moweyds: 6, spaceGiants: 8, tinkerroids: 6, darkanians: 4 }, // R3
+    { terrans: 4, lantids: 4, xenos: 4, gleens: 4, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 8, balTaks: 4, firaks: 4, bescods: 4, nevlas: 4, itars: 4, moweyds: 6, spaceGiants: 8, tinkerroids: 6, darkanians: 4 }, // R4
+    { terrans: 4, lantids: 4, xenos: 4, gleens: 4, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 8, balTaks: 4, firaks: 4, bescods: 4, nevlas: 4, itars: 4, moweyds: 6, spaceGiants: 8, tinkerroids: 6, darkanians: 4 }, // R5
+    { terrans: 4, lantids: 4, xenos: 4, gleens: 4, taklons: 4, ambas: 4, hadschHallas: 4, ivits: 4, geodens: 8, balTaks: 4, firaks: 4, bescods: 4, nevlas: 4, itars: 4, moweyds: 6, spaceGiants: 8, tinkerroids: 6, darkanians: 4 }, // R6
   ],
   // RS10 未入植の宙域で鉱山建設 +3VP
   RS10: [
