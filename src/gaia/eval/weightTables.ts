@@ -72,6 +72,12 @@ export type WeightTableMeta = {
     faction: FactionId,
     lf: boolean,
   ) => number | undefined;
+  /**
+   * 拡張版だけ素点が違うタイルの比（拡張版 ÷ 通常版）。`gen_*_table.py` の
+   * `TILE_VP_LF` に対応する。通常版の値を拡張版へコピーするときに掛ける
+   * （`scripts/copy_base_to_lf.py` と同じ扱い）。
+   */
+  lfVpRatio?: (tileId: string) => number;
   /** 画面に出す注意書き（自動で追随する枠など）。 */
   noteJa?: string;
   noteEn?: string;
@@ -218,6 +224,9 @@ export const WEIGHT_TABLES: WeightTableMeta[] = [
       (lf ? TECH_POSITION_WEIGHTS_LF : TECH_POSITION_WEIGHTS_BASE)[tileId]?.[
         axisKey as ResearchTrackId
       ]?.[faction],
+    // TS3（首府・学院のパワー値4）だけ拡張版の素点が高い（12 → 14）。
+    // 金枠同盟と LF船 のぶん、同盟1つの価値が通常版より大きいため。
+    lfVpRatio: (tileId) => (tileId === "TS3" ? 14 / 12 : 1),
     noteJa: "フリー枠は6列の最大値を自動で使う（データに持たない）。",
     noteEn: "The free slot auto-uses the max of the six tracks (not stored).",
   },

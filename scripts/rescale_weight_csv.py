@@ -131,7 +131,8 @@ def main():
                 v = int(row[c])
             except ValueError:
                 continue
-            scaled = max(1, round(v * new / old))
+            # 0（その列では取りに行けない）は 0 のまま。max(1,..) を通すと 1 に化ける。
+            scaled = 0 if v == 0 else max(1, round(v * new / old))
             before.setdefault(tid, []).append(v)
             after.setdefault(tid, []).append(scaled)
             if scaled != v:

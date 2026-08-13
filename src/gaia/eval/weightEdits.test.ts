@@ -24,6 +24,8 @@ import {
   finalValueOf,
   formatDiffs,
   matrixKey,
+  sameAsBase,
+  scaleToLf,
   storedBaseOf,
   storedValue,
   type WeightEdits,
@@ -180,5 +182,50 @@ describe("weightEdits", () => {
     const diffs = collectDiffs(e);
     expect(diffs.length).toBeGreaterThan(0);
     expect(diffs.every((d) => d.lf)).toBe(true);
+  });
+});
+
+// 「通常版と同じ値」の印（2026-08-14）。拡張版を通常版で上書きしたセルを
+// 見分けるためのもので、拡張版として見直したら外れることが要点。
+describe("sameAsBase", () => {
+  it("0 は 0 のまま拡張版へ渡る（素点比を掛けるタイルでも）", () => {
+    // 0 は「その列では取りに行けない」。max(1,..) を通して 1 に化けてはいけない。
+    expect(scaleToLf(standard, "TS3", 0)).toBe(0);
+    expect(standard.lfVpRatio?.("TS3")).toBeGreaterThan(1);
+  });
+
+  it("素点が版で違うタイルは比を掛けた値が「通常版と同じ」の基準になる", () => {
+    const ratio = standard.lfVpRatio?.("TS3") ?? 1;
+    expect(scaleToLf(standard, "TS3", 12)).toBe(Math.round(12 * ratio));
+    // 比を持たないタイルは素通し
+    expect(scaleToLf(standard, "TS1", 12)).toBe(12);
+  });
+
+  it("拡張だけのタイル・種族・軸は判定しない（コピー元が無いため）", () => {
+    const f = factionsFor(false)[0];
+    // 拡張だけの種族
+    expect(sameAsBase(advanced, EMPTY_EDITS, "AT01", "nav", "moweyds")).toBe(false);
+    // 拡張だけの軸（得点ボード拡張部の面）
+    expect(sameAsBase(advanced, EMPTY_EDITS, "AT01", "vp25", f.id)).toBe(false);
+    // 拡張だけのタイル
+    const baseIds = new Set(advanced.tiles(false).map((t) => t.id));
+    const lfOnly = advanced.tiles(true).find((t) => !baseIds.has(t.id));
+    expect(lfOnly).toBeDefined();
+    expect(sameAsBase(advanced, EMPTY_EDITS, lfOnly!.id, "nav", f.id)).toBe(false);
+  });
+
+  it("拡張版の値を動かすと「通常版と同じ」ではなくなる", () => {
+    const f = factionsFor(false)[0];
+    const tile = advanced.tiles(false)[0];
+    const before = sameAsBase(advanced, EMPTY_EDITS, tile.id, "nav", f.id);
+    const e = edits({
+      cell: { [cellKey("advanced_tech", true, tile.id, "nav", f.id)]: 0 },
+      base: { [baseKey("advanced_tech", true, tile.id, f.id)]: 30 },
+    });
+    // 通常版側が 0 でなければ、拡張版を 0 にすれば必ず外れる
+    if (finalValueOf(advanced, EMPTY_EDITS, false, tile.id, "nav", f.id) > 0) {
+      expect(sameAsBase(advanced, e, tile.id, "nav", f.id)).toBe(false);
+    }
+    expect(typeof before).toBe("boolean");
   });
 });

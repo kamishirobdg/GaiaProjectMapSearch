@@ -24,6 +24,7 @@ import {
   EMPTY_EDITS,
   MULTIPLIERS,
   baseKey,
+  baseSameAsBase,
   baseValueOf,
   cellKey,
   collectDiffs,
@@ -31,6 +32,8 @@ import {
   formatDiffs,
   matrixKey,
   rawMultiplierOf,
+  sameAsBase,
+  scaleToLf,
   storedValue,
   type WeightEdits,
 } from "@/gaia/eval/weightEdits";
@@ -53,6 +56,12 @@ const CELL_W = 40;
 const BASE_W = 30;
 /** グリッドのセル共通。枠線を幅へ含めないと列の合計が合わない。 */
 const BORDER_BOX: React.CSSProperties = { boxSizing: "border-box" };
+
+/**
+ * 拡張版で「通常版と同じ値」＝コピーしてきたまま見直していないセルの地色
+ * （2026-08-14 追加）。選択の青・変更の緑と混ざらない橙にしてある。
+ */
+const COPIED_BG = "#fff3e0";
 
 /** 行の左端に出す母星色（SetupView の色帯と同じ系統）。 */
 const HOME_BG: Record<string, string> = {
@@ -211,11 +220,13 @@ export default function WeightsEditor() {
     const copyAxisKeys = meta.axes(false).map((a) => a.key);
     for (const t of commonTiles) {
       for (const f of commonFactions) {
-        const baseVp = baseValueOf(meta, edits, false, t.id, f.id);
+        // 素点が版で違うタイル（TS3）は比を掛ける。倍率は基準値との比なので不変。
+        const baseVp = scaleToLf(meta, t.id, baseValueOf(meta, edits, false, t.id, f.id));
         nextBase[baseKey(tableId, true, t.id, f.id)] = baseVp;
         for (const axisKey of copyAxisKeys) {
           const baseFinal = finalValueOf(meta, edits, false, t.id, axisKey, f.id);
-          const mul = baseVp === 0 ? 0 : Math.round((baseFinal / baseVp) * 100);
+          const rawVp = baseValueOf(meta, edits, false, t.id, f.id);
+          const mul = rawVp === 0 ? 0 : Math.round((baseFinal / rawVp) * 100);
           nextCell[cellKey(tableId, true, t.id, axisKey, f.id)] = mul;
         }
       }
@@ -335,6 +346,7 @@ export default function WeightsEditor() {
     changed: boolean,
     onClick: () => void,
     dim?: boolean,
+    copied?: boolean,
   ) => (
     <button
       type="button"
@@ -347,7 +359,13 @@ export default function WeightsEditor() {
         fontSize: 11,
         fontWeight: changed ? 700 : 400,
         color: dim ? "#aaa" : changed ? "#1a7f37" : "#222",
-        background: selected ? "#dfe4ff" : changed ? "#eefaf0" : "#fff",
+        background: selected
+          ? "#dfe4ff"
+          : changed
+            ? "#eefaf0"
+            : copied
+              ? COPIED_BG
+              : "#fff",
         border: "1px solid " + (selected ? "#4453ff" : "#eee"),
         padding: 0,
         cursor: "pointer",
@@ -412,6 +430,7 @@ export default function WeightsEditor() {
         {factions.map((f) => {
           const base = baseValueOf(meta, edits, lf, tile.id, f.id);
           const baseEdited = edits.base[baseKey(tableId, lf, tile.id, f.id)] !== undefined;
+          const baseCopied = lf && baseSameAsBase(meta, edits, tile.id, f.id);
           const baseWant: Sel = { kind: "base", tile: tile.id, faction: f.id };
           return (
             <div key={f.id} style={{ display: "flex", height: 26 }}>
@@ -427,7 +446,11 @@ export default function WeightsEditor() {
                   fontSize: 11,
                   fontWeight: baseEdited ? 700 : 400,
                   color: baseEdited ? "#1a7f37" : "#666",
-                  background: isSel(sel, baseWant) ? "#dfe4ff" : "#fafafa",
+                  background: isSel(sel, baseWant)
+                    ? "#dfe4ff"
+                    : baseCopied
+                      ? COPIED_BG
+                      : "#fafafa",
                   border: "1px solid " + (isSel(sel, baseWant) ? "#4453ff" : "#eee"),
                   padding: 0,
                   cursor: "pointer",
@@ -450,6 +473,8 @@ export default function WeightsEditor() {
                       isSel(sel, want),
                       now !== next,
                       () => setSel(isSel(sel, want) ? null : want),
+                      false,
+                      lf && sameAsBase(meta, edits, tile.id, a.key, f.id),
                     )}
                   </React.Fragment>
                 );
@@ -472,8 +497,13 @@ export default function WeightsEditor() {
           return (
             <div key={f.id} style={{ display: "flex", height: 26 }}>
               {factionCell(f)}
-              {cellBox(base, isSel(sel, want), base !== now, () =>
-                setSel(isSel(sel, want) ? null : want),
+              {cellBox(
+                base,
+                isSel(sel, want),
+                base !== now,
+                () => setSel(isSel(sel, want) ? null : want),
+                false,
+                lf && !!tile && sameAsBase(meta, edits, tile.id, "", f.id),
               )}
             </div>
           );
@@ -765,6 +795,30 @@ export default function WeightsEditor() {
       <div style={{ padding: "0 6px", flex: 1 }}>
         {!hasAxis ? flatGrid : mode === "matrix" ? matrixGrid : tileGrid}
       </div>
+
+      {lf ? (
+        <div
+          style={{
+            padding: "6px 8px",
+            fontSize: 10,
+            color: "#888",
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+          }}
+        >
+          <span
+            style={{
+              width: 12,
+              height: 12,
+              background: COPIED_BG,
+              border: "1px solid #e0d0b0",
+              flex: "0 0 auto",
+            }}
+          />
+          通常版と同じ値（＝拡張版としてまだ見直していない）
+        </div>
+      ) : null}
 
       {meta.noteJa ? (
         <div style={{ padding: "6px 8px", fontSize: 10, color: "#888" }}>{meta.noteJa}</div>

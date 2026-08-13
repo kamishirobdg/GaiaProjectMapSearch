@@ -104,7 +104,8 @@ def copy_table(table, dry_run):
             scaled_tiles.add(row[key_cols[0]])
         for bc, lc in pairs:
             v = src[bc]
-            if ratio:
+            # 0（その列では取りに行けない）は 0 のまま。max(1,..) を通すと 1 に化ける。
+            if ratio and v != "0":
                 v = str(max(1, int(int(v) * ratio + 0.5)))
             if row[lc] != v:
                 row[lc] = v

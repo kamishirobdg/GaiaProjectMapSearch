@@ -154,6 +154,62 @@ export function finalValueOf(
   return Math.round((stored * base) / storedBase);
 }
 
+/**
+ * 通常版の値を拡張版へ持っていくときの換算。素点が版で違うタイルだけ比を掛ける
+ * （`scripts/copy_base_to_lf.py` と同じ。**0 は 0 のまま** —— 0 は
+ * 「その列では取りに行けない」であって、丸めで 1 に化けてはいけない）。
+ */
+export function scaleToLf(meta: WeightTableMeta, tile: string, value: number): number {
+  const ratio = meta.lfVpRatio?.(tile) ?? 1;
+  return value === 0 || ratio === 1 ? value : Math.max(1, Math.round(value * ratio));
+}
+
+/** 通常版に同じものがあるか（拡張だけのタイル・種族・軸はコピー元が無い）。 */
+function hasBaseCounterpart(
+  meta: WeightTableMeta,
+  tile: string,
+  axis: string | null,
+  faction: FactionId,
+): boolean {
+  if (!meta.tiles(false).some((t) => t.id === tile)) return false;
+  if (!factionsFor(false).some((f) => f.id === faction)) return false;
+  if (axis !== null && axis !== "" && !meta.axes(false).some((a) => a.key === axis)) return false;
+  return true;
+}
+
+/**
+ * 拡張版のそのセルが「通常版と同じ値」か。通常版で上書きしたまま
+ * （`copy_base_to_lf.py` ／ 画面の「全コピー」）のセルを見分けるための印で、
+ * **拡張版としてまだ見直していない**ことを意味する。値を動かせば自然に外れる。
+ */
+export function sameAsBase(
+  meta: WeightTableMeta,
+  edits: WeightEdits,
+  tile: string,
+  axis: string,
+  faction: FactionId,
+): boolean {
+  if (!hasBaseCounterpart(meta, tile, axis, faction)) return false;
+  return (
+    finalValueOf(meta, edits, true, tile, axis, faction) ===
+    scaleToLf(meta, tile, finalValueOf(meta, edits, false, tile, axis, faction))
+  );
+}
+
+/** 基準値（軸横断の最大）についての `sameAsBase`。 */
+export function baseSameAsBase(
+  meta: WeightTableMeta,
+  edits: WeightEdits,
+  tile: string,
+  faction: FactionId,
+): boolean {
+  if (!hasBaseCounterpart(meta, tile, null, faction)) return false;
+  return (
+    baseValueOf(meta, edits, true, tile, faction) ===
+    scaleToLf(meta, tile, baseValueOf(meta, edits, false, tile, faction))
+  );
+}
+
 export type WeightDiff = {
   table: WeightTableId;
   lf: boolean;

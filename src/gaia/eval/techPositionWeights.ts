@@ -137,7 +137,7 @@ export const TECH_POSITION_WEIGHTS_LF: TechPositionTable = {
   // TS3 首府学院のパワー値4
   TS3: {
     terra: { terrans: 13, lantids: 18, xenos: 20, gleens: 12, taklons: 14, ambas: 22, hadschHallas: 14, ivits: 20, geodens: 18, balTaks: 12, firaks: 14, bescods: 21, nevlas: 20, itars: 14, moweyds: 21, spaceGiants: 14, tinkerroids: 28, darkanians: 14 }, // 惑星改造
-    nav:   { terrans: 18, lantids: 13, xenos: 20, gleens: 15, taklons: 18, ambas: 28, hadschHallas: 14, ivits: 19, geodens: 18, balTaks: 1, firaks: 14, bescods: 25, nevlas: 20, itars: 14, moweyds: 21, spaceGiants: 14, tinkerroids: 14, darkanians: 14 }, // 航行
+    nav:   { terrans: 18, lantids: 13, xenos: 20, gleens: 15, taklons: 18, ambas: 28, hadschHallas: 14, ivits: 19, geodens: 18, firaks: 14, bescods: 25, nevlas: 20, itars: 14, moweyds: 21, spaceGiants: 14, tinkerroids: 14, darkanians: 14 }, // 航行
     ai:    { terrans: 12, lantids: 18, xenos: 25, gleens: 5, taklons: 18, ambas: 22, hadschHallas: 14, ivits: 20, geodens: 18, balTaks: 12, firaks: 14, bescods: 25, nevlas: 20, itars: 18, moweyds: 14, spaceGiants: 14, tinkerroids: 21, darkanians: 14 }, // 人工知能
     gaia:  { terrans: 18, lantids: 5, xenos: 19, gleens: 18, taklons: 9, ambas: 21, hadschHallas: 9, ivits: 25, geodens: 5, balTaks: 18, firaks: 5, bescods: 19, nevlas: 6, itars: 21, moweyds: 14, spaceGiants: 14, tinkerroids: 14, darkanians: 14 }, // ガイア計画
     eco:   { terrans: 13, lantids: 14, xenos: 20, gleens: 12, taklons: 18, ambas: 22, hadschHallas: 18, ivits: 20, geodens: 18, balTaks: 12, firaks: 18, bescods: 25, nevlas: 25, itars: 18, moweyds: 28, spaceGiants: 14, tinkerroids: 14, darkanians: 14 }, // 経済
