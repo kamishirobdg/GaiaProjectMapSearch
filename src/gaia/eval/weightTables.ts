@@ -261,6 +261,42 @@ export const WEIGHT_TABLES: WeightTableMeta[] = [
   },
 ];
 
+// ------------------------------------------------ 拡張で値が変わりそうなタイル
+
+/**
+ * 「通常版と拡張版で価値が変わるはずのタイル」と、その理由（2026-08-14 の精査）。
+ *
+ * 拡張版の表は通常版を丸ごとコピーして作ってあるので、**コピーのままでよいタイル**と
+ * **拡張の要素で価値が動くはずのタイル**が見た目で区別できない。ここに挙げたものは
+ * `/weights` の拡張版タブで別の地色にして、見直しの優先順が分かるようにしている。
+ *
+ * 素点そのものが版で違うと分かっているものは `TILE_VP_LF`（いまは TS3 だけ）で
+ * 既に補正済み。ここは「補正の要否をまだ決めていない」ものの一覧。
+ */
+export const LF_REVIEW_HINTS: Record<string, { ja: string; en: string }> = {
+  // 惑星の種類を数える系。原始惑星・小惑星が増えて種類の上限が 7 → 9 になる。
+  TS2: { ja: "拡張は惑星の種類が7→9（原始・小惑星）", en: "LF adds 2 planet types (7→9)" },
+  AT15: { ja: "拡張は惑星の種類が7→9（原始・小惑星）", en: "LF adds 2 planet types (7→9)" },
+  // 同盟タイルを数える系。金枠同盟のぶん枚数が増える。TS3 は TILE_VP_LF で補正済み。
+  AT01: { ja: "拡張は金枠同盟のぶん同盟が増える（TS3 と同じ理屈）", en: "LF gold federations add count" },
+  AT12: { ja: "拡張は金枠同盟のぶん同盟が増える（TS3 と同じ理屈）", en: "LF gold federations add count" },
+  RS08: { ja: "拡張は金枠同盟のぶん同盟が増える（TS3 と同じ理屈）", en: "LF gold federations add count" },
+  // 宙域・航法系。LF船が深宇宙にあるので到達すること自体の価値が上がる。
+  AT10: { ja: "拡張はLF船が深宇宙にあり宙域を広げる価値が上がる", en: "LF ships raise the value of range" },
+  AT06: { ja: "拡張はLF船が深宇宙にあり宙域を広げる価値が上がる", en: "LF ships raise the value of range" },
+  // LF船に乗る標準技術で研究が余分に進む。
+  AT02: { ja: "拡張はLF船の標準技術で研究が余分に進む", en: "LF ship techs add research steps" },
+  // QIC の使い道（射程延長・アーティファクト）が増える。
+  TS1: { ja: "拡張はQICの使い道が増える（射程延長・アーティファクト）", en: "LF adds QIC sinks" },
+  AT03: { ja: "拡張はQICの使い道が増える（射程延長・アーティファクト）", en: "LF adds QIC sinks" },
+  RB02: { ja: "拡張はQICの使い道が増える（射程延長・アーティファクト）", en: "LF adds QIC sinks" },
+};
+
+/** 拡張版で見直しが要りそうなタイルか（理由付き）。通常版では常に undefined 扱い。 */
+export function lfReviewHint(tileId: string): { ja: string; en: string } | undefined {
+  return LF_REVIEW_HINTS[tileId];
+}
+
 export function weightTableOf(id: WeightTableId): WeightTableMeta {
   const m = WEIGHT_TABLES.find((t) => t.id === id);
   if (!m) throw new Error(`unknown weight table: ${id}`);

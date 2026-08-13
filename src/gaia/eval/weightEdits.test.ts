@@ -30,7 +30,7 @@ import {
   storedValue,
   type WeightEdits,
 } from "./weightEdits";
-import { factionsFor, weightTableOf } from "./weightTables";
+import { LF_REVIEW_HINTS, WEIGHT_TABLES, factionsFor, weightTableOf } from "./weightTables";
 
 const advanced = weightTableOf("advanced_tech");
 const standard = weightTableOf("tech_position");
@@ -212,6 +212,19 @@ describe("sameAsBase", () => {
     const lfOnly = advanced.tiles(true).find((t) => !baseIds.has(t.id));
     expect(lfOnly).toBeDefined();
     expect(sameAsBase(advanced, EMPTY_EDITS, lfOnly!.id, "nav", f.id)).toBe(false);
+  });
+
+  it("LF_REVIEW_HINTS のタイルは通常版・拡張版の両方に実在する", () => {
+    // 実在しない id を書いても画面は無反応になるだけなので、ここで落とす。
+    // 色が点くのは「通常版からコピーしたセル」なので、両方の版にある必要がある。
+    for (const tileId of Object.keys(LF_REVIEW_HINTS)) {
+      const found = WEIGHT_TABLES.some(
+        (m) =>
+          m.tiles(false).some((t) => t.id === tileId) &&
+          m.tiles(true).some((t) => t.id === tileId),
+      );
+      expect(found, `${tileId} がどの表にも無い`).toBe(true);
+    }
   });
 
   it("拡張版の値を動かすと「通常版と同じ」ではなくなる", () => {

@@ -16,6 +16,7 @@ import {
   FACTION_SHORT_JA,
   WEIGHT_TABLES,
   factionsFor,
+  lfReviewHint,
   weightTableOf,
   type WeightTableId,
   type WeightTile,
@@ -62,6 +63,12 @@ const BORDER_BOX: React.CSSProperties = { boxSizing: "border-box" };
  * （2026-08-14 追加）。選択の青・変更の緑と混ざらない橙にしてある。
  */
 const COPIED_BG = "#fff3e0";
+/**
+ * 同じくコピーのままだが、**拡張の要素で価値が動くはずのタイル**
+ * （`LF_REVIEW_HINTS`）のセル。優先して見直す先なので橙とは別の色相にする
+ * —— 濃淡の差だとスマホの小さいセルで見分けが付かない。
+ */
+const LF_HINT_BG = "#ffe3ec";
 
 /** 行の左端に出す母星色（SetupView の色帯と同じ系統）。 */
 const HOME_BG: Record<string, string> = {
@@ -340,13 +347,21 @@ export default function WeightsEditor() {
 
   const isSel = (s: Sel, want: Sel) => JSON.stringify(s) === JSON.stringify(want);
 
+  /**
+   * 「通常版と同じ値」のセルの地色。拡張版タブでだけ点く。
+   * 拡張で価値が動くはずのタイル（`LF_REVIEW_HINTS`）は別色にして優先度を出す。
+   */
+  const copiedBgOf = (same: boolean, tileId: string | undefined) =>
+    !lf || !same ? undefined : tileId && lfReviewHint(tileId) ? LF_HINT_BG : COPIED_BG;
+
   const cellBox = (
     content: React.ReactNode,
     selected: boolean,
     changed: boolean,
     onClick: () => void,
     dim?: boolean,
-    copied?: boolean,
+    /** 「通常版と同じ値」のときの地色。違うなら undefined。 */
+    copiedBg?: string,
   ) => (
     <button
       type="button"
@@ -359,13 +374,7 @@ export default function WeightsEditor() {
         fontSize: 11,
         fontWeight: changed ? 700 : 400,
         color: dim ? "#aaa" : changed ? "#1a7f37" : "#222",
-        background: selected
-          ? "#dfe4ff"
-          : changed
-            ? "#eefaf0"
-            : copied
-              ? COPIED_BG
-              : "#fff",
+        background: selected ? "#dfe4ff" : changed ? "#eefaf0" : (copiedBg ?? "#fff"),
         border: "1px solid " + (selected ? "#4453ff" : "#eee"),
         padding: 0,
         cursor: "pointer",
@@ -430,7 +439,7 @@ export default function WeightsEditor() {
         {factions.map((f) => {
           const base = baseValueOf(meta, edits, lf, tile.id, f.id);
           const baseEdited = edits.base[baseKey(tableId, lf, tile.id, f.id)] !== undefined;
-          const baseCopied = lf && baseSameAsBase(meta, edits, tile.id, f.id);
+          const baseCopiedBg = copiedBgOf(baseSameAsBase(meta, edits, tile.id, f.id), tile.id);
           const baseWant: Sel = { kind: "base", tile: tile.id, faction: f.id };
           return (
             <div key={f.id} style={{ display: "flex", height: 26 }}>
@@ -446,11 +455,7 @@ export default function WeightsEditor() {
                   fontSize: 11,
                   fontWeight: baseEdited ? 700 : 400,
                   color: baseEdited ? "#1a7f37" : "#666",
-                  background: isSel(sel, baseWant)
-                    ? "#dfe4ff"
-                    : baseCopied
-                      ? COPIED_BG
-                      : "#fafafa",
+                  background: isSel(sel, baseWant) ? "#dfe4ff" : (baseCopiedBg ?? "#fafafa"),
                   border: "1px solid " + (isSel(sel, baseWant) ? "#4453ff" : "#eee"),
                   padding: 0,
                   cursor: "pointer",
@@ -474,7 +479,7 @@ export default function WeightsEditor() {
                       now !== next,
                       () => setSel(isSel(sel, want) ? null : want),
                       false,
-                      lf && sameAsBase(meta, edits, tile.id, a.key, f.id),
+                      copiedBgOf(sameAsBase(meta, edits, tile.id, a.key, f.id), tile.id),
                     )}
                   </React.Fragment>
                 );
@@ -503,7 +508,7 @@ export default function WeightsEditor() {
                 base !== now,
                 () => setSel(isSel(sel, want) ? null : want),
                 false,
-                lf && !!tile && sameAsBase(meta, edits, tile.id, "", f.id),
+                copiedBgOf(!!tile && sameAsBase(meta, edits, tile.id, "", f.id), tile?.id),
               )}
             </div>
           );
@@ -740,6 +745,7 @@ export default function WeightsEditor() {
             {tiles.map((t) => (
               <option key={t.id} value={t.id}>
                 {isReviewed(t.id) ? "✓ " : ""}
+                {lf && lfReviewHint(t.id) ? "◆ " : ""}
                 {t.group ? `[${t.group}] ` : ""}
                 {t.id} {t.ja}
               </option>
@@ -786,6 +792,23 @@ export default function WeightsEditor() {
         </div>
       ) : null}
 
+      {(mode === "tile" || !hasAxis) && lf && tile && lfReviewHint(tile.id) ? (
+        <div
+          style={{
+            margin: "0 8px 6px",
+            padding: "5px 7px",
+            fontSize: 11,
+            lineHeight: 1.45,
+            background: LF_HINT_BG,
+            border: "1px solid #e8b8c8",
+            borderRadius: 6,
+            color: "#7a3550",
+          }}
+        >
+          ◆ {lfReviewHint(tile.id)!.ja}
+        </div>
+      ) : null}
+
       {mode === "matrix" && hasAxis ? (
         <div style={{ padding: "0 8px 4px", fontSize: 10, color: "#666" }}>
           種族がその列を登れるか。ここで入れた倍率は{meta.ja}の全タイルに効く。
@@ -797,26 +820,24 @@ export default function WeightsEditor() {
       </div>
 
       {lf ? (
-        <div
-          style={{
-            padding: "6px 8px",
-            fontSize: 10,
-            color: "#888",
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-          }}
-        >
-          <span
-            style={{
-              width: 12,
-              height: 12,
-              background: COPIED_BG,
-              border: "1px solid #e0d0b0",
-              flex: "0 0 auto",
-            }}
-          />
-          通常版と同じ値（＝拡張版としてまだ見直していない）
+        <div style={{ padding: "6px 8px", fontSize: 10, color: "#888" }}>
+          {[
+            { bg: COPIED_BG, border: "#e0d0b0", ja: "通常版と同じ値（まだ見直していない）" },
+            { bg: LF_HINT_BG, border: "#e8b8c8", ja: "同上。かつ拡張で価値が動くはずのタイル" },
+          ].map((o) => (
+            <div key={o.bg} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <span
+                style={{
+                  width: 12,
+                  height: 12,
+                  background: o.bg,
+                  border: "1px solid " + o.border,
+                  flex: "0 0 auto",
+                }}
+              />
+              {o.ja}
+            </div>
+          ))}
         </div>
       ) : null}
 
