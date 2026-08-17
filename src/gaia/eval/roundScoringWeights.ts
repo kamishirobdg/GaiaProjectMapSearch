@@ -28,8 +28,8 @@ export type RoundScoringTable = Record<
 export const ROUND_SCORING_WEIGHTS_BASE: RoundScoringTable = {
   // RS01 鉱山建設 +2VP
   RS01: [
-    { terrans: 5, lantids: 5, xenos: 3, gleens: 6, taklons: 3, ambas: 5, hadschHallas: 3, ivits: 6, geodens: 6, balTaks: 3, firaks: 2, bescods: 5, nevlas: 3, itars: 2 }, // R1
-    { terrans: 3, lantids: 3, xenos: 3, gleens: 6, taklons: 3, ambas: 5, hadschHallas: 3, ivits: 6, geodens: 6, balTaks: 3, firaks: 2, bescods: 5, nevlas: 3, itars: 2 }, // R2
+    { terrans: 5, lantids: 5, xenos: 3, gleens: 6, taklons: 3, ambas: 5, hadschHallas: 3, ivits: 6, geodens: 6, balTaks: 3, bescods: 5, nevlas: 3 }, // R1
+    { terrans: 3, lantids: 3, xenos: 3, gleens: 6, taklons: 3, ambas: 5, hadschHallas: 3, ivits: 6, geodens: 6, balTaks: 3, bescods: 5, nevlas: 3 }, // R2
     { terrans: 10, lantids: 10, xenos: 10, gleens: 9, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 12, geodens: 12, balTaks: 10, firaks: 12, bescods: 10, nevlas: 10, itars: 10 }, // R3
     { terrans: 10, lantids: 10, xenos: 10, gleens: 9, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 12, geodens: 12, balTaks: 10, firaks: 12, bescods: 10, nevlas: 10, itars: 10 }, // R4
     { terrans: 10, lantids: 10, xenos: 10, gleens: 6, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 12, geodens: 12, balTaks: 10, firaks: 12, bescods: 10, nevlas: 10, itars: 10 }, // R5
@@ -46,7 +46,7 @@ export const ROUND_SCORING_WEIGHTS_BASE: RoundScoringTable = {
   ],
   // RS03 交易所建設 +4VP
   RS03: [
-    { terrans: 4, lantids: 4, xenos: 4, gleens: 4, taklons: 4, ambas: 4, hadschHallas: 8, ivits: 8, geodens: 4, balTaks: 4, firaks: 8, bescods: 8, nevlas: 8, itars: 4 }, // R1
+    { terrans: 4, lantids: 4, xenos: 4, gleens: 4, taklons: 4, ambas: 4, hadschHallas: 8, ivits: 4, geodens: 4, balTaks: 4, firaks: 8, bescods: 8, nevlas: 8, itars: 8 }, // R1
     { terrans: 8, lantids: 8, xenos: 8, gleens: 8, taklons: 8, ambas: 8, hadschHallas: 16, ivits: 4, geodens: 4, balTaks: 4, firaks: 4, bescods: 8, nevlas: 4, itars: 4 }, // R2
     { terrans: 8, lantids: 8, xenos: 8, gleens: 8, taklons: 8, ambas: 8, hadschHallas: 16, ivits: 8, geodens: 8, balTaks: 8, firaks: 4, bescods: 8, nevlas: 8, itars: 8 }, // R3
     { terrans: 8, lantids: 8, xenos: 8, gleens: 8, taklons: 8, ambas: 8, hadschHallas: 16, ivits: 8, geodens: 8, balTaks: 8, firaks: 4, bescods: 8, nevlas: 8, itars: 8 }, // R4
@@ -113,8 +113,8 @@ export const ROUND_SCORING_WEIGHTS_BASE: RoundScoringTable = {
 export const ROUND_SCORING_WEIGHTS_LF: RoundScoringTable = {
   // RS01 鉱山建設 +2VP
   RS01: [
-    { terrans: 5, lantids: 5, xenos: 3, gleens: 6, taklons: 3, ambas: 5, hadschHallas: 3, ivits: 6, geodens: 6, balTaks: 3, firaks: 2, bescods: 5, nevlas: 3, itars: 2, moweyds: 5, spaceGiants: 8, tinkerroids: 5, darkanians: 8 }, // R1
-    { terrans: 3, lantids: 3, xenos: 3, gleens: 6, taklons: 3, ambas: 5, hadschHallas: 3, ivits: 6, geodens: 6, balTaks: 3, firaks: 2, bescods: 5, nevlas: 3, itars: 2, moweyds: 5, spaceGiants: 8, tinkerroids: 5, darkanians: 8 }, // R2
+    { terrans: 5, lantids: 5, xenos: 3, gleens: 6, taklons: 3, ambas: 5, hadschHallas: 3, ivits: 6, geodens: 6, balTaks: 3, bescods: 5, nevlas: 3, moweyds: 5, spaceGiants: 8, tinkerroids: 5, darkanians: 8 }, // R1
+    { terrans: 3, lantids: 3, xenos: 3, gleens: 6, taklons: 3, ambas: 5, hadschHallas: 3, ivits: 6, geodens: 6, balTaks: 3, bescods: 5, nevlas: 3, moweyds: 5, spaceGiants: 8, tinkerroids: 5, darkanians: 8 }, // R2
     { terrans: 10, lantids: 10, xenos: 10, gleens: 9, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 12, geodens: 12, balTaks: 10, firaks: 12, bescods: 10, nevlas: 10, itars: 10, moweyds: 5, spaceGiants: 8, tinkerroids: 5, darkanians: 8 }, // R3
     { terrans: 10, lantids: 10, xenos: 10, gleens: 9, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 12, geodens: 12, balTaks: 10, firaks: 12, bescods: 10, nevlas: 10, itars: 10, moweyds: 5, spaceGiants: 8, tinkerroids: 5, darkanians: 8 }, // R4
     { terrans: 10, lantids: 10, xenos: 10, gleens: 6, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 12, geodens: 12, balTaks: 10, firaks: 12, bescods: 10, nevlas: 10, itars: 10, moweyds: 5, spaceGiants: 8, tinkerroids: 5, darkanians: 8 }, // R5
@@ -131,7 +131,7 @@ export const ROUND_SCORING_WEIGHTS_LF: RoundScoringTable = {
   ],
   // RS03 交易所建設 +4VP
   RS03: [
-    { terrans: 4, lantids: 4, xenos: 4, gleens: 4, taklons: 4, ambas: 4, hadschHallas: 8, ivits: 8, geodens: 4, balTaks: 4, firaks: 8, bescods: 8, nevlas: 8, itars: 4, moweyds: 7, spaceGiants: 7, tinkerroids: 7, darkanians: 7 }, // R1
+    { terrans: 4, lantids: 4, xenos: 4, gleens: 4, taklons: 4, ambas: 4, hadschHallas: 8, ivits: 4, geodens: 4, balTaks: 4, firaks: 8, bescods: 8, nevlas: 8, itars: 8, moweyds: 7, spaceGiants: 7, tinkerroids: 7, darkanians: 7 }, // R1
     { terrans: 8, lantids: 8, xenos: 8, gleens: 8, taklons: 8, ambas: 8, hadschHallas: 16, ivits: 4, geodens: 4, balTaks: 4, firaks: 4, bescods: 8, nevlas: 4, itars: 4, moweyds: 7, spaceGiants: 7, tinkerroids: 7, darkanians: 7 }, // R2
     { terrans: 8, lantids: 8, xenos: 8, gleens: 8, taklons: 8, ambas: 8, hadschHallas: 16, ivits: 8, geodens: 8, balTaks: 8, firaks: 4, bescods: 8, nevlas: 8, itars: 8, moweyds: 7, spaceGiants: 7, tinkerroids: 7, darkanians: 7 }, // R3
     { terrans: 8, lantids: 8, xenos: 8, gleens: 8, taklons: 8, ambas: 8, hadschHallas: 16, ivits: 8, geodens: 8, balTaks: 8, firaks: 4, bescods: 8, nevlas: 8, itars: 8, moweyds: 7, spaceGiants: 7, tinkerroids: 7, darkanians: 7 }, // R4
