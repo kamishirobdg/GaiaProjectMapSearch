@@ -19,7 +19,8 @@
   `tileWeights.ts` は**自動生成物なので手で編集しない**（CSV を直して
   `scripts/gen_*_table.py --emit-file` で作り直す）。手順は `data/weights/README.md`。
 - 値は **VP 換算**（そのタイルを取れたら何点分か）。合計は最後に
-  `SETUP_SCORE_DIVISOR`（40）で割られ、種族あたり100前後になる。
+  `SETUP_SCORE_DIVISOR`（`src/gaia/eval/setupWeights.ts`。いまは28）で割られ、
+  種族あたり100前後になる。
 - **値を変えたら影響力を測り直す**（`_probe_category_influence.ts`）。
   目安の順は 技術 > LF船 > 上級 > ブースター > ラウンド > 最終 > 追加上級 > 同盟。
   ただし **この順を厳密に守るために係数を微調整することはしない**（2026-08-04 判断）。
