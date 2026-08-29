@@ -24,6 +24,17 @@ export const SHIP_IDS: readonly ShipId[] = ["twilight", "eclipse", "rebellion", 
  */
 export const TECH_SHIP_IDS: readonly ShipId[] = ["eclipse", "rebellion", "tfmars"] as const;
 
+/**
+ * 船の表示名。評価側（金枠同盟・基本技術の船別重み）と表示側の両方が使うので
+ * ここを正本にしてある（2026-08-29 に SetupView のローカル定義から引き上げた）。
+ */
+export const SHIP_LABEL: Record<ShipId, { ja: string; en: string }> = {
+  twilight: { ja: "トワイライト", en: "Twilight" },
+  eclipse: { ja: "エクリプス", en: "Eclipse" },
+  rebellion: { ja: "リベリオン", en: "Rebellion" },
+  tfmars: { ja: "T.F.マーズ", en: "T.F. Mars" },
+};
+
 /** The six research tracks of Gaia Project (stable ids; labels in data.ts). */
 export type ResearchTrackId =
   | "terra" // Terraforming

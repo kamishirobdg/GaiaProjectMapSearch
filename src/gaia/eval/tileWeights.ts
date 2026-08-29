@@ -15,8 +15,20 @@
 // 最終得点は1位18/2位12/3位6 の期待値、というように）。
 
 import type { FactionId } from "./factionWeights";
+import type { ShipId } from "../setup/types";
 
 export type TileValueTable = Record<string, Partial<Record<FactionId, number>>>;
+
+/**
+ * 船ごとの**上書き**（2026-08-29）。金枠同盟(FEDG)と拡張の基本技術(TSL)は
+ * 「どの船に乗ったか」で価値が変わる。載っていない種族・船は上書き無し＝
+ * TILE_VALUE_WEIGHTS_LF の基準値をそのまま使う（0 のセルは CSV から落ちる）。
+ * アーティファクトは Twilight 固定なので、この表には出てこない。
+ */
+export type ShipTileTable = Record<
+  string,
+  Partial<Record<ShipId, Partial<Record<FactionId, number>>>>
+>;
 
 /** ★通常版（基本14種族）。CSV から生成。 */
 export const TILE_VALUE_WEIGHTS_BASE: TileValueTable = {
@@ -108,6 +120,11 @@ export const TILE_VALUE_WEIGHTS_LF: TileValueTable = {
   ART08: { terrans: 10, lantids: 10, xenos: 10, gleens: 10, taklons: 10, ambas: 15, hadschHallas: 10, ivits: 18, geodens: 10, balTaks: 10, firaks: 10, bescods: 10, nevlas: 10, itars: 10, moweyds: 12, spaceGiants: 10, tinkerroids: 10, darkanians: 10 }, // 同盟タイル1枚の恩恵を再取得
 };
 
+/** ★船ごとの上書き（拡張版のみ）。空＝基準値を使う。CSV から生成。 */
+export const SHIP_TILE_WEIGHTS_LF: ShipTileTable = {
+
+};
+
 /**
  * そのタイルの種族別の値。**参照はここを通すこと。**
  * 表に無いタイル（通常版での LF 専用タイルなど）は undefined ＝寄与なし。
@@ -117,4 +134,34 @@ export function tileValueCell(
   lostFleet: boolean
 ): Partial<Record<FactionId, number>> | undefined {
   return (lostFleet ? TILE_VALUE_WEIGHTS_LF : TILE_VALUE_WEIGHTS_BASE)[tileId];
+}
+
+/**
+ * その船に乗ったときの種族別の値。**FEDG/TSL の参照はここを通すこと。**
+ *
+ * 船ごとの上書きがあるセルはそれを、無いセルは基準値
+ * （`tileValueCell`）を使う —— 上書きは「船で差が出るところだけ」入れれば済み、
+ * 基準値を直したときに触っていない船が自動で追随する（2026-08-14 に得点ボード
+ * 拡張部の面で「コピーを置いたまま古びる」事故を踏んだので同じ形にしてある）。
+ *
+ * 通常版（lostFleet=false）に船は無いので、基準値をそのまま返す。
+ */
+export function shipTileCell(
+  tileId: string,
+  ship: ShipId | undefined,
+  lostFleet: boolean
+): Partial<Record<FactionId, number>> | undefined {
+  const base = tileValueCell(tileId, lostFleet);
+  if (!lostFleet || !ship) return base;
+  const over = SHIP_TILE_WEIGHTS_LF[tileId]?.[ship];
+  if (!over) return base;
+  return { ...(base ?? {}), ...over };
+}
+
+/** 船ごとの上書きだけ（フォールバック無し）。編集画面と検算が使う。 */
+export function shipTileOverride(
+  tileId: string,
+  ship: ShipId
+): Partial<Record<FactionId, number>> | undefined {
+  return SHIP_TILE_WEIGHTS_LF[tileId]?.[ship];
 }

@@ -121,6 +121,31 @@ FACTION_ORDER = [
 FACTION = dict(FACTION_ORDER)
 LF_FACTIONS = ["moweyds", "spaceGiants", "tinkerroids", "darkanians"]
 
+# --------------------------------------------------------- 船ごとの上書き（2026-08-29）
+#
+# 金枠同盟(FEDG)と拡張の基本技術(TSL)は「どの船に乗ったか」で価値が変わるので、
+# タイル×船×種族の**上書き表**を別CSV(ship_tile_weights_lf.csv)で持つ。
+# 0（＝CSVに書かない）ならタイルの基準値（TILE_VALUE_WEIGHTS_LF）へフォールバックする。
+# アーティファクトは Twilight 固定なので船で変わらず、この表には出さない。
+#
+# 並びは src/gaia/setup/types.ts の SHIP_IDS と同じ。
+SHIP_ORDER = [
+    ("トワイライト", "twilight"),
+    ("エクリプス", "eclipse"),
+    ("リベリオン", "rebellion"),
+    ("T.F.マーズ", "tfmars"),
+]
+SHIP = dict(SHIP_ORDER)                       # 日本語 → id
+SHIP_JA = {sid: ja for ja, sid in SHIP_ORDER}  # id → 日本語
+# 技術スロットを持つ船（types.ts の TECH_SHIP_IDS）。Twilight はアーティファクト置き場。
+TECH_SHIP_IDS = ["eclipse", "rebellion", "tfmars"]
+
+# カタログのグループ → そのタイルが乗りうる船
+SHIP_TILE_GROUPS = {
+    "federationsGold": [sid for _, sid in SHIP_ORDER],
+    "standardTechLF": TECH_SHIP_IDS,
+}
+
 
 def read_csv(path):
     for enc in ("utf-8-sig", "cp932", "utf-8"):
@@ -205,6 +230,86 @@ def template(lf):
     return out.getvalue()
 
 
+def ship_rows():
+    """船CSV に出す行の並び: [(タイルid, ラベル, 船id)]。拡張版だけ。"""
+    catalog = dump_catalog()
+    out = []
+    for group, ships in SHIP_TILE_GROUPS.items():
+        for t in catalog.get(group, []):
+            for sid in ships:
+                out.append((t["id"], t["label"], sid))
+    return out
+
+
+def template_ship():
+    """船ごとの上書き表の雛形。**全セル0**（＝基準値へフォールバック）で出す。"""
+    names = [n for n, _ in FACTION_ORDER]
+    out = io.StringIO()
+    out.write(chr(0xFEFF))
+    w = csv.writer(out, lineterminator="\n")
+    w.writerow(["対応表", "タイル", "船"] + names)
+    for tid, label, sid in ship_rows():
+        w.writerow([tid, label, SHIP_JA[sid]] + [0] * len(names))
+    return out.getvalue()
+
+
+def parse_ship(rows):
+    """船CSV -> {tileId: {shipId: {factionId: value}}}（0 は落とす）"""
+    header = rows[0]
+    cols = header[3:]
+    unknown = [c for c in cols if c not in FACTION]
+    if unknown:
+        sys.exit("未知の種族列: %r" % unknown)
+
+    data, seen = {}, set()
+    for row in rows[1:]:
+        if not row or not row[0].strip():
+            continue
+        tid, ship_ja = row[0].strip(), row[2].strip()
+        if ship_ja not in SHIP:
+            sys.exit("未知の船: %r" % ship_ja)
+        sid = SHIP[ship_ja]
+        if (tid, sid) in seen:
+            sys.exit("タイル×船が重複しています: %r" % ((tid, sid),))
+        seen.add((tid, sid))
+        cells = {}
+        for name, v in zip(cols, row[3:]):
+            n = int(v.strip())
+            if n != 0:
+                cells[FACTION[name]] = n
+        if cells:
+            data.setdefault(tid, {})[sid] = cells
+
+    want = {(t, s) for t, _, s in ship_rows()}
+    extra = sorted(seen - want)
+    missing = sorted(want - seen)
+    if extra or missing:
+        sys.exit("船CSV の行が合いません（不足=%r / 余り=%r）。"
+                 "--template-ship で作り直してください。" % (missing[:8], extra[:8]))
+    return data
+
+
+def emit_ship(data):
+    order = []
+    for tid, _, sid in ship_rows():
+        if tid not in order:
+            order.append(tid)
+    out = []
+    for tid in order:
+        by_ship = data.get(tid)
+        if not by_ship:
+            continue
+        parts = []
+        for _, sid in SHIP_ORDER:
+            cells = by_ship.get(sid)
+            if not cells:
+                continue
+            body = ", ".join("%s: %d" % (k, v) for k, v in cells.items())
+            parts.append("%s: { %s }" % (sid, body))
+        out.append("  %s: { %s }," % (tid, ", ".join(parts)))
+    return "\n".join(out)
+
+
 def parse(rows):
     """CSV -> ({tileId: {factionId: value}}, 拡張版か)（0 は落とす）"""
     header = rows[0]
@@ -272,8 +377,20 @@ FILE_HEADER = '''// src/gaia/eval/tileWeights.ts
 // 最終得点は1位18/2位12/3位6 の期待値、というように）。
 
 import type { FactionId } from "./factionWeights";
+import type { ShipId } from "../setup/types";
 
 export type TileValueTable = Record<string, Partial<Record<FactionId, number>>>;
+
+/**
+ * 船ごとの**上書き**（2026-08-29）。金枠同盟(FEDG)と拡張の基本技術(TSL)は
+ * 「どの船に乗ったか」で価値が変わる。載っていない種族・船は上書き無し＝
+ * TILE_VALUE_WEIGHTS_LF の基準値をそのまま使う（0 のセルは CSV から落ちる）。
+ * アーティファクトは Twilight 固定なので、この表には出てこない。
+ */
+export type ShipTileTable = Record<
+  string,
+  Partial<Record<ShipId, Partial<Record<FactionId, number>>>>
+>;
 
 '''
 
@@ -288,14 +405,45 @@ export function tileValueCell(
 ): Partial<Record<FactionId, number>> | undefined {
   return (lostFleet ? TILE_VALUE_WEIGHTS_LF : TILE_VALUE_WEIGHTS_BASE)[tileId];
 }
+
+/**
+ * その船に乗ったときの種族別の値。**FEDG/TSL の参照はここを通すこと。**
+ *
+ * 船ごとの上書きがあるセルはそれを、無いセルは基準値
+ * （`tileValueCell`）を使う —— 上書きは「船で差が出るところだけ」入れれば済み、
+ * 基準値を直したときに触っていない船が自動で追随する（2026-08-14 に得点ボード
+ * 拡張部の面で「コピーを置いたまま古びる」事故を踏んだので同じ形にしてある）。
+ *
+ * 通常版（lostFleet=false）に船は無いので、基準値をそのまま返す。
+ */
+export function shipTileCell(
+  tileId: string,
+  ship: ShipId | undefined,
+  lostFleet: boolean
+): Partial<Record<FactionId, number>> | undefined {
+  const base = tileValueCell(tileId, lostFleet);
+  if (!lostFleet || !ship) return base;
+  const over = SHIP_TILE_WEIGHTS_LF[tileId]?.[ship];
+  if (!over) return base;
+  return { ...(base ?? {}), ...over };
+}
+
+/** 船ごとの上書きだけ（フォールバック無し）。編集画面と検算が使う。 */
+export function shipTileOverride(
+  tileId: string,
+  ship: ShipId
+): Partial<Record<FactionId, number>> | undefined {
+  return SHIP_TILE_WEIGHTS_LF[tileId]?.[ship];
+}
 '''
 
 
-def emit_file(path, base_csv, lf_csv):
+def emit_file(path, base_csv, lf_csv, ship_csv):
     base, base_is_lf = parse(read_csv(base_csv))
     lf, lf_is_lf = parse(read_csv(lf_csv))
     if base_is_lf or not lf_is_lf:
         sys.exit("引数は「通常版の CSV」「拡張版の CSV」の順で渡してください")
+    ship = parse_ship(read_csv(ship_csv))
     body = (
         FILE_HEADER
         + "/** ★通常版（基本14種族）。CSV から生成。 */\n"
@@ -305,13 +453,18 @@ def emit_file(path, base_csv, lf_csv):
         + "/** ★拡張版（18種族）。CSV から生成。 */\n"
         + "export const TILE_VALUE_WEIGHTS_LF: TileValueTable = {\n"
         + emit(lf)
+        + "\n};\n\n"
+        + "/** ★船ごとの上書き（拡張版のみ）。空＝基準値を使う。CSV から生成。 */\n"
+        + "export const SHIP_TILE_WEIGHTS_LF: ShipTileTable = {\n"
+        + emit_ship(ship)
         + "\n};\n"
         + FILE_FOOTER
     )
     with io.open(path, "w", encoding="utf-8", newline="\n") as f:
         f.write(body)
-    sys.stderr.write("書き出しました: %s（通常版%d枚 / 拡張版%d枚）\n"
-                     % (path, len(base[1]), len(lf[1])))
+    n_over = sum(len(c) for by in ship.values() for c in by.values())
+    sys.stderr.write("書き出しました: %s（通常版%d枚 / 拡張版%d枚 / 船の上書き%dセル）\n"
+                     % (path, len(base[1]), len(lf[1]), n_over))
 
 
 def check(parsed, export_name):
@@ -338,6 +491,40 @@ def check(parsed, export_name):
     print("全一致")
 
 
+def check_ship(data):
+    """船CSV と SHIP_TILE_WEIGHTS_LF を全セル突き合わせる（両方向）。"""
+    actual = dump_from_ts("SHIP_TILE_WEIGHTS_LF", "tileWeights")
+    bad, checked, seen = [], 0, set()
+    for tid, by_ship in data.items():
+        for sid, cells in by_ship.items():
+            for fid, want in cells.items():
+                seen.add((tid, sid, fid))
+                got = actual.get(tid, {}).get(sid, {}).get(fid, 0)
+                checked += 1
+                if want != got:
+                    bad.append("%s/%s/%s: csv=%d ts=%s" % (tid, sid, fid, want, got))
+    for tid, by_ship in actual.items():
+        for sid, cells in by_ship.items():
+            for fid in cells:
+                if (tid, sid, fid) not in seen:
+                    bad.append("TS 側にだけある: %s/%s/%s" % (tid, sid, fid))
+    print("突き合わせ %d セル（船の上書き・非ゼロぶん）" % checked)
+    if bad:
+        print("不一致 %d 件:" % len(bad))
+        for b in bad[:40]:
+            print("  " + b)
+        sys.exit(1)
+    print("全一致")
+
+
+USAGE = (
+    "usage: gen_tile_weights_table.py [--template [--lf]] | --template-ship\n"
+    "       gen_tile_weights_table.py <csv> --check        （タイル×種族）\n"
+    "       gen_tile_weights_table.py <ship.csv> --check-ship（タイル×船×種族）\n"
+    "       gen_tile_weights_table.py --emit-file <out.ts> <base.csv> <lf.csv> <ship.csv>"
+)
+
+
 def main():
     for s in (sys.stdout, sys.stderr):
         try:
@@ -345,19 +532,23 @@ def main():
         except AttributeError:  # Python 3.6 以前
             pass
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if "--template-ship" in sys.argv:
+        sys.stdout.write(template_ship())
+        return
     if "--template" in sys.argv:
         sys.stdout.write(template("--lf" in sys.argv))
         return
     if "--emit-file" in sys.argv:
-        if len(args) != 3:
-            sys.exit("usage: gen_tile_weights_table.py --emit-file <out.ts> <base.csv> <lf.csv>")
-        emit_file(args[0], args[1], args[2])
+        if len(args) != 4:
+            sys.exit("usage: gen_tile_weights_table.py --emit-file <out.ts> "
+                     "<base.csv> <lf.csv> <ship.csv>")
+        emit_file(args[0], args[1], args[2], args[3])
         return
     if not args:
-        sys.exit(
-            "usage: gen_tile_weights_table.py [--template [--lf]] | <csv> --check\n"
-            "       gen_tile_weights_table.py --emit-file <out.ts> <base.csv> <lf.csv>"
-        )
+        sys.exit(USAGE)
+    if "--check-ship" in sys.argv:
+        check_ship(parse_ship(read_csv(args[0])))
+        return
     parsed, lf = parse(read_csv(args[0]))
     name = "TILE_VALUE_WEIGHTS_LF" if lf else "TILE_VALUE_WEIGHTS_BASE"
     if "--check" in sys.argv:

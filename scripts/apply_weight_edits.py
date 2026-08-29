@@ -16,9 +16,14 @@
     RB01,-,terrans,4
 
 各行は `タイル,軸,種族,値`。軸は TS 側のキー（研究列は terra/nav/ai/gaia/eco/sci、
-ラウンド得点は R1..R6、軸の無い tile_weights は "-"）。CSV の見出しは日本語なので
+ラウンド得点は R1..R6、tile_weights の基準値は "-"）。CSV の見出しは日本語なので
 ここで対応を取る。未知のタイル・軸・種族があれば**何も書かずに終了する**
 （部分的に当たった状態を残さないため）。
+
+tile_weights だけ書き戻し先が2つに分かれる（2026-08-29）:
+  軸が "-"        -> data/weights/tile_weights_{base,lf}.csv  … タイルの基準値
+  軸が船のid      -> data/weights/ship_tile_weights_lf.csv    … 船ごとの上書き
+金枠同盟(FEDG)と拡張の基本技術(TSL)だけが船の軸を持つ。
 
 反映したあとは data/weights/README.md の手順どおり TS を生成し直すこと。
 """
@@ -47,6 +52,14 @@ TRACK_JA = {
 
 ROUND_JA = {"R%d" % n: "R%d" % n for n in range(1, 7)}
 
+# 船: TS の id -> 船CSV の3列目に出ている日本語（2026-08-29 追加）。
+# 金枠同盟(FEDG)と拡張の基本技術(TSL)だけ「どの船に乗ったか」で値が変わり、
+# その上書きは tile_weights ではなく ship_tile_weights_lf.csv に入る。
+SHIP_JA = {
+    "twilight": "トワイライト", "eclipse": "エクリプス",
+    "rebellion": "リベリオン", "tfmars": "T.F.マーズ",
+}
+
 # 種族: TS の id → CSV のヘッダに出ている日本語（並びは FACTIONS と同じ）
 FACTION_JA = {
     "terrans": "地球人", "lantids": "ランティダ人", "xenos": "ゼノ族",
@@ -64,6 +77,10 @@ TABLES = {
     "tech_position": dict(stem="tech_position", tile_col=0, axis_col=2, axis="track"),
     "round_scoring": dict(stem="round_scoring", tile_col=0, axis_col=2, axis="round"),
     "tile_weights": dict(stem="tile_weights", tile_col=1, axis_col=None, axis=None),
+    # 差分テキストには出てこない内部キー。tile_weights の行のうち軸が船のものを
+    # ここへ振り替える（main の groups を参照）。拡張版にしか存在しない。
+    "tile_weights_ship": dict(stem="ship_tile_weights", tile_col=0, axis_col=2,
+                              axis="ship", lf_only=True),
 }
 
 
@@ -119,6 +136,8 @@ def parse_edits(text):
 def apply_table(table, lf, items, dry_run):
     """1つの CSV へまとめて反映する。戻り値は (変更セル数, 変更なし数)。"""
     spec = TABLES[table]
+    if spec.get("lf_only") and not lf:
+        sys.exit("%s は拡張版にしかありません（通常版に船は無い）" % spec["stem"])
     path = os.path.join(WEIGHTS_DIR, "%s_%s.csv" % (spec["stem"], "lf" if lf else "base"))
     if not os.path.exists(path):
         sys.exit("CSV がありません: %s" % path)
@@ -146,6 +165,10 @@ def apply_table(table, lf, items, dry_run):
             if axis not in TRACK_JA:
                 sys.exit("未知の研究列: %s（%s）" % (axis, table))
             axis_ja = TRACK_JA[axis]
+        elif spec["axis"] == "ship":
+            if axis not in SHIP_JA:
+                sys.exit("未知の船: %s（%s）" % (axis, table))
+            axis_ja = SHIP_JA[axis]
         else:
             if axis not in ROUND_JA:
                 sys.exit("未知のラウンド: %s（%s）" % (axis, table))
@@ -192,7 +215,11 @@ def main():
     # 表・版ごとにまとめる（CSV は1本ずつ読み書きする）。
     groups = {}
     for e in edits:
-        groups.setdefault((e[0], e[1]), []).append(e)
+        table, lf, _, axis = e[0], e[1], e[2], e[3]
+        # tile_weights のうち軸が付いているのは船の上書きだけ。別CSVへ振り替える。
+        if table == "tile_weights" and axis and axis != "-":
+            table = "tile_weights_ship"
+        groups.setdefault((table, lf), []).append(e)
 
     total_changed, total_same = 0, 0
     for (table, lf), items in groups.items():

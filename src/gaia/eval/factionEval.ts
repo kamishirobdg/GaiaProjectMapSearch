@@ -23,7 +23,7 @@ import {
 } from "./techPositionWeights";
 import { advancedTechCell, advancedTechExtensionCell } from "./advancedTechWeights";
 import { roundScoringCell } from "./roundScoringWeights";
-import { tileValueCell } from "./tileWeights";
+import { shipTileCell, tileValueCell } from "./tileWeights";
 import {
   DEFAULT_SETUP_WEIGHTS,
   SETUP_SCORE_DIVISOR,
@@ -31,7 +31,23 @@ import {
   type SetupWeightKey,
   type SetupWeights,
 } from "./setupWeights";
-import { RESEARCH_TRACK_IDS, type ResearchTrackId } from "@/gaia/setup/types";
+import {
+  RESEARCH_TRACK_IDS,
+  SHIP_LABEL,
+  type ResearchTrackId,
+  type ShipId,
+} from "@/gaia/setup/types";
+
+/**
+ * 船 → タイルid の対応を [船, id] で回す（2026-08-29）。金枠同盟と拡張の基本技術は
+ * どの船に乗ったかで値が変わるので、Object.values で船を捨てられない。
+ * 未配置（2人戦のリベリオンなど）は落とす。
+ */
+function shipEntries(
+  rec: Partial<Record<ShipId, string>> | undefined,
+): Array<[ShipId, string]> {
+  return Object.entries(rec ?? {}).filter(([, id]) => !!id) as Array<[ShipId, string]>;
+}
 
 export type FactionScores = Record<FactionId, number>;
 
@@ -133,8 +149,15 @@ export function setupFactionTileHits(
   for (const id of result.finalScoring) push("finalScoring", id);
   push("federation", result.federationLv5);
   if (lf) {
-    for (const id of Object.values(result.shipTech ?? {})) push("lfShip", id);
-    for (const id of Object.values(result.goldFederations ?? {})) push("lfShip", id);
+    // 金枠同盟と拡張の基本技術は「どの船に乗ったか」で価値が変わる（2026-08-29。
+    // 船ごとの上書きが無いセルは基準値へフォールバックする。shipTileCell）。
+    // 遺物は Twilight 固定なので船で変わらない。
+    for (const [ship, id] of shipEntries(result.shipTech)) {
+      pushCell("lfShip", id, shipTileCell(id, ship, lf), SHIP_LABEL[ship].ja);
+    }
+    for (const [ship, id] of shipEntries(result.goldFederations)) {
+      pushCell("lfShip", id, shipTileCell(id, ship, lf), SHIP_LABEL[ship].ja);
+    }
     for (const id of result.artifacts ?? []) push("lfShip", id);
   }
   // 標準技術は「どこに置かれたか」で価値が変わる（研究列6つ＋フリー枠）。
@@ -198,8 +221,13 @@ export function setupFactionBreakdown(
   for (const id of result.finalScoring) add("finalScoring", id);
   add("federation", result.federationLv5); // 現行DRAFTでは全0
   if (lf) {
-    for (const id of Object.values(result.shipTech ?? {})) add("lfShip", id);
-    for (const id of Object.values(result.goldFederations ?? {})) add("lfShip", id);
+    // 船ごとの値（2026-08-29）。上のブレイクダウンと同じ経路を通す。
+    for (const [ship, id] of shipEntries(result.shipTech)) {
+      addCell("lfShip", shipTileCell(id, ship, lf));
+    }
+    for (const [ship, id] of shipEntries(result.goldFederations)) {
+      addCell("lfShip", shipTileCell(id, ship, lf));
+    }
     for (const id of result.artifacts ?? []) add("lfShip", id);
   }
 

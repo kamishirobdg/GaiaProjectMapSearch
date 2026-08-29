@@ -15,9 +15,11 @@ import Link from "next/link";
 import {
   FACTION_SHORT_JA,
   WEIGHT_TABLES,
+  axesOfTile,
   factionsFor,
   lfReviewHint,
   weightTableOf,
+  type WeightAxis,
   type WeightTableId,
   type WeightTile,
 } from "@/gaia/eval/weightTables";
@@ -134,6 +136,12 @@ export default function WeightsEditor() {
   const axes = React.useMemo(() => meta.axes(lf), [meta, lf]);
   const hasAxis = axes.length > 0;
   const tile: WeightTile | undefined = tiles[Math.min(tileIdx, tiles.length - 1)];
+  // 列は**タイルごと**に引く（2026-08-29）。tile_weights の LF船だけ行で違い、
+  // 金枠同盟は4隻・拡張の基本技術は3隻・ブースターや遺物は列なし。
+  const tileAxes = React.useMemo(
+    () => (tile ? axesOfTile(meta, tile.id, lf) : []),
+    [meta, tile, lf],
+  );
 
   const commit = React.useCallback((next: WeightEdits) => {
     setEdits(next);
@@ -310,7 +318,7 @@ export default function WeightsEditor() {
     </div>
   );
 
-  const headerRow = (extra?: React.ReactNode) => (
+  const headerRow = (extra?: React.ReactNode, cols: WeightAxis[] = axes) => (
     <div style={{ display: "flex", position: "sticky", top: 0, background: "#fff", zIndex: 2 }}>
       <div
         style={{
@@ -325,7 +333,7 @@ export default function WeightsEditor() {
         }}
       />
       {extra}
-      {axes.map((a) => (
+      {cols.map((a) => (
         <div
           key={a.key}
           style={{
@@ -419,7 +427,7 @@ export default function WeightsEditor() {
 
   const tileGrid = tile ? (
     <div style={{ overflowX: "auto" }}>
-      <div style={{ minWidth: HEAD_W + BASE_W + axes.length * CELL_W }}>
+      <div style={{ minWidth: HEAD_W + BASE_W + tileAxes.length * CELL_W }}>
         {headerRow(
           <div
             style={{
@@ -435,6 +443,7 @@ export default function WeightsEditor() {
           >
             基準
           </div>,
+          tileAxes,
         )}
         {factions.map((f) => {
           const base = baseValueOf(meta, edits, lf, tile.id, f.id);
@@ -463,7 +472,7 @@ export default function WeightsEditor() {
               >
                 {base}
               </button>
-              {axes.map((a) => {
+              {tileAxes.map((a) => {
                 const now = storedValue(meta, lf, tile.id, a.key, f.id);
                 const next = finalValueOf(meta, edits, lf, tile.id, a.key, f.id);
                 const want: Sel = { kind: "cell", tile: tile.id, axis: a.key, faction: f.id };

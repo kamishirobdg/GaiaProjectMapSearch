@@ -15,6 +15,7 @@
 | `round_scoring_lf.csv` | 同上 | 同上 | 10 | 2 | 1296 |
 | `tile_weights_base.csv` | `src/gaia/eval/tileWeights.ts` | `gen_tile_weights_table.py` | ※ | 2 | 308 |
 | `tile_weights_lf.csv` | 同上 | 同上 | ※ | 2 | 954 |
+| `ship_tile_weights_lf.csv` | 同上 | 同上 | — | — | 738（上書き） |
 
 ※ `tile_weights_*.csv` はカテゴリごとに中央値が違う:
 ブースター6 / 最終得点9 / 同盟タイル8 / LF船10。
@@ -37,6 +38,18 @@
 **いまは全セル 0＝自動フォールバック**（2026-08-14 ユーザー確定）。面ごとの差を
 実際に入れるまでは 0 のままにしておく —— 研究列の値を直したときに一緒に追随し、
 「6列最大値のコピー」を置いたまま古びる事故が起きないため。
+
+`ship_tile_weights_lf.csv` は **船ごとの上書き**（2026-08-29 追加）。金枠同盟(FEDG1〜8)と
+拡張の基本技術(TSL1〜3)は「どの船に乗ったか」で価値が変わるので、タイル×船×種族で持つ。
+
+- **0（＝空欄）ならタイルの基準値**（`tile_weights_lf.csv` の値）を使う。船で差が出る
+  ところだけ埋めればよく、基準値を直せば触っていない船が自動で追随する
+  （得点ボード拡張部の面と同じ考え方。「コピーを置いたまま古びる」のを避けるため）。
+- FEDG は4隻すべて、**TSL は技術スロットのある3隻だけ**（トワイライトはアーティファクト
+  置き場なので技術タイルが乗らない）。アーティファクトはトワイライト固定＝船で
+  変わらないので、この表には出てこない。
+- 2人戦ではリベリオンが箱に戻るが、その行は読まれないだけなので消さなくてよい。
+- 雛形は `python scripts/gen_tile_weights_table.py --template-ship`（全セル0で出る）。
 
 ## 値の意味
 
@@ -61,13 +74,14 @@
    python scripts/gen_advanced_tech_table.py --emit-file src/gaia/eval/advancedTechWeights.ts data/weights/advanced_tech_base.csv data/weights/advanced_tech_lf.csv
    python scripts/gen_tech_position_table.py --emit-file src/gaia/eval/techPositionWeights.ts data/weights/tech_position_base.csv data/weights/tech_position_lf.csv
    python scripts/gen_round_scoring_table.py --emit-file src/gaia/eval/roundScoringWeights.ts data/weights/round_scoring_base.csv data/weights/round_scoring_lf.csv
-   python scripts/gen_tile_weights_table.py --emit-file src/gaia/eval/tileWeights.ts data/weights/tile_weights_base.csv data/weights/tile_weights_lf.csv
+   python scripts/gen_tile_weights_table.py --emit-file src/gaia/eval/tileWeights.ts data/weights/tile_weights_base.csv data/weights/tile_weights_lf.csv data/weights/ship_tile_weights_lf.csv
    ```
 
 3. 全セル突き合わせで検算する（両方向。TS 側にだけある値も検出する）:
 
    ```
    python scripts/gen_advanced_tech_table.py data/weights/advanced_tech_lf.csv --check
+   python scripts/gen_tile_weights_table.py data/weights/ship_tile_weights_lf.csv --check-ship
    ```
 
 4. `npm run typecheck` / `npm test` を通す。
@@ -104,6 +118,9 @@ Android で `https://gaia-project-map-search.vercel.app/weights` を開く
   ```
 
   未知のタイル・軸・種族があれば**何も書かずに止まる**（部分適用を残さないため）。
+  **`tile_weights` だけ書き戻し先が2つに分かれる**: 軸が `-` の行は
+  `tile_weights_*.csv`（タイルの基準値）へ、軸が船の id の行は
+  `ship_tile_weights_lf.csv`（船ごとの上書き）へ入る。
   反映したら上の「更新の手順」2以降（TS の生成 → 検算 → typecheck/test）を回す。
 - 反映が済んだら編集ページの「全消去」を押す。生成し直した `.ts` が次の初期値になるので、
   消しておかないと同じ差分をもう一度出してしまう。

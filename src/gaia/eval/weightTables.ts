@@ -12,7 +12,14 @@
 // 軸なしの表は axes を空配列にしてある。
 
 import { SETUP_CATALOG } from "@/gaia/setup/data";
-import { RESEARCH_TRACK_IDS, type ResearchTrackId } from "@/gaia/setup/types";
+import {
+  RESEARCH_TRACK_IDS,
+  SHIP_IDS,
+  SHIP_LABEL,
+  TECH_SHIP_IDS,
+  type ResearchTrackId,
+  type ShipId,
+} from "@/gaia/setup/types";
 import {
   FACTIONS,
   LF_FACTION_IDS,
@@ -31,7 +38,11 @@ import {
   ROUND_SCORING_WEIGHTS_BASE,
   ROUND_SCORING_WEIGHTS_LF,
 } from "./roundScoringWeights";
-import { TILE_VALUE_WEIGHTS_BASE, TILE_VALUE_WEIGHTS_LF } from "./tileWeights";
+import {
+  SHIP_TILE_WEIGHTS_LF,
+  TILE_VALUE_WEIGHTS_BASE,
+  TILE_VALUE_WEIGHTS_LF,
+} from "./tileWeights";
 
 /** CSV のファイル名に合わせた表の id（差分テキストのヘッダに出す）。 */
 export type WeightTableId =
@@ -62,6 +73,19 @@ export type WeightTableMeta = {
    * 得点ボード拡張部の面（vp25/shuttle）を持つため（2026-08-08）。
    */
   axes: (lf: boolean) => WeightAxis[];
+  /**
+   * **タイルごとに**軸が違う表のための上書き（2026-08-29）。tile_weights の
+   * LF船カテゴリだけ「どの船に乗ったか」で値が変わり、しかも FEDG は4隻・
+   * TSL は3隻・遺物とブースターは軸なし、と行によって違う。
+   * 省略時は `axes(lf)` を全タイルに使う（従来どおり）。
+   */
+  axesForTile?: (tileId: string, lf: boolean) => WeightAxis[];
+  /**
+   * 基準値を「軸なしのセル」から採るか（既定 false ＝ 軸横断の最大）。
+   * tile_weights の船は**上書き**で、空なら基準値へフォールバックする形なので、
+   * 最大を採ると上書きが1つ入っただけで基準値が引きずられてしまう。
+   */
+  baseFromAxisless?: boolean;
   /** 軸そのものの呼び名（画面の見出しに出す）。 */
   axisJa: string;
   axisEn: string;
@@ -121,6 +145,26 @@ const EXTENSION_AXES: WeightAxis[] = [
 ];
 const ADVANCED_TECH_AXES = (lf: boolean): WeightAxis[] =>
   lf ? [...TRACK_AXES, ...EXTENSION_AXES] : TRACK_AXES;
+
+// LF船の軸（2026-08-29）。金枠同盟(FEDG)と拡張の基本技術(TSL)は「どの船に
+// 乗ったか」で価値が変わる。TSL は技術スロットのある3隻だけ（Twilight は
+// アーティファクト置き場なので技術タイルが乗らない）。アーティファクトは
+// Twilight 固定＝船で変わらないので軸を持たない。
+const shipAxis = (id: ShipId): WeightAxis => ({
+  key: id,
+  ja: SHIP_LABEL[id].ja,
+  en: SHIP_LABEL[id].en,
+});
+
+const SHIP_AXES: WeightAxis[] = SHIP_IDS.map(shipAxis);
+const TECH_SHIP_AXES: WeightAxis[] = TECH_SHIP_IDS.map(shipAxis);
+
+/** そのタイルが乗りうる船。乗らないタイル（ブースター・遺物など）は空。 */
+function shipAxesOf(tileId: string): WeightAxis[] {
+  if (tileId.startsWith("FEDG")) return SHIP_AXES;
+  if (tileId.startsWith("TSL")) return TECH_SHIP_AXES;
+  return [];
+}
 
 /** ラウンドは R1..R6。表の側は配列なので添字へ直して引く。 */
 const ROUND_AXES: WeightAxis[] = [1, 2, 3, 4, 5, 6].map((n) => ({
@@ -250,14 +294,31 @@ export const WEIGHT_TABLES: WeightTableMeta[] = [
     id: "tile_weights",
     ja: "ブースター他",
     en: "Boosters etc.",
-    axes: () => [],
-    axisJa: "—",
-    axisEn: "—",
+    // 表としては船4隻ぶんの軸を持つが、実際に軸が付くのは FEDG と TSL だけ
+    // （axesForTile）。ブースター・最終得点・同盟・遺物は従来どおり軸なし。
+    axes: (lf) => (lf ? SHIP_AXES : []),
+    axesForTile: (tileId, lf) => (lf ? shipAxesOf(tileId) : []),
+    baseFromAxisless: true,
+    axisJa: "船",
+    axisEn: "Ship",
     tiles: (lf) => tilesFrom(lf ? TILE_VALUE_WEIGHTS_LF : TILE_VALUE_WEIGHTS_BASE),
-    cell: (tileId, _axisKey, faction, lf) =>
-      (lf ? TILE_VALUE_WEIGHTS_LF : TILE_VALUE_WEIGHTS_BASE)[tileId]?.[faction],
-    noteJa: "ブースター・最終得点・同盟タイル・LF船。列が無いので値をそのまま入れる。",
-    noteEn: "Boosters, final scoring, federations and LF ships. No axis — edit values directly.",
+    // 軸なし（axisKey 空）＝タイルの基準値。船を指定したときは**上書きだけ**を
+    // 返す（無ければ 0 ＝ 基準値へフォールバック）。評価側の合成は
+    // tileWeights.ts の shipTileCell が持つ。
+    cell: (tileId, axisKey, faction, lf) =>
+      axisKey
+        ? lf
+          ? SHIP_TILE_WEIGHTS_LF[tileId]?.[axisKey as ShipId]?.[faction]
+          : undefined
+        : (lf ? TILE_VALUE_WEIGHTS_LF : TILE_VALUE_WEIGHTS_BASE)[tileId]?.[faction],
+    noteJa:
+      "ブースター・最終得点・同盟タイル・LF船。基準値をそのまま入れる。" +
+      "金枠同盟(FEDG)と拡張の基本技術(TSL)だけ、乗せる船ごとに上書きできる" +
+      "（空欄なら基準値のまま）。",
+    noteEn:
+      "Boosters, final scoring, federations and LF ships. Edit the base value directly. " +
+      "Gold federations (FEDG) and LF standard tech (TSL) can additionally be overridden " +
+      "per ship (blank = use the base value).",
   },
 ];
 
@@ -301,6 +362,19 @@ export function weightTableOf(id: WeightTableId): WeightTableMeta {
   const m = WEIGHT_TABLES.find((t) => t.id === id);
   if (!m) throw new Error(`unknown weight table: ${id}`);
   return m;
+}
+
+/**
+ * そのタイルの軸。**軸を回すときは必ずここを通す**（2026-08-29）。
+ * tile_weights の LF船だけ行によって軸の有無と本数が違うため、
+ * `meta.axes(lf)` を直接回すと軸を持たないタイルにも空の列が生えてしまう。
+ */
+export function axesOfTile(
+  meta: WeightTableMeta,
+  tileId: string,
+  lf: boolean,
+): WeightAxis[] {
+  return meta.axesForTile ? meta.axesForTile(tileId, lf) : meta.axes(lf);
 }
 
 /** "R3" → 2。ラウンド得点の表が配列なので添字へ直す。 */

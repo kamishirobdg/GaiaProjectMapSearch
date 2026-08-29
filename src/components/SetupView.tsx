@@ -67,12 +67,12 @@ import { SETUP_CATALOG } from "@/gaia/setup/data";
 import { countTileRules, hasRule, setTileRule, type TileRuleMode, type TileRules } from "@/gaia/setup/tileRules";
 import {
   RESEARCH_TRACK_IDS,
+  SHIP_LABEL,
   TECH_SHIP_IDS,
   type PlanetColorKey,
   type ResearchTrackId,
   type SetupMode,
   type SetupResult,
-  type ShipId,
 } from "@/gaia/setup/types";
 
 type Lang = "ja" | "en";
@@ -113,12 +113,6 @@ const TRACK_LABEL: Record<ResearchTrackId, { ja: string; en: string }> = {
   sci: { ja: "科学", en: "Science" },
 };
 
-const SHIP_LABEL: Record<ShipId, { ja: string; en: string }> = {
-  twilight: { ja: "トワイライト", en: "Twilight" },
-  eclipse: { ja: "エクリプス", en: "Eclipse" },
-  rebellion: { ja: "リベリオン", en: "Rebellion" },
-  tfmars: { ja: "T.F.マーズ", en: "T.F. Mars" },
-};
 
 const UI = {
   ja: {

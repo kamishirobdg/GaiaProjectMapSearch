@@ -14,6 +14,7 @@ import {
   scoreSetupFactions,
   scoreStandardTech,
   setupFactionBreakdown,
+  setupFactionTileHits,
   topFactions,
   type FactionScores,
 } from "./factionEval";
@@ -510,5 +511,49 @@ describe("基本版では LF4種族を候補に入れない", () => {
     expect(criterionScore("neutralBalance", skewed, { ...opts, lostFleet: false }) === 0).toBe(true);
     // LF から見ると LF4種族の外れ値で散らばりが出る
     expect(criterionScore("neutralBalance", skewed, { ...opts, lostFleet: true })).toBeLessThan(-1);
+  });
+});
+
+// 金枠同盟(FEDG)と拡張の基本技術(TSL)は「どの船に乗ったか」で値が変わる（2026-08-29）。
+// 値そのものは CSV 側で見直すので固定しない。ここで守るのは**配線**:
+// 船を捨てずに shipTileCell へ渡していること（Object.values で船を落とすと
+// スロット名が消えるので、その回帰を検出できる）。
+describe("LF船のタイルは船ごとに評価される", () => {
+  const lfSetup = (): SetupResult =>
+    syntheticSetup({
+      mode: "lostFleet",
+      ships: ["twilight", "eclipse", "rebellion", "tfmars"],
+      goldFederations: {
+        twilight: "FEDG1",
+        eclipse: "FEDG2",
+        rebellion: "FEDG3",
+        tfmars: "FEDG4",
+      },
+      shipTech: { eclipse: "TSL1", rebellion: "TSL2", tfmars: "TSL3" },
+      artifacts: ["ART01", "ART02"],
+    });
+
+  it("金枠同盟と基本技術の行に船名が付く（遺物は付かない）", () => {
+    const rows = setupFactionTileHits(lfSetup()).filter((r) => r.category === "lfShip");
+    const slotOf = (tileId: string) => rows.find((r) => r.tileId === tileId)?.slot;
+    expect(slotOf("FEDG1")).toBe("トワイライト");
+    expect(slotOf("FEDG3")).toBe("リベリオン");
+    expect(slotOf("TSL2")).toBe("リベリオン");
+    // 遺物は Twilight 固定なので船で変わらない＝スロット名を持たない。
+    expect(slotOf("ART01")).toBeUndefined();
+  });
+
+  it("2人戦でリベリオンが箱に戻っても落ちない", () => {
+    const s = syntheticSetup({
+      mode: "lostFleet",
+      playerCount: 2,
+      ships: ["twilight", "eclipse", "tfmars"],
+      goldFederations: { twilight: "FEDG1", eclipse: "FEDG2", tfmars: "FEDG4" },
+      shipTech: { eclipse: "TSL1", tfmars: "TSL3" },
+      artifacts: ["ART01"],
+    });
+    const rows = setupFactionTileHits(s).filter((r) => r.category === "lfShip");
+    expect(rows.some((r) => r.tileId === "FEDG3")).toBe(false);
+    expect(rows.find((r) => r.tileId === "FEDG4")?.slot).toBe("T.F.マーズ");
   });
 });

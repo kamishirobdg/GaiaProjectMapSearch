@@ -18,6 +18,7 @@
 import type { FactionId } from "./factionWeights";
 import {
   WEIGHT_TABLES,
+  axesOfTile,
   factionsFor,
   weightTableOf,
   type WeightTableId,
@@ -85,7 +86,10 @@ export function storedBaseOf(
   tile: string,
   faction: FactionId,
 ): number {
-  const axes = meta.axes(lf);
+  // 船のように「上書き＋フォールバック」で持つ表は、軸なしのセルが基準値そのもの
+  // （最大を採ると上書きが1つ入っただけで基準値が引きずられる）。
+  if (meta.baseFromAxisless) return storedValue(meta, lf, tile, "", faction);
+  const axes = axesOfTile(meta, tile, lf);
   if (axes.length === 0) return storedValue(meta, lf, tile, "", faction);
   let max = 0;
   for (const a of axes) {
@@ -142,7 +146,12 @@ export function finalValueOf(
   faction: FactionId,
 ): number {
   const base = baseValueOf(meta, edits, lf, tile, faction);
-  if (meta.axes(lf).length === 0) return base;
+  // 軸を持たないタイルは基準値そのもの。**タイルごとの軸**で判定するのが要点で、
+  // tile_weights は表としては船の軸を持つが、軸が付くのは FEDG/TSL だけ
+  // （ブースターや遺物まで軸ありとして扱うと倍率の経路へ落ちてしまう）。
+  if (axesOfTile(meta, tile, lf).length === 0) return base;
+  // 軸なしのセル（＝基準値の行）は基準値をそのまま返す。
+  if (axis === "" && meta.baseFromAxisless) return base;
 
   const mul = rawMultiplierOf(edits, meta.id, lf, tile, axis, faction);
   if (mul !== undefined) return Math.round((base * mul) / 100);
@@ -247,9 +256,17 @@ export function collectDiffs(edits: WeightEdits): WeightDiff[] {
   for (const { table, lf } of touchedScopes(edits)) {
     const meta = weightTableOf(table);
     const factions = factionsFor(lf);
-    const metaAxes = meta.axes(lf);
-    const axes = metaAxes.length > 0 ? metaAxes.map((a) => a.key) : ["-"];
     for (const tile of meta.tiles(lf)) {
+      // 軸は**タイルごと**に引く（tile_weights の LF船だけ行で違うため）。
+      const tileAxes = axesOfTile(meta, tile.id, lf).map((a) => a.key);
+      // 上書き方式の表は、船の行に加えて基準値の行（"-"）も見る。そうしないと
+      // 基準値だけ動かしたときに差分がどこにも出ない（船のセルは 0 のまま）。
+      const axes =
+        tileAxes.length === 0
+          ? ["-"]
+          : meta.baseFromAxisless
+            ? ["-", ...tileAxes]
+            : tileAxes;
       for (const axis of axes) {
         for (const f of factions) {
           const from = storedValue(meta, lf, tile.id, axis === "-" ? "" : axis, f.id);

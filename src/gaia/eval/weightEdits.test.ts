@@ -30,7 +30,15 @@ import {
   storedValue,
   type WeightEdits,
 } from "./weightEdits";
-import { LF_REVIEW_HINTS, WEIGHT_TABLES, factionsFor, weightTableOf } from "./weightTables";
+import {
+  LF_REVIEW_HINTS,
+  WEIGHT_TABLES,
+  axesOfTile,
+  factionsFor,
+  weightTableOf,
+} from "./weightTables";
+import { shipTileCell, tileValueCell } from "./tileWeights";
+import { SHIP_IDS } from "@/gaia/setup/types";
 
 const advanced = weightTableOf("advanced_tech");
 const standard = weightTableOf("tech_position");
@@ -240,5 +248,80 @@ describe("sameAsBase", () => {
       expect(sameAsBase(advanced, e, tile.id, "nav", f.id)).toBe(false);
     }
     expect(typeof before).toBe("boolean");
+  });
+});
+
+// ---------------------------------------------------------------- 船ごとの上書き
+
+// 金枠同盟(FEDG)と拡張の基本技術(TSL)は「どの船に乗ったか」で値が変わる（2026-08-29）。
+// tile_weights は表としては船4隻の軸を持つが、**軸が付くのは この11枚だけ**で、
+// ブースター・最終得点・同盟・遺物は従来どおり軸なし。ここで守るのは:
+//   - 軸の本数が行で違う（FEDG=4隻 / TSL=3隻 / それ以外=0）
+//   - 上書きが無いセルは基準値へフォールバックする
+//   - **基準値だけ動かしても船のセルは 0 のまま**（上書きが勝手に生えない）
+//   - 差分には基準値の行("-")と船の行の両方が出る
+describe("LF船の船ごとの上書き", () => {
+  it("軸が付くのは FEDG(4隻) と TSL(3隻) だけ", () => {
+    expect(axesOfTile(tileValues, "FEDG1", true).map((a) => a.key)).toEqual([
+      "twilight",
+      "eclipse",
+      "rebellion",
+      "tfmars",
+    ]);
+    // TSL は技術スロットのある3隻だけ（Twilight はアーティファクト置き場）。
+    expect(axesOfTile(tileValues, "TSL1", true).map((a) => a.key)).toEqual([
+      "eclipse",
+      "rebellion",
+      "tfmars",
+    ]);
+    // 遺物は Twilight 固定なので船で変わらない。ブースターも軸なし。
+    expect(axesOfTile(tileValues, "ART01", true)).toHaveLength(0);
+    expect(axesOfTile(tileValues, "RB01", true)).toHaveLength(0);
+    // 通常版に船は無い。
+    expect(axesOfTile(tileValues, "FEDG1", false)).toHaveLength(0);
+  });
+
+  it("上書きが無ければ基準値へフォールバックする", () => {
+    const base = tileValueCell("FEDG1", true)!;
+    for (const ship of SHIP_IDS) {
+      expect(shipTileCell("FEDG1", ship, true)).toEqual(base);
+    }
+    // 通常版（船なし）は基準値をそのまま返す。
+    expect(shipTileCell("RB01", undefined, false)).toEqual(tileValueCell("RB01", false));
+  });
+
+  it("基準値だけ動かしても船のセルは 0 のまま", () => {
+    const f = factionsFor(true)[0];
+    const stored = storedBaseOf(tileValues, true, "FEDG1", f.id);
+    const e = edits({ base: { [baseKey("tile_weights", true, "FEDG1", f.id)]: stored + 5 } });
+    // 基準値の行は動く。
+    expect(finalValueOf(tileValues, e, true, "FEDG1", "", f.id)).toBe(stored + 5);
+    // 船の行は触っていないので 0（＝実行時に基準値へフォールバック）のまま。
+    for (const ship of SHIP_IDS) {
+      expect(finalValueOf(tileValues, e, true, "FEDG1", ship, f.id)).toBe(0);
+    }
+  });
+
+  it("基準値は軸横断の最大ではなく軸なしのセルから採る", () => {
+    const f = factionsFor(true)[0];
+    // 船の上書きが1つ入っても基準値は引きずられない（baseFromAxisless）。
+    expect(storedBaseOf(tileValues, true, "FEDG1", f.id)).toBe(
+      storedValue(tileValues, true, "FEDG1", "", f.id),
+    );
+  });
+
+  it("差分には基準値の行と船の行が出る／軸なしのタイルは基準値の行だけ", () => {
+    const f = factionsFor(true)[0];
+    const e = edits({
+      cell: { [cellKey("tile_weights", true, "FEDG1", "eclipse", f.id)]: 50 },
+    });
+    const rows = collectDiffs(e).filter((d) => d.tile === "FEDG1" && d.faction === f.id);
+    expect(rows.map((d) => d.axis)).toEqual(["eclipse"]);
+
+    // 基準値を動かすと "-" の行が出る（船の行は 0 のままなので出ない）。
+    const stored = storedBaseOf(tileValues, true, "RB01", f.id);
+    const e2 = edits({ base: { [baseKey("tile_weights", true, "RB01", f.id)]: stored + 1 } });
+    const rows2 = collectDiffs(e2).filter((d) => d.tile === "RB01" && d.faction === f.id);
+    expect(rows2.map((d) => d.axis)).toEqual(["-"]);
   });
 });
