@@ -138,7 +138,10 @@ def run_tsx(body, tmp_name):
         f.write(body)
     try:
         res = subprocess.run(
-            ["npx", "tsx", "scripts/%s" % tmp_name],
+            # shell=True にリストを渡すと POSIX では先頭の1語しか実行されず
+            # （残りは $0,$1... になる）、npx がヘルプを吐いて JSON が返らない。
+            # 文字列で渡せば Windows(cmd) でも POSIX(sh) でも同じに通る。
+            "npx tsx scripts/%s" % tmp_name,
             cwd=REPO, capture_output=True, text=True, encoding="utf-8", shell=True,
         )
     finally:

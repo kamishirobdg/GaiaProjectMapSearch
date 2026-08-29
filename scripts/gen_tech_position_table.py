@@ -182,7 +182,9 @@ def dump_from_ts(export_name, module=None):
         f.write("console.log(JSON.stringify(%s));\n" % export_name)
     try:
         res = subprocess.run(
-            ["npx", "tsx", "scripts/_dump_tech_table.ts"],
+            # shell=True にリストを渡すと POSIX では先頭の1語しか実行されない
+            # （gen_tile_weights_table.py の同じ箇所を参照）。文字列で渡す。
+            "npx tsx scripts/_dump_tech_table.ts",
             cwd=REPO, capture_output=True, text=True, encoding="utf-8", shell=True,
         )
     finally:
