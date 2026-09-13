@@ -86,6 +86,17 @@ const HOME_BG: Record<string, string> = {
   ASTEROID: "#9c4a8f",
 };
 
+/**
+ * 船ボードの画像（public/ships/）。note の記事の画像を元ファイルの形式のまま置いて
+ * あるので拡張子が船ごとに違う。差し替えるときはここも合わせる。
+ */
+const SHIP_IMG_SRC: Record<ShipId, string> = {
+  twilight: "/ships/twilight.png",
+  eclipse: "/ships/eclipse.png",
+  rebellion: "/ships/rebellion.jpg",
+  tfmars: "/ships/tfmars.jpg",
+};
+
 type Mode = "matrix" | "tile";
 
 type Sel =
@@ -541,11 +552,11 @@ export default function WeightsEditor() {
 
   /**
    * 列が船のときだけ、グリッドの上に船ボードのサムネイルを並べる（2026-09-13）。
-   * 画像は public/ships/<shipId>.png（ルールブックから切り出したもの）。
+   * 画像は SHIP_IMG_SRC（public/ships/）。
    * 選択中のセルの船は青く、タップで拡大（もう一度タップで閉じる）。
    * 画像が無いときは枠と名前だけ残し、壊れた画像アイコンは出さない。
    */
-  const shipImgSrc = (id: ShipId) => `/ships/${id}.png`;
+  const shipImgSrc = (id: ShipId) => SHIP_IMG_SRC[id];
   const zoomedShip = shipZoom && shipCols.includes(shipZoom) ? shipZoom : null;
   const shipStrip =
     shipCols.length > 0 ? (

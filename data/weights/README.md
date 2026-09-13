@@ -111,8 +111,9 @@ Android で `https://gaia-project-map-search.vercel.app/weights` を開く
     一括より優先され、上書きしたセルは下線が付く。ルール全文が同じ画面に出る。
 - 「ブースター他」の拡張版で列が船になるとき（一括、または FEDG/TSL のタイル）は、
   グリッドの上に**船ボードの画像**が並ぶ（2026-09-13 追加）。タップで拡大、もう一度で
-  閉じる。画像は `public/ships/<shipId>.png`（twilight / eclipse / rebellion / tfmars）。
-  無ければ名前だけの枠になる。
+  閉じる。画像は `public/ships/`（twilight.png / eclipse.png / rebellion.jpg / tfmars.jpg。
+  note の記事の画像を元の形式のまま置いてある）。差し替えるときは
+  `WeightsEditor.tsx` の `SHIP_IMG_SRC` も合わせる。無ければ名前だけの枠になる。
 - 編集はブラウザの localStorage に溜まるだけで、**CSV も `.ts` も書き換わらない**。
 - 「差分を出す」で変わったセルだけのテキストが出る。それを PC へ持ち帰って反映する:
 
