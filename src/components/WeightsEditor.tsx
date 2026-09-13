@@ -41,6 +41,7 @@ import {
   type WeightEdits,
 } from "@/gaia/eval/weightEdits";
 import type { FactionId } from "@/gaia/eval/factionWeights";
+import { SHIP_IDS, SHIP_LABEL, type ShipId } from "@/gaia/setup/types";
 
 const LS_KEY = "gaia_weight_edits";
 // 「このタイルは見た」の記録。編集とは別キーにしてあるので、差分を CSV へ反映して
@@ -101,6 +102,8 @@ export default function WeightsEditor() {
   const [edits, setEdits] = React.useState<WeightEdits>(EMPTY_EDITS);
   const [sel, setSel] = React.useState<Sel>(null);
   const [showDiff, setShowDiff] = React.useState(false);
+  /** 船の画像の拡大表示（タップした船。もう一度タップで閉じる）。 */
+  const [shipZoom, setShipZoom] = React.useState<ShipId | null>(null);
   /** `${table}:${exp}:${tile}` → 確認済み。 */
   const [reviewed, setReviewed] = React.useState<Record<string, true>>({});
   /** 「全消去」の2段階確認: 1回目のタップでアームし、一定時間内の2回目で確定する。 */
@@ -142,6 +145,14 @@ export default function WeightsEditor() {
     () => (tile ? axesOfTile(meta, tile.id, lf) : []),
     [meta, tile, lf],
   );
+  // いま画面に出ている列が船なら、その船の画像をグリッドの上に並べる（2026-09-13）。
+  // 列が船になるのは tile_weights の拡張版だけ（一括＝4隻、タイル＝そのタイルが乗る船）。
+  const shipCols = React.useMemo(() => {
+    const cols = mode === "matrix" ? axes : tileAxes;
+    return cols
+      .map((a) => a.key)
+      .filter((k): k is ShipId => (SHIP_IDS as readonly string[]).includes(k));
+  }, [mode, axes, tileAxes]);
 
   const commit = React.useCallback((next: WeightEdits) => {
     setEdits(next);
@@ -526,6 +537,105 @@ export default function WeightsEditor() {
     </div>
   );
 
+  // ---- 船の画像 --------------------------------------------------------
+
+  /**
+   * 列が船のときだけ、グリッドの上に船ボードのサムネイルを並べる（2026-09-13）。
+   * 画像は public/ships/<shipId>.png（ルールブックから切り出したもの）。
+   * 選択中のセルの船は青く、タップで拡大（もう一度タップで閉じる）。
+   * 画像が無いときは枠と名前だけ残し、壊れた画像アイコンは出さない。
+   */
+  const shipImgSrc = (id: ShipId) => `/ships/${id}.png`;
+  const zoomedShip = shipZoom && shipCols.includes(shipZoom) ? shipZoom : null;
+  const shipStrip =
+    shipCols.length > 0 ? (
+      <div style={{ padding: "0 8px 6px" }}>
+        <div style={{ display: "flex", gap: 4 }}>
+          {shipCols.map((id) => {
+            const selected = sel !== null && sel.kind !== "base" && sel.axis === id;
+            const zoomed = zoomedShip === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setShipZoom(zoomed ? null : id)}
+                title={SHIP_LABEL[id].ja}
+                style={{
+                  ...BORDER_BOX,
+                  flex: "1 1 0",
+                  minWidth: 0,
+                  padding: 2,
+                  borderRadius: 6,
+                  border: "1px solid " + (zoomed || selected ? "#4453ff" : "#ddd"),
+                  background: selected ? "#dfe4ff" : "#fff",
+                  cursor: "pointer",
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={shipImgSrc(id)}
+                  alt=""
+                  onError={(e) => {
+                    e.currentTarget.style.visibility = "hidden";
+                  }}
+                  style={{ display: "block", width: "100%", height: 52, objectFit: "contain" }}
+                />
+                <div
+                  style={{
+                    fontSize: 9,
+                    fontWeight: selected ? 700 : 400,
+                    marginTop: 2,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {SHIP_LABEL[id].ja}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        {zoomedShip ? (
+          <div style={{ marginTop: 4 }}>
+            <button
+              type="button"
+              onClick={() => setShipZoom(null)}
+              title="閉じる"
+              style={{
+                ...BORDER_BOX,
+                display: "block",
+                width: "100%",
+                padding: 0,
+                border: "1px solid #ddd",
+                borderRadius: 6,
+                background: "#fff",
+                cursor: "pointer",
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={shipImgSrc(zoomedShip)}
+                alt={SHIP_LABEL[zoomedShip].ja}
+                style={{ display: "block", width: "100%", borderRadius: 6 }}
+              />
+            </button>
+            <div style={{ display: "flex", gap: 8, fontSize: 10, color: "#666", marginTop: 2 }}>
+              <span>{SHIP_LABEL[zoomedShip].ja}（タップで閉じる）</span>
+              <a
+                href={shipImgSrc(zoomedShip)}
+                target="_blank"
+                rel="noreferrer"
+                style={{ marginLeft: "auto", color: "#2733cc" }}
+              >
+                原寸で開く
+              </a>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    ) : null;
+
   // ---- 下部の操作バー -------------------------------------------------
 
   const selLabel = (() => {
@@ -823,6 +933,8 @@ export default function WeightsEditor() {
           種族がその列を登れるか。ここで入れた倍率は{meta.ja}の全タイルに効く。
         </div>
       ) : null}
+
+      {shipStrip}
 
       <div style={{ padding: "0 6px", flex: 1 }}>
         {!hasAxis ? flatGrid : mode === "matrix" ? matrixGrid : tileGrid}
