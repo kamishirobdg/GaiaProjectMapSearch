@@ -1,18 +1,25 @@
 # HANDOFF
 
-最終更新: 2026-08-29（本番デプロイ後）。次セッションはここから読む（詳細はTODO.md）。
+最終更新: 2026-09-13（本番デプロイ後）。次セッションはここから読む（詳細はTODO.md）。
 
 ## 現在地
 
-- **`main` / `origin/main` は `dee9a58`**（2026-08-29 に本番へ出した。`766cc93..dee9a58`
-  の6コミット）。**本番（Vercel）は最新**。
-- 直近コミット: `dee9a58`（金枠同盟と拡張の基本技術に船ごとの評価軸を追加）。
-- ⚠️ **`release/v1.01` は `766cc93` のまま取り残されている**。今回は作業ブランチ
-  `claude/gaia-map-project-status-adrt1n` から `:main` へ直接 FF push したため。
-  ローカルで `git checkout release/v1.01 && git merge --ff-only origin/main` して
-  早送りしておくこと。以後の運用は従来どおり `git push origin release/v1.01:main`。
+- **`main` / `origin/main` は `149fb99`**（2026-09-13 に本番へ出した。`dee9a58..149fb99`
+  の3コミット）。**本番（Vercel）は最新**。
+- 直近コミット: `149fb99`（docs）。重みの本体は `c9a887d`（上級技術の拡張版1229セル）。
+- ⚠️ **`release/v1.01` は `766cc93` のまま取り残されている**。8/29 と 9/13 の2回とも
+  作業ブランチ `claude/gaia-map-project-status-adrt1n` から `:main` へ直接 FF push
+  したため。ローカルで `git checkout release/v1.01 && git merge --ff-only origin/main`
+  して早送りしておくこと。以後の運用は従来どおり `git push origin release/v1.01:main`。
 - 次に本番へ出すときの未pushの件数は
   `git rev-list --count origin/main..release/v1.01`。実行前に必ずユーザー確認。
+
+## 2026-09-13 のセッションでやったこと（本番へ出済み）
+
+1. **`/weights` 編集1229セルを反映**（`c9a887d`。`advanced_tech_lf.csv` のみ）。
+   AT13/01/05/15/02/11/14 の研究6列と25点・3船、拡張専用 AT16〜AT21 の全部。
+   これで **拡張部の面（25点/3船）が 21/21**、**AT16〜AT21 も研究6列まで埋まった**。
+2. 上記に伴う HANDOFF/TODO/README の更新（`149fb99`）と、8/29 のリリース記録（`9d5612a`）。
 
 ## 2026-08-29 のセッションでやったこと（本番へ出済み）
 
