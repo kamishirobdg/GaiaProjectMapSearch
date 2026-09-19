@@ -1,0 +1,504 @@
+# gaia-weights v1
+# 種族別評価値の整合性レビュー（2026-09-19）の提案（確信度 高・中）。
+# No ごとに区切ってあるので、採らない提案の行は消してから apply_weight_edits.py へ渡す。
+[round_scoring base]
+# --- P01
+RS02,R1,ivits,3
+# --- P02
+RS03,R1,itars,4
+# --- P03
+RS01,R1,firaks,2
+RS01,R1,itars,2
+RS01,R2,firaks,2
+RS01,R2,itars,2
+# --- P14
+RS07,R3,bescods,6
+RS07,R3,itars,9
+RS07,R4,bescods,9
+RS07,R4,itars,9
+RS07,R5,bescods,12
+RS07,R5,itars,12
+RS07,R6,bescods,12
+RS07,R6,itars,12
+# --- P16
+RS02,R2,firaks,6
+RS02,R3,firaks,6
+RS02,R4,firaks,6
+RS03,R2,firaks,8
+RS03,R3,firaks,8
+RS03,R4,firaks,8
+[round_scoring lf]
+# --- P01
+RS02,R1,ivits,3
+# --- P02
+RS03,R1,itars,4
+# --- P03
+RS01,R1,firaks,2
+RS01,R1,itars,2
+RS01,R2,firaks,2
+RS01,R2,itars,2
+# --- P14
+RS07,R3,bescods,6
+RS07,R3,itars,9
+RS07,R4,bescods,9
+RS07,R4,itars,9
+RS07,R5,bescods,12
+RS07,R5,itars,12
+RS07,R6,bescods,12
+RS07,R6,itars,12
+# --- P16
+RS02,R2,firaks,6
+RS02,R3,firaks,6
+RS02,R4,firaks,6
+RS03,R2,firaks,8
+RS03,R3,firaks,8
+RS03,R4,firaks,8
+# --- P18
+RS01,R3,spaceGiants,12
+RS01,R4,spaceGiants,12
+RS01,R5,spaceGiants,12
+RS01,R6,spaceGiants,12
+RS11,R2,spaceGiants,9
+RS11,R3,spaceGiants,9
+RS11,R4,spaceGiants,9
+RS11,R5,spaceGiants,9
+RS11,R6,spaceGiants,9
+# --- P19
+RS05,R1,spaceGiants,2
+RS05,R2,spaceGiants,2
+RS05,R3,spaceGiants,6
+RS05,R4,spaceGiants,6
+RS05,R5,spaceGiants,6
+RS05,R6,spaceGiants,6
+RS06,R1,spaceGiants,2
+RS06,R2,spaceGiants,2
+RS06,R3,spaceGiants,8
+RS06,R4,spaceGiants,8
+RS06,R5,spaceGiants,8
+RS06,R6,spaceGiants,8
+# --- P21
+RS09,R1,darkanians,3
+RS09,R2,darkanians,3
+RS09,R3,darkanians,5
+RS09,R4,darkanians,6
+RS09,R5,darkanians,6
+RS09,R6,darkanians,6
+# --- P30
+RS12,R1,firaks,4
+[tile_weights lf]
+# --- P04
+FS08,-,itars,4
+# --- P12
+FS06,-,ivits,15
+# --- P17
+RB08,-,firaks,8
+# --- P19
+FS04,-,spaceGiants,9
+# --- P20
+ART06,-,darkanians,12
+FS09,-,darkanians,12
+RB13,-,darkanians,6
+# --- P22
+ART12,-,moweyds,9
+FED8PT,-,moweyds,20
+RB03,-,moweyds,12
+# --- P23
+FEDG4,-,moweyds,22
+FEDG4,-,tinkerroids,22
+# --- P24
+ART09,-,ambas,14
+ART09,-,balTaks,14
+ART09,-,bescods,14
+ART09,-,darkanians,14
+ART09,-,firaks,14
+ART09,-,geodens,14
+ART09,-,gleens,10
+ART09,-,hadschHallas,14
+ART09,-,itars,14
+ART09,-,ivits,16
+ART09,-,lantids,14
+ART09,-,moweyds,14
+ART09,-,nevlas,16
+ART09,-,spaceGiants,14
+ART09,-,taklons,14
+ART09,-,terrans,16
+ART09,-,tinkerroids,14
+ART09,-,xenos,14
+# --- P25
+FEDG3,-,ambas,14
+FEDG3,-,balTaks,18
+FEDG3,-,bescods,14
+FEDG3,-,darkanians,18
+FEDG3,-,firaks,14
+FEDG3,-,geodens,14
+FEDG3,-,gleens,14
+FEDG3,-,hadschHallas,14
+FEDG3,-,itars,14
+FEDG3,-,ivits,14
+FEDG3,-,lantids,18
+FEDG3,-,moweyds,14
+FEDG3,-,nevlas,14
+FEDG3,-,spaceGiants,12
+FEDG3,-,taklons,14
+FEDG3,-,terrans,14
+FEDG3,-,tinkerroids,14
+FEDG3,-,xenos,14
+# --- P26
+FEDG1,-,ambas,20
+FEDG1,-,balTaks,20
+FEDG1,-,bescods,20
+FEDG1,-,darkanians,20
+FEDG1,-,firaks,20
+FEDG1,-,geodens,20
+FEDG1,-,gleens,20
+FEDG1,-,hadschHallas,20
+FEDG1,-,itars,20
+FEDG1,-,ivits,20
+FEDG1,-,lantids,20
+FEDG1,-,moweyds,20
+FEDG1,-,nevlas,20
+FEDG1,-,spaceGiants,20
+FEDG1,-,taklons,20
+FEDG1,-,terrans,20
+FEDG1,-,tinkerroids,20
+FEDG1,-,xenos,20
+FEDG5,-,ambas,22
+FEDG5,-,balTaks,22
+FEDG5,-,bescods,22
+FEDG5,-,darkanians,22
+FEDG5,-,firaks,22
+FEDG5,-,geodens,22
+FEDG5,-,gleens,18
+FEDG5,-,hadschHallas,22
+FEDG5,-,itars,22
+FEDG5,-,ivits,26
+FEDG5,-,lantids,22
+FEDG5,-,moweyds,22
+FEDG5,-,nevlas,22
+FEDG5,-,spaceGiants,22
+FEDG5,-,taklons,22
+FEDG5,-,terrans,22
+FEDG5,-,tinkerroids,22
+FEDG5,-,xenos,26
+FEDG6,-,ambas,20
+FEDG6,-,balTaks,20
+FEDG6,-,bescods,24
+FEDG6,-,darkanians,20
+FEDG6,-,firaks,24
+FEDG6,-,geodens,20
+FEDG6,-,gleens,20
+FEDG6,-,hadschHallas,20
+FEDG6,-,itars,20
+FEDG6,-,ivits,20
+FEDG6,-,lantids,24
+FEDG6,-,moweyds,20
+FEDG6,-,nevlas,24
+FEDG6,-,spaceGiants,20
+FEDG6,-,taklons,20
+FEDG6,-,terrans,20
+FEDG6,-,tinkerroids,24
+FEDG6,-,xenos,20
+FEDG7,-,ambas,18
+FEDG7,-,balTaks,18
+FEDG7,-,bescods,18
+FEDG7,-,darkanians,18
+FEDG7,-,firaks,18
+FEDG7,-,geodens,18
+FEDG7,-,gleens,18
+FEDG7,-,hadschHallas,18
+FEDG7,-,itars,22
+FEDG7,-,ivits,18
+FEDG7,-,lantids,18
+FEDG7,-,moweyds,22
+FEDG7,-,nevlas,22
+FEDG7,-,spaceGiants,18
+FEDG7,-,taklons,22
+FEDG7,-,terrans,18
+FEDG7,-,tinkerroids,18
+FEDG7,-,xenos,18
+FEDG8,-,ambas,22
+FEDG8,-,balTaks,22
+FEDG8,-,bescods,22
+FEDG8,-,darkanians,22
+FEDG8,-,firaks,22
+FEDG8,-,geodens,22
+FEDG8,-,gleens,22
+FEDG8,-,hadschHallas,30
+FEDG8,-,itars,22
+FEDG8,-,ivits,22
+FEDG8,-,lantids,22
+FEDG8,-,moweyds,22
+FEDG8,-,nevlas,22
+FEDG8,-,spaceGiants,22
+FEDG8,-,taklons,22
+FEDG8,-,terrans,22
+FEDG8,-,tinkerroids,22
+FEDG8,-,xenos,22
+# --- P27
+RB04,-,ambas,8
+RB04,-,balTaks,8
+RB04,-,bescods,8
+RB04,-,firaks,8
+RB04,-,gleens,8
+RB04,-,itars,8
+RB04,-,ivits,8
+RB04,-,lantids,8
+RB04,-,moweyds,8
+RB04,-,nevlas,8
+RB04,-,spaceGiants,6
+RB04,-,taklons,8
+RB04,-,terrans,8
+RB04,-,tinkerroids,8
+RB04,-,xenos,8
+[tile_weights base]
+# --- P05
+RB03,-,ambas,8
+RB03,-,bescods,8
+RB03,-,firaks,8
+RB03,-,geodens,8
+RB03,-,ivits,8
+# --- P06
+RB05,-,ambas,10
+RB05,-,bescods,10
+RB05,-,firaks,10
+RB05,-,geodens,10
+RB05,-,hadschHallas,10
+RB05,-,itars,10
+RB05,-,ivits,14
+RB05,-,lantids,10
+RB05,-,terrans,10
+RB05,-,xenos,10
+# --- P12
+FS06,-,ivits,15
+# --- P17
+RB08,-,firaks,8
+# --- P27
+RB04,-,ambas,8
+RB04,-,balTaks,8
+RB04,-,bescods,8
+RB04,-,firaks,8
+RB04,-,gleens,8
+RB04,-,itars,8
+RB04,-,ivits,8
+RB04,-,lantids,8
+RB04,-,nevlas,8
+RB04,-,taklons,8
+RB04,-,terrans,8
+RB04,-,xenos,8
+[advanced_tech base]
+# --- P07
+AT12,terra,balTaks,15
+AT12,terra,gleens,13
+AT12,terra,terrans,10
+# --- P11
+AT15,ai,terrans,12
+AT15,eco,terrans,12
+AT15,gaia,terrans,16
+AT15,nav,terrans,12
+AT15,sci,terrans,12
+AT15,terra,terrans,12
+# --- P13
+AT02,ai,bescods,20
+AT02,eco,bescods,26
+AT02,gaia,bescods,20
+AT02,nav,bescods,26
+AT02,sci,bescods,26
+AT02,terra,bescods,20
+# --- P15
+AT11,ai,firaks,18
+AT11,eco,firaks,18
+AT11,gaia,firaks,9
+AT11,nav,firaks,18
+AT11,sci,firaks,18
+AT11,terra,firaks,18
+# --- P28
+AT02,ai,gleens,8
+AT04,ai,gleens,8
+AT06,ai,gleens,4
+AT07,ai,gleens,17
+AT08,ai,gleens,10
+AT09,ai,gleens,8
+AT10,ai,gleens,10
+AT11,ai,gleens,6
+AT12,ai,gleens,13
+AT13,ai,gleens,11
+AT14,ai,gleens,9
+# --- P29
+AT15,ai,ambas,14
+AT15,ai,balTaks,14
+AT15,ai,bescods,14
+AT15,ai,firaks,14
+AT15,ai,geodens,20
+AT15,ai,gleens,14
+AT15,ai,hadschHallas,14
+AT15,ai,itars,14
+AT15,ai,ivits,14
+AT15,ai,lantids,14
+AT15,ai,nevlas,14
+AT15,ai,taklons,14
+AT15,ai,xenos,14
+AT15,nav,ambas,14
+AT15,nav,bescods,14
+AT15,nav,firaks,14
+AT15,nav,geodens,20
+AT15,nav,gleens,14
+AT15,nav,hadschHallas,14
+AT15,nav,itars,14
+AT15,nav,ivits,14
+AT15,nav,lantids,14
+AT15,nav,nevlas,14
+AT15,nav,taklons,14
+AT15,nav,xenos,14
+[advanced_tech lf]
+# --- P08
+AT04,shuttle,balTaks,12
+# --- P10
+AT03,ai,balTaks,38
+AT03,ai,geodens,32
+AT03,ai,itars,32
+AT03,ai,ivits,40
+AT03,ai,xenos,32
+# --- P13
+AT02,ai,bescods,20
+AT02,eco,bescods,26
+AT02,gaia,bescods,20
+AT02,nav,bescods,26
+AT02,sci,bescods,26
+AT02,shuttle,bescods,26
+AT02,terra,bescods,20
+AT02,vp25,bescods,26
+# --- P15
+AT11,ai,firaks,18
+AT11,eco,firaks,18
+AT11,gaia,firaks,9
+AT11,nav,firaks,18
+AT11,sci,firaks,18
+AT11,shuttle,firaks,18
+AT11,terra,firaks,18
+AT11,vp25,firaks,18
+# --- P18
+AT04,ai,spaceGiants,20
+AT04,eco,spaceGiants,10
+AT04,gaia,spaceGiants,20
+AT04,nav,spaceGiants,20
+AT04,sci,spaceGiants,15
+AT04,shuttle,spaceGiants,10
+AT04,terra,spaceGiants,10
+AT04,vp25,spaceGiants,20
+AT14,ai,spaceGiants,24
+AT14,eco,spaceGiants,12
+AT14,gaia,spaceGiants,24
+AT14,nav,spaceGiants,24
+AT14,sci,spaceGiants,12
+AT14,shuttle,spaceGiants,12
+AT14,terra,spaceGiants,12
+AT14,vp25,spaceGiants,24
+# --- P19
+AT08,ai,spaceGiants,10
+AT08,eco,spaceGiants,8
+AT08,gaia,spaceGiants,10
+AT08,nav,spaceGiants,10
+AT08,sci,spaceGiants,8
+AT08,shuttle,spaceGiants,5
+AT08,terra,spaceGiants,8
+AT08,vp25,spaceGiants,10
+# --- P20
+AT10,shuttle,darkanians,14
+AT10,terra,darkanians,14
+AT17,ai,darkanians,16
+AT17,eco,darkanians,16
+AT17,gaia,darkanians,8
+AT17,nav,darkanians,16
+AT17,sci,darkanians,8
+AT17,shuttle,darkanians,8
+AT17,terra,darkanians,16
+AT17,vp25,darkanians,16
+AT21,ai,darkanians,12
+AT21,eco,darkanians,12
+AT21,gaia,darkanians,6
+AT21,nav,darkanians,12
+AT21,sci,darkanians,6
+AT21,shuttle,darkanians,6
+AT21,terra,darkanians,12
+AT21,vp25,darkanians,12
+# --- P23
+AT12,ai,moweyds,25
+AT12,eco,moweyds,19
+AT12,gaia,moweyds,25
+AT12,nav,moweyds,25
+AT12,sci,moweyds,13
+AT12,shuttle,moweyds,19
+AT12,terra,moweyds,13
+AT12,vp25,moweyds,19
+# --- P28
+AT02,ai,gleens,8
+AT04,ai,gleens,8
+AT06,ai,gleens,4
+AT07,ai,gleens,17
+AT08,ai,gleens,10
+AT09,ai,gleens,8
+AT10,ai,gleens,10
+AT11,ai,gleens,6
+AT12,ai,gleens,13
+AT13,ai,gleens,11
+AT14,ai,gleens,9
+AT16,ai,gleens,8
+AT17,ai,gleens,6
+AT18,ai,gleens,6
+AT19,ai,gleens,5
+AT20,ai,gleens,4
+AT21,ai,gleens,6
+# --- P29
+AT15,ai,ambas,16
+AT15,ai,balTaks,16
+AT15,ai,bescods,16
+AT15,ai,darkanians,24
+AT15,ai,firaks,16
+AT15,ai,geodens,22
+AT15,ai,gleens,16
+AT15,ai,hadschHallas,16
+AT15,ai,itars,16
+AT15,ai,ivits,16
+AT15,ai,lantids,16
+AT15,ai,moweyds,16
+AT15,ai,nevlas,16
+AT15,ai,spaceGiants,24
+AT15,ai,taklons,16
+AT15,ai,tinkerroids,20
+AT15,ai,xenos,16
+AT15,nav,ambas,16
+AT15,nav,bescods,16
+AT15,nav,darkanians,24
+AT15,nav,firaks,16
+AT15,nav,geodens,22
+AT15,nav,gleens,16
+AT15,nav,hadschHallas,16
+AT15,nav,itars,16
+AT15,nav,ivits,16
+AT15,nav,lantids,16
+AT15,nav,moweyds,16
+AT15,nav,nevlas,16
+AT15,nav,spaceGiants,24
+AT15,nav,taklons,16
+AT15,nav,tinkerroids,20
+AT15,nav,xenos,16
+[tech_position base]
+# --- P09
+TS4,nav,balTaks,0
+[tech_position lf]
+# --- P09
+TS4,nav,balTaks,0
+# --- P19
+TS7,ai,spaceGiants,9
+TS7,eco,spaceGiants,5
+TS7,gaia,spaceGiants,9
+TS7,nav,spaceGiants,9
+TS7,sci,spaceGiants,5
+TS7,terra,spaceGiants,2
+# --- P22
+TS9,ai,moweyds,18
+TS9,eco,moweyds,18
+TS9,gaia,moweyds,18
+TS9,nav,moweyds,24
+TS9,sci,moweyds,18
+TS9,terra,moweyds,18
