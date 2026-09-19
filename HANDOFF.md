@@ -1,12 +1,16 @@
 # HANDOFF
 
-最終更新: 2026-09-19（評価値の入力が一巡完了）。次セッションはここから読む（詳細はTODO.md）。
+最終更新: 2026-09-19（2回目。初期研究レベルの保存と合算比の入力を追加）。次セッションはここから読む（詳細はTODO.md）。
 
 ## 現在地
 
-- **`main` と作業ブランチ `claude/gaia-map-project-status-adrt1n` は同一**（2026-09-19 の
-  6回目の FF push で揃えた。ハッシュは `git log -1 origin/main` で見る。ここに数字を
-  書くと毎コミットで古くなるのでやめた）。**本番（Vercel）は最新**。
+- **作業ブランチ `claude/gaia-map-project-status-adrt1n` は `main` より先に進んでいる**
+  （2026-09-19 2回目のセッションの3コミット＝初期研究レベルの保存・合算比の入力・
+  ドキュメント。件数は
+  `git rev-list --count origin/main..origin/claude/gaia-map-project-status-adrt1n`。
+  ハッシュをここに書くと毎コミットで古くなるのでやめた）。**本番（Vercel）は 6回目の
+  FF push の内容のまま**＝この3コミットは未デプロイ。重みは変えていないので、出しても
+  `/weights` の「全消去」は要らない。
   直近のデプロイは 4回目 `5e3771a..06cfc4f`（船ごとの値の初回320セル）、
   5回目 `06cfc4f..2c487d8`（船セルの見せ方 `996476b`）、6回目（ドキュメントのみ）。
 - **評価値の入力は 2026-09-19 に全表で一巡完了**（ユーザー確認）。`/weights` の編集は
@@ -18,12 +22,40 @@
   **この5ファイルはユーザー判断でそのまま残す**（本番サイト直下で配信されている）。
 - 重みの直近: `06cfc4f`（船ごとの値の初回320セル）。船セルの見せ方の変更 `996476b` は
   CSV の見た目（基準値と同値の上書き101セル→0）を変えるだけで実行時の値は不変。
-- ⚠️ **`release/v1.01` は `766cc93` のまま取り残されている**。8/29・9/13（3回）・9/19（2回）
-  の計6回とも作業ブランチ `claude/gaia-map-project-status-adrt1n` から `:main` へ直接
-  FF push したため。ローカルで `git checkout release/v1.01 && git merge --ff-only origin/main`
-  して早送りしておくこと。以後の運用は従来どおり `git push origin release/v1.01:main`。
-- 次に本番へ出すときの未pushの件数は
-  `git rev-list --count origin/main..release/v1.01`。実行前に必ずユーザー確認。
+- **`release/v1.01` は 2026-09-19（2回目）に `origin/main` と同じ位置へ早送りした**
+  （origin 側も push 済み）。それまでは 8/29・9/13・9/19 の計6回とも作業ブランチから
+  `:main` へ直接 FF push していて `766cc93` に取り残されていた。手元の PC のローカル
+  `release/v1.01` は `git checkout release/v1.01 && git pull --ff-only` で揃う。
+  次に本番へ出すときは release/v1.01 を作業ブランチまで早送りしてから従来どおり
+  `git push origin release/v1.01:main`（実行前に必ずユーザー確認）。未pushの件数は
+  `git rev-list --count origin/main..release/v1.01`。
+
+## 2026-09-19（2回目）のセッションでやったこと（未デプロイ）
+
+1. **`release/v1.01` を `origin/main` へ早送り**（origin へも push。本番には触っていない）。
+2. **狭い画面の「指定」バッジを 375px で確認した**（残タスク1）。この環境から本番は
+   403 で届かないので、同じコミットのローカル dev サーバをヘッドレス Chromium
+   （Playwright、viewport 375px）で撮った。列幅 51.8px・画像 33.8px・バッジは緑の丸
+   8px＋白縁 1px＝10px（画像幅の 30%）で枠内に収まり、上級・標準の段は6列とも上端が
+   一致、横スクロールなし。560px で丸・561px で文字「指定」に切り替わる。拡張版でも同じ。
+   残るのは Android のフォントで見出しの折り返し行数が変わる可能性だけ（段揃えは grid
+   なので崩れない）。既定の除外だけの枠（テラフォーミング／ガイア／経済の上級）にも
+   バッジが出るのは `hasRule` の仕様どおりで、変えていない。
+3. **勢力ボードの初期研究レベルを保存した**（残タスク3。ユーザーが実物で確認した値）。
+   `FACTION_START_RESEARCH`（`src/gaia/eval/factionWeights.ts`、テストで固定）と
+   `data/weights/README.md` の表。ガイア: terrans/balTaks/moweyds、改造: geodens、
+   航行: gleens/ambas/spaceGiants/darkanians、経済: hadschHallas/darkanians、
+   科学: nevlas/tinkerroids、AI: xenos、なし: lantids/taklons/ivits/bescods/itars/firaks。
+   評価には直接掛けていない（研究列の値を見直すときの根拠）。
+4. **Map と Setup の合算比を Total タブで指定できるようにした**（残タスク2、案C）。
+   `src/gaia/eval/scoreBlend.ts`（既定 1:1、localStorage `gaia_score_blend` に既定と
+   違うフィールドだけ）＋ `useScoreBlend`。Total の合計列、List の種族優遇の掛け先
+   （`factionPrefBonus` の `blend`）、List の「合計の上位4種族」が同じ比を使う。
+   1:1 のままなら保存キーは無く、探索結果・条件キーはバイト不変。**既定値をどうするかは
+   未決**（実データで試してから）。
+5. 検証: typecheck 0 / lint エラー0（warning 586。`ResearchTrackId` の未使用 import が
+   使われるようになって1件減った）/ test 24ファイル303件。Total と List はヘッドレス
+   Chromium で入力→保存→再読込→List の表示→1:1 に戻すまで動作確認済み。
 
 ## 2026-09-19 のセッションでやったこと
 
@@ -136,8 +168,8 @@
 
 ## 検証状況（2026-09-19）
 
-- `npm run typecheck` **0件** / `npm run lint` **エラー0**（warning 587件、ほぼ
-  `no-explicit-any`）/ `npm test` **22ファイル295件 全緑**。
+- `npm run typecheck` **0件** / `npm run lint` **エラー0**（warning 586件、ほぼ
+  `no-explicit-any`）/ `npm test` **24ファイル303件 全緑**（2026-09-19 2回目）。
 - CSV↔TS の全セル突き合わせ（両方向）**9本すべて「全一致」**
   （4本 × base/lf ＋ 船の上書き `--check-ship`。船の上書きは59セル）。
 - 影響力（`_probe_category_influence.ts` 4人LF 200件の占有率）:
@@ -153,14 +185,15 @@
 ## 残タスク（優先順）
 
 **評価値の入力（4表 × 通常/拡張 ＋ 船の上書き）は 2026-09-19 に一巡完了**。
-残っているのは値ではなく、見た目の確認と設計の判断だけ。
+2回目のセッションで「指定」バッジの確認・初期研究レベルの保存・合算比の入力まで済んだ。
 
-1. **狭い画面（560px以下）の「指定」バッジ（緑の丸）の実機確認**。埋め込みブラウザでは
-   375px 幅を再現できないので本番での目視が要る。
-2. **Map と Setup の合算比**（いまは 1:1 固定。2026-08-04 ユーザー指示で保留・検討中）。
-   TODO.md「直近の依頼で未着手」の**「Map と Setup のバランスを決める」**を参照。
-3. 勢力ボードの**初期研究レベルが未確認**（ルールブックの別表になく勢力ボードの画像
-   にしかない）。実物かボード画像が手に入れば `TECH_POSITION_WEIGHTS` の精度が上がる。
+1. **作業ブランチの3コミットを本番へ出す**（ユーザー確認のうえ。手順は上の「現在地」）。
+   出したら Total タブの「合算比」と List の表示を実データで一度見る。
+2. **合算比の既定値を決める**（いまは 1:1。Total タブの入力で試し、決まったら
+   `DEFAULT_SCORE_BLEND` を変える。保存値は絶対値なので既定を変えても保存済みの比は
+   そのまま）。観点は TODO.md「Map と Setup のバランスを決める」。
+3. （任意）Android の実機で Setup の「画面幅に収める」を一度見る（ヘッドレス Chromium
+   では問題なし。フォントの違いで見出しの折り返しが変わる可能性だけ残る）。
 4. （任意）値を実プレイで使ってみて気になったところを `/weights` から直す。
    手順は README（data/weights）。直したら影響力を測り直す（`_probe_category_influence.ts`）。
 
@@ -174,3 +207,8 @@
   手順は`data/weights/README.md`。
 - `git push`は指示があるまでしない（`release/v1.01`単独pushは既に許可されているが、
   **`:main`へのFFマージ＝本番デプロイは別途都度確認**）。
+- **クラウドの作業環境から本番（vercel.app）へは 403 で届かない**。狭い幅の見た目は
+  ローカル dev サーバ＋ヘッドレス Chromium（`/tmp` に `npm i playwright`、実行ファイルは
+  `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`、viewport を 375 に固定）で
+  同じコミットを撮れば代用できる。Setup にタイル指定を入れるには `/setup?s=<token>`
+  （`encodeSetupToken` 相当＝入力 JSON の base64url）で `tileRules` ごと渡すのが速い。
