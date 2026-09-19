@@ -8,8 +8,10 @@
 // （SETUP_SCORE_DIVISOR）で 100 前後に落としたため。Map 側の評価値も色ごと100前後
 // なので、同じ土俵に乗る。
 //
-// **いまの合算は 1:1 固定**。どちらを重く見るのが妥当かは検討中なので（TODO.md
-// 「Map と Setup のバランス」）、倍率の入力欄はまだ出していない。
+// 合算比は**このタブの入力欄で変えられる**（2026-09-19、案C）。既定は 1:1 で、どちらを
+// 重く見るのが妥当かは実データで試しながら決める（TODO.md「Map と Setup のバランス」）。
+// 比は localStorage（gaia_score_blend、既定と違うフィールドだけ）に持ち、List の
+// 種族優遇の掛け先と「合計の上位」も同じ比を読む（scoreBlend.ts / useScoreBlend）。
 
 import React from "react";
 import Link from "next/link";
@@ -29,7 +31,15 @@ import { mapValueByFaction } from "@/gaia/eval/mapFaction";
 import { scoreSetupFactions, type FactionScores } from "@/gaia/eval/factionEval";
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
 import { factionsForMode, type FactionId } from "@/gaia/eval/factionWeights";
-import { factionHomeBg, useSetupWeights } from "@/components/FactionEvalPanel";
+import { factionHomeBg, useScoreBlend, useSetupWeights } from "@/components/FactionEvalPanel";
+import {
+  blendScores,
+  isDefaultScoreBlend,
+  SCORE_BLEND_MAX,
+  SCORE_BLEND_MIN,
+  SCORE_BLEND_STEP,
+  type ScoreBlendKey,
+} from "@/gaia/eval/scoreBlend";
 import {
   readSharedExpansion,
   readSharedPlayers,
@@ -85,8 +95,10 @@ const UI = {
     fromList: "List の提案",
     proposal: "提案されたセットアップ",
     toList: "→ List でマップとセットアップの組を探す（選択はこのタブと共有）",
-    balanceNote:
-      "合算は 1:1（Map と Setup を同じ重みで足す）。どちらを重く見るかは検討中で、倍率の指定はまだ入れていない。",
+    blendTitle: "合算比",
+    blendNote: "合計 ＝ Map × 倍率 ＋ Setup × 倍率。List の種族優遇の掛け先と「合計の上位」にも同じ比が効く。",
+    blendReset: "1:1 に戻す",
+    blendDefault: "1:1（既定）",
     noBreakdown:
       "このマップは評価の内訳を持っていないため Map ぶんが 0 になる（古い候補。Map タブで検索し直すと付く）",
     seed: "シード",
@@ -111,8 +123,10 @@ const UI = {
     fromList: "From the List tab",
     proposal: "proposed setup",
     toList: "→ Find a map/setup pair on the List tab (the selection is shared)",
-    balanceNote:
-      "Totals are 1:1 for now; the map/setup balance is still under review, so there is no weight input yet.",
+    blendTitle: "Blend",
+    blendNote: "Total = Map × weight + Setup × weight. List's faction preference and its top-by-total line use the same ratio.",
+    blendReset: "Reset to 1:1",
+    blendDefault: "1:1 (default)",
     noBreakdown: "This map has no stored evaluation breakdown, so its map score is 0 (older candidate).",
     seed: "Seed",
   },
@@ -143,6 +157,8 @@ export default function TotalView() {
   const [players, setPlayers] = React.useState<number>(4);
   const [expansion, setExpansion] = React.useState<Expansion>("base");
   const [evalWeights] = useSetupWeights();
+  // Map と Setup の合算比（2026-09-19、案C）。書き込みは入力のハンドラだけ。
+  const [blend, changeBlend, resetBlend] = useScoreBlend();
 
   const [pinnedMaps, setPinnedMaps] = React.useState<PersistedCandidate[]>([]);
   const [rankedMaps, setRankedMaps] = React.useState<PersistedCandidate[]>([]);
@@ -354,10 +370,10 @@ export default function TotalView() {
         color: f.color,
         map: mapScores[f.id] ?? 0,
         setup: setupScores[f.id] ?? 0,
-        total: (mapScores[f.id] ?? 0) + (setupScores[f.id] ?? 0),
+        total: blendScores(mapScores[f.id] ?? 0, setupScores[f.id] ?? 0, blend),
       }))
       .sort((a, b) => b.total - a.total);
-  }, [selectedMap, setupInput, evalWeights, lf, lang]);
+  }, [selectedMap, setupInput, evalWeights, lf, lang, blend]);
 
   const mapHasBreakdown = selectedMap ? !!breakdownOf(selectedMap) : true;
 
@@ -460,7 +476,39 @@ export default function TotalView() {
             </Link>
           </div>
 
-          <div style={{ fontSize: 11, opacity: 0.6, marginTop: 8 }}>{t.balanceNote}</div>
+          {/* 合算比（2026-09-19、案C）。既定 1:1。書き込みは onChange のときだけ。 */}
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 10, fontSize: 12 }}>
+            <span style={{ fontWeight: 700 }}>{t.blendTitle}</span>
+            {(["map", "setup"] as ScoreBlendKey[]).map((k) => (
+              <label
+                key={k}
+                style={{
+                  display: "flex",
+                  gap: 4,
+                  alignItems: "center",
+                  border: "1px solid #eee",
+                  borderRadius: 6,
+                  padding: "3px 6px",
+                  background: blend[k] === 1 ? "#fafafa" : "#eef6ff",
+                }}
+              >
+                <span>{k === "map" ? t.mapScore : t.setupScore} ×</span>
+                <input
+                  type="number"
+                  step={SCORE_BLEND_STEP}
+                  min={SCORE_BLEND_MIN}
+                  max={SCORE_BLEND_MAX}
+                  value={blend[k]}
+                  onChange={(e) => changeBlend(k, Number(e.target.value))}
+                  style={{ width: 60, padding: "2px 4px", fontSize: 12 }}
+                />
+              </label>
+            ))}
+            <button onClick={resetBlend} disabled={isDefaultScoreBlend(blend)} style={{ fontSize: 11 }}>
+              {isDefaultScoreBlend(blend) ? t.blendDefault : t.blendReset}
+            </button>
+          </div>
+          <div style={{ fontSize: 11, opacity: 0.6, marginTop: 6 }}>{t.blendNote}</div>
           {!mapHasBreakdown ? (
             <div style={{ fontSize: 11, color: "#a15", marginTop: 4 }}>{t.noBreakdown}</div>
           ) : null}
@@ -476,8 +524,14 @@ export default function TotalView() {
                   <tr>
                     <th style={{ ...th, textAlign: "right" }}>{t.rank}</th>
                     <th style={{ ...th, textAlign: "left" }}>{t.faction}</th>
-                    <th style={th}>{t.mapScore}</th>
-                    <th style={th}>{t.setupScore}</th>
+                    <th style={th}>
+                      {t.mapScore}
+                      {blend.map !== 1 ? ` ×${blend.map}` : ""}
+                    </th>
+                    <th style={th}>
+                      {t.setupScore}
+                      {blend.setup !== 1 ? ` ×${blend.setup}` : ""}
+                    </th>
                     <th style={{ ...th, borderLeft: "1px solid #ddd" }}>{t.total}</th>
                   </tr>
                 </thead>

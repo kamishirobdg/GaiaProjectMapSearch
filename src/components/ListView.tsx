@@ -45,11 +45,13 @@ import {
 } from "@/gaia/eval/factionEval";
 import { FACTIONS, FACTION_IDS, type FactionId } from "@/gaia/eval/factionWeights";
 import { mapValueByFaction } from "@/gaia/eval/mapFaction";
+import { blendScores, isDefaultScoreBlend, type ScoreBlend } from "@/gaia/eval/scoreBlend";
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
 import { SetupBoard } from "@/components/SetupView";
 import FactionEvalPanel, {
   FactionPrefInputs,
   useFactionPref,
+  useScoreBlend,
   useSetupWeights,
 } from "@/components/FactionEvalPanel";
 import ConditionProfilesPanel from "@/components/ConditionProfilesPanel";
@@ -104,6 +106,8 @@ const UI = {
     pairNoMap: "（マップなし）",
     toTotal: "→ この組を Total タブ（種族別総合評価）で見る",
     totalStrong: "合計の上位4種族",
+    blendInUse: "合算比",
+    blendWhere: "（Total タブで変更。種族優遇の掛け先と合計の上位に効く）",
     pairCriterion: "基準",
     crit1: "1: 逆優位（マップ上位種族が弱い）",
     crit2: "2: 上位バランス（人数+2種族が拮抗）",
@@ -171,6 +175,8 @@ const UI = {
     pairNoMap: "(no map)",
     toTotal: "→ See this pair on the Total tab (faction totals)",
     totalStrong: "Top 4 by total",
+    blendInUse: "Blend",
+    blendWhere: "(set on the Total tab; applies to the faction preference and the top-by-total line)",
     pairCriterion: "Criterion",
     crit1: "1: Oppose map (map's top factions weak)",
     crit2: "2: Top balance (players+2 factions close)",
@@ -250,10 +256,12 @@ function topTotalText(
   setupScores: FactionScores,
   n: number,
   lang: Lang,
-  lf: boolean
+  lf: boolean,
+  blend: ScoreBlend
 ): string {
   const total = {} as FactionScores;
-  for (const f of FACTION_IDS) total[f] = (mapScores[f] ?? 0) + (setupScores[f] ?? 0);
+  // 合算比は Total タブと同じ（2026-09-19）
+  for (const f of FACTION_IDS) total[f] = blendScores(mapScores[f] ?? 0, setupScores[f] ?? 0, blend);
   return topFactions(total, n, lf)
     .map((f) => `${factionLabel(f, lang)} ${Math.round(total[f])}`)
     .join(" / ");
@@ -400,6 +408,8 @@ export default function ListView() {
   const [evalWeights, changeEvalWeight, resetEvalWeights, setAllEvalWeights] = useSetupWeights();
   // 種族優遇/冷遇（2026-07-31）。掛け先は「Mapの評価値＋Setupの評価値」の合計。
   const [factionPref, changeFactionPref, resetFactionPref] = useFactionPref();
+  // Map と Setup の合算比（Total タブで編集。種族優遇の掛け先と「合計の上位」に効く。2026-09-19）
+  const [scoreBlend] = useScoreBlend();
 
   /**
    * いまの「条件」（2026-07-30）。Map の searchKey と同じ考え方で、この内容から
@@ -774,6 +784,7 @@ export default function ListView() {
       templateIdBySearchKey,
       evalWeights,
       factionPref,
+      blend: scoreBlend,
     });
     if (!plan.ok) {
       setPairMsg(UI[lang][plan.failure]);
@@ -799,6 +810,7 @@ export default function ListView() {
     lang,
     evalWeights,
     factionPref,
+    scoreBlend,
   ]);
 
   /**
@@ -1118,6 +1130,12 @@ export default function ListView() {
                 lang={lang}
                 lf={recSettings?.lf ?? expansion === "lostFleet"}
               />
+              {/* 合算比が 1:1 でないときだけ、どの比で掛けているかを出す（2026-09-19）。 */}
+              {!isDefaultScoreBlend(scoreBlend) ? (
+                <div style={{ fontSize: 11, opacity: 0.65, marginTop: 4 }}>
+                  {t.blendInUse} Map ×{scoreBlend.map} : Setup ×{scoreBlend.setup} {t.blendWhere}
+                </div>
+              ) : null}
             </div>
           </Panel>
           {/* 提案ログ: 生成のたびに自動で積む履歴（左ペインの空きスペース）。 */}
@@ -1354,7 +1372,8 @@ export default function ListView() {
                           rec.setupScores,
                           4,
                           lang,
-                          recSettings.lf
+                          recSettings.lf,
+                          scoreBlend
                         )}
                         {"　"}
                         {/* この提案そのものを Total タブへ渡す（2026-08-04）。提案の

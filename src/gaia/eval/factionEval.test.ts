@@ -371,6 +371,24 @@ describe("種族優遇/冷遇（List）", () => {
     expect(withPref - bare).toBeCloseTo(100, 9);
   });
 
+  it("合算比を渡すと掛け先が Map×map＋Setup×setup になる（2026-09-19）", () => {
+    const s = flat();
+    const mapVal = Object.fromEntries(FACTION_IDS.map((f) => [f, 0])) as FactionScores;
+    mapVal.terrans = 90;
+    const bare = criterionScore("neutralBalance", s, opts);
+    // terrans: Map 90×0.5 + Setup 10×2 = 65 に w=1 × pref=1
+    const withPref = criterionScore("neutralBalance", s, {
+      ...opts,
+      factionPref: {
+        w: 1,
+        byFaction: { terrans: 1 },
+        mapValueByFaction: mapVal,
+        blend: { map: 0.5, setup: 2 },
+      },
+    });
+    expect(withPref - bare).toBeCloseTo(65, 9);
+  });
+
   it("Map ぶんを渡さなければ Setup ぶんだけで効く", () => {
     const s = flat();
     const bare = criterionScore("neutralBalance", s, opts);

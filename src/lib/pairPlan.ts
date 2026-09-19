@@ -23,6 +23,7 @@ import {
 } from "@/gaia/eval/factionEval";
 import type { FactionId } from "@/gaia/eval/factionWeights";
 import { mapFactionScores, mapValueByFaction } from "@/gaia/eval/mapFaction";
+import { isDefaultScoreBlend, type ScoreBlend } from "@/gaia/eval/scoreBlend";
 import type { FactionPrefByFaction, SetupWeights } from "@/gaia/eval/setupWeights";
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
 import type { SavedSetup } from "@/lib/setupHistory";
@@ -109,6 +110,8 @@ export type PairPlanInput = {
   templateIdBySearchKey: Record<string, string>;
   evalWeights: SetupWeights;
   factionPref: FactionPrefByFaction;
+  /** Map と Setup の合算比（種族優遇の掛け先に通す。省略時 1:1。2026-09-19）。 */
+  blend?: ScoreBlend;
   /** ランダム生成で試すシード。省略時はその場で作る（テストでは固定値を渡す）。 */
   seeds?: string[];
 };
@@ -166,13 +169,16 @@ export function mapTopOf(
 export function factionPrefArgOf(
   factionPref: FactionPrefByFaction,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mapBreakdown: any
+  mapBreakdown: any,
+  blend?: ScoreBlend
 ): FactionPref | undefined {
   return Object.keys(factionPref).length > 0
     ? {
         w: LIST_FACTION_PREF_W,
         byFaction: factionPref as Partial<Record<FactionId, number>>,
         mapValueByFaction: mapValueByFaction(mapBreakdown),
+        // 既定（1:1）なら省略＝従来どおり（無効時フィールド省略）
+        ...(blend && !isDefaultScoreBlend(blend) ? { blend } : {}),
       }
     : undefined;
 }
@@ -214,7 +220,7 @@ function planSetupToMap(a: PairPlanInput): PairPlan {
         playerCount: settings.players,
         lostFleet: settings.lf,
         mapTop3: top.top3,
-        factionPref: factionPrefArgOf(a.factionPref, breakdownOf(c)),
+        factionPref: factionPrefArgOf(a.factionPref, breakdownOf(c), a.blend),
       }),
     });
   }
@@ -296,7 +302,7 @@ function resolveMapSide(a: PairPlanInput): MapSide | PairPlanFailure {
     mapTopK,
     mapTopDetail,
     settings: deriveSetupSettings(tid),
-    pref: factionPrefArgOf(a.factionPref, breakdownOf(selected)),
+    pref: factionPrefArgOf(a.factionPref, breakdownOf(selected), a.blend),
   };
 }
 

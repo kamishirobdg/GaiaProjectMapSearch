@@ -24,6 +24,7 @@ import {
 import { advancedTechCell, advancedTechExtensionCell } from "./advancedTechWeights";
 import { roundScoringCell } from "./roundScoringWeights";
 import { shipTileCell, tileValueCell } from "./tileWeights";
+import { blendScores, type ScoreBlend } from "./scoreBlend";
 import {
   DEFAULT_SETUP_WEIGHTS,
   SETUP_SCORE_DIVISOR,
@@ -337,7 +338,7 @@ export function colorValueOf(
 
 /**
  * List の種族優遇/冷遇（2026-07-31）。色ではなく種族ごとに ± を付ける。
- * 掛け先は **Map と Setup の合計スコア**（ユーザー確定）。Map 側は色単位・
+ * 掛け先は **Map と Setup の合計スコア**（ユーザー確定。合算比は `blend`、省略時 1:1）。Map 側は色単位・
  * Setup 側は種族単位なので、合成は呼び出し側（List）が作って valueByFaction で渡す。
  * 同じ母星色の2種族は Map ぶんが同じで、Setup ぶんで差がつく。
  */
@@ -352,9 +353,14 @@ export type FactionPref = {
    * ―― これで「候補ごとにセットアップが変わる」探索でも同じ形で使える。
    */
   mapValueByFaction?: FactionScores;
+  /**
+   * Map と Setup の合算比（2026-09-19）。省略時は 1:1。総合評価タブの合計列と同じ比を
+   * 掛け先にも通す（TODO「Map と Setup のバランス」の決定＝案C）。
+   */
+  blend?: ScoreBlend;
 };
 
-/** 種族優遇ぶんの加点（指定が無ければ 0）。掛け先は Map評価＋Setup評価。 */
+/** 種族優遇ぶんの加点（指定が無ければ 0）。掛け先は Map評価×map＋Setup評価×setup（合算比。省略時 1:1）。 */
 function factionPrefBonus(
   setupScores: FactionScores,
   lostFleet: boolean,
@@ -365,7 +371,7 @@ function factionPrefBonus(
   for (const f of factionIdsForMode(lostFleet)) {
     const p = pref.byFaction[f];
     if (!p) continue;
-    const value = (pref.mapValueByFaction?.[f] ?? 0) + (setupScores[f] ?? 0);
+    const value = blendScores(pref.mapValueByFaction?.[f] ?? 0, setupScores[f] ?? 0, pref.blend);
     s += pref.w * p * value;
   }
   return s;

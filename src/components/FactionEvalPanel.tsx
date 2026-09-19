@@ -43,6 +43,14 @@ import {
   type SetupWeightKey,
   type SetupWeights,
 } from "@/gaia/eval/setupWeights";
+import {
+  DEFAULT_SCORE_BLEND,
+  readScoreBlend,
+  sanitizeScoreBlend,
+  writeScoreBlend,
+  type ScoreBlend,
+  type ScoreBlendKey,
+} from "@/gaia/eval/scoreBlend";
 import type { SetupResult } from "@/gaia/setup/types";
 import { T } from "@/components/ui/layout";
 
@@ -794,6 +802,30 @@ export function useFactionPref(): [
     setPref({});
   }, []);
   return [pref, change, reset];
+}
+
+/**
+ * Map と Setup の合算比（2026-09-19、案C）。Total タブで編集し、List も読む
+ * （種族優遇の掛け先と「合計の上位」）。useSetupWeights と同じ作法で、書き込みは
+ * ユーザー操作のハンドラだけ（復元effectと書込みeffectを併用しない）。
+ */
+export function useScoreBlend(): [ScoreBlend, (k: ScoreBlendKey, v: number) => void, () => void] {
+  const [blend, setBlend] = React.useState<ScoreBlend>({ ...DEFAULT_SCORE_BLEND });
+  React.useEffect(() => {
+    setBlend(readScoreBlend());
+  }, []);
+  const change = React.useCallback((k: ScoreBlendKey, v: number) => {
+    setBlend((prev) => {
+      const next = sanitizeScoreBlend({ ...prev, [k]: v });
+      writeScoreBlend(next);
+      return next;
+    });
+  }, []);
+  const reset = React.useCallback(() => {
+    writeScoreBlend(DEFAULT_SCORE_BLEND);
+    setBlend({ ...DEFAULT_SCORE_BLEND });
+  }, []);
+  return [blend, change, reset];
 }
 
 /**
