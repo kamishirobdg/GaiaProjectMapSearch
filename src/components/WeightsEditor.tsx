@@ -31,6 +31,7 @@ import {
   baseValueOf,
   cellKey,
   collectDiffs,
+  effectiveStoredValue,
   finalValueOf,
   formatDiffs,
   matrixKey,
@@ -495,7 +496,8 @@ export default function WeightsEditor() {
                 {base}
               </button>
               {tileAxes.map((a) => {
-                const now = storedValue(meta, lf, tile.id, a.key, f.id);
+                // 船の上書きが無いセルは基準値として見せる（2026-09-19）。
+                const now = effectiveStoredValue(meta, lf, tile.id, a.key, f.id);
                 const next = finalValueOf(meta, edits, lf, tile.id, a.key, f.id);
                 const want: Sel = { kind: "cell", tile: tile.id, axis: a.key, faction: f.id };
                 const overridden =

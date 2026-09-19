@@ -21,6 +21,7 @@ import {
   baseValueOf,
   cellKey,
   collectDiffs,
+  effectiveStoredValue,
   finalValueOf,
   formatDiffs,
   matrixKey,
@@ -37,8 +38,9 @@ import {
   factionsFor,
   weightTableOf,
 } from "./weightTables";
-import { shipTileCell, tileValueCell } from "./tileWeights";
-import { SHIP_IDS } from "@/gaia/setup/types";
+import { SHIP_TILE_WEIGHTS_LF, shipTileCell, tileValueCell } from "./tileWeights";
+import type { FactionId } from "./factionWeights";
+import { SHIP_IDS, type ShipId } from "@/gaia/setup/types";
 
 const advanced = weightTableOf("advanced_tech");
 const standard = weightTableOf("tech_position");
@@ -258,8 +260,8 @@ describe("sameAsBase", () => {
 // ブースター・最終得点・同盟・遺物は従来どおり軸なし。ここで守るのは:
 //   - 軸の本数が行で違う（FEDG=4隻 / TSL=3隻 / それ以外=0）
 //   - 上書きが無いセルは基準値へフォールバックする
-//   - **基準値だけ動かしても船のセルは 0 のまま**（上書きが勝手に生えない）
-//   - 差分には基準値の行("-")と船の行の両方が出る
+//   - 上書きの無い船セルは**画面でも基準値**として見え、基準値に追随する（2026-09-19）
+//   - 差分の船の行は**基準値と違う上書きだけ**。100% は出ない／上書きを戻すと 0 が出る
 describe("LF船の船ごとの上書き", () => {
   it("軸が付くのは FEDG(4隻) と TSL(3隻) だけ", () => {
     expect(axesOfTile(tileValues, "FEDG1", true).map((a) => a.key)).toEqual([
@@ -290,16 +292,61 @@ describe("LF船の船ごとの上書き", () => {
     expect(shipTileCell("RB01", undefined, false)).toEqual(tileValueCell("RB01", false));
   });
 
-  it("基準値だけ動かしても船のセルは 0 のまま", () => {
+  it("上書きの無い船セルは画面でも基準値として見え、基準値に追随する", () => {
     const f = factionsFor(true)[0];
     const stored = storedBaseOf(tileValues, true, "FEDG1", f.id);
-    const e = edits({ base: { [baseKey("tile_weights", true, "FEDG1", f.id)]: stored + 5 } });
-    // 基準値の行は動く。
-    expect(finalValueOf(tileValues, e, true, "FEDG1", "", f.id)).toBe(stored + 5);
-    // 船の行は触っていないので 0（＝実行時に基準値へフォールバック）のまま。
     for (const ship of SHIP_IDS) {
-      expect(finalValueOf(tileValues, e, true, "FEDG1", ship, f.id)).toBe(0);
+      // 表には無い（0）が、画面に出す値は基準値そのもの。
+      expect(storedValue(tileValues, true, "FEDG1", ship, f.id)).toBe(0);
+      expect(effectiveStoredValue(tileValues, true, "FEDG1", ship, f.id)).toBe(stored);
     }
+    const e = edits({ base: { [baseKey("tile_weights", true, "FEDG1", f.id)]: stored + 5 } });
+    // 基準値の行が動くと、上書きの無い船の行も同じ値へ追随する。
+    expect(finalValueOf(tileValues, e, true, "FEDG1", "", f.id)).toBe(stored + 5);
+    for (const ship of SHIP_IDS) {
+      expect(finalValueOf(tileValues, e, true, "FEDG1", ship, f.id)).toBe(stored + 5);
+    }
+    // 差分は基準値の行だけ。船の行は上書きではないので出ない（CSV は 0 のまま）。
+    const rows = collectDiffs(e).filter((d) => d.tile === "FEDG1" && d.faction === f.id);
+    expect(rows.map((d) => d.axis)).toEqual(["-"]);
+  });
+
+  it("基準値と同じ値にする 100% は差分に出ない（上書きにならない）", () => {
+    const f = factionsFor(true)[0];
+    const e = edits({
+      cell: { [cellKey("tile_weights", true, "FEDG1", "eclipse", f.id)]: 100 },
+    });
+    expect(collectDiffs(e).filter((d) => d.tile === "FEDG1")).toHaveLength(0);
+    // マトリクスで 100% を入れても、上書きの無いタイルには何も出ない。
+    const e2 = edits({ matrix: { [matrixKey("tile_weights", true, f.id, "eclipse")]: 100 } });
+    expect(collectDiffs(e2).filter((d) => d.tile === "FEDG1")).toHaveLength(0);
+  });
+
+  it("表にある上書きを基準値へ戻すと 0 が出る（反映で上書きが消える）", () => {
+    // 焼き込まれた表から上書きのあるセルを1つ探す（無ければ確かめようがない）。
+    let found: { tile: string; ship: ShipId; faction: FactionId; value: number } | null = null;
+    for (const [tile, byShip] of Object.entries(SHIP_TILE_WEIGHTS_LF)) {
+      for (const [ship, cells] of Object.entries(byShip ?? {})) {
+        for (const [faction, value] of Object.entries(cells ?? {})) {
+          if (value && !found) {
+            found = { tile, ship: ship as ShipId, faction: faction as FactionId, value };
+          }
+        }
+      }
+    }
+    if (!found) return;
+    const { tile, ship, faction, value } = found;
+    // 基準値と同値の上書きは CSV に置かない（フォールバックで足りる）。
+    expect(value).not.toBe(storedBaseOf(tileValues, true, tile, faction));
+    // 触らなければ上書きは上書きのままで、差分には出ない。
+    const rb = storedBaseOf(tileValues, true, "RB01", faction);
+    const untouched = edits({ base: { [baseKey("tile_weights", true, "RB01", faction)]: rb + 1 } });
+    const same = (d: { tile: string; axis: string; faction: FactionId }) =>
+      d.tile === tile && d.axis === ship && d.faction === faction;
+    expect(collectDiffs(untouched).filter(same)).toHaveLength(0);
+    // 100% を押すと 0（＝上書きを消す）が出る。
+    const e = edits({ cell: { [cellKey("tile_weights", true, tile, ship, faction)]: 100 } });
+    expect(collectDiffs(e).filter(same).map((d) => d.to)).toEqual([0]);
   });
 
   it("基準値は軸横断の最大ではなく軸なしのセルから採る", () => {
@@ -318,7 +365,7 @@ describe("LF船の船ごとの上書き", () => {
     const rows = collectDiffs(e).filter((d) => d.tile === "FEDG1" && d.faction === f.id);
     expect(rows.map((d) => d.axis)).toEqual(["eclipse"]);
 
-    // 基準値を動かすと "-" の行が出る（船の行は 0 のままなので出ない）。
+    // 基準値を動かすと "-" の行が出る（船の行は基準値に追随するだけなので出ない）。
     const stored = storedBaseOf(tileValues, true, "RB01", f.id);
     const e2 = edits({ base: { [baseKey("tile_weights", true, "RB01", f.id)]: stored + 1 } });
     const rows2 = collectDiffs(e2).filter((d) => d.tile === "RB01" && d.faction === f.id);

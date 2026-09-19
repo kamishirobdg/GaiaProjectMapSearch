@@ -75,6 +75,27 @@ export function storedValue(
 }
 
 /**
+ * 画面に「いまの値」として出す表の値（2026-09-19）。
+ * 船のように「上書き＋フォールバック」で持つ表（baseFromAxisless）は、上書きの無い
+ * 船セル（表では 0）を**基準値そのもの**として見せる。実行時の `shipTileCell` と同じ
+ * 見え方にしておかないと、触っていない船セルが 0 と出て、基準値と同じにするためだけに
+ * 100% を押して回ることになる（2026-09-19 の差分で実際に起きた）。
+ */
+export function effectiveStoredValue(
+  meta: WeightTableMeta,
+  lf: boolean,
+  tile: string,
+  axis: string,
+  faction: FactionId,
+): number {
+  const raw = storedValue(meta, lf, tile, axis, faction);
+  if (axis !== "" && meta.baseFromAxisless && raw === 0) {
+    return storedValue(meta, lf, tile, "", faction);
+  }
+  return raw;
+}
+
+/**
  * 表そのものが持っている基準値（軸横断の最大値）。編集は見ない。
  * 最大値を採るのは「素直に取れたら何点か」という値の定義
  * （data/weights/README.md）に沿うため —— 列差が入った表を読み直しても
@@ -158,6 +179,9 @@ export function finalValueOf(
 
   // 倍率を触っていない列: いまの列差を保ったまま、基準値を変えたぶんだけ比例させる。
   const stored = storedValue(meta, lf, tile, axis, faction);
+  // 上書き方式の表で上書きの無い船セルは、基準値（編集後）にそのまま追随する
+  // （2026-09-19）。ここで 0 を返すと、画面に 0 が出て「100% を押して回る」ことになる。
+  if (meta.baseFromAxisless && stored === 0) return base;
   const storedBase = storedBaseOf(meta, lf, tile, faction);
   if (storedBase === 0 || base === storedBase) return stored;
   return Math.round((stored * base) / storedBase);
@@ -269,8 +293,23 @@ export function collectDiffs(edits: WeightEdits): WeightDiff[] {
             : tileAxes;
       for (const axis of axes) {
         for (const f of factions) {
-          const from = storedValue(meta, lf, tile.id, axis === "-" ? "" : axis, f.id);
-          const to = finalValueOf(meta, edits, lf, tile.id, axis === "-" ? "" : axis, f.id);
+          const key = axis === "-" ? "" : axis;
+          const to = finalValueOf(meta, edits, lf, tile.id, key, f.id);
+          if (key !== "" && meta.baseFromAxisless) {
+            // 船の行に書くのは**基準値と違うところだけ**（上書き）。最終値が基準値
+            // （編集後）と同じなら上書きは要らない＝0。表に上書きが残っていれば 0 を
+            // 出して消し、元から無ければ何も出さない（2026-09-19）。こうしないと
+            // 「基準値と同値」の船セルが明示値で CSV に入り、後で基準値を直しても
+            // 追随しない古い値として残る。
+            const raw = storedValue(meta, lf, tile.id, key, f.id);
+            const toBase = finalValueOf(meta, edits, lf, tile.id, "", f.id);
+            const want = to === toBase ? 0 : to;
+            if (want !== raw) {
+              out.push({ table, lf, tile: tile.id, axis, faction: f.id, from: raw, to: want });
+            }
+            continue;
+          }
+          const from = storedValue(meta, lf, tile.id, key, f.id);
           if (from !== to) {
             out.push({ table, lf, tile: tile.id, axis, faction: f.id, from, to });
           }
