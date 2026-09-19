@@ -12,8 +12,9 @@
 //   - 原始惑星／小惑星の入植コスト = 同 p10「1) 鉱山の建設」
 //     原始惑星＝全勢力とも3段階（入植で6VP、開始惑星からは得られない）／
 //     小惑星＝ガイアフォーマー1個を使い捨て（改造段階は不要・建設コストも不要）
-// **各勢力ボードの初期研究レベルだけは今も未確認**（ルールブックの別表になく、
-// 勢力ボードの画像にしかない）。研究列の親和度はそのぶん能力からの推定を含む。
+// 各勢力ボードの初期研究レベルは 2026-09-19 にユーザーが実物のボードで確認し、
+// `FACTION_START_RESEARCH` に置いた（ルールブックの別表になく、ボードにしかない）。
+// 研究列の親和度（tech_position_*.csv）を見直すときはそれを根拠にできる。
 //
 // 設計メモ:
 // - 標準技術タイル9種は毎ゲーム全部場に出るが、「どの研究トラックの下に付くか」
@@ -141,6 +142,38 @@ export function factionIdsForMode(lostFleet: boolean): readonly FactionId[] {
 }
 
 /**
+ * 勢力ボードの初期研究レベル（2026-09-19 にユーザーが実物のボードで確認した固定情報）。
+ * 記載のない列は Lv0。値は「開始時点で進んでいる段数」で、いまは全部 1。
+ * ルールブックの別表には載っていない（ボードにしかない）ので、ここが正本。
+ *
+ * 評価には直接掛けていない —— 研究列の親和度（`data/weights/tech_position_*.csv`）を
+ * 見直すときの根拠として置く。ダルカニア人だけ2列（航行と経済）。
+ */
+export const FACTION_START_RESEARCH: Readonly<
+  Record<FactionId, Readonly<Partial<Record<ResearchTrackId, number>>>>
+> = {
+  terrans: { gaia: 1 },
+  lantids: {},
+  xenos: { ai: 1 },
+  gleens: { nav: 1 },
+  taklons: {},
+  ambas: { nav: 1 },
+  hadschHallas: { eco: 1 },
+  ivits: {},
+  geodens: { terra: 1 },
+  balTaks: { gaia: 1 },
+  firaks: {},
+  bescods: {},
+  nevlas: { sci: 1 },
+  itars: {},
+  // Lost Fleet
+  moweyds: { gaia: 1 },
+  spaceGiants: { nav: 1 },
+  tinkerroids: { sci: 1 },
+  darkanians: { nav: 1, eco: 1 },
+};
+
+/**
  * マップ特徴への親和度（母星色の供給量は全種族共通で基本点になるため、
  * ここにはガイア惑星・次元横断惑星への依存度だけを持つ）。
  * スコア寄与は mapFaction.ts で `0.5 * (gaia*ガイア数 + transdim*横断数)`。
@@ -186,8 +219,8 @@ export const MAP_AFFINITY: Partial<Record<FactionId, { gaia?: number; transdim?:
 // 嫌なタイルでも、フリー枠にあるなら取らずに済むので損はしない、という意味。
 //
 // 値は「トラック親和度(0..2) × タイル有用度(-2..2)」の積。
-// 親和度（＝その種族が登りたい列。2026-08-01 に見直し。**初期研究レベルは未確認**なので
-// 能力からの推定を含む）:
+// 親和度（＝その種族が登りたい列。2026-08-01 に見直し。当時は初期研究レベルが未確認で
+// 能力からの推定を含む。確定値は `FACTION_START_RESEARCH`）:
 //   terrans:ガイア2/改造1/科学1     lantids:科学2/航行1/改造1   xenos:AI2/改造1/航行1
 //   gleens:改造2/ガイア2/航行1（科学0＝研究苦手）              taklons:経済2/航行2
 //   ambas:航行2/改造1/経済1         hadschHallas:経済2/改造1    ivits:AI2/航行1/改造1

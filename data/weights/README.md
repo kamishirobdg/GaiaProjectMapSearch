@@ -73,6 +73,24 @@
 （Map 側の評価値と同じ桁）。CSV の値はその前段の VP なので、割った後の
 見え方を気にせず「何点分か」だけを考えて入れてよい。
 
+## 勢力ボードの初期研究レベル（2026-09-19 確認）
+
+研究列の値（`tech_position_*.csv`）を見直すときの根拠。ルールブックの別表には
+載っておらず、勢力ボードにしかない。正本はコード側の `FACTION_START_RESEARCH`
+（`src/gaia/eval/factionWeights.ts`。テストで固定してある）。記載のない列は Lv0。
+
+| 初期レベル | 種族 |
+| --- | --- |
+| ガイア Lv1 | terrans / balTaks / moweyds |
+| 惑星改造 Lv1 | geodens |
+| 航行 Lv1 | gleens / ambas / spaceGiants / darkanians |
+| 経済 Lv1 | hadschHallas / darkanians |
+| 科学 Lv1 | nevlas / tinkerroids |
+| 人工知能 Lv1 | xenos |
+| なし | lantids / taklons / ivits / bescods / itars / firaks |
+
+ダルカニア人だけ2列（航行と経済）。
+
 ## 更新の手順
 
 1. CSV を編集する（Excel で開ける。BOM 付き UTF-8 なので文字化けしない）。
