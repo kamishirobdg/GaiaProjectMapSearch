@@ -16,9 +16,11 @@ import {
   setupFactionBreakdown,
   setupFactionTileHits,
   topFactions,
+  topFactionsByColor,
   type FactionScores,
 } from "./factionEval";
 import {
+  FACTIONS,
   FACTION_IDS,
   factionIdsForMode,
   LF_FACTION_IDS,
@@ -515,6 +517,29 @@ describe("基本版では LF4種族を候補に入れない", () => {
     expect(topFactions(scores, 4, false).some((f) => LF.includes(f))).toBe(false);
     // 既定は従来どおり全18種族
     expect(topFactions(scores, 1)[0]).toBe(LF[0]);
+  });
+
+  it("topFactionsByColor: 同色は強い方だけを、色ごとの値の順に上位N色", () => {
+    const scores = Object.fromEntries(FACTION_IDS.map((f) => [f, 0])) as FactionScores;
+    scores.hadschHallas = 50; // RED（ivits 40 より上）
+    scores.ivits = 40;
+    scores.terrans = 45; // BLUE
+    scores.lantids = 10;
+    scores.xenos = 30; // YELLOW
+    scores.moweyds = 100; // PROTO（LF のみ）
+
+    // 同色の ivits は hadschHallas に負けるので、2位は次の色（BLUE）になる
+    expect(topFactionsByColor(scores, 3, false)).toEqual(["hadschHallas", "terrans", "xenos"]);
+    // LF では PROTO が先頭に入る
+    expect(topFactionsByColor(scores, 3, true)).toEqual(["moweyds", "hadschHallas", "terrans"]);
+    // 色の数より多く求めても色の数で止まる（基本7色 / LF9色）
+    expect(topFactionsByColor(scores, 20, false)).toHaveLength(7);
+    expect(topFactionsByColor(scores, 20, true)).toHaveLength(9);
+    // 同じ色が2つ入ることはない
+    const colorOf = (id: FactionId) => FACTIONS.find((d) => d.id === id)?.color;
+    expect(new Set(topFactionsByColor(scores, 9, true).map(colorOf)).size).toBe(9);
+    // 基本版では LF の色（PROTO/ASTEROID）が出ない
+    expect(topFactionsByColor(scores, 9, false).map(colorOf)).not.toContain("PROTO");
   });
 
   it("neutralBalance: 基本版の散らばりに LF種族のスコアが混ざらない", () => {

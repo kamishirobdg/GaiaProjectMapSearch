@@ -40,6 +40,7 @@ import {
 import {
   scoreSetupFactions,
   topFactions,
+  topFactionsByColor,
   type FactionScores,
   type RecommendCriterion,
 } from "@/gaia/eval/factionEval";
@@ -105,7 +106,7 @@ const UI = {
     pairMap: "マップ",
     pairNoMap: "（マップなし）",
     toTotal: "→ この組を Total タブ（種族別総合評価）で見る",
-    totalStrong: "合計の上位4種族",
+    totalStrong: (k: number) => `合計の上位${k}色（人数+2。同色は強い方）`,
     blendInUse: "合算比",
     blendWhere: "（Total タブで変更。種族優遇の掛け先と合計の上位に効く）",
     pairCriterion: "基準",
@@ -174,7 +175,7 @@ const UI = {
     pairMap: "Map",
     pairNoMap: "(no map)",
     toTotal: "→ See this pair on the Total tab (faction totals)",
-    totalStrong: "Top 4 by total",
+    totalStrong: (k: number) => `Top ${k} colors by total (players+2, stronger of each pair)`,
     blendInUse: "Blend",
     blendWhere: "(set on the Total tab; applies to the faction preference and the top-by-total line)",
     pairCriterion: "Criterion",
@@ -244,9 +245,13 @@ function topFactionText(scores: FactionScores, n: number, lang: Lang, lf: boolea
 }
 
 /**
- * Map と Setup を足した合計の上位N種族（2026-08-04）。足し方は Total タブと同じ
- * 1:1 で、提案を見た時点で「この組ならどの種族が強いか」が分かるようにするための
- * 要約。詳しい内訳は Total タブで見る。
+ * Map と Setup を足した合計の上位N色（2026-08-04。2026-09-20 に種族数固定から色別へ）。
+ * 足し方は Total タブと同じ合算比で、提案を見た時点で「この組ならどの種族が強いか」が
+ * 分かるようにするための要約。詳しい内訳は Total タブで見る。
+ *
+ * 同じ色の2種族は卓で1人しか選べないので、**色ごとに強い方の種族だけ**を出す
+ * （赤の2種族が両方上位でも、赤を選べるのは1人）。N は呼び出し側が
+ * プレイ人数+2 で渡す（推奨基準の「上位K」と同じ数え方）。
  *
  * Map ぶんは候補が持つ評価内訳から取るので、**内訳を持たない古い候補では出せない**
  * （呼び出し側で null を返す）。
@@ -262,7 +267,7 @@ function topTotalText(
   const total = {} as FactionScores;
   // 合算比は Total タブと同じ（2026-09-19）
   for (const f of FACTION_IDS) total[f] = blendScores(mapScores[f] ?? 0, setupScores[f] ?? 0, blend);
-  return topFactions(total, n, lf)
+  return topFactionsByColor(total, n, lf)
     .map((f) => `${factionLabel(f, lang)} ${Math.round(total[f])}`)
     .join(" / ");
 }
@@ -1357,20 +1362,23 @@ export default function ListView() {
                     <span style={{ opacity: 0.7 }}>{t.setupStrong}:</span>{" "}
                     {topFactionText(rec.setupScores, 5, lang, recSettings.lf)}
                   </div>
-                  {/* Map と Setup を足した合計の上位4種族（2026-08-04 要望）。提案を見た
+                  {/* Map と Setup を足した合計の上位（2026-08-04 要望）。提案を見た
                       時点で「この組ならどの種族が強いか」が分かるようにする。内訳は
-                      Total タブで見る。評価内訳を持たない古い候補では出さない。 */}
+                      Total タブで見る。評価内訳を持たない古い候補では出さない。
+                      出す数は人数+2 で、同じ色は強い方だけ（2026-09-20 要望。
+                      同色の2種族は卓で1人しか選べないため）。 */}
                   {(() => {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const bd = (selected as any)?.evaluation?.breakdown ?? null;
                     if (!bd) return null;
+                    const topColors = recSettings.players + 2;
                     return (
                       <div>
-                        <span style={{ opacity: 0.7 }}>{t.totalStrong}:</span>{" "}
+                        <span style={{ opacity: 0.7 }}>{t.totalStrong(topColors)}:</span>{" "}
                         {topTotalText(
                           mapValueByFaction(bd),
                           rec.setupScores,
-                          4,
+                          topColors,
                           lang,
                           recSettings.lf,
                           scoreBlend

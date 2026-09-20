@@ -284,6 +284,26 @@ export function topFactions(
   return [...factionIdsForMode(lostFleet)].sort((a, b) => scores[b] - scores[a]).slice(0, n);
 }
 
+/**
+ * 母星色ごとに「その色で強い方の種族」を1つ選び、その値の順に上位N色ぶん並べる
+ * （2026-09-20 要望。List の「合計の上位」用）。
+ * 同じ色の2種族は卓で1人しか選べないので、上位に同色が2つ並んでも提案としては
+ * 1枠ぶんの意味しかない。N はプレイ人数+2 を想定。色は基本7 / LF9 なので、それより
+ * 多く求めても色の数で止まる。同点は FACTION_IDS 順で安定（topFactions と同じ）。
+ */
+export function topFactionsByColor(
+  scores: FactionScores,
+  n: number,
+  lostFleet: boolean = true
+): FactionId[] {
+  const best = new Map<string, FactionId>();
+  for (const f of factionsForMode(lostFleet)) {
+    const cur = best.get(f.color);
+    if (cur === undefined || scores[f.id] > scores[cur]) best.set(f.color, f.id);
+  }
+  return [...best.values()].sort((a, b) => scores[b] - scores[a]).slice(0, n);
+}
+
 export type RecommendCriterion = "opposeMap" | "alignMap" | "topBalance" | "neutralBalance";
 
 /**
