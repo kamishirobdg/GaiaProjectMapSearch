@@ -43,6 +43,19 @@ import {
 } from "@/gaia/eval/weightEdits";
 import type { FactionId } from "@/gaia/eval/factionWeights";
 import { SHIP_IDS, SHIP_LABEL, type ShipId } from "@/gaia/setup/types";
+import { WEIGHT_REVIEW, WEIGHT_REVIEW_DATE, type ReviewItem } from "@/gaia/eval/weightReview";
+import {
+  REVIEW_LS_KEY,
+  applyReviewDecisions,
+  itemsForTile,
+  locateTile,
+  reviewCellSlot,
+  reviewCounts,
+  reviewNotes,
+  type ReviewDecision,
+  type ReviewDecisions,
+} from "@/gaia/eval/weightReviewEdits";
+import { ReviewCards, ReviewList } from "./WeightReviewPanel";
 
 const LS_KEY = "gaia_weight_edits";
 // 「このタイルは見た」の記録。編集とは別キーにしてあるので、差分を CSV へ反映して
@@ -116,6 +129,15 @@ export default function WeightsEditor() {
   const [showDiff, setShowDiff] = React.useState(false);
   /** 船の画像の拡大表示（タップした船。もう一度タップで閉じる）。 */
   const [shipZoom, setShipZoom] = React.useState<ShipId | null>(null);
+  /** 整合性レビューの採否（提案 id → 採用/見送り/対応済み）。別キーで持ち、全消去では消えない。 */
+  const [reviewDecisions, setReviewDecisions] = React.useState<ReviewDecisions>({});
+  const [reviewOpen, setReviewOpen] = React.useState(false);
+  /** 展開しているレビューカードの id。 */
+  const [reviewExpanded, setReviewExpanded] = React.useState<string | null>(null);
+  /** 根拠のタイルへ飛ぶ前の位置（「戻る」用）。 */
+  const [backStack, setBackStack] = React.useState<
+    Array<{ tableId: WeightTableId; lf: boolean; mode: Mode; tileIdx: number; expanded: string | null }>
+  >([]);
   /** `${table}:${exp}:${tile}` → 確認済み。 */
   const [reviewed, setReviewed] = React.useState<Record<string, true>>({});
   /** 「全消去」の2段階確認: 1回目のタップでアームし、一定時間内の2回目で確定する。 */
@@ -136,10 +158,13 @@ export default function WeightsEditor() {
           matrix: parsed.matrix ?? {},
           base: parsed.base ?? {},
           cell: parsed.cell ?? {},
+          value: parsed.value ?? {},
         });
       }
       const rawReviewed = localStorage.getItem(LS_REVIEWED);
       if (rawReviewed) setReviewed(JSON.parse(rawReviewed) as Record<string, true>);
+      const rawReview = localStorage.getItem(REVIEW_LS_KEY);
+      if (rawReview) setReviewDecisions(JSON.parse(rawReview) as ReviewDecisions);
     } catch {
       /* 壊れていたら既定のまま始める */
     }
@@ -166,6 +191,22 @@ export default function WeightsEditor() {
       .filter((k): k is ShipId => (SHIP_IDS as readonly string[]).includes(k));
   }, [mode, axes, tileAxes]);
 
+  // いま開いているタイルに関わるレビューの提案と、その提案が触るセル（枠を点線にする）。
+  const reviewItemsHere = React.useMemo(
+    () => (tile ? itemsForTile(tile.id, lf, WEIGHT_REVIEW) : []),
+    [tile, lf],
+  );
+  const reviewKeys = React.useMemo(() => {
+    const out = new Set<string>();
+    if (!tile) return out;
+    for (const it of reviewItemsHere) {
+      for (const c of it.cells) {
+        if (c.tile === tile.id && c.lf === lf) out.add(reviewCellSlot(c).key);
+      }
+    }
+    return out;
+  }, [reviewItemsHere, tile, lf]);
+
   const commit = React.useCallback((next: WeightEdits) => {
     setEdits(next);
     try {
@@ -175,10 +216,61 @@ export default function WeightsEditor() {
     }
   }, []);
 
+  // ---- 整合性レビュー（2026-09-20） ----------------------------------------
+
+  const commitDecisions = (next: ReviewDecisions) => {
+    setReviewDecisions(next);
+    try {
+      localStorage.setItem(REVIEW_LS_KEY, JSON.stringify(next));
+    } catch {
+      /* 保存できなくても採否は画面に残る */
+    }
+  };
+
+  /** 採否を記録し、採用の値を編集へ反映する（見送り・未定なら採用で書いた値を外す）。 */
+  const decideReview = (item: ReviewItem, decision: ReviewDecision | null) => {
+    const next = { ...reviewDecisions };
+    if (decision === null) delete next[item.id];
+    else next[item.id] = decision;
+    commitDecisions(next);
+    commit(applyReviewDecisions(edits, next));
+  };
+
+  /** 根拠のタイルへ飛ぶ。いまの位置を積んでおき「戻る」で帰れるようにする。 */
+  const jumpToTile = (targetTileId: string) => {
+    const loc = locateTile(targetTileId, lf);
+    if (!loc) return;
+    setBackStack((s) => [...s, { tableId, lf, mode, tileIdx, expanded: reviewExpanded }]);
+    setTableId(loc.table);
+    setLf(loc.lf);
+    setMode("tile");
+    setTileIdx(loc.index);
+    setSel(null);
+    setReviewOpen(false);
+    setReviewExpanded(null);
+  };
+
+  const goBack = () => {
+    const prev = backStack[backStack.length - 1];
+    if (!prev) return;
+    setBackStack((s) => s.slice(0, -1));
+    setTableId(prev.tableId);
+    setLf(prev.lf);
+    setMode(prev.mode);
+    setTileIdx(prev.tileIdx);
+    setSel(null);
+    setReviewExpanded(prev.expanded);
+  };
+
+  const reviewCount = React.useMemo(() => reviewCounts(reviewDecisions), [reviewDecisions]);
+
   const diffs = React.useMemo(() => collectDiffs(edits), [edits]);
   // 指定内容も添える（差分の値だけでは、基準値を変えたのか倍率を指定したのかを
   // 後から区別できないため）。
-  const diffText = React.useMemo(() => formatDiffs(diffs, edits), [diffs, edits]);
+  const diffText = React.useMemo(
+    () => formatDiffs(diffs, edits, reviewNotes(reviewDecisions)),
+    [diffs, edits, reviewDecisions],
+  );
 
   // 表・版を変えたらタイル選択と選択セルを戻す（並びが変わるため）。
   const switchTable = (id: WeightTableId) => {
@@ -205,9 +297,19 @@ export default function WeightsEditor() {
 
   const setCell = (tileId: string, axis: string, faction: FactionId, mul: number | null) => {
     const key = cellKey(tableId, lf, tileId, axis, faction);
-    const next = { ...edits, cell: { ...edits.cell } };
+    // 倍率を押したら、レビュー採用の「値そのもの」は外す（そうしないと倍率が効かない）。
+    const next = { ...edits, cell: { ...edits.cell }, value: { ...edits.value } };
+    delete next.value[key];
     if (mul === null) delete next.cell[key];
     else next.cell[key] = mul;
+    commit(next);
+  };
+
+  /** レビュー採用で入った「値そのもの」だけを外す（倍率は触らない）。 */
+  const clearExact = (tileId: string, axis: string, faction: FactionId) => {
+    const key = cellKey(tableId, lf, tileId, axis, faction);
+    const next = { ...edits, value: { ...edits.value } };
+    delete next.value[key];
     commit(next);
   };
 
@@ -229,7 +331,7 @@ export default function WeightsEditor() {
     }
     if (clearArmTimer.current) clearTimeout(clearArmTimer.current);
     setClearArmed(false);
-    commit({ matrix: {}, base: {}, cell: {} });
+    commit({ matrix: {}, base: {}, cell: {}, value: {} });
     setSel(null);
   };
 
@@ -269,7 +371,7 @@ export default function WeightsEditor() {
         }
       }
     }
-    commit({ matrix: edits.matrix, base: nextBase, cell: nextCell });
+    commit({ ...edits, base: nextBase, cell: nextCell });
     setSel(null);
   };
 
@@ -393,6 +495,8 @@ export default function WeightsEditor() {
     dim?: boolean,
     /** 「通常版と同じ値」のときの地色。違うなら undefined。 */
     copiedBg?: string,
+    /** 整合性レビューの提案が触るセル（枠を点線にする）。 */
+    marked?: boolean,
   ) => (
     <button
       type="button"
@@ -407,6 +511,8 @@ export default function WeightsEditor() {
         color: dim ? "#aaa" : changed ? "#1a7f37" : "#222",
         background: selected ? "#dfe4ff" : changed ? "#eefaf0" : (copiedBg ?? "#fff"),
         border: "1px solid " + (selected ? "#4453ff" : "#eee"),
+        outline: marked ? "1px dashed #b0457a" : undefined,
+        outlineOffset: -3,
         padding: 0,
         cursor: "pointer",
       }}
@@ -489,6 +595,10 @@ export default function WeightsEditor() {
                   color: baseEdited ? "#1a7f37" : "#666",
                   background: isSel(sel, baseWant) ? "#dfe4ff" : (baseCopiedBg ?? "#fafafa"),
                   border: "1px solid " + (isSel(sel, baseWant) ? "#4453ff" : "#eee"),
+                  outline: reviewKeys.has(baseKey(tableId, lf, tile.id, f.id))
+                    ? "1px dashed #b0457a"
+                    : undefined,
+                  outlineOffset: -3,
                   padding: 0,
                   cursor: "pointer",
                 }}
@@ -500,8 +610,9 @@ export default function WeightsEditor() {
                 const now = effectiveStoredValue(meta, lf, tile.id, a.key, f.id);
                 const next = finalValueOf(meta, edits, lf, tile.id, a.key, f.id);
                 const want: Sel = { kind: "cell", tile: tile.id, axis: a.key, faction: f.id };
+                const key = cellKey(tableId, lf, tile.id, a.key, f.id);
                 const overridden =
-                  edits.cell[cellKey(tableId, lf, tile.id, a.key, f.id)] !== undefined;
+                  edits.cell[key] !== undefined || edits.value[key] !== undefined;
                 return (
                   <React.Fragment key={a.key}>
                     {cellBox(
@@ -513,6 +624,7 @@ export default function WeightsEditor() {
                       () => setSel(isSel(sel, want) ? null : want),
                       false,
                       copiedBgOf(sameAsBase(meta, edits, tile.id, a.key, f.id), tile.id),
+                      reviewKeys.has(key),
                     )}
                   </React.Fragment>
                 );
@@ -542,6 +654,7 @@ export default function WeightsEditor() {
                 () => setSel(isSel(sel, want) ? null : want),
                 false,
                 copiedBgOf(!!tile && sameAsBase(meta, edits, tile.id, "", f.id), tile?.id),
+                !!tile && reviewKeys.has(baseKey(tableId, lf, tile.id, f.id)),
               )}
             </div>
           );
@@ -679,6 +792,23 @@ export default function WeightsEditor() {
     >
       <div style={{ fontSize: 11, fontWeight: 700 }}>{selLabel}</div>
 
+      {sel.kind === "cell" &&
+      edits.value[cellKey(tableId, lf, sel.tile, sel.axis, sel.faction)] !== undefined ? (
+        <div style={{ fontSize: 11, display: "flex", gap: 6, alignItems: "center", color: "#7a3550" }}>
+          <span>
+            レビュー採用の値 {edits.value[cellKey(tableId, lf, sel.tile, sel.axis, sel.faction)]}
+            （倍率より優先。倍率を押すと外れる）
+          </span>
+          <button
+            type="button"
+            onClick={() => clearExact(sel.tile, sel.axis, sel.faction)}
+            style={{ ...navBtn, fontSize: 11, marginLeft: "auto" }}
+          >
+            外す
+          </button>
+        </div>
+      ) : null}
+
       {sel.kind === "base" ? (
         <BaseInput
           value={baseValueOf(meta, edits, lf, sel.tile, sel.faction)}
@@ -770,7 +900,40 @@ export default function WeightsEditor() {
         >
           確認 {reviewedCount}/{tiles.length}
         </span>
+        <button
+          type="button"
+          onClick={() => setReviewOpen((v) => !v)}
+          title="整合性レビューの提案の一覧"
+          style={{
+            ...navBtn,
+            marginLeft: "auto",
+            padding: "3px 8px",
+            fontSize: 11,
+            fontWeight: 700,
+            color: "#7a3550",
+            borderColor: reviewOpen ? "#b0457a" : "#d8c0cc",
+            background: reviewOpen ? "#fff0f5" : "#fff",
+          }}
+        >
+          レビュー {reviewCount.pending > 0 ? `未定${reviewCount.pending}` : "済"}
+        </button>
       </div>
+
+      {reviewOpen ? (
+        <ReviewList
+          items={WEIGHT_REVIEW}
+          decisions={reviewDecisions}
+          date={WEIGHT_REVIEW_DATE}
+          onPick={(item) => {
+            const first = item.targetTiles[0];
+            if (first) jumpToTile(first);
+            setReviewExpanded(item.id);
+          }}
+          onDecide={decideReview}
+          onJump={jumpToTile}
+          onClose={() => setReviewOpen(false)}
+        />
+      ) : null}
 
       <div style={{ padding: "6px 8px", display: "flex", gap: 4, flexWrap: "wrap" }}>
         {WEIGHT_TABLES.map((t) => (
@@ -857,6 +1020,24 @@ export default function WeightsEditor() {
         ) : null}
       </div>
 
+      {backStack.length > 0 ? (
+        <div style={{ padding: "0 8px 6px" }}>
+          <button
+            type="button"
+            onClick={goBack}
+            style={{ ...navBtn, fontSize: 11, color: "#2733cc", borderColor: "#b8bdf0" }}
+          >
+            ← 戻る（
+            {(() => {
+              const p = backStack[backStack.length - 1];
+              const t = weightTableOf(p.tableId).tiles(p.lf)[p.tileIdx];
+              return `${weightTableOf(p.tableId).ja} ${p.lf ? "拡張版" : "通常版"}${t ? " " + t.id : ""}`;
+            })()}
+            ）
+          </button>
+        </div>
+      ) : null}
+
       {mode === "tile" || !hasAxis ? (
         <div style={{ padding: "0 8px 6px", display: "flex", gap: 4, alignItems: "center" }}>
           <button
@@ -939,6 +1120,20 @@ export default function WeightsEditor() {
         >
           ◆ {lfReviewHint(tile.id)!.ja}
         </div>
+      ) : null}
+
+      {(mode === "tile" || !hasAxis) && tile ? (
+        <ReviewCards
+          items={reviewItemsHere}
+          decisions={reviewDecisions}
+          tileId={tile.id}
+          lf={lf}
+          date={WEIGHT_REVIEW_DATE}
+          expanded={reviewExpanded}
+          onToggle={(id) => setReviewExpanded((cur) => (cur === id ? null : id))}
+          onDecide={decideReview}
+          onJump={jumpToTile}
+        />
       ) : null}
 
       {mode === "matrix" && hasAxis ? (

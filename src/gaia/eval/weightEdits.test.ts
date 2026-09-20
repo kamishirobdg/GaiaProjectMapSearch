@@ -47,7 +47,7 @@ const standard = weightTableOf("tech_position");
 const tileValues = weightTableOf("tile_weights");
 
 function edits(patch: Partial<WeightEdits>): WeightEdits {
-  return { ...EMPTY_EDITS, matrix: {}, base: {}, cell: {}, ...patch };
+  return { ...EMPTY_EDITS, matrix: {}, base: {}, cell: {}, value: {}, ...patch };
 }
 
 /** 列ごとに値が違う（＝列差が入っている）タイル×種族を1つ返す。 */

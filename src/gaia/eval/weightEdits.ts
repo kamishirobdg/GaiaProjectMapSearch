@@ -32,9 +32,15 @@ export type WeightEdits = {
   base: Record<string, number>;
   /** `${table}:${exp}:${tile}:${axis}:${faction}` → 倍率(%) */
   cell: Record<string, number>;
+  /**
+   * `${table}:${exp}:${tile}:${axis}:${faction}` → 値そのもの(VP)。倍率より優先する。
+   * 整合性レビューの提案を「採用」したときに使う（2026-09-20）。倍率だと基準値の
+   * 丸めで提案どおりの値にならないことがあるため、セルには値で書く。
+   */
+  value: Record<string, number>;
 };
 
-export const EMPTY_EDITS: WeightEdits = { matrix: {}, base: {}, cell: {} };
+export const EMPTY_EDITS: WeightEdits = { matrix: {}, base: {}, cell: {}, value: {} };
 
 /** 倍率のボタン。100=素直に取れる / 0=その列では取れない。 */
 export const MULTIPLIERS = [100, 75, 50, 25, 0] as const;
@@ -174,6 +180,10 @@ export function finalValueOf(
   // 軸なしのセル（＝基準値の行）は基準値をそのまま返す。
   if (axis === "" && meta.baseFromAxisless) return base;
 
+  // 値そのものの指定（レビューの採用）は倍率より優先。
+  const exact = edits.value[cellKey(meta.id, lf, tile, axis, faction)];
+  if (exact !== undefined) return exact;
+
   const mul = rawMultiplierOf(edits, meta.id, lf, tile, axis, faction);
   if (mul !== undefined) return Math.round((base * mul) / 100);
 
@@ -261,6 +271,7 @@ function touchedScopes(edits: WeightEdits): Array<{ table: WeightTableId; lf: bo
     ...Object.keys(edits.matrix),
     ...Object.keys(edits.base),
     ...Object.keys(edits.cell),
+    ...Object.keys(edits.value),
   ]) {
     const [table, exp] = key.split(":");
     seen.add(`${table}:${exp}`);
@@ -330,7 +341,12 @@ export function collectDiffs(edits: WeightEdits): WeightDiff[] {
  * 後から区別できず、2026-08-06 に差分の由来を追えなくなったため。
  * apply スクリプトは `#` 行を読み飛ばすので、付けても反映には影響しない。
  */
-export function formatDiffs(diffs: WeightDiff[], edits?: WeightEdits): string {
+export function formatDiffs(
+  diffs: WeightDiff[],
+  edits?: WeightEdits,
+  /** さらに末尾へ足す `#` 行（整合性レビューの採否など）。反映には使わない。 */
+  notes: string[] = [],
+): string {
   const lines: string[] = ["# gaia-weights v1"];
   let scope = "";
   for (const d of diffs) {
@@ -347,10 +363,14 @@ export function formatDiffs(diffs: WeightDiff[], edits?: WeightEdits): string {
     for (const [k, v] of Object.entries(edits.matrix)) spec.push(`# matrix ${k} = ${v}`);
     for (const [k, v] of Object.entries(edits.base)) spec.push(`# base ${k} = ${v}`);
     for (const [k, v] of Object.entries(edits.cell)) spec.push(`# cell ${k} = ${v}`);
+    for (const [k, v] of Object.entries(edits.value)) spec.push(`# value ${k} = ${v}`);
   }
-  if (diffs.length === 0 && spec.length === 0) return "";
+  if (diffs.length === 0 && spec.length === 0 && notes.length === 0) return "";
   if (spec.length > 0) {
     lines.push("#", `# --- 指定内容 ${spec.length} 件（反映には使わない記録） ---`, ...spec);
+  }
+  if (notes.length > 0) {
+    lines.push("#", `# --- 整合性レビューの採否 ${notes.length} 件（反映には使わない記録） ---`, ...notes);
   }
   return lines.join("\n") + "\n";
 }

@@ -28,6 +28,25 @@
   `git push origin release/v1.01:main`（実行前に必ずユーザー確認）。未pushの件数は
   `git rev-list --count origin/main..release/v1.01`。
 
+## 2026-09-20 のセッションでやったこと（未デプロイ）
+
+1. **整合性レビューの提案を `/weights` で読み、採否できるようにした**（ユーザー確定:
+   採用で値が編集に入り差分に出る／タイルごとの表示＋上部に一覧）。
+   - `scripts/gen_weight_review.py` → `src/gaia/eval/weightReview.ts`（自動生成。
+     `docs/weights-review-2026-09-19.md` と `.edits.txt` から提案30・要判断13・セル443）。
+   - `src/gaia/eval/weightReviewEdits.ts`: 採否の反映。採用＝軸なしの行は `edits.base`、
+     軸のある行は**新設の `edits.value`（値そのもの。倍率より優先）**。見送り＝その提案の
+     値と同じときだけ外す（手で直した値は残す）。`itemsForTile` / `locateTile` / `reviewNotes`。
+   - `src/components/WeightReviewPanel.tsx`（一覧とカード）を `WeightsEditor` に組み込み:
+     ヘッダーの「レビュー 未定n」、タイルのカード、根拠のタイルへ飛ぶボタンと「← 戻る」、
+     提案が触るセルは点線の枠、選択バーに「レビュー採用の値」（外すボタン）。
+   - 対象のタイルが無い要判断（L06〜L08）は一覧の中で開く。採否は localStorage の
+     別キー `gaia_weight_review`（全消去では消えない）。差分の末尾に `# review Pxx = adopt`。
+   - `WeightEdits.value` を追加（保存データは無ければ `{}`。既存キーは不変）。
+2. 検証: typecheck 0 / lint エラー0（warning 586）/ test 25ファイル311件。ヘッドレス
+   Chromium（375px）で 一覧 → P30 → RS12 → 採用（差分に `RS12,R1,firaks,4` と記録行）→
+   見送り（外れる）→ 戻る → 再読込で採否が残る、を確認。
+
 ## 2026-09-19（2回目）のセッションでやったこと（本番へ出済み）
 
 1. **`release/v1.01` を `origin/main` へ早送り**（origin へも push。本番には触っていない）。
@@ -198,10 +217,11 @@
    そのまま）。観点は TODO.md「Map と Setup のバランスを決める」。
 3. （任意）Android の実機で Setup の「画面幅に収める」を一度見る（ヘッドレス Chromium
    では問題なし。フォントの違いで見出しの折り返しが変わる可能性だけ残る）。
-4. **整合性レビューの提案の採否**（`docs/weights-review-2026-09-19.md`）。採る行だけ残した
-   `.edits.txt` を `apply_weight_edits.py` に渡し、README（data/weights）の手順で生成・検算・
-   影響力の測り直しまで。高の7件（RS02/RS01/FS08/RB03/RB05/AT12 の記録に残る差し戻しや
-   雛形の残り）は先に片付けてよい。
+4. **整合性レビューの提案の採否**（`docs/weights-review-2026-09-19.md`）。`/weights` の
+   「レビュー」から提案ごとに採用／見送りを押し、「差分を出す」で普段どおり差分を送る
+   （2026-09-20 に画面で採否できるようにした。PC 側は `apply_weight_edits.py` で反映するだけ）。
+   `.edits.txt` を直接流す道も残っている（採らない行を消して渡す）。高の7件
+   （RS02/RS01/FS08/RB03/RB05/AT12 の記録に残る差し戻しや雛形の残り）は先に片付けてよい。
 5. （任意）値を実プレイで使ってみて気になったところを `/weights` から直す。
    手順は README（data/weights）。直したら影響力を測り直す（`_probe_category_influence.ts`）。
 
