@@ -443,8 +443,9 @@ function TileImage({ imageId, alt }: { imageId: string; alt: string }) {
       onError={() => setFailed(true)}
       // alignSelf: flex 親の align-items:stretch で横に引き伸ばされて縦横比が
       // 崩れるのを防ぐ（経済調整タイル 212x349 が横長に見えていた不具合）
-      // maxWidth の変数は研究トラックの "fit" レイアウトだけが流す（既定は 110px）
-      style={{ maxWidth: "var(--setup-tile-max, 110px)", maxHeight: 110, width: "auto", height: "auto", display: "block", borderRadius: 4, alignSelf: "flex-start" }}
+      // maxWidth / maxHeight の変数は研究トラックの "fit" レイアウトだけが流す
+      // （既定は 110px。fit では縮小率に合わせて高さも縮む。2026-09-20）
+      style={{ maxWidth: "var(--setup-tile-max, 110px)", maxHeight: "var(--setup-tile-max-h, 110px)", width: "auto", height: "auto", display: "block", borderRadius: 4, alignSelf: "flex-start" }}
     />
   );
 }
@@ -496,13 +497,17 @@ ${pickLabel ?? ""}` : tooltip}
         cursor: onPick ? "pointer" : undefined,
         border: mark ? `2px solid ${mark}` : pinned ? "1px solid #8fc79f" : "1px solid #ddd",
         borderRadius: 8,
-        padding: mark ? "5px 7px" : "6px 8px",
+        // 余白は 6px 8px。光らせる枠は border が 2px になるぶん 1px 減らして外形を揃える。
+        // 変数は研究トラックの "fit" レイアウトだけが流す（縮小率に合わせた値。2026-09-20）。
+        padding: mark
+          ? "calc(var(--setup-tile-pad-y, 6px) - 1px) calc(var(--setup-tile-pad-x, 8px) - 1px)"
+          : "var(--setup-tile-pad-y, 6px) var(--setup-tile-pad-x, 8px)",
         fontSize: 12,
         // 指定のある枠はひと目で分かるように背景を変える（2026-07-30 要望）
         background: pinned ? "#e7f6ea" : "#fafafa",
         minWidth: 0,
         // 変数は研究トラックの "fit" レイアウトだけが 100% を流す（既定は fit-content）。
-        // padding(6px 8px) を幅に含めないと、100% のときに列から 16px はみ出す
+        // padding を幅に含めないと、100% のときに列から余白ぶんはみ出す
         // （既定の fit-content では中身に合わせるので見た目は変わらない。2026-08-02）
         width: "var(--setup-tile-w, fit-content)",
         boxSizing: "border-box",
@@ -535,7 +540,7 @@ ${pickLabel ?? ""}` : tooltip}
           alt={id}
           onError={() => setFailed(true)}
           style={{
-            ...(full ? {} : { maxWidth: "var(--setup-tile-max, 110px)", maxHeight: 110 }),
+            ...(full ? {} : { maxWidth: "var(--setup-tile-max, 110px)", maxHeight: "var(--setup-tile-max-h, 110px)" }),
             width: "auto",
             height: "auto",
             display: "block",
@@ -563,11 +568,18 @@ type EconFaceMode = "random" | "A" | "B";
  * - "scroll" … 列幅を TILE_COL_W(128px) に固定して横スクロール（従来）。
  *   タイルは大きいままだが、Android（幅393px）では2列ずつしか見えず、
  *   6トラックを見比べるのに何度もスワイプが要る。
- * - "fit"    … 6列を画面幅へ収める。列が均等に縮み、広い画面では 128px で止まる。
+ * - "fit"    … 6列を画面幅へ収める。縮小率（画面幅 ÷ 808px。808 = 128×6 + 列間 8×5）に
+ *   合わせて列幅・列間・枠の余白・画像の高さを**一緒に**縮める（研究トラック全体を
+ *   その率でズームアウトしたのと同じ見え方）。広い画面では 128px で止まる。
+ *   2026-08-02 の初版は列幅だけ縮めて余白は 8px のままだったので、412px の画面では
+ *   画像が 39px しか取れなかった（2026-09-20 Android 実機の指摘。いまは 51px）。
  *
  * **既定は "scroll"（従来のまま）**。切り替えは研究トラックの見出し横のボタンで、
  * 選択は localStorage（LS.layout）に持つ＝いつでも元に戻せる。
  * 幅は CSS だけで決める（JS で画面幅を測らない）ので、SSR とのちらつきが出ない。
+ * 縮小率は container query 単位（cqw）で出す —— 寸法は SetupView の <style> にある
+ * `.setup-tracks-fit` の CSS 変数。cqw が無い古いブラウザでは 2026-08-02 の初版
+ * （列幅だけ縮める）に落ちる。
  */
 type SetupLayout = "scroll" | "fit";
 
@@ -1511,7 +1523,9 @@ export default function SetupView() {
           （列幅 ≒ (画面幅 - 23 - gap8*5) / 6）。 */}
       <style>{`@keyframes setupTileBlink{0%,100%{opacity:1}50%{opacity:.45}} .setup-tile-marked{animation:setupTileBlink 1.1s ease-in-out infinite}
 .setup-pin-badge{position:absolute;top:2px;right:2px;font-size:9px;line-height:12px;font-weight:700;color:#1b6b2f;background:rgba(255,255,255,.82);border:1px solid #8fc79f;border-radius:4px;padding:0 2px;pointer-events:none}
-@media (max-width:560px){.setup-pin-badge{width:8px;height:8px;padding:0;font-size:0;line-height:0;border-radius:50%;background:#1b6b2f;border-color:rgba(255,255,255,.9)}}`}</style>
+@media (max-width:560px){.setup-pin-badge{width:8px;height:8px;padding:0;font-size:0;line-height:0;border-radius:50%;background:#1b6b2f;border-color:rgba(255,255,255,.9)}}
+.setup-tracks-fit{--setup-tile-w:100%;--setup-tile-max:100%;--setup-col-w:minmax(0,128px);--setup-col-gap:8px;--setup-row-gap:6px;--setup-tile-pad-y:6px;--setup-tile-pad-x:8px;--setup-tile-max-h:110px}
+@supports (width:1cqw){.setup-tracks-wrap{container-type:inline-size}.setup-tracks-fit{--setup-col-w:min(128px,15.84cqw);--setup-col-gap:min(8px,.99cqw);--setup-row-gap:min(6px,.74cqw);--setup-tile-pad-y:min(6px,.74cqw);--setup-tile-pad-x:min(8px,.99cqw);--setup-tile-max-h:min(110px,13.61cqw)}}`}</style>
       <GlobalBar
         active="setup"
         players={players}
@@ -1540,7 +1554,8 @@ export default function SetupView() {
           -> advanced -> standard。
           旧「回避/強制」プルダウンは全スロットのタイル指定へ統合したので廃止
           （キュレーション済みの除外はタイル指定の既定値に入っている。2026-07-30）。 */}
-      <section>
+      {/* "fit" のときは節を container にして、grid の寸法を節の幅（cqw）から出す。 */}
+      <section className={layout === "fit" ? "setup-tracks-wrap" : undefined}>
         <div style={{ fontWeight: 700, marginBottom: 6, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <span>{t.researchTracks}</span>
           <button
@@ -1569,9 +1584,11 @@ export default function SetupView() {
             6トラックは盤面と同じく必ず横一列に並べたいので折り返さない。
             "scroll"（既定）は列幅を固定して、入りきらない幅ではこの節だけ横スクロール。
             "fit" は6列を画面幅へ収める（2026-08-02 要望。Android で2列ずつしか
-            見えなかったため）。"fit" のときだけ CSS 変数を流して、タイルの枠と画像を
-            列幅に追従させる —— 変数を置かない他の節は 110px のままで影響しない。 */}
+            見えなかったため）。"fit" のときだけ .setup-tracks-fit の CSS 変数を流して、
+            列幅・列間・枠の余白・画像の高さを同じ縮小率で縮める（2026-09-20。
+            変数を置かない他の節は 110px / 6px 8px のままで影響しない）。 */}
         <div
+          className={layout === "fit" ? "setup-tracks-fit" : undefined}
           style={{
             // 6トラック×4段の grid。**列ごとの縦積み（flex）ではなく grid にしてある**のは、
             // 段の高さを列をまたいで揃えるため。flex だとトラック名の行数（航行=1行 /
@@ -1579,13 +1596,12 @@ export default function SetupView() {
             // 列ごとに高さがずれ、タイルがガタガタに並んでいた（2026-08-02 指摘）。
             display: "grid",
             gridTemplateColumns:
-              layout === "fit" ? `repeat(6, minmax(0, ${TILE_COL_W}px))` : `repeat(6, ${TILE_COL_W}px)`,
-            gap: "6px 8px",
+              layout === "fit" ? "repeat(6, var(--setup-col-w))" : `repeat(6, ${TILE_COL_W}px)`,
+            gap: layout === "fit" ? "var(--setup-row-gap) var(--setup-col-gap)" : "6px 8px",
             alignItems: "start",
             overflowX: layout === "fit" ? "visible" : "auto",
             paddingBottom: 4,
-            ...(layout === "fit" ? { "--setup-tile-w": "100%", "--setup-tile-max": "100%" } : {}),
-          } as React.CSSProperties}
+          }}
         >
           {RESEARCH_TRACK_IDS.map((track, ci) => {
             const showEconTop = track === "eco" && lf && result.mode === "lostFleet";
@@ -1635,7 +1651,7 @@ ${pickHint}`}
                         cursor: "pointer",
                         border: econFaceMode !== "random" ? "1px solid #8fc79f" : "1px solid #ddd",
                         borderRadius: 8,
-                        padding: "6px 8px",
+                        padding: "var(--setup-tile-pad-y, 6px) var(--setup-tile-pad-x, 8px)",
                         fontSize: 12,
                         background: econFaceMode !== "random" ? "#e7f6ea" : "#fafafa",
                         width: "var(--setup-tile-w, fit-content)",
