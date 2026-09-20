@@ -2078,6 +2078,9 @@ ${pickHint}`}
                         textAlign: "left",
                         flex: 1,
                         minWidth: 220,
+                        // 種族チップが4つ並ぶと狭い幅で行からはみ出していた
+                        // （2026-09-20 Android 実機の指摘）。折り返して収める。
+                        flexWrap: "wrap",
                       }}
                     >
                       {r.pinned ? <span title={t.pin}>📌</span> : null}
