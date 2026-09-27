@@ -11,6 +11,7 @@ import { WEIGHT_REVIEW } from "./weightReview";
 import {
   applyReviewDecisions,
   cellsForTile,
+  itemVersionForTile,
   itemsForTile,
   locateTile,
   reviewCellSlot,
@@ -116,5 +117,22 @@ describe("採否の反映", () => {
     expect(locateTile("FEDG2", false)?.table).toBe("tile_weights");
     expect(locateTile("AT01", false)).toEqual({ table: "advanced_tech", lf: false, index: expect.any(Number) });
     expect(locateTile("XX99", true)).toBeNull();
+  });
+
+  it("一覧から提案を開く版: セルがある版へ（通常版だけの提案は通常版で開く）", () => {
+    // P05 は RB03 通常版だけ。拡張版を見ていても通常版で開く（カードはそこにしか出ない）。
+    const P05 = WEIGHT_REVIEW.find((i) => i.id === "P05")!;
+    expect(P05.cells.every((c) => c.tile === "RB03" && !c.lf)).toBe(true);
+    expect(itemVersionForTile(P05, "RB03", true)).toBe(false);
+    expect(itemVersionForTile(P05, "RB03", false)).toBe(false);
+    // 両方の版にセルがある提案はいまの版のまま。
+    const P27 = WEIGHT_REVIEW.find((i) => i.id === "P27")!;
+    expect(P27.cells.some((c) => c.tile === "RB04" && c.lf)).toBe(true);
+    expect(P27.cells.some((c) => c.tile === "RB04" && !c.lf)).toBe(true);
+    expect(itemVersionForTile(P27, "RB04", true)).toBe(true);
+    expect(itemVersionForTile(P27, "RB04", false)).toBe(false);
+    // セルの無い要判断はいまの版のまま。
+    const L10 = WEIGHT_REVIEW.find((i) => i.id === "L10")!;
+    expect(itemVersionForTile(L10, "RS04", true)).toBe(true);
   });
 });

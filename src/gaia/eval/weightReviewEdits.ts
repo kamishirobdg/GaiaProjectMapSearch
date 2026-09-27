@@ -55,6 +55,18 @@ export function cellsForTile(item: ReviewItem, tileId: string, lf: boolean): Rev
 }
 
 /**
+ * 一覧から提案を開くとき、そのタイルをどちらの版で開くか。提案のセルがいまの版に
+ * あればいまの版、無ければもう一方。通常版だけの提案（P05〜P07・P11）を拡張版で
+ * 開くとカードが出ず「反映画面が見当たらない」になっていた（2026-09-27）。
+ * セルの無い要判断は対象タイルだけで出すので、いまの版のまま。
+ */
+export function itemVersionForTile(item: ReviewItem, tileId: string, preferLf: boolean): boolean {
+  if (item.cells.some((c) => c.tile === tileId && c.lf === preferLf)) return preferLf;
+  if (item.cells.some((c) => c.tile === tileId && c.lf === !preferLf)) return !preferLf;
+  return preferLf;
+}
+
+/**
  * 採否を編集へ反映した新しい編集を返す。
  * 1. 採用でない提案の値は、いまの編集がその値と同じときだけ外す（手で直した値は残す）。
  * 2. 採用の提案の値を順番に書く（同じセルに複数あれば後の提案が勝つ）。

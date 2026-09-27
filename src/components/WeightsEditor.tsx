@@ -47,6 +47,7 @@ import { WEIGHT_REVIEW, WEIGHT_REVIEW_DATE, type ReviewItem } from "@/gaia/eval/
 import {
   REVIEW_LS_KEY,
   applyReviewDecisions,
+  itemVersionForTile,
   itemsForTile,
   locateTile,
   reviewCellSlot,
@@ -236,9 +237,14 @@ export default function WeightsEditor() {
     commit(applyReviewDecisions(edits, next));
   };
 
-  /** 根拠のタイルへ飛ぶ。いまの位置を積んでおき「戻る」で帰れるようにする。 */
-  const jumpToTile = (targetTileId: string) => {
-    const loc = locateTile(targetTileId, lf);
+  /**
+   * 根拠のタイルへ飛ぶ。いまの位置を積んでおき「戻る」で帰れるようにする。
+   * preferLf はどちらの版で開くか（省略時はいまの版。一覧から提案を開くときは、
+   * その提案が書く版を渡す —— 通常版だけの提案を拡張版で開くとカードが出ない。
+   * 2026-09-27 に P05〜P11 が「反映画面が見当たらない」となった原因）。
+   */
+  const jumpToTile = (targetTileId: string, preferLf: boolean = lf) => {
+    const loc = locateTile(targetTileId, preferLf);
     if (!loc) return;
     setBackStack((s) => [...s, { tableId, lf, mode, tileIdx, expanded: reviewExpanded }]);
     setTableId(loc.table);
@@ -926,7 +932,7 @@ export default function WeightsEditor() {
           date={WEIGHT_REVIEW_DATE}
           onPick={(item) => {
             const first = item.targetTiles[0];
-            if (first) jumpToTile(first);
+            if (first) jumpToTile(first, itemVersionForTile(item, first, lf));
             setReviewExpanded(item.id);
           }}
           onDecide={decideReview}
