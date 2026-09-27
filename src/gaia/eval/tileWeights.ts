@@ -35,9 +35,9 @@ export const TILE_VALUE_WEIGHTS_BASE: TileValueTable = {
   // ===== ブースター =====
   RB01: { terrans: 8, lantids: 4, xenos: 4, gleens: 4, taklons: 4, ambas: 4, hadschHallas: 8, ivits: 6, geodens: 6, balTaks: 4, firaks: 4, bescods: 6, nevlas: 8, itars: 4 }, // 収入：鉱石1・知識1
   RB02: { terrans: 10, lantids: 12, xenos: 16, gleens: 8, taklons: 10, ambas: 16, hadschHallas: 16, ivits: 16, geodens: 10, balTaks: 16, firaks: 16, bescods: 10, nevlas: 10, itars: 16 }, // 収入：クレジット2・QIC1
-  RB03: { terrans: 8, lantids: 8, xenos: 8, gleens: 10, taklons: 12, ambas: 2, hadschHallas: 8, ivits: 2, geodens: 2, balTaks: 8, firaks: 2, bescods: 2, nevlas: 8, itars: 16 }, // 収入：パワートークン2・鉱石1
+  RB03: { terrans: 8, lantids: 8, xenos: 10, gleens: 10, taklons: 12, ambas: 8, hadschHallas: 8, ivits: 8, geodens: 8, balTaks: 10, firaks: 8, bescods: 8, nevlas: 8, itars: 16 }, // 収入：パワートークン2・鉱石1
   RB04: { terrans: 8, lantids: 8, xenos: 8, gleens: 8, taklons: 8, ambas: 8, hadschHallas: 8, ivits: 8, geodens: 12, balTaks: 8, firaks: 8, bescods: 8, nevlas: 8, itars: 8 }, // 収入：クレジット2／特別：鉱山建設（改造1無料）
-  RB05: { terrans: 4, lantids: 3, xenos: 3, gleens: 16, taklons: 10, ambas: 3, hadschHallas: 3, ivits: 8, geodens: 3, balTaks: 16, firaks: 3, bescods: 3, nevlas: 10, itars: 4 }, // 収入：パワー2／特別：鉱山建設orガイア計画（距離+3）
+  RB05: { terrans: 10, lantids: 10, xenos: 10, gleens: 16, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 14, geodens: 10, balTaks: 16, firaks: 10, bescods: 10, nevlas: 8, itars: 10 }, // 収入：パワー2／特別：鉱山建設orガイア計画（距離+3）
   RB06: { terrans: 6, lantids: 9, xenos: 8, gleens: 9, taklons: 6, ambas: 6, hadschHallas: 6, ivits: 6, geodens: 9, balTaks: 6, firaks: 6, bescods: 9, nevlas: 6, itars: 6 }, // 収入：鉱石1／パス：鉱山×1VP
   RB07: { terrans: 6, lantids: 6, xenos: 6, gleens: 4, taklons: 6, ambas: 6, hadschHallas: 6, ivits: 6, geodens: 8, balTaks: 6, firaks: 12, bescods: 12, nevlas: 12, itars: 6 }, // 収入：知識1／パス：研究所×3VP
   RB08: { terrans: 6, lantids: 6, xenos: 6, gleens: 6, taklons: 6, ambas: 6, hadschHallas: 12, ivits: 6, geodens: 6, balTaks: 6, firaks: 8, bescods: 6, nevlas: 6, itars: 6 }, // 収入：鉱石1／パス：交易所×2VP
@@ -64,7 +64,7 @@ export const TILE_VALUE_WEIGHTS_LF: TileValueTable = {
   // ===== ブースター =====
   RB01: { terrans: 8, lantids: 4, xenos: 4, gleens: 4, taklons: 4, ambas: 4, hadschHallas: 8, ivits: 6, geodens: 6, balTaks: 4, firaks: 4, bescods: 4, nevlas: 8, itars: 4, moweyds: 4, spaceGiants: 4, tinkerroids: 4, darkanians: 4 }, // 収入：鉱石1・知識1
   RB02: { terrans: 10, lantids: 12, xenos: 16, gleens: 8, taklons: 10, ambas: 16, hadschHallas: 16, ivits: 16, geodens: 10, balTaks: 16, firaks: 16, bescods: 10, nevlas: 10, itars: 16, moweyds: 16, spaceGiants: 10, tinkerroids: 10, darkanians: 10 }, // 収入：クレジット2・QIC1
-  RB03: { terrans: 8, lantids: 8, xenos: 8, gleens: 8, taklons: 15, ambas: 8, hadschHallas: 8, ivits: 8, geodens: 8, balTaks: 8, firaks: 8, bescods: 8, nevlas: 8, itars: 16, moweyds: 8, spaceGiants: 8, tinkerroids: 8, darkanians: 8 }, // 収入：パワートークン2・鉱石1
+  RB03: { terrans: 12, lantids: 12, xenos: 12, gleens: 12, taklons: 16, ambas: 12, hadschHallas: 12, ivits: 12, geodens: 12, balTaks: 12, firaks: 12, bescods: 12, nevlas: 16, itars: 16, moweyds: 8, spaceGiants: 12, tinkerroids: 12, darkanians: 12 }, // 収入：パワートークン2・鉱石1
   RB04: { terrans: 8, lantids: 8, xenos: 8, gleens: 8, taklons: 8, ambas: 8, hadschHallas: 8, ivits: 8, geodens: 12, balTaks: 8, firaks: 8, bescods: 8, nevlas: 8, itars: 8, moweyds: 8, spaceGiants: 6, tinkerroids: 8, darkanians: 8 }, // 収入：クレジット2／特別：鉱山建設（改造1無料）
   RB05: { terrans: 10, lantids: 10, xenos: 10, gleens: 10, taklons: 10, ambas: 10, hadschHallas: 10, ivits: 14, geodens: 10, balTaks: 18, firaks: 10, bescods: 10, nevlas: 10, itars: 10, moweyds: 10, spaceGiants: 10, tinkerroids: 10, darkanians: 10 }, // 収入：パワー2／特別：鉱山建設orガイア計画（距離+3）
   RB06: { terrans: 6, lantids: 9, xenos: 8, gleens: 9, taklons: 6, ambas: 6, hadschHallas: 6, ivits: 6, geodens: 9, balTaks: 6, firaks: 6, bescods: 9, nevlas: 6, itars: 6, moweyds: 4, spaceGiants: 6, tinkerroids: 4, darkanians: 6 }, // 収入：鉱石1／パス：鉱山×1VP
