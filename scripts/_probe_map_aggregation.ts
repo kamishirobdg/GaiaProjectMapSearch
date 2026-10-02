@@ -10,6 +10,7 @@
 //   S     現行（Σ v）             B1   最良1惑星
 //   B2    最良2惑星の和           B2R  最良2惑星の和 + 0.25 × 残りの和
 //   B2H   最良2惑星の和 + 0.5 × 残りの和
+//   ACC   開始地点を総当たりで選び、残りは「開始地点からの到達コスト」で重み付け（下の節）
 // 最外周/外周の扱い:
 //   R0 現行（加算 -3/-1） R1 加算を強める（-8/-3） R2 乗算（正の値 × 0.5 / × 0.8）
 
@@ -135,82 +136,127 @@ function colorValues(b: Board, s: Scheme, rim: Rim): Record<string, number> {
 }
 
 // ===== アクセス（到達しやすさ）モデル =====
-// 開始地点から各惑星へ、惑星を踏み台にして進む最小コスト。
-//   跳躍コスト: 距離1=0 / 2〜3=1（航法1 か QIC 1）/ 4〜5=2 / それ以上は不可
-//   踏み台コスト: その惑星を入植するのに要する改造の歩数（同色0、輪の隣1、…、
-//                 ガイア2、次元横断3、原始3、小惑星2。LF色の視点では標準惑星2）
-//   到達係数 = DECAY ^ コスト（DECAY=0.5）。目的の同色惑星そのものの歩数は0。
-const WHEEL = ["BLUE", "YELLOW", "BROWN", "BLACK", "WHITE", "ORANGE", "RED"]; // 惑星改造の輪
-const DECAY = 0.5;
+// 開始地点から各同色惑星へ、惑星を踏み台にして進む最小コスト（定数は 2026-10-02 のユーザー指定）。
+//   跳躍コスト: 距離1=0 / 2=1 / 3〜4=2（QIC で届く）/ 5=3（+3射程のブースター・船アクション）/
+//               それ以上は不可。
+//   踏み台コスト: その惑星に入植するのに要する改造の歩数。同色0、改造の輪で隣1・2つ先2・反対3、
+//                 ガイア1、次元横断1、原始3、小惑星2。踏み台のコストは「そこから次へ跳ぶとき」に
+//                 払うので、目的の惑星そのものには掛からない。
+//   2つ目以降の踏み台には時間の補正 surcharge を足す（0 なら単純な和）。
+//   到達係数 = decay ^ コスト。
+const WHEEL = ["BLUE", "RED", "ORANGE", "YELLOW", "BROWN", "BLACK", "WHITE"]; // テラ→酸化→火山→砂漠→沼沢→チタン→氷→テラ
 function wheelSteps(a: string, b: string): number {
   const i = WHEEL.indexOf(a), j = WHEEL.indexOf(b);
   if (i < 0 || j < 0) return 3;
   const d = Math.abs(i - j);
   return Math.min(d, 7 - d);
 }
-function stoneCost(kind: string, c: string): number {
-  if (c === "PROTO" || c === "ASTEROID") {
-    // LF4種族に母星種別は無い（LF ルール p7）。他の原始惑星は3歩、小惑星はガイアフォーマー消費
-    // なので、同じ種別でも改造が要る。標準惑星は種族で 1〜3 歩と違うので代表値 2。
+type CostFn = (kind: string) => number;
+/** 基本色 c の種族の視点 */
+function baseColorCost(c: string): CostFn {
+  return (kind) => {
+    if (kind === c) return 0;
+    if (BASIC_SET.has(kind)) return wheelSteps(kind, c);
+    if (kind === "GAIA" || kind === "TRANSDIM") return 1;
     if (kind === "PROTO") return 3;
     if (kind === "ASTEROID") return 2;
-    if (BASIC_SET.has(kind)) return 2;
-    return kind === "GAIA" ? 2 : 3;
-  }
-  if (kind === c) return 0;
-  if (BASIC_SET.has(kind)) return wheelSteps(kind, c);
-  if (kind === "GAIA") return 2;
-  if (kind === "ASTEROID") return 2;
-  return 3; // TRANSDIM / PROTO
+    return 3;
+  };
+}
+/** LF4種族の視点（母星種別なし。LF ルール p7・p13。std=標準惑星の歩数、gaia=ガイア/次元横断） */
+const LF_FACTION_COST: Record<string, { home: string; std: number; gaia: number; note: string }> = {
+  darkanians: { home: "ASTEROID", std: 1, gaia: 2, note: "標準1歩・ガイア QIC2" },
+  tinkerroids: { home: "ASTEROID", std: 2, gaia: 2, note: "標準は相手次第で1か3（仮に2）・ガイア QIC2" },
+  moweyds: { home: "PROTO", std: 2, gaia: 1, note: "標準は相手次第で1か3（仮に2）" },
+  spaceGiants: { home: "PROTO", std: 2, gaia: 2, note: "標準2歩" },
+};
+function lfFactionCost(f: string): CostFn {
+  const t = LF_FACTION_COST[f];
+  return (kind) => {
+    if (BASIC_SET.has(kind)) return t.std;
+    if (kind === "GAIA" || kind === "TRANSDIM") return t.gaia;
+    if (kind === "PROTO") return 3;
+    if (kind === "ASTEROID") return 2;
+    return 3;
+  };
 }
 function hopCost(d: number): number {
-  return d <= 1 ? 0 : d <= 3 ? 1 : d <= 5 ? 2 : Infinity;
+  return d <= 1 ? 0 : d === 2 ? 1 : d <= 4 ? 2 : d === 5 ? 3 : Infinity;
 }
 function hexDist(a: Node, b: Node): number {
   const dq = a.q - b.q, dr = a.r - b.r;
   return Math.max(Math.abs(dq), Math.abs(dr), Math.abs(dq + dr));
 }
-/** 起点 src から全ノードへの最小コスト（Dijkstra、ノード数が小さいので O(n^2)） */
-function costsFrom(nodes: Node[], src: number, c: string): number[] {
-  const n = nodes.length;
-  const dist = new Array(n).fill(Infinity);
-  const done = new Array(n).fill(false);
-  dist[src] = 0;
-  for (let it = 0; it < n; it++) {
+type Costs = { cost: number[]; stones: number[] };
+/**
+ * 起点 src から全ノードへの最小コストと、その経路で踏む踏み台の数（0 / 1 / 2以上）。
+ * 状態 = (ノード, これまでに踏んだ踏み台の数)。踏み台のコストは「そのノードから次へ跳ぶとき」に
+ * 払い、2つ目以降の踏み台には surcharge を足す。Dijkstra、状態数が小さいので O(状態^2)。
+ */
+function costsFrom(nodes: Node[], src: number, costOf: CostFn, surcharge: number): Costs {
+  const n = nodes.length, K = 3;
+  const dist = new Array(n * K).fill(Infinity);
+  const done = new Array(n * K).fill(false);
+  const id = (i: number, k: number) => i * K + k;
+  dist[id(src, 0)] = 0;
+  for (let it = 0; it < n * K; it++) {
     let u = -1;
-    for (let i = 0; i < n; i++) if (!done[i] && (u < 0 || dist[i] < dist[u])) u = i;
+    for (let s = 0; s < n * K; s++) if (!done[s] && (u < 0 || dist[s] < dist[u])) u = s;
     if (u < 0 || dist[u] === Infinity) break;
     done[u] = true;
+    const ui = Math.floor(u / K), uk = u % K;
+    const depart = ui === src ? 0 : costOf(nodes[ui].kind) + (uk >= 1 ? surcharge : 0);
+    const nk = ui === src ? 0 : Math.min(K - 1, uk + 1);
     for (let w = 0; w < n; w++) {
-      if (done[w]) continue;
-      const h = hopCost(hexDist(nodes[u], nodes[w]));
+      if (w === ui) continue;
+      const h = hopCost(hexDist(nodes[ui], nodes[w]));
       if (h === Infinity) continue;
-      const nd = dist[u] + h + stoneCost(nodes[w].kind, c);
-      if (nd < dist[w]) dist[w] = nd;
+      const nd = dist[u] + depart + h;
+      if (nd < dist[id(w, nk)]) dist[id(w, nk)] = nd;
     }
   }
-  return dist;
+  const cost = new Array(n).fill(Infinity), stones = new Array(n).fill(0);
+  for (let i = 0; i < n; i++) for (let k = 0; k < K; k++) if (dist[id(i, k)] < cost[i]) { cost[i] = dist[id(i, k)]; stones[i] = k; }
+  return { cost, stones };
 }
-type AccessResult = { value: number; start: string[]; rest: Array<{ key: string; v: number; cost: number }>; top2ByValue: boolean };
-/** 色 c の値: 開始地点（標準色2つ／LF色1つ）を総当たりし、残りは到達係数で重み付け */
-function accessValue(b: Board, c: string, rim: Rim, starts: number): AccessResult {
-  const mine = b.planets.filter((p) => p.color === c);
+/** 同色（同種別）惑星ごとの起点コスト表。盤面 × 視点 × surcharge で1回だけ計算する */
+const costCache = new Map<string, Map<string, Costs>>();
+function costTable(b: Board, bi: number, home: string, costOf: CostFn, costKey: string, surcharge: number): Map<string, Costs> {
+  const key = `${bi}|${home}|${costKey}|${surcharge}`;
+  let m = costCache.get(key);
+  if (m) return m;
+  m = new Map();
+  const idx = new Map(b.nodes.map((n, i) => [n.key, i]));
+  for (const p of b.planets) if (p.color === home) m.set(p.key, costsFrom(b.nodes, idx.get(p.key)!, costOf, surcharge));
+  costCache.set(key, m);
+  return m;
+}
+/** 到達係数 = decay^(コスト − shift)。コストが shift 以下なら 1、到達不能なら 0 */
+function factor(cost: number, decay: number, shift: number): number {
+  return cost === Infinity ? 0 : Math.pow(decay, Math.max(0, cost - shift));
+}
+type AccessResult = { value: number; start: string[]; rest: Array<{ key: string; v: number; cost: number; stones: number }>; top2ByValue: boolean };
+/** 値: 開始地点（標準種族2つ／LF種族1つ）を総当たりし、残りの同種別惑星は到達係数で重み付け */
+function accessValue(b: Board, home: string, costBy: Map<string, Costs>, decay: number, shift: number, rim: Rim, starts: number): AccessResult {
+  const mine = b.planets.filter((p) => p.color === home);
   if (mine.length === 0) return { value: 0, start: [], rest: [], top2ByValue: true };
   const idx = new Map(b.nodes.map((n, i) => [n.key, i]));
-  const costBy = new Map<string, number[]>();
-  for (const p of mine) costBy.set(p.key, costsFrom(b.nodes, idx.get(p.key)!, c));
   const v = (p: Planet) => valueOf(p, rim);
   let best: AccessResult | null = null;
   const evalSet = (S: Planet[]) => {
     let value = 0;
-    const rest: Array<{ key: string; v: number; cost: number }> = [];
+    const rest: AccessResult["rest"] = [];
     for (const s of S) value += v(s);
     for (const p of mine) {
       if (S.includes(p)) continue;
-      const cost = Math.min(...S.map((s) => costBy.get(s.key)![idx.get(p.key)!]));
-      const a = cost === Infinity ? 0 : Math.pow(DECAY, cost);
-      value += v(p) * a;
-      rest.push({ key: p.key, v: v(p), cost });
+      let cost = Infinity, stones = 0;
+      for (const s of S) {
+        const t = costBy.get(s.key)!;
+        const c = t.cost[idx.get(p.key)!];
+        if (c < cost) { cost = c; stones = t.stones[idx.get(p.key)!]; }
+      }
+      value += v(p) * factor(cost, decay, shift);
+      rest.push({ key: p.key, v: v(p), cost, stones });
     }
     if (!best || value > best.value) best = { value, start: S.map((s) => s.key), rest, top2ByValue: false };
   };
@@ -342,54 +388,79 @@ for (const [templateId, outerCap] of RUNS) {
     console.log(`最良2惑星に最外周/外周を含む色: ${pct(hit / total)}。その色の B2R の値の変化（rim なし比）: R0 ${pct(stat(rel.R0).mean)} / R1 ${pct(stat(rel.R1).mean)} / R2 ${pct(stat(rel.R2).mean)}`);
   }
 
-  // ===== アクセスモデル（開始2ヶ所を総当たり、残りは到達係数 0.5^コスト） =====
+  // ===== アクセスモデル ACC =====
   {
-    console.log(`\nアクセスモデル ACC（開始2ヶ所を総当たりで選び、残りの同色惑星は 0.5^到達コスト で重み付け。rim は現行の加算）`);
-    const costHist: Record<string, number> = {};
-    const accs: number[] = [];
-    const vals: number[] = [], tops: number[] = [], imb: number[] = [], restShare: number[] = [];
-    let topChanged = 0, pairDiffers = 0, pairN = 0;
-    boards.forEach((b, i) => {
-      const cv: Record<string, number> = {};
-      for (const c of BASIC) {
-        const r = accessValue(b, c, "R0", 2);
-        cv[c] = r.value;
-        pairN++;
-        if (!r.top2ByValue) pairDiffers++;
-        let restV = 0;
-        for (const x of r.rest) {
-          const k = x.cost === Infinity ? "不可" : x.cost >= 4 ? "4+" : String(x.cost);
-          costHist[k] = (costHist[k] ?? 0) + 1;
-          const a = x.cost === Infinity ? 0 : Math.pow(DECAY, x.cost);
-          accs.push(a);
-          restV += x.v * a;
+    console.log(`\nアクセスモデル ACC（開始2ヶ所を総当たり。残りの同色惑星は decay^到達コスト で重み付け。rim は現行の加算）`);
+    // 到達コストと踏み台の数の分布（surcharge=0、decay に依存しない）
+    {
+      const costHist: Record<string, number> = {}, stoneHist: Record<string, number> = {};
+      let pairDiffers = 0, pairN = 0;
+      boards.forEach((b, bi) => {
+        for (const c of BASIC) {
+          const r = accessValue(b, c, costTable(b, bi, c, baseColorCost(c), "base", 0), 0.5, 1, "R0", 2);
+          pairN++;
+          if (!r.top2ByValue) pairDiffers++;
+          for (const x of r.rest) {
+            const k = x.cost === Infinity ? "不可" : x.cost >= 5 ? "5+" : String(x.cost);
+            costHist[k] = (costHist[k] ?? 0) + 1;
+            const sk = x.cost === Infinity ? "不可" : x.stones >= 2 ? "2+" : String(x.stones);
+            stoneHist[sk] = (stoneHist[sk] ?? 0) + 1;
+          }
         }
-        if (r.value > 0) restShare.push(restV / r.value);
-      }
-      const arr = BASIC.map((c) => cv[c]);
-      vals.push(...arr);
-      tops.push(Math.max(...arr));
-      imb.push(std(arr));
-      const top = BASIC.reduce((m, c) => (cv[c] > cv[m] ? c : m), BASIC[0]);
-      if (top !== baseTop[i]) topChanged += 1;
-    });
-    const nRest = Object.values(costHist).reduce((a, b) => a + b, 0);
-    console.log(`  3位以下の惑星の到達コスト: ` + ["0", "1", "2", "3", "4+", "不可"].map((k) => `${k}: ${pct((costHist[k] ?? 0) / nRest)}`).join(" / ") + `  平均係数 ${stat(accs).mean.toFixed(2)}`);
-    const vs = stat(vals), ts = stat(tops);
-    console.log(`  色の値の平均 ${f1(vs.mean)}  最上位 中央値 ${f1(ts.med)} (${f1(ts.p10)}〜${f1(ts.p90)})  検索の並びの相関 ${spearman(baseS, imb).toFixed(3)}  最上位色が変わる盤面 ${pct(topChanged / boards.length)}`);
-    console.log(`  色の値のうち3位以下の寄与: 平均 ${pct(stat(restShare).mean)}   開始2ヶ所が「値の上位2」と違う色: ${pct(pairDiffers / pairN)}`);
+      });
+      const nRest = Object.values(costHist).reduce((a, b) => a + b, 0);
+      console.log(`  3位以下の惑星の到達コスト: ` + ["1", "2", "3", "4", "5+", "不可"].map((k) => `${k}: ${pct((costHist[k] ?? 0) / nRest)}`).join(" / "));
+      console.log(`  3位以下の惑星へ最短で行くときの踏み台の数: ` + ["0", "1", "2+"].map((k) => `${k}: ${pct((stoneHist[k] ?? 0) / nRest)}`).join(" / ") + `   開始2ヶ所が「値の上位2」と違う色: ${pct(pairDiffers / pairN)}`);
+    }
+    // 到達係数の形: decay^(コスト − shift)。shift=1 は「コスト1＝通常の到達範囲＝割引なし」の読み方
+    const CONFIGS: Array<{ decay: number; shift: number; surcharge: number }> = [
+      { decay: 0.5, shift: 0, surcharge: 0 },
+      { decay: 0.6, shift: 0, surcharge: 0 },
+      { decay: 0.7, shift: 0, surcharge: 0 },
+      { decay: 0.5, shift: 1, surcharge: 0 },
+      { decay: 0.5, shift: 1, surcharge: 1 },
+    ];
+    const label = (cf: { decay: number; shift: number; surcharge: number }) =>
+      `${cf.decay.toFixed(1)}^(c${cf.shift ? `-${cf.shift}` : ""}) +${cf.surcharge}`;
+    console.log(`  係数                     コスト2/3/4/5 の係数        色の値の平均  最上位 中央値 (10%〜90%)  3位以下の寄与  検索の並びの相関  最上位色が変わる盤面`);
+    for (const cf of CONFIGS) {
+      const vals: number[] = [], tops: number[] = [], imb: number[] = [], restShare: number[] = [];
+      let topChanged = 0;
+      boards.forEach((b, bi) => {
+        const cv: Record<string, number> = {};
+        for (const c of BASIC) {
+          const r = accessValue(b, c, costTable(b, bi, c, baseColorCost(c), "base", cf.surcharge), cf.decay, cf.shift, "R0", 2);
+          cv[c] = r.value;
+          let restV = 0;
+          for (const x of r.rest) restV += x.v * factor(x.cost, cf.decay, cf.shift);
+          if (r.value > 0) restShare.push(restV / r.value);
+        }
+        const arr = BASIC.map((c) => cv[c]);
+        vals.push(...arr);
+        tops.push(Math.max(...arr));
+        imb.push(std(arr));
+        const top = BASIC.reduce((m, c) => (cv[c] > cv[m] ? c : m), BASIC[0]);
+        if (top !== baseTop[bi]) topChanged += 1;
+      });
+      const vs = stat(vals), ts = stat(tops);
+      const fs = [2, 3, 4, 5].map((c) => factor(c, cf.decay, cf.shift).toFixed(2)).join(" / ");
+      console.log(`  ${label(cf).padEnd(22)}   ${fs}   ${f1(vs.mean).padStart(7)}      ${f1(ts.med).padStart(6)} (${f1(ts.p10)}〜${f1(ts.p90)})     ${pct(stat(restShare).mean).padStart(6)}        ${spearman(baseS, imb).toFixed(3)}           ${pct(topChanged / boards.length)}`);
+    }
     if (templateId !== "base_34p") {
-      for (const kind of ["PROTO", "ASTEROID"]) {
-        const v1: number[] = [], acc: number[] = [], rs: number[] = [];
-        for (const b of boards) {
-          const r = accessValue(b, kind, "R0", 1);
-          if (r.start.length === 0) continue;
-          acc.push(r.value);
-          const p1 = b.planets.find((p) => p.key === r.start[0])!;
-          v1.push(p1.pos);
-          if (r.value > 0) rs.push((r.value - p1.pos) / r.value);
+      console.log(`  LF4種族（1ヶ所スタート、係数なし。種族ごとの改造コストで到達加重。追加コスト 0）`);
+      for (const cf of [CONFIGS[3], CONFIGS[2]]) {
+        const basic = stat(boards.flatMap((b, bi) => BASIC.map((c) => accessValue(b, c, costTable(b, bi, c, baseColorCost(c), "base", 0), cf.decay, cf.shift, "R0", 2).value))).mean;
+        for (const f of Object.keys(LF_FACTION_COST)) {
+          const t = LF_FACTION_COST[f];
+          const vals: number[] = [], v1: number[] = [];
+          boards.forEach((b, bi) => {
+            const r = accessValue(b, t.home, costTable(b, bi, t.home, lfFactionCost(f), f, 0), cf.decay, cf.shift, "R0", 1);
+            if (r.start.length === 0) return;
+            vals.push(r.value);
+            v1.push(valueOf(b.planets.find((p) => p.key === r.start[0])!, "R0"));
+          });
+          console.log(`    ${label(cf).padEnd(18)} ${f.padEnd(12)} ${t.home.padEnd(8)} 平均 ${f1(stat(vals).mean).padStart(5)}  うち開始惑星 ${f1(stat(v1).mean).padStart(5)}  標準色の平均 ${f1(basic)} との比 ${(stat(vals).mean / basic).toFixed(2)}   ${t.note}`);
         }
-        console.log(`  ${kind.padEnd(8)} 1ヶ所スタート＋到達加重（係数なし）: 平均 ${f1(stat(acc).mean)} 中央 ${f1(stat(acc).med)}  うち開始惑星ぶん ${f1(stat(v1).mean)}  3位以下相当の寄与 ${pct(stat(rs).mean)}  標準色の平均との比 ${(stat(acc).mean / vs.mean).toFixed(2)}`);
       }
     }
   }
@@ -415,4 +486,5 @@ for (const [templateId, outerCap] of RUNS) {
       console.log(`  基本色を ${s} にしたとき: 基本色の平均 ${f1(basic)} / 原始・小惑星の最良1 平均 ${f1(e1)} → 揃える係数 ${(basic / e1).toFixed(2)}`);
     }
   }
+  costCache.clear();
 }
