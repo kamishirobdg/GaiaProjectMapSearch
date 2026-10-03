@@ -1,0 +1,213 @@
+// src/gaia/eval/reachCost.test.ts
+//
+// Map 評価の集計「開始地点＋到達しやすさ」の定数と経路探索（2026-10-03 確定）。
+// 定数の値そのものを固定する —— 変えるときはユーザー判断のうえ、docs/design-notes.md と
+// このテストを一緒に直す。
+
+import { describe, it, expect } from "vitest";
+import {
+  HOP_COST_BY_DISTANCE,
+  LF_REACH_PROFILES,
+  START_COUNT_LF,
+  START_COUNT_STANDARD,
+  TERRAFORM_WHEEL,
+  hopCost,
+  planStarts,
+  reachCostsFrom,
+  reachFactor,
+  stoneCostForColor,
+  stoneCostForLfFaction,
+  terraformSteps,
+  type PlanetNode,
+} from "./reachCost";
+
+const node = (q: number, r: number, kind: string): PlanetNode => ({ key: `${q},${r}`, q, r, kind });
+
+describe("改造の輪と入植コスト", () => {
+  it("輪の順は テラ→酸化→火山→砂漠→沼沢→チタン→氷（2026-10-02 ユーザー確定）", () => {
+    expect(TERRAFORM_WHEEL).toEqual(["BLUE", "RED", "ORANGE", "YELLOW", "BROWN", "BLACK", "WHITE"]);
+  });
+
+  it("隣は1歩、2つ先は2歩、反対は3歩で、輪は閉じている", () => {
+    expect(terraformSteps("BLUE", "BLUE")).toBe(0);
+    expect(terraformSteps("BLUE", "RED")).toBe(1);
+    expect(terraformSteps("BLUE", "WHITE")).toBe(1); // 端どうしも隣
+    expect(terraformSteps("BLUE", "ORANGE")).toBe(2);
+    expect(terraformSteps("BLUE", "YELLOW")).toBe(3);
+    expect(terraformSteps("BLUE", "BROWN")).toBe(3);
+    expect(terraformSteps("YELLOW", "BLUE")).toBe(3);
+  });
+
+  it("基本色の視点: 同色0・ガイア1・次元横断1・原始3・小惑星2", () => {
+    const c = stoneCostForColor("RED");
+    expect(c("RED")).toBe(0);
+    expect(c("BLUE")).toBe(1);
+    expect(c("GAIA")).toBe(1);
+    expect(c("TRANSDIM")).toBe(1);
+    expect(c("PROTO")).toBe(3);
+    expect(c("ASTEROID")).toBe(2);
+  });
+
+  it("LF4種族の視点: 母星種別が無いので同じ種別にも原始3・小惑星2を払う", () => {
+    expect(LF_REACH_PROFILES.darkanians).toEqual({ home: "ASTEROID", standard: 1, gaia: 2 });
+    expect(LF_REACH_PROFILES.tinkerroids.standard).toBe(1); // 相手次第で1か3。Map 探索では既定1
+    expect(LF_REACH_PROFILES.moweyds.standard).toBe(1);
+    expect(LF_REACH_PROFILES.spaceGiants.standard).toBe(2);
+    const d = stoneCostForLfFaction("darkanians");
+    expect(d("ASTEROID")).toBe(2);
+    expect(d("PROTO")).toBe(3);
+    expect(d("BLUE")).toBe(1);
+    expect(d("GAIA")).toBe(2);
+    expect(stoneCostForLfFaction("spaceGiants")("WHITE")).toBe(2);
+    expect(stoneCostForLfFaction("moweyds")("GAIA")).toBe(1);
+  });
+});
+
+describe("跳躍コストと到達係数", () => {
+  it("距離1=0 / 2=1 / 3=1.5 / 4=2 / 5=3 / 6以上は不可", () => {
+    expect(HOP_COST_BY_DISTANCE).toEqual([0, 0, 1, 1.5, 2, 3]);
+    expect(hopCost(1)).toBe(0);
+    expect(hopCost(2)).toBe(1);
+    expect(hopCost(3)).toBe(1.5);
+    expect(hopCost(4)).toBe(2);
+    expect(hopCost(5)).toBe(3);
+    expect(hopCost(6)).toBe(Infinity);
+  });
+
+  it("係数は 0.5 の（コスト−1）乗。コスト1以下は割引なし、到達不能は 0", () => {
+    expect(reachFactor(0)).toBe(1);
+    expect(reachFactor(1)).toBe(1);
+    expect(reachFactor(1.5)).toBeCloseTo(Math.SQRT1_2, 10);
+    expect(reachFactor(2)).toBe(0.5);
+    expect(reachFactor(3)).toBe(0.25);
+    expect(reachFactor(5)).toBe(0.0625);
+    expect(reachFactor(Infinity)).toBe(0);
+  });
+
+  it("開始地点の数は 標準2 / LF1", () => {
+    expect(START_COUNT_STANDARD).toBe(2);
+    expect(START_COUNT_LF).toBe(1);
+  });
+});
+
+describe("到達コストの経路探索", () => {
+  it("直接跳べるときは距離の表そのもの（同色の目的地は入植コスト0）", () => {
+    const pair = (d: number) => reachCostsFrom([node(0, 0, "RED"), node(d, 0, "RED")], 0, stoneCostForColor("RED"))[1];
+    expect(pair(3)).toBe(1.5);
+    expect(pair(4)).toBe(2);
+    expect(pair(5)).toBe(3);
+    expect(pair(6)).toBe(Infinity);
+  });
+
+  it("同色の惑星は0歩の踏み台になるので、遠い同色へも乗り継いで届く", () => {
+    // (0,0)→(3,0) 1.5 → (5,0) は距離2で +1 = 2.5（直接なら距離5で 3）。(6,0) は (5,0) から隣接で 2.5。
+    const nodes = [node(0, 0, "RED"), node(3, 0, "RED"), node(5, 0, "RED"), node(6, 0, "RED")];
+    expect(reachCostsFrom(nodes, 0, stoneCostForColor("RED"))).toEqual([0, 1.5, 2.5, 2.5]);
+  });
+
+  it("踏み台を経由すると、跳躍の和に踏み台の入植コストが足される", () => {
+    // 開始 → 隣接の青（1歩）→ 距離2 の赤: 0 + 1 + 1 = 2。直接は距離3で 1.5 なので直接が選ばれる。
+    // 開始 → 距離6 の赤は直接では不可。隣接の青(0+1)から距離5(3) なら 4 だが、
+    // 同色の赤(3,0) を踏み台にすれば 1.5 + 0 + 1.5 = 3 で済む（同色の踏み台は0歩）。
+    const nodes = [node(0, 0, "RED"), node(1, 0, "BLUE"), node(3, 0, "RED"), node(6, 0, "RED")];
+    const cost = reachCostsFrom(nodes, 0, stoneCostForColor("RED"));
+    expect(cost[2]).toBe(1.5);
+    expect(cost[3]).toBe(3);
+    // 同色の踏み台を外すと青経由の 4 になる
+    const noRedStone = reachCostsFrom([nodes[0], nodes[1], nodes[3]], 0, stoneCostForColor("RED"));
+    expect(noRedStone[2]).toBe(4);
+  });
+
+  it("ガイアと次元横断も踏み台になる（1歩）、原始は3歩、小惑星は2歩", () => {
+    const base = [node(0, 0, "RED"), node(6, 0, "RED")];
+    const via = (kind: string) => reachCostsFrom([...base, node(1, 0, kind)], 0, stoneCostForColor("RED"))[1];
+    expect(via("GAIA")).toBe(4);
+    expect(via("TRANSDIM")).toBe(4);
+    expect(via("PROTO")).toBe(6);
+    expect(via("ASTEROID")).toBe(5);
+  });
+
+  it("LF4種族は同じ種別の惑星へ行くにも入植コストを払う", () => {
+    const nodes = [node(0, 0, "ASTEROID"), node(3, 0, "ASTEROID"), node(3, 1, "PROTO")];
+    const cost = reachCostsFrom(nodes, 0, stoneCostForLfFaction("darkanians"));
+    expect(cost[1]).toBe(1.5 + 2);
+    expect(cost[2]).toBe(hopCost(4) + 3);
+  });
+});
+
+describe("開始地点の総当たり", () => {
+  it("標準種族は2ヶ所、残りは到達係数で重み付けする", () => {
+    // 同色3つ。a=0,0 / b=3,0 / c=10,0（c は孤立）
+    const nodes = [node(0, 0, "RED"), node(3, 0, "RED"), node(10, 0, "RED")];
+    const plan = planStarts({
+      nodes,
+      candidates: [
+        { key: "0,0", value: 30 },
+        { key: "3,0", value: 20 },
+        { key: "10,0", value: 25 },
+      ],
+      stoneCost: stoneCostForColor("RED"),
+      startCount: START_COUNT_STANDARD,
+    })!;
+    // 開始 {0,0 / 10,0}: 30 + 25 + 20 × 0.5^(1.5−1) = 69.1。開始 {0,0 / 3,0}: 30 + 20 + 0 = 50。
+    expect(plan.starts.sort()).toEqual(["0,0", "10,0"]);
+    expect(plan.weights.get("3,0")).toBeCloseTo(Math.SQRT1_2, 10);
+    expect(plan.costs.get("3,0")).toBe(1.5);
+    expect(plan.total).toBeCloseTo(55 + 20 * Math.SQRT1_2, 10);
+  });
+
+  it("残りの到達加重まで含めて選ぶので、「値の上位2」とは違う組になることがある", () => {
+    // 値の上位2は a(30), b(29)。しかし a と b は隣り合う位置にあり、c(28) と d(10) は遠い。
+    // a と c を開始にすると b(距離3→0.71)と d の両方を拾える。
+    const nodes = [node(0, 0, "RED"), node(3, 0, "RED"), node(9, 0, "RED"), node(12, 0, "RED")];
+    const plan = planStarts({
+      nodes,
+      candidates: [
+        { key: "0,0", value: 30 },
+        { key: "3,0", value: 29 },
+        { key: "9,0", value: 28 },
+        { key: "12,0", value: 10 },
+      ],
+      stoneCost: stoneCostForColor("RED"),
+      startCount: 2,
+    })!;
+    expect(plan.starts.sort()).toEqual(["0,0", "9,0"]);
+  });
+
+  it("LF4種族は1ヶ所。候補が1つでも動く", () => {
+    const nodes = [node(0, 0, "PROTO"), node(4, 0, "PROTO")];
+    const one = planStarts({ nodes, candidates: [{ key: "0,0", value: 12 }], stoneCost: stoneCostForLfFaction("moweyds"), startCount: START_COUNT_LF })!;
+    expect(one.starts).toEqual(["0,0"]);
+    expect(one.total).toBe(12);
+    const two = planStarts({
+      nodes,
+      candidates: [
+        { key: "0,0", value: 12 },
+        { key: "4,0", value: 20 },
+      ],
+      stoneCost: stoneCostForLfFaction("moweyds"),
+      startCount: START_COUNT_LF,
+    })!;
+    // 開始 4,0: 20 + 12 × 0.5^(2+3−1) = 20.75。開始 0,0: 12 + 20 × 0.0625 = 13.25
+    expect(two.starts).toEqual(["4,0"]);
+    expect(two.costs.get("0,0")).toBe(5);
+    expect(two.total).toBeCloseTo(20.75, 10);
+  });
+
+  it("候補が無ければ null、到達不能な残りは重み0", () => {
+    expect(planStarts({ nodes: [], candidates: [], stoneCost: stoneCostForColor("RED"), startCount: 2 })).toBeNull();
+    const nodes = [node(0, 0, "RED"), node(20, 0, "RED")];
+    const plan = planStarts({
+      nodes,
+      candidates: [
+        { key: "0,0", value: 10 },
+        { key: "20,0", value: 5 },
+      ],
+      stoneCost: stoneCostForColor("RED"),
+      startCount: 1,
+    })!;
+    expect(plan.starts).toEqual(["0,0"]);
+    expect(plan.weights.get("20,0")).toBe(0);
+    expect(plan.costs.get("20,0")).toBe(Infinity);
+  });
+});
