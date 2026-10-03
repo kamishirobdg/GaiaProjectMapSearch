@@ -121,8 +121,6 @@ const UI = {
     setupArea: "セットアップ",
     satellites: "衛星駒の順（モウェイド人／ティンカーロイド）",
     satellitesNote: "惑星改造ボードの7スペースに置く色順（番号順）。勢力選択とは独立。",
-    draftNote:
-      "※ 全タイル（基本版・Lost Fleet）はルールブック・実物確認済み。種族別評価の重みは 仮設定。",
     seed: "シード",
     randomSeed: "ランダム",
     players: "人数",
@@ -218,8 +216,6 @@ const UI = {
     setupArea: "Setup",
     satellites: "Satellite order (Muaked / Tinkerroid)",
     satellitesNote: "Color order for the 7 planet-transform board spaces (by number). Independent of faction choice.",
-    draftNote:
-      "Note: all tiles (base game & Lost Fleet) verified against the rulebook and physical components. Faction weights are DRAFT (under review).",
     seed: "Seed",
     randomSeed: "Random",
     players: "Players",
@@ -1539,9 +1535,8 @@ export default function SetupView() {
         <div style={{ fontWeight: 700, fontSize: 16 }}>{t.title}</div>
       </div>
 
-      <div style={{ fontSize: 12, color: "#b26b00", background: "#fff8ec", border: "1px solid #f0dcae", borderRadius: T.radius, padding: "6px 10px" }}>
-        {t.draftNote}
-      </div>
+      {/* 「全タイルは実物確認済み。重みは仮設定」の注記は 2026-10-03 に削除した
+          （重みは 2026-09-19 に全表で入力が一巡し、仮設定ではなくなったため）。 */}
 
       {/* 2カラム（共通 TwoCol）。ソース順は右(セットアップ)→左(検索条件)。 */}
       <TwoCol
