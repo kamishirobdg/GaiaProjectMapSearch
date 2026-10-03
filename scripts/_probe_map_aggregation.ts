@@ -180,8 +180,16 @@ function lfFactionCost(f: string): CostFn {
     return 3;
   };
 }
-function hopCost(d: number): number {
-  return d <= 1 ? 0 : d === 2 ? 1 : d <= 4 ? 2 : d === 5 ? 3 : Infinity;
+/** 跳躍コストの表（添字＝距離。距離6以上は不可）。距離3の扱いを比べる（2026-10-03）。 */
+const HOP_TABLES: Record<string, number[]> = {
+  V1: [0, 0, 1, 2, 2, 3], // 現行: 距離3と4を同じ 2
+  V2: [0, 0, 1, 1.5, 2, 3], // 距離3を半歩手前（初期状態から QIC 1つで届く）
+  V3: [0, 0, 1, 1, 2, 3], // 距離3を距離2と同格（QIC 1つ＝航法1と同じ1単位）
+  V5: [0, 0, 1, 1.5, 2.5, 3], // 距離3を 1.5、距離4を 2.5 に広げる
+};
+let HOP = HOP_TABLES.V1;
+function hopCost(d: number, table: number[] = HOP): number {
+  return d <= 0 ? 0 : d < table.length ? table[d] : Infinity;
 }
 function hexDist(a: Node, b: Node): number {
   const dq = a.q - b.q, dr = a.r - b.r;
@@ -190,7 +198,12 @@ function hexDist(a: Node, b: Node): number {
 type Costs = { cost: number[]; stones: number[]; pattern: string[] };
 /** 跳躍の距離の呼び名（コスト付き） */
 function hopLabel(d: number): string {
-  return d <= 1 ? "隣接(0)" : d === 2 ? "距離2(1)" : d <= 4 ? "距離3〜4(2)" : "距離5(3)";
+  const c = hopCost(d);
+  if (d <= 1) return "隣接(0)";
+  // 同じコストの距離はまとめて表示する（現行の表では 3〜4）
+  const same = [2, 3, 4, 5].filter((x) => hopCost(x) === c);
+  const range = same.length > 1 && same[0] !== same[same.length - 1] ? `${same[0]}〜${same[same.length - 1]}` : String(d);
+  return `距離${range}(${c})`;
 }
 /** 踏み台の呼び名（視点 c から見た改造の歩数付き） */
 function stoneLabel(kind: string, home: string, costOf: CostFn): string {
@@ -252,7 +265,7 @@ function costsFrom(nodes: Node[], src: number, costOf: CostFn, surcharge: number
 /** 同色（同種別）惑星ごとの起点コスト表。盤面 × 視点 × surcharge で1回だけ計算する */
 const costCache = new Map<string, Map<string, Costs>>();
 function costTable(b: Board, bi: number, home: string, costOf: CostFn, costKey: string, surcharge: number): Map<string, Costs> {
-  const key = `${bi}|${home}|${costKey}|${surcharge}`;
+  const key = `${bi}|${home}|${costKey}|${surcharge}|${HOP.join(",")}`;
   let m = costCache.get(key);
   if (m) return m;
   m = new Map();
@@ -442,7 +455,44 @@ for (const [templateId, outerCap] of RUNS) {
       console.log(`  3位以下の惑星の到達コスト: ` + ["1", "2", "3", "4", "5+", "不可"].map((k) => `${k}: ${pct((costHist[k] ?? 0) / nRest)}`).join(" / "));
       console.log(`  3位以下の惑星へ最短で行くときの踏み台の数: ` + ["0", "1", "2+"].map((k) => `${k}: ${pct((stoneHist[k] ?? 0) / nRest)}`).join(" / ") + `   開始2ヶ所が「値の上位2」と違う色: ${pct(pairDiffers / pairN)}`);
     }
-    // 到達コストごとに、実際に出てくる経路の形（上位5つ）。係数 0.5^(c-1)、追加コスト 0
+    // 跳躍コストの表の比較（距離3の扱い）。係数 0.5^(c-1)、追加コスト 0
+    {
+      console.log(`  跳躍コストの表の比較（距離1/2/3/4/5 のコスト → 直接跳んだときの係数 0.5^(c-1)）`);
+      console.log(`  表   距離1/2/3/4/5        係数 d3/d4/d5      3位以下のコスト 1.5/2/2.5/3/3.5/4/5以上     色の値の平均  最上位 中央値  3位以下の寄与  並びの相関  最上位色が変わる盤面`);
+      for (const name of Object.keys(HOP_TABLES)) {
+        HOP = HOP_TABLES[name];
+        const vals: number[] = [], tops: number[] = [], imb: number[] = [], restShare: number[] = [];
+        const hist: Record<string, number> = {};
+        let topChanged = 0, nRest = 0;
+        boards.forEach((b, bi) => {
+          const cv: Record<string, number> = {};
+          for (const c of BASIC) {
+            const r = accessValue(b, c, costTable(b, bi, c, baseColorCost(c), "base", 0), 0.5, 1, "R0", 2);
+            cv[c] = r.value;
+            let restV = 0;
+            for (const x of r.rest) {
+              restV += x.v * factor(x.cost, 0.5, 1);
+              const k = x.cost === Infinity ? "不可" : x.cost >= 5 ? "5+" : String(x.cost);
+              hist[k] = (hist[k] ?? 0) + 1;
+              nRest++;
+            }
+            if (r.value > 0) restShare.push(restV / r.value);
+          }
+          const arr = BASIC.map((c) => cv[c]);
+          vals.push(...arr);
+          tops.push(Math.max(...arr));
+          imb.push(std(arr));
+          const top = BASIC.reduce((m, c) => (cv[c] > cv[m] ? c : m), BASIC[0]);
+          if (top !== baseTop[bi]) topChanged += 1;
+        });
+        const fs = [3, 4, 5].map((d) => factor(hopCost(d), 0.5, 1).toFixed(2)).join("/");
+        const hs = ["1.5", "2", "2.5", "3", "3.5", "4", "5+"].map((k) => pct((hist[k] ?? 0) / nRest).padStart(5)).join(" ");
+        const vs = stat(vals), ts = stat(tops);
+        console.log(`  ${name}   ${HOP.slice(1).join("/").padEnd(18)}  ${fs.padEnd(16)}  ${hs}   ${f1(vs.mean).padStart(7)}      ${f1(ts.med).padStart(6)}      ${pct(stat(restShare).mean).padStart(6)}      ${spearman(baseS, imb).toFixed(3)}       ${pct(topChanged / boards.length)}`);
+      }
+      HOP = HOP_TABLES.V1;
+    }
+    // 到達コストごとに、実際に出てくる経路の形（上位5つ）。係数 0.5^(c-1)、追加コスト 0、跳躍の表は V1
     {
       const byCost = new Map<number, Map<string, number>>();
       boards.forEach((b, bi) => {
