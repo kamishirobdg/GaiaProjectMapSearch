@@ -121,6 +121,11 @@ export function axisMarkers(
      * —— 全部の原始惑星を光らせると、数字とマークが食い違って見える。
      */
     onlyCellKey?: string;
+    /**
+     * これらのセルだけに絞る（基本色の評価セル用、2026-10-03）。
+     * 評価は「開始地点2ヶ所＋到達加重」なので、評価セルのマークは開始地点の惑星にする。
+     */
+    onlyCellKeys?: ReadonlySet<string>;
   }
 ): BreakdownMarker[] {
   if (!audit) return [];
@@ -130,6 +135,7 @@ export function axisMarkers(
     const p = String(pt ?? "");
     if (!k || (colorKey && p !== colorKey)) return;
     if (opts?.onlyCellKey != null && k !== opts.onlyCellKey) return;
+    if (opts?.onlyCellKeys && !opts.onlyCellKeys.has(k)) return;
     out.push({ key: k, color: RING_COLOR[p] ?? "#666666", label: `${markerColorLabel(p, lang)}${extra}` });
   };
   const dist = (d: any) => (d ? (lang === "ja" ? ` / 距離${d}` : ` / dist ${d}`) : "");
@@ -213,12 +219,22 @@ const isActiveSource = (id: string) => !!activeSources && activeSources.has(id);
  * join="left"/"right" は「色名セル＋評価セル」を1つの範囲として見せるための指定で、
  * 内側の辺だけ枠線を描かない（間に縦線が出ないようにする。2026-07-30 要望）。
  */
+/**
+ * 基本色の開始地点（評価セルのマーク用）。「開始地点＋到達加重」の集計を持たない
+ * 古い保存結果では undefined ＝ 従来どおり色の全惑星をマークする。
+ */
+const startKeysOf = (k: string): ReadonlySet<string> | undefined => {
+  const s = audit?.startAccess?.byColor?.[k]?.starts;
+  return Array.isArray(s) && s.length > 0 ? new Set(s.map((x: any) => String(x))) : undefined;
+};
 const cellMark = (
   axis: MarkAxis,
   k: string,
   join?: "left" | "right",
-  /** 原始・小惑星の追加行だけ: 最良の1惑星に絞る（2026-07-31） */
-  onlyCellKey?: string
+  /** 原始・小惑星の追加行だけ: 開始地点の1惑星に絞る（2026-07-31） */
+  onlyCellKey?: string,
+  /** 基本色の評価セルだけ: 開始地点の惑星に絞る（2026-10-03） */
+  onlyCellKeys?: ReadonlySet<string>
 ): React.HTMLAttributes<HTMLTableCellElement> => {
   if (!onMark) return {};
   const id = `${axis}:${k}`;
@@ -234,10 +250,24 @@ const cellMark = (
     onClick: (e) =>
       onMark(
         id,
-        axisMarkers(audit, axis, k, lang, onlyCellKey ? { onlyCellKey } : undefined),
+        axisMarkers(
+          audit,
+          axis,
+          k,
+          lang,
+          onlyCellKey || onlyCellKeys
+            ? { ...(onlyCellKey ? { onlyCellKey } : {}), ...(onlyCellKeys ? { onlyCellKeys } : {}) }
+            : undefined
+        ),
         e.ctrlKey || e.metaKey
       ),
-    title: lang === "ja" ? "地図にマーク（Ctrlで複数選択）" : "Mark on map (Ctrl = multi-select)",
+    title: onlyCellKeys
+      ? lang === "ja"
+        ? "この色の開始地点を地図にマーク（Ctrlで複数選択）"
+        : "Mark this colour's starting planets (Ctrl = multi-select)"
+      : lang === "ja"
+        ? "地図にマーク（Ctrlで複数選択）"
+        : "Mark on map (Ctrl = multi-select)",
     style: {
       cursor: "pointer",
       boxShadow: isActiveSource(id) ? outline : undefined,
@@ -386,7 +416,7 @@ const renderCell = (colKey: keyof typeof cols, k: string) => {
   if (!cols[colKey]) return null;
 
   if (colKey === "total") {
-    const m = cellMark("total", k, "right");
+    const m = cellMark("total", k, "right", undefined, startKeysOf(k));
     return <td onClick={m.onClick} title={m.title} style={{ ...tdStyle, fontWeight: 800, color: colorFor(exTotal.maxKeys, exTotal.minKeys, k), ...m.style }}>{axisGet(totals, k as any)}</td>;
   }
   if (colKey === "scout") {
@@ -435,8 +465,19 @@ return (
             const label = lang === "ja" ? COL_LABEL[String(ck)].ja : COL_LABEL[String(ck)].en;
             const axisId = `${String(ck)}:*`;
             const canMark = !!onMark && MARKABLE_AXES.has(String(ck));
+            // 評価の列には集計の仕組みをホバーで出す（設計意図を画面でも読めるようにする。2026-10-03）
+            const headTip =
+              String(ck) === "total"
+                ? lang === "ja"
+                  ? "色の値 ＝ 開始地点2ヶ所の値 ＋ 残りの同色惑星の値 × 到達係数。到達係数は 0.5 の（到達コスト−1）乗で、" +
+                    "到達コストは跳躍（距離2=1 / 3=1.5 / 4=2 / 5=3）と踏み台の入植の歩数の和。開始地点は合計が最大になる組を総当たりで選ぶ。" +
+                    "原始・小惑星は LF4種族ごとに開始1ヶ所で、行は大きい方の種族の値。各列は同じ重みで足して軸ごとに丸めてある。"
+                  : "Colour value = the two starting planets + the remaining same-colour planets weighted by reachability " +
+                    "(0.5^(cost−1); cost = hop cost by distance 2=1 / 3=1.5 / 4=2 / 5=3 plus terraforming steps of stepping stones). " +
+                    "The starting pair is chosen by brute force. Proto/asteroid rows use one start per Lost Fleet faction."
+                : undefined;
             return (
-              <th key={String(ck)} style={thStyle}>
+              <th key={String(ck)} style={thStyle} title={headTip}>
                 {label}
                 {canMark ? (
                   <span
@@ -471,7 +512,7 @@ return (
               {/* 色名も「評価」セルと同じクリック範囲にする（色名〜評価値までを
                   ひとつの当たり判定として扱う。2026-07-30 要望）。 */}
               {(() => {
-                const m = cellMark("total", k, "left");
+                const m = cellMark("total", k, "left", undefined, startKeysOf(k));
                 return (
                   <td onClick={m.onClick} title={m.title} style={{ ...tdLeftStyle, ...m.style }}>
                     {colorLabel}
@@ -504,13 +545,13 @@ return (
 
           return kinds.map((k) => {
             /**
-             * 「最良の1惑星 × 補正値」（2026-07-31 ユーザー確定）。複数がそこそこ
-             * 優位であるより「船に近く星系にも近い最良の惑星が1つ」が望ましい、
-             * という判断で、種別ごとの単純合算をやめた。
-             * extraBest を持たない古い保存結果は従来の合算にフォールバックする
-             * （page.tsx の displayBreakdown が再評価すれば新しい値になる）。
+             * 「開始地点1ヶ所＋到達加重」（2026-10-03。LF4種族は開始建物が1つ）。行の値は
+             * その種別を母星にする2種族のうち大きい方で、係数は掛けない。
+             * 2026-07-31〜10-02 は「最良の1惑星 × 2.75」（extraBest）だった。どちらも持たない
+             * 古い保存結果は従来の合算にフォールバックする（page.tsx の displayBreakdown が
+             * 再評価すれば新しい値になる）。
              */
-            const best = a?.extraBest?.[k] ?? null;
+            const best = a?.extraStart?.[k] ?? a?.extraBest?.[k] ?? null;
             const vScout = best ? Number(best.scout) || 0 : ex(a?.scout?.extraByKind, k);
             const vCore = best ? Number(best.core) || 0 : ex(a?.scoutCore?.extraByKind, k);
             const vGaia = best ? Number(best.gaia) || 0 : ex(a?.gaiaProximity?.extraByKind, k);
@@ -553,15 +594,30 @@ return (
               return null;
             };
 
-            // 行の値が「その種別のいちばん良い惑星1つぶん」であることは数字だけでは
-            // 分からないので、行名にホバーで出す（2026-07-31 要望）。
+            // 行の値が「開始地点1ヶ所ぶん＋到達加重」であることは数字だけでは分からないので、
+            // 行名にホバーで出す（2026-07-31 要望、2026-10-03 に集計の変更へ追随）。
+            // 古い保存結果（extraBest。補正値あり）は当時の説明を出す。
+            const factionLabel = (id: string) =>
+              lang === "ja"
+                ? ({ moweyds: "モウェイド人", spaceGiants: "スペースジャイアント", tinkerroids: "ティンカーロイド", darkanians: "ダルカニア人" } as Record<string, string>)[id] ?? id
+                : id;
             const bestNote = best
-              ? lang === "ja"
-                ? `${label}は最高スコアの惑星1つだけを表示しています` +
-                  `（船接触＋船星系＋ガイア＋星系の合計が最大のもの。補正値×${best.factor}）。` +
-                  `\n最外周・外周は評価に使いません。`
-                : `Shows only the single best ${k} planet (highest scout+core+gaia+cluster total, ` +
-                  `scaled by ${best.factor}). Outer/touch are not counted.`
+              ? typeof best.factor === "number"
+                ? lang === "ja"
+                  ? `${label}は最高スコアの惑星1つだけを表示しています` +
+                    `（船接触＋船星系＋ガイア＋星系の合計が最大のもの。補正値×${best.factor}）。` +
+                    `\n最外周・外周は評価に使いません。`
+                  : `Shows only the single best ${k} planet (highest scout+core+gaia+cluster total, ` +
+                    `scaled by ${best.factor}). Outer/touch are not counted.`
+                : lang === "ja"
+                  ? `${label}は「開始地点1ヶ所の値 ＋ 残りの${label}惑星の値 × 到達係数」です` +
+                    `（LF の種族は開始建物が1つ。係数は掛けません）。` +
+                    (best.factionId ? `\n値は ${factionLabel(String(best.factionId))} の視点（この種別を母星にする2種族のうち大きい方）。` : "") +
+                    `\n最外周・外周は評価に使いません。`
+                  : `${k}: the single starting planet plus the remaining ${k} planets weighted by reachability ` +
+                    `(Lost Fleet factions start with one structure; no scaling factor).` +
+                    (best.factionId ? ` Shown for ${String(best.factionId)} (the stronger of the two factions).` : "") +
+                    ` Outer/touch are not counted.`
               : "";
 
             return (

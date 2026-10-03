@@ -1098,7 +1098,7 @@ return (savedProfiles ?? []).filter((p) => {
   const [prefWHITE, setPrefWHITE] = React.useState(DEFAULT_CONDITIONS.pref);
   const [prefYELLOW, setPrefYELLOW] = React.useState(DEFAULT_CONDITIONS.pref);
   // 拡張種族の母星（原始惑星・小惑星）も優遇/冷遇できる（2026-07-31 要望）。
-  // 掛け先は内訳表と同じ extraBest（最良の1惑星×補正値）。
+  // 掛け先は内訳表と同じ extraStart（開始1ヶ所＋到達加重。2026-10-03 まで extraBest）。
   const [prefPROTO, setPrefPROTO] = React.useState(DEFAULT_CONDITIONS.pref);
   const [prefASTEROID, setPrefASTEROID] = React.useState(DEFAULT_CONDITIONS.pref);
 
@@ -1898,7 +1898,10 @@ const displayBreakdown = React.useMemo(() => {
     (a.scout?.scoutHits?.length ?? 0) > 0 && a.scout.scoutHits[0]?.scoutId === undefined;
   const needsCoreShip =
     (a.scoutCore?.coreHits?.length ?? 0) > 0 && a.scoutCore.coreHits[0]?.scoutId === undefined;
-  if (!needsGaia && !needsCluster && !needsShipId && !needsCoreShip) return b;
+  // eval_v2 までの保存結果は「開始地点＋到達加重」の集計（2026-10-03）を持たないので、
+  // 表示だけ現バージョンの評価で作り直す（スコア・順位はそのまま）。
+  const needsStart = !a.startAccess;
+  if (!needsGaia && !needsCluster && !needsShipId && !needsCoreShip && !needsStart) return b;
   const placement = (displayResult as any)?.placement ?? placementBase;
   if (!Array.isArray(placement) || placement.length === 0) return b;
   try {
@@ -2315,8 +2318,30 @@ async function handleGenerateRank() {
         const toActive = (toAll ?? []).filter((c) => !c.used && Number(c.usedKey ?? 0) === 0);
         const toUsed = (toAll ?? []).filter((c) => !!c.used || Number(c.usedKey ?? 0) === 1);
 
+        // 旧バージョンの候補は現バージョンの評価で作り直してから持ち込む（2026-10-03）。
+        // 盤面の生成は不変なので placement から評価だけをやり直せる。評価が変わるバージョン
+        // 上げ（eval_v3 の「開始地点＋到達加重」）でも、コピーした候補の順位と内訳が
+        // 新しい結果と同じ物差しに乗る。再評価できないもの（placement 欠落）は従来どおり
+        // 旧の値のまま持ち込む。
+        const reevaluate = (c: PersistedCandidate): Partial<PersistedCandidate> => {
+          const placement = (c as any)?.placement;
+          if (!Array.isArray(placement) || placement.length === 0) return {};
+          try {
+            const lm = buildLogicalMapFromPlacement({ templateId, placement: placement as any });
+            const extracted = extractForEval(lm as any, searchKeyParams.hard as any);
+            const ev = evaluateSoft(extracted, searchKeyParams.soft as any);
+            return {
+              score: ev.score,
+              rankValue: -ev.score,
+              evaluation: { ...(c.evaluation ?? {}), score: ev.score, breakdown: ev.breakdown },
+            };
+          } catch {
+            return {};
+          }
+        };
         const incoming = [...fromActive, ...fromUsed].map((c) => ({
           ...c,
+          ...reevaluate(c),
           id: `${key}:${c.placementHash}`,
           searchKey: key,
           updatedAt: now,

@@ -206,7 +206,7 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     evalVersion: "Eval version",
     oldDataAvailable: "Old saved data found for this condition (different version)",
     copyFrom: "Copy from",
-    confirmCopy: "Copy candidates from an older version into the current version? (Scores are not re-evaluated)",
+    confirmCopy: "Copy candidates from an older version into the current version? (Each board is re-evaluated with the current version's weights)",
     extra: "extra",
 
     // --- hover hints (⑤ UI wording, 2026-07-24). Shown via title=. ---
@@ -441,7 +441,7 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     evalVersion: "評価version",
     oldDataAvailable: "旧バージョンの保存データがあります（同一条件・別バージョン）",
     copyFrom: "コピー元",
-    confirmCopy: "旧バージョンの候補を現バージョンにコピーしますか？（スコア再計算はしません）",
+    confirmCopy: "旧バージョンの候補を現バージョンにコピーしますか？（盤面ごとに現バージョンの評価で再計算します）",
 
     // --- ホバーヒント（⑤ UI文言改善、2026-07-24）。title= で表示 ---
     tipTrials: "1回の検索で生成・評価する盤面の数",
