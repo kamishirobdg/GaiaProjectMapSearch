@@ -166,8 +166,8 @@ function baseColorCost(c: string): CostFn {
 /** LF4種族の視点（母星種別なし。LF ルール p7・p13。std=標準惑星の歩数、gaia=ガイア/次元横断） */
 const LF_FACTION_COST: Record<string, { home: string; std: number; gaia: number; note: string }> = {
   darkanians: { home: "ASTEROID", std: 1, gaia: 2, note: "標準1歩・ガイア QIC2" },
-  tinkerroids: { home: "ASTEROID", std: 2, gaia: 2, note: "標準は相手次第で1か3（仮に2）・ガイア QIC2" },
-  moweyds: { home: "PROTO", std: 2, gaia: 1, note: "標準は相手次第で1か3（仮に2）" },
+  tinkerroids: { home: "ASTEROID", std: 1, gaia: 2, note: "標準は相手次第で1か3（既定1）・ガイア QIC2" },
+  moweyds: { home: "PROTO", std: 1, gaia: 1, note: "標準は相手次第で1か3（既定1）" },
   spaceGiants: { home: "PROTO", std: 2, gaia: 2, note: "標準2歩" },
 };
 function lfFactionCost(f: string): CostFn {
@@ -187,16 +187,32 @@ function hexDist(a: Node, b: Node): number {
   const dq = a.q - b.q, dr = a.r - b.r;
   return Math.max(Math.abs(dq), Math.abs(dr), Math.abs(dq + dr));
 }
-type Costs = { cost: number[]; stones: number[] };
+type Costs = { cost: number[]; stones: number[]; pattern: string[] };
+/** 跳躍の距離の呼び名（コスト付き） */
+function hopLabel(d: number): string {
+  return d <= 1 ? "隣接(0)" : d === 2 ? "距離2(1)" : d <= 4 ? "距離3〜4(2)" : "距離5(3)";
+}
+/** 踏み台の呼び名（視点 c から見た改造の歩数付き） */
+function stoneLabel(kind: string, home: string, costOf: CostFn): string {
+  const c = costOf(kind);
+  if (kind === home) return `同色(${c})`;
+  if (BASIC_SET.has(kind)) return `別色${c}歩(${c})`;
+  if (kind === "GAIA") return `ガイア(${c})`;
+  if (kind === "TRANSDIM") return `次元横断(${c})`;
+  if (kind === "PROTO") return `原始(${c})`;
+  if (kind === "ASTEROID") return `小惑星(${c})`;
+  return `${kind}(${c})`;
+}
 /**
- * 起点 src から全ノードへの最小コストと、その経路で踏む踏み台の数（0 / 1 / 2以上）。
+ * 起点 src から全ノードへの最小コストと、その経路で踏む踏み台の数（0 / 1 / 2以上）、経路の形。
  * 状態 = (ノード, これまでに踏んだ踏み台の数)。踏み台のコストは「そのノードから次へ跳ぶとき」に
  * 払い、2つ目以降の踏み台には surcharge を足す。Dijkstra、状態数が小さいので O(状態^2)。
  */
-function costsFrom(nodes: Node[], src: number, costOf: CostFn, surcharge: number): Costs {
+function costsFrom(nodes: Node[], src: number, costOf: CostFn, surcharge: number, home: string): Costs {
   const n = nodes.length, K = 3;
   const dist = new Array(n * K).fill(Infinity);
   const done = new Array(n * K).fill(false);
+  const prev = new Array(n * K).fill(-1);
   const id = (i: number, k: number) => i * K + k;
   dist[id(src, 0)] = 0;
   for (let it = 0; it < n * K; it++) {
@@ -212,12 +228,26 @@ function costsFrom(nodes: Node[], src: number, costOf: CostFn, surcharge: number
       const h = hopCost(hexDist(nodes[ui], nodes[w]));
       if (h === Infinity) continue;
       const nd = dist[u] + depart + h;
-      if (nd < dist[id(w, nk)]) dist[id(w, nk)] = nd;
+      if (nd < dist[id(w, nk)]) { dist[id(w, nk)] = nd; prev[id(w, nk)] = u; }
     }
   }
-  const cost = new Array(n).fill(Infinity), stones = new Array(n).fill(0);
-  for (let i = 0; i < n; i++) for (let k = 0; k < K; k++) if (dist[id(i, k)] < cost[i]) { cost[i] = dist[id(i, k)]; stones[i] = k; }
-  return { cost, stones };
+  const cost = new Array(n).fill(Infinity), stones = new Array(n).fill(0), pattern = new Array(n).fill("");
+  for (let i = 0; i < n; i++) {
+    let bestK = -1;
+    for (let k = 0; k < K; k++) if (dist[id(i, k)] < cost[i]) { cost[i] = dist[id(i, k)]; stones[i] = k; bestK = k; }
+    if (bestK < 0) continue;
+    // 経路を起点までたどって「跳躍→踏み台→跳躍…」の形にする
+    const chain: number[] = [];
+    for (let s = id(i, bestK); s >= 0; s = prev[s]) chain.push(Math.floor(s / K));
+    chain.reverse();
+    const parts: string[] = [];
+    for (let j = 1; j < chain.length; j++) {
+      if (j >= 2) parts.push(`[${stoneLabel(nodes[chain[j - 1]].kind, home, costOf)}]`);
+      parts.push(hopLabel(hexDist(nodes[chain[j - 1]], nodes[chain[j]])));
+    }
+    pattern[i] = parts.join("→");
+  }
+  return { cost, stones, pattern };
 }
 /** 同色（同種別）惑星ごとの起点コスト表。盤面 × 視点 × surcharge で1回だけ計算する */
 const costCache = new Map<string, Map<string, Costs>>();
@@ -227,7 +257,7 @@ function costTable(b: Board, bi: number, home: string, costOf: CostFn, costKey: 
   if (m) return m;
   m = new Map();
   const idx = new Map(b.nodes.map((n, i) => [n.key, i]));
-  for (const p of b.planets) if (p.color === home) m.set(p.key, costsFrom(b.nodes, idx.get(p.key)!, costOf, surcharge));
+  for (const p of b.planets) if (p.color === home) m.set(p.key, costsFrom(b.nodes, idx.get(p.key)!, costOf, surcharge, home));
   costCache.set(key, m);
   return m;
 }
@@ -235,7 +265,7 @@ function costTable(b: Board, bi: number, home: string, costOf: CostFn, costKey: 
 function factor(cost: number, decay: number, shift: number): number {
   return cost === Infinity ? 0 : Math.pow(decay, Math.max(0, cost - shift));
 }
-type AccessResult = { value: number; start: string[]; rest: Array<{ key: string; v: number; cost: number; stones: number }>; top2ByValue: boolean };
+type AccessResult = { value: number; start: string[]; rest: Array<{ key: string; v: number; cost: number; stones: number; pattern: string }>; top2ByValue: boolean };
 /** 値: 開始地点（標準種族2つ／LF種族1つ）を総当たりし、残りの同種別惑星は到達係数で重み付け */
 function accessValue(b: Board, home: string, costBy: Map<string, Costs>, decay: number, shift: number, rim: Rim, starts: number): AccessResult {
   const mine = b.planets.filter((p) => p.color === home);
@@ -249,14 +279,14 @@ function accessValue(b: Board, home: string, costBy: Map<string, Costs>, decay: 
     for (const s of S) value += v(s);
     for (const p of mine) {
       if (S.includes(p)) continue;
-      let cost = Infinity, stones = 0;
+      let cost = Infinity, stones = 0, pattern = "到達不能";
       for (const s of S) {
         const t = costBy.get(s.key)!;
         const c = t.cost[idx.get(p.key)!];
-        if (c < cost) { cost = c; stones = t.stones[idx.get(p.key)!]; }
+        if (c < cost) { cost = c; stones = t.stones[idx.get(p.key)!]; pattern = t.pattern[idx.get(p.key)!]; }
       }
       value += v(p) * factor(cost, decay, shift);
-      rest.push({ key: p.key, v: v(p), cost, stones });
+      rest.push({ key: p.key, v: v(p), cost, stones, pattern });
     }
     if (!best || value > best.value) best = { value, start: S.map((s) => s.key), rest, top2ByValue: false };
   };
@@ -411,6 +441,29 @@ for (const [templateId, outerCap] of RUNS) {
       const nRest = Object.values(costHist).reduce((a, b) => a + b, 0);
       console.log(`  3位以下の惑星の到達コスト: ` + ["1", "2", "3", "4", "5+", "不可"].map((k) => `${k}: ${pct((costHist[k] ?? 0) / nRest)}`).join(" / "));
       console.log(`  3位以下の惑星へ最短で行くときの踏み台の数: ` + ["0", "1", "2+"].map((k) => `${k}: ${pct((stoneHist[k] ?? 0) / nRest)}`).join(" / ") + `   開始2ヶ所が「値の上位2」と違う色: ${pct(pairDiffers / pairN)}`);
+    }
+    // 到達コストごとに、実際に出てくる経路の形（上位5つ）。係数 0.5^(c-1)、追加コスト 0
+    {
+      const byCost = new Map<number, Map<string, number>>();
+      boards.forEach((b, bi) => {
+        for (const c of BASIC) {
+          const r = accessValue(b, c, costTable(b, bi, c, baseColorCost(c), "base", 0), 0.5, 1, "R0", 2);
+          for (const x of r.rest) {
+            if (x.cost === Infinity) continue;
+            const m = byCost.get(x.cost) ?? new Map<string, number>();
+            m.set(x.pattern, (m.get(x.pattern) ?? 0) + 1);
+            byCost.set(x.cost, m);
+          }
+        }
+      });
+      console.log(`  到達コストごとの経路の形（3位以下の惑星。括弧内はコスト。[ ] は踏み台）`);
+      for (const cost of [...byCost.keys()].sort((a, b) => a - b)) {
+        const m = byCost.get(cost)!;
+        const total = [...m.values()].reduce((a, b) => a + b, 0);
+        const top = [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+        console.log(`    コスト ${cost}（${total}件、形は ${m.size} 通り）`);
+        for (const [pat, n] of top) console.log(`      ${pct(n / total).padStart(6)}  ${pat}`);
+      }
     }
     // 到達係数の形: decay^(コスト − shift)。shift=1 は「コスト1＝通常の到達範囲＝割引なし」の読み方
     const CONFIGS: Array<{ decay: number; shift: number; surcharge: number }> = [
