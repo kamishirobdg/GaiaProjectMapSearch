@@ -610,7 +610,7 @@ return (
                   : `Shows only the single best ${k} planet (highest scout+core+gaia+cluster total, ` +
                     `scaled by ${best.factor}). Outer/touch are not counted.`
                 : lang === "ja"
-                  ? `${label}は「開始地点1ヶ所の値 ＋ 残りの${label}惑星の値 × 到達係数」です` +
+                  ? `${label}は「開始地点1ヶ所の値 ＋ 残りの同じ種別の惑星の値 × 到達係数」です` +
                     `（LF の種族は開始建物が1つ。係数は掛けません）。` +
                     (best.factionId ? `\n値は ${factionLabel(String(best.factionId))} の視点（この種別を母星にする2種族のうち大きい方）。` : "") +
                     `\n最外周・外周は評価に使いません。`
