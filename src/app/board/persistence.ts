@@ -26,7 +26,12 @@ export const SEARCH_ALGO_VERSION = "search_v1";
 // which were copy-pasted from the 3p file and did not match the display-side
 // positions, causing cell collisions in the evaluated 4p board. Placement
 // generation (seed -> placement) is unaffected; only evaluation results change.
-export const EVAL_VERSION = "eval_v2";
+// eval_v3 (2026-10-03): Map の色ごとの評価値を「惑星ごとの値の単純合計」から
+// 「開始地点2ヶ所の値 ＋ 残りの同色惑星の値 × 到達係数」に変えた（src/gaia/eval/reachCost.ts、
+// docs/design-notes.md 2.6）。原始・小惑星は LF4種族ごとに開始1ヶ所で、×2.75 の係数を廃止。
+// 盤面の生成は不変で評価値だけが変わるので、旧バージョンの候補は「コピー」で引き継げる
+// （コピー時に現バージョンで再評価する）。
+export const EVAL_VERSION = "eval_v3";
 
 export type PersistedCandidate = {
   id: string; // `${searchKey}:${placementHash}`

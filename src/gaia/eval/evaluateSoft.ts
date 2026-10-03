@@ -15,6 +15,20 @@
 import type { ExtractedForEval, PlanetKind } from "./extractForEval";
 import { axialDistance } from "../hex";
 import { connectedComponents } from "../logicalMap/buildLogicalMap";
+import {
+  HOP_COST_BY_DISTANCE,
+  LF_FACTION_ORDER,
+  LF_REACH_PROFILES,
+  REACH_DECAY,
+  REACH_FREE_COST,
+  START_COUNT_LF,
+  START_COUNT_STANDARD,
+  planStarts,
+  stoneCostForColor,
+  stoneCostForLfFaction,
+  type PlanetNode,
+  type StartPlan,
+} from "./reachCost";
 
 export type PlanetType =
   | "BLACK"
@@ -71,6 +85,17 @@ export type SoftParams = {
   wClusterSize?: number;
 };
 
+
+/** 開始地点＋到達加重の集計での、惑星1つぶんの記録（マーカーと説明用） */
+export type StartAccessPlanet = {
+  cellKey: string;
+  /** 開始地点からの到達コスト（開始地点は 0、到達不能は Infinity） */
+  cost: number;
+  /** 値に掛けた重み（開始地点は 1、残りは到達係数） */
+  weight: number;
+  /** 重みを掛ける前の惑星の値（基本色は最外周/外周込み） */
+  value: number;
+};
 
 export type SoftBreakdown = {
   axesByType: {
@@ -138,6 +163,43 @@ export type SoftBreakdown = {
         factor: number;
         total: number;
       }
+    >;
+
+    /**
+     * 開始地点＋到達加重の集計（2026-10-03 確定。docs/design-notes.md 2.6）。
+     * 色ごとの値 ＝ 開始地点2ヶ所の値 ＋ Σ 残りの同色惑星の値 × 到達係数。
+     * 軸の列（axesByType）は同じ重みで足して軸ごとに丸めたもので、評価はその合計。
+     * eval_v2 までの保存結果には無い（表示側は再評価するか従来の値へフォールバックする）。
+     */
+    startAccess?: {
+      /** 跳躍コストの表（添字＝距離）・減衰・割引の始まるコスト（当時の定数の記録） */
+      hopCostByDistance: number[];
+      decay: number;
+      freeCost: number;
+      /** 基本7色: 開始地点のセル座標と、同色の全惑星の到達コスト・重み・値 */
+      byColor: Record<string, { starts: string[]; planets: StartAccessPlanet[] }>;
+      /** LF4種族ごと（原始・小惑星は種族で入植コストが違う）。開始1ヶ所、最外周/外周は入れない */
+      lf?: Record<
+        string,
+        {
+          kind: string;
+          start: string;
+          scout: number;
+          core: number;
+          gaia: number;
+          cluster: number;
+          total: number;
+          planets: StartAccessPlanet[];
+        }
+      >;
+    };
+    /**
+     * 原始・小惑星の行の値（extraBest の後継、2026-10-03）。その種別を母星にする2種族のうち
+     * 値の大きい方（案A）。係数は掛けない（LF4種族は開始建物が1つなので、その実態のまま）。
+     */
+    extraStart?: Record<
+      string,
+      { factionId: string; cellKey: string; scout: number; core: number; gaia: number; cluster: number; total: number }
     >;
 
     // planetType は基本7色に加え PROTO/ASTEROID も入る（マーカー用）
@@ -272,7 +334,10 @@ export const EXTRA_PREF_KINDS = ["PROTO", "ASTEROID"] as const;
 export const CLUSTER_TRANSDIM_WEIGHT = 0.5;
 
 /**
- * 原始・小惑星の「最良の1つ」に掛ける補正値（2026-07-31、2026-08-02 に再調査）。
+ * 【2026-10-03 に廃止】原始・小惑星の「最良の1つ」に掛けていた補正値。評価は
+ * 「開始地点＋到達加重」（reachCost.ts）に移り、係数は掛けない。eval_v2 までの保存結果を
+ * 読む側のフォールバックと古い調査スクリプトのために定数だけ残してある。
+ * 以下は当時の記録（2026-07-31、2026-08-02 に再調査）。
  *
  * 内訳表の追加行を基本7色の行と同じ物差しで読めるようにするための係数。
  * 検索スコア本体（planetTypeTotals）には入らないが、次の2つには効くので
@@ -407,6 +472,35 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
 
   const scoutRadius = clampInt(params.scoutRadius, 3, 0, 12);
 
+  /**
+   * 惑星ごとの軸の値（2026-10-03）。基本7色と原始・小惑星の全惑星について、
+   * 船接触・船星系・ガイア・星系・最外周・外周を惑星単位で持つ。
+   * 色ごとの値は、この惑星ごとの値を「開始地点＋到達加重」で足して作る（下の集計を参照）。
+   * 星系は「その惑星が属する星系の大きさ」なので、同じ星系の同色2つはどちらも同じ値を持つ。
+   */
+  type PlanetAcc = {
+    key: string;
+    kind: string;
+    type: PlanetType | null;
+    scout: number;
+    core: number;
+    gaia: number;
+    cluster: number;
+    outer: number;
+    touch: number;
+  };
+  const perPlanet = new Map<string, PlanetAcc>();
+  for (const p of extracted.planetCells) {
+    const type = toPlanetType((p as any).planetKind as any, (p as any).colorKey);
+    const kind = type ?? (String((p as any).planetKind ?? "").toUpperCase() || "UNKNOWN");
+    if (!type && kind !== "PROTO" && kind !== "ASTEROID") continue;
+    perPlanet.set(p.key, { key: p.key, kind, type, scout: 0, core: 0, gaia: 0, cluster: 0, outer: 0, touch: 0 });
+  }
+  const addPlanetAxis = (cellKey: string, axis: "scout" | "core" | "gaia" | "cluster" | "outer" | "touch", v: number) => {
+    const e = perPlanet.get(cellKey);
+    if (e) e[axis] += v;
+  };
+
   // ===== outer / touch (normal planets only) =====
   const outerCountByType: CountByType = zeroAxis();
   const touchCountByType: CountByType = zeroAxis();
@@ -420,6 +514,7 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
 
     if (extracted.outerCells.has(p.key)) {
       outerCountByType[t] += 1;
+      addPlanetAxis(p.key, "outer", -wOuter);
       outerHits.push({
         cellKey: p.key,
         planetType: t,
@@ -432,6 +527,7 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
 
     if (extracted.touchCells.has(p.key)) {
       touchCountByType[t] += 1;
+      addPlanetAxis(p.key, "touch", -wTouch);
       touchHits.push({
         cellKey: p.key,
         planetType: t,
@@ -459,36 +555,8 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
   const outerCountExtraByKind: Record<string, number> = {};
   const touchCountExtraByKind: Record<string, number> = {};
 
-  /**
-   * PROTO/ASTEROID の惑星ごとの寄与（2026-07-31）。
-   *
-   * 「複数がそこそこ優位であるより、船に近く星系にも近い最良の惑星が1つ」が
-   * 望ましい、というユーザー判断（2026-07-30）。種別ごとの単純合算（extraByKind）
-   * だと弱い惑星が数だけ多い盤面が高く出るので、惑星ごとに持ち直して
-   * 最良の1つを選べるようにする。中身は 船接触＋船星系＋ガイア＋星系 の合計で、
-   * 最外周/外周は原始・小惑星の評価に効かないので入れない（2026-07-30 確定）。
-   *
-   * extraByKind 自体は従来どおり素の合算のまま残す（既存の表示・監査が読むため）。
-   * ここから作る extraBest が「最良の1つ×補正値」の表示用。
-   */
-  const extraByPlanet = new Map<
-    string,
-    { kind: string; scout: number; core: number; gaia: number; cluster: number }
-  >();
-  const addExtraPlanet = (
-    cellKey: string,
-    kind: string,
-    axis: "scout" | "core" | "gaia" | "cluster",
-    v: number
-  ) => {
-    if (kind !== "PROTO" && kind !== "ASTEROID") return;
-    let e = extraByPlanet.get(cellKey);
-    if (!e) {
-      e = { kind, scout: 0, core: 0, gaia: 0, cluster: 0 };
-      extraByPlanet.set(cellKey, e);
-    }
-    e[axis] += v;
-  };
+  // PROTO/ASTEROID の種別ごとの単純合算（extraByKind）は監査・表示のフォールバック用に
+  // 従来どおり残す。惑星ごとの寄与は perPlanet（上）で持ち、評価は「開始地点＋到達加重」で作る。
   for (const p of extracted.planetCells) {
     if (toPlanetType((p as any).planetKind as any, (p as any).colorKey)) continue;
     const kindU = String((p as any).planetKind ?? "").toUpperCase() || "UNKNOWN";
@@ -558,6 +626,7 @@ for (const s of extracted.scoutCells) {
     const d = axialDistance(s.q, s.r, p.q, p.r);
     const contrib = scoutValue(d, wScoutEff, scoutRadius);
     if (contrib <= 0) continue;
+    addPlanetAxis(p.key, "scout", contrib);
 
     // Scout惑星（ScoutCore起点）
     scoutPlanetKeySet.add(p.key);
@@ -586,7 +655,6 @@ for (const s of extracted.scoutCells) {
       // PROTO/ASTEROID等は別枠
       const k = kindU || "UNKNOWN";
       scoutExtraByKind[k] = (scoutExtraByKind[k] ?? 0) + contrib;
-      addExtraPlanet(p.key, k, "scout", contrib);
     }
 
     total += contrib;
@@ -715,6 +783,7 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
         if ((kindU === "PROTO" || kindU === "ASTEROID") && (extracted.outerCells.has(p.key) || extracted.touchCells.has(p.key))) {
           continue;
         }
+        addPlanetAxis(p.key, "core", contrib);
 
         if (t) {
           byType[t] += contrib;
@@ -723,7 +792,6 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
           const k = kindU || "UNKNOWN";
           extraByKind[k] = (extraByKind[k] ?? 0) + contrib;
           scoutCoreExtraByKind[k] = (scoutCoreExtraByKind[k] ?? 0) + contrib;
-          addExtraPlanet(p.key, k, "core", contrib);
         }
 
         total += contrib;
@@ -791,12 +859,12 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
         const d = axialDistance(p.q, p.r, (g as any).q, (g as any).r);
         const w = d === 1 ? wGaia1 : d === 2 ? wGaia2 : d === 3 ? wGaia3 : 0;
         if (w === 0) continue;
+        addPlanetAxis(p.key, "gaia", w);
         if (t) {
           gaiaAxis[t] += w;
           gaiaHitCount += 1;
         } else {
           gaiaExtraByKind[kindU] = (gaiaExtraByKind[kindU] ?? 0) + w;
-          addExtraPlanet(p.key, kindU, "gaia", w);
         }
         gaiaHits.push({ cellKey: p.key, planetType: t ?? kindU, distance: d, value: w });
       }
@@ -827,9 +895,8 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
       // クラスタの「大きさ」は素の個数ではなく重み付き（2026-07-30 ユーザー確定）。
       // 次元横断惑星は1ラウンド目に入植できないので他の惑星の半分で数える。
       let weightedSize = 0;
-      // このクラスタに含まれる PROTO/ASTEROID のセル。weightedSize が確定してから
-      // 惑星ごとの寄与へ配るので、いったん覚えておく（2026-07-31）。
-      const extraCellsInComp: Array<{ cellKey: string; kind: string }> = [];
+      // weightedSize が確定してから惑星ごとの寄与へ配るので、セルをいったん覚えておく。
+      const cellKeysInComp: string[] = [];
       for (const pos of comp) {
         const c = cellByKey.get(`${pos.q},${pos.r}`);
         if (!c) continue;
@@ -837,20 +904,17 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
         const kindU = String((c as any).planetKind ?? "").toUpperCase() || "UNKNOWN";
         weightedSize += kindU === "TRANSDIM" ? CLUSTER_TRANSDIM_WEIGHT : 1;
         if (t) colorSet.add(t);
-        else {
-          extraSet.add(kindU);
-          extraCellsInComp.push({ cellKey: (c as any).key, kind: kindU });
-        }
+        else extraSet.add(kindU);
+        cellKeysInComp.push(String((c as any).key));
         clusterHits.push({ cellKey: (c as any).key, planetType: t ?? kindU, size: comp.length });
       }
+      // 監査用の「色ごとに1回」の合算（旧 axesByType の定義。cluster.byType に残す）
       for (const t of colorSet) clusterAxis[t] += wCluster * weightedSize;
-      // 色ごとに1回、と同じ規則で追加種別にも入れる（表示・マーカー用。スコアには入らない）
       for (const k of extraSet) clusterExtraByKind[k] = (clusterExtraByKind[k] ?? 0) + wCluster * weightedSize;
       // 惑星ごとの方は「その惑星が属するクラスタの大きさ」なので、同じクラスタに
-      // 同種別が2つあればどちらも同じ値を持つ（種別ごとの合算とは意図的に違う）。
-      for (const e of extraCellsInComp) {
-        addExtraPlanet(e.cellKey, e.kind, "cluster", wCluster * weightedSize);
-      }
+      // 同色が2つあればどちらも同じ値を持つ（色ごとの合算とは意図的に違う。2026-10-03 から
+      // 評価の軸はこちらを使う）。
+      for (const cellKey of cellKeysInComp) addPlanetAxis(cellKey, "cluster", wCluster * weightedSize);
       clusterList.push({ size: comp.length, weightedSize, colors: [...colorSet].sort() });
     }
     clusterHits.sort((a, b) => String(a.cellKey).localeCompare(String(b.cellKey)));
@@ -866,61 +930,117 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
     }
   }
 
-  // ===== 原始・小惑星の「最良の1つ×補正値」（2026-07-31）=====
+  // ===== 開始地点＋到達加重の集計（2026-10-03 確定。docs/design-notes.md 2.6）=====
   //
-  // 種別ごとに、4軸の合計がいちばん大きい惑星を1つ選ぶ。同点はセルキーで安定化。
-  // 表示は「その惑星の値 × EXTRA_BEST_FACTOR」で、軸ごとの値も同じ補正を掛けるので
-  // 列の合計と評価列が一致する。スコア（planetTypeTotals）には入れないので、
-  // 保存済みの結果・回帰スナップショットには影響しない。
-  const extraBest: Record<
-    string,
-    {
-      cellKey: string;
-      scout: number;
-      core: number;
-      gaia: number;
-      cluster: number;
-      /** 補正前の4軸合計（補正値を決め直すときの実測に使う） */
-      raw: number;
-      factor: number;
-      total: number;
+  // 色ごとの値 ＝ 開始地点2ヶ所の値 ＋ Σ 残りの同色惑星の値 × 到達係数。開始地点は残りの
+  // 到達加重まで含めて総当たりで選ぶ（reachCost.ts）。軸の列も同じ重みで足し、軸ごとに丸めて
+  // 評価はその合計にする（列の合計と評価が一致したまま小数が消える。2026-07-31 の方針を踏襲）。
+  // 原始・小惑星は LF4種族ごとに開始1ヶ所・種族ごとの入植コストで計算し、行の値は2種族のうち
+  // 大きい方（案A）。係数は掛けない。最外周/外周は原始・小惑星の評価に入れない（2026-07-30 確定）。
+  const nodes: PlanetNode[] = (extracted.cells ?? extracted.planetCells)
+    .filter((c: any) => c.isPlanet)
+    .map((c: any) => ({
+      key: String(c.key),
+      q: Number(c.q),
+      r: Number(c.r),
+      kind: toPlanetType(c.planetKind as any, c.colorKey) ?? (String(c.planetKind ?? "").toUpperCase() || "UNKNOWN"),
+    }));
+  const AXES = ["outer", "touch", "scout", "core", "gaia", "cluster"] as const;
+  type AxisKey = (typeof AXES)[number];
+  const planetValue = (e: PlanetAcc, withRim: boolean) =>
+    e.scout + e.core + e.gaia + e.cluster + (withRim ? e.outer + e.touch : 0);
+  const weightedAxes = (plan: StartPlan, members: PlanetAcc[]): Record<AxisKey, number> => {
+    const sums: Record<AxisKey, number> = { outer: 0, touch: 0, scout: 0, core: 0, gaia: 0, cluster: 0 };
+    for (const e of members) {
+      const w = plan.weights.get(e.key) ?? 0;
+      for (const ax of AXES) sums[ax] += w * e[ax];
     }
-  > = {};
-  {
-    const bestRaw = new Map<string, { cellKey: string; e: { scout: number; core: number; gaia: number; cluster: number }; raw: number }>();
-    for (const [cellKey, e] of extraByPlanet) {
-      const raw = e.scout + e.core + e.gaia + e.cluster;
-      const cur = bestRaw.get(e.kind);
-      if (!cur || raw > cur.raw || (raw === cur.raw && cellKey.localeCompare(cur.cellKey) < 0)) {
-        bestRaw.set(e.kind, { cellKey, e, raw });
-      }
-    }
-    for (const [kind, b] of bestRaw) {
-      const f = EXTRA_BEST_FACTOR;
-      // 補正値は 2.75 なので、掛けると小数が出る（他の評価値は整数）。
-      // 軸ごとに丸めて、評価列はその合計にする。こうすると列の合計と評価が
-      // 必ず一致したまま、表から小数が消える（2026-07-31）。
-      const scout = Math.round(b.e.scout * f);
-      const core = Math.round(b.e.core * f);
-      const gaia = Math.round(b.e.gaia * f);
-      const cluster = Math.round(b.e.cluster * f);
-      extraBest[kind] = {
-        cellKey: b.cellKey,
-        scout,
-        core,
-        gaia,
-        cluster,
-        raw: b.raw,
-        factor: f,
-        total: scout + core + gaia + cluster,
-      };
+    const rounded = {} as Record<AxisKey, number>;
+    for (const ax of AXES) rounded[ax] = Math.round(sums[ax]);
+    return rounded;
+  };
+  const planetRows = (plan: StartPlan, members: PlanetAcc[], withRim: boolean): StartAccessPlanet[] =>
+    members
+      .map((e) => ({
+        cellKey: e.key,
+        cost: plan.costs.get(e.key) ?? Infinity,
+        weight: plan.weights.get(e.key) ?? 0,
+        value: planetValue(e, withRim),
+      }))
+      .sort((a, b) => b.weight - a.weight || a.cellKey.localeCompare(b.cellKey));
+
+  const aggOuter = zeroAxis();
+  const aggTouch = zeroAxis();
+  const aggScout = zeroAxis();
+  const aggCore = zeroAxis();
+  const aggGaia = zeroAxis();
+  const aggCluster = zeroAxis();
+  const startByColor: Record<string, { starts: string[]; planets: StartAccessPlanet[] }> = {};
+  const allPlanets = [...perPlanet.values()];
+  for (const t of PLANET_TYPES) {
+    const members = allPlanets.filter((e) => e.type === t);
+    if (members.length === 0) continue;
+    const plan = planStarts({
+      nodes,
+      candidates: members.map((e) => ({ key: e.key, value: planetValue(e, true) })),
+      stoneCost: stoneCostForColor(t),
+      startCount: START_COUNT_STANDARD,
+    });
+    if (!plan) continue;
+    const ax = weightedAxes(plan, members);
+    aggOuter[t] = ax.outer;
+    aggTouch[t] = ax.touch;
+    aggScout[t] = ax.scout;
+    aggCore[t] = ax.core;
+    aggGaia[t] = ax.gaia;
+    aggCluster[t] = ax.cluster;
+    startByColor[t] = { starts: plan.starts, planets: planetRows(plan, members, true) };
+  }
+  // LF4種族（開始1ヶ所、種族ごとの入植コスト、最外周/外周は入れない）
+  type LfStart = NonNullable<NonNullable<SoftBreakdown["audit"]["startAccess"]>["lf"]>[string];
+  type ExtraStart = NonNullable<SoftBreakdown["audit"]["extraStart"]>[string];
+  const startLf: Record<string, LfStart> = {};
+  const extraStart: Record<string, ExtraStart> = {};
+  for (const f of LF_FACTION_ORDER) {
+    const home = LF_REACH_PROFILES[f].home;
+    const members = allPlanets.filter((e) => e.kind === home);
+    if (members.length === 0) continue;
+    const plan = planStarts({
+      nodes,
+      candidates: members.map((e) => ({ key: e.key, value: planetValue(e, false) })),
+      stoneCost: stoneCostForLfFaction(f),
+      startCount: START_COUNT_LF,
+    });
+    if (!plan) continue;
+    const ax = weightedAxes(plan, members);
+    const total = ax.scout + ax.core + ax.gaia + ax.cluster;
+    startLf[f] = {
+      kind: home,
+      start: plan.starts[0],
+      scout: ax.scout,
+      core: ax.core,
+      gaia: ax.gaia,
+      cluster: ax.cluster,
+      total,
+      planets: planetRows(plan, members, false),
+    };
+    const cur = extraStart[home];
+    if (!cur || total > cur.total) {
+      extraStart[home] = { factionId: f, cellKey: plan.starts[0], scout: ax.scout, core: ax.core, gaia: ax.gaia, cluster: ax.cluster, total };
     }
   }
+  const startAccess: NonNullable<SoftBreakdown["audit"]["startAccess"]> = {
+    hopCostByDistance: [...HOP_COST_BY_DISTANCE],
+    decay: REACH_DECAY,
+    freeCost: REACH_FREE_COST,
+    byColor: startByColor,
+    ...(Object.keys(startLf).length > 0 ? { lf: startLf } : {}),
+  };
 
-  // totals & imbalance
+  // totals & imbalance（軸ごとに丸めた値の和なので、内訳表の列の合計と評価が一致する）
   const planetTypeTotals = addAxis(
-    addAxis(addAxis(outerAxis, touchAxis), addAxis(scoutAxis, scoutCoreAxis)),
-    addAxis(gaiaAxis, clusterAxis)
+    addAxis(addAxis(aggOuter, aggTouch), addAxis(aggScout, aggCore)),
+    addAxis(aggGaia, aggCluster)
   );
 
   const values = axisValues(planetTypeTotals);
@@ -933,8 +1053,8 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
     prefByType[t] = num(colorPrefByTypeRaw?.[t], 0);
   }
   // 原始・小惑星は軸（planetTypeTotals）を持たないので、内訳表に出しているのと同じ
-  // extraBest（最良の1惑星×補正値）を優遇/冷遇の掛け先にする（2026-07-31 要望）。
-  // 指定が無ければ完全に素通り＝既存のスコア・キーは不変。
+  // extraStart（開始1ヶ所＋到達加重。2026-10-03 まで extraBest）を優遇/冷遇の掛け先にする
+  // （2026-07-31 要望）。指定が無ければ完全に素通り＝既存のスコア・キーは不変。
   const prefExtraByKind: Record<string, number> = {};
   const valueExtraByKind: Record<string, number> = {};
   const scoreExtraByKind: Record<string, number> = {};
@@ -947,7 +1067,7 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
   let colorPrefScore = 0;
   if (wColorPref !== 0) {
     for (const [k, p] of Object.entries(prefExtraByKind)) {
-      const value = extraBest[k]?.total ?? 0;
+      const value = extraStart[k]?.total ?? 0;
       const v = wColorPref * p * value;
       valueExtraByKind[k] = value;
       scoreExtraByKind[k] = v;
@@ -966,13 +1086,15 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
   return {
     score: totalScore,
     breakdown: {
+      // 軸の列は「開始地点＋到達加重」の重み付き和（2026-10-03）。素の合算は audit の
+      // scout.byType / scoutCore.byType / gaiaProximity.byType / cluster.byType に残る。
       axesByType: {
-        outer: outerAxis,
-        touch: touchAxis,
-        scout: scoutAxis,
-        scoutCore: scoutCoreAxis,
-        ...(gaiaEnabled ? { gaia: gaiaAxis } : {}),
-        ...(clusterEnabled ? { cluster: clusterAxis } : {}),
+        outer: aggOuter,
+        touch: aggTouch,
+        scout: aggScout,
+        scoutCore: aggCore,
+        ...(gaiaEnabled ? { gaia: aggGaia } : {}),
+        ...(clusterEnabled ? { cluster: aggCluster } : {}),
       },
       planetTypeTotals,
       imbalance: { metric, value: imbalanceValue, score: imbalanceScore },
@@ -997,8 +1119,9 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
         touchExtraByKind,
         outerCountExtraByKind,
         touchCountExtraByKind,
-        // 原始・小惑星の「最良の1惑星 × 補正値」（内訳表の追加行はこれを出す。2026-07-31）
-        ...(Object.keys(extraBest).length > 0 ? { extraBest } : {}),
+        // 開始地点＋到達加重の集計の記録と、原始・小惑星の行の値（2026-10-03。extraBest の後継）
+        startAccess,
+        ...(Object.keys(extraStart).length > 0 ? { extraStart } : {}),
         outerHits,
         touchHits,
         scout: {

@@ -102,8 +102,10 @@ describe("gaia proximity axis (base)", () => {
 });
 
 describe("cluster axis (base)", () => {
-  it("each colour in a cluster of n gets +n x weight, once per colour", () => {
-    // RED-RED-BLUE の3連結: RED+3, BLUE+3（同色2個でも色ごとに1回）
+  it("each planet in a cluster of n gets +n x weight（評価の軸は惑星ごと。監査の byType は色ごとに1回）", () => {
+    // RED-RED-BLUE の3連結: 惑星ごとに +3 なので RED は 2つで 6、BLUE は 3。
+    // 2026-10-03 の「開始地点＋到達加重」から軸は惑星ごとの値の重み付き和になった
+    // （同色2つはどちらも開始地点なので重み1）。色ごとに1回の合算は audit.cluster.byType に残る。
     const e = extractedOf([
       cell({ q: 0, r: 0, color: "RED" }),
       cell({ q: 1, r: 0, color: "RED" }),
@@ -112,9 +114,10 @@ describe("cluster axis (base)", () => {
     ]);
     const r = evaluateSoft(e, { ...BASE_SOFT, wClusterSize: 1 });
     expect(r.breakdown.axesByType.cluster).toBeDefined();
-    expect(r.breakdown.axesByType.cluster!.RED).toBe(3);
+    expect(r.breakdown.axesByType.cluster!.RED).toBe(6);
     expect(r.breakdown.axesByType.cluster!.BLUE).toBe(3);
     expect(r.breakdown.axesByType.cluster!.WHITE).toBe(0);
+    expect(r.breakdown.audit.cluster?.byType.RED).toBe(3);
     expect(r.breakdown.audit.cluster?.clusters).toEqual([{ size: 3, weightedSize: 3, colors: ["BLUE", "RED"] }]);
   });
 

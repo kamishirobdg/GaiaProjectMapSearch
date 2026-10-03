@@ -65,16 +65,20 @@ export function mapFactionScores(templateId: string, placement: any[]): FactionS
  * 桁が揃うこちらを使う。
  *
  * breakdown は保存済み候補が持っている評価内訳。原始・小惑星は軸を持たないので、
- * 内訳表と同じく extraBest（最良の1惑星×補正値）を読む。
- * 内訳が無い／読めないときは全種族0（優遇が効かないだけで壊れない）。
+ * LF4種族は種族ごとの値（`audit.startAccess.lf`。開始1ヶ所＋到達加重、2026-10-03）を読む。
+ * それが無い古い内訳では 内訳表の追加行と同じ値（extraStart、さらに古ければ extraBest）へ
+ * フォールバックする。内訳が無い／読めないときは全種族0（優遇が効かないだけで壊れない）。
  */
 export function mapValueByFaction(breakdown: any): FactionScores {
   const out = {} as FactionScores;
   const totals = breakdown?.planetTypeTotals ?? null;
-  const extraBest = breakdown?.audit?.extraBest ?? null;
+  const audit = breakdown?.audit ?? null;
+  const lf = audit?.startAccess?.lf ?? null;
+  const extraStart = audit?.extraStart ?? null;
+  const extraBest = audit?.extraBest ?? null;
   for (const f of FACTIONS) {
     const v = LF_HOME_COLORS.has(f.color)
-      ? Number(extraBest?.[f.color]?.total ?? 0)
+      ? Number(lf?.[f.id]?.total ?? extraStart?.[f.color]?.total ?? extraBest?.[f.color]?.total ?? 0)
       : Number(totals?.[f.color] ?? 0);
     out[f.id] = Number.isFinite(v) ? v : 0;
   }
