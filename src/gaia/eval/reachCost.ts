@@ -18,7 +18,14 @@
 //   複数の踏み台は単純な和（補正なし。踏み台2つ以上の経路は 3〜6% しか無い）。
 // 到達係数 ＝ 0.5 の（コスト − 1）乗。コスト1 ＝ 通常の到達範囲 ＝ 割引なし、以降1段ごとに半減。
 //
-// 実測と経緯は docs/design-notes.md 2.6 節、調査は scripts/_probe_map_aggregation.ts。
+// 盤面の端の罰点「欠けマス × w」（2026-10-04 ユーザー確定、eval_v4）:
+//   惑星から距離2以内の18マス（通常の到達範囲）のうち盤面に無いマスの数 × w を、その惑星の値から引く。
+//   端の開始地点は、将来の広がり先（鉱山を置く惑星・同盟の衛星・パワーの授受）をそのぶん失う、という意図。
+//   内側の惑星は欠け0、外周（最外周の1つ内側）は平均 2.7 マス、最外周は辺で約7・角で約10。
+//   加算で下限は無い。基本版と LF で同じ式、原始・小惑星にも掛ける。
+//
+// 実測と経緯は docs/design-notes.md 2.6 / 2.8 節、調査は scripts/_probe_map_aggregation.ts と
+// scripts/_probe_rim.ts。
 
 import { axialDistance } from "../hex";
 
@@ -112,6 +119,26 @@ export function stoneCostForLfFaction(id: LfFactionId): StoneCostFn {
     if (kind === "ASTEROID") return STONE_COST_ASTEROID;
     return 3;
   };
+}
+
+/** 端の罰点の範囲（通常の到達範囲＝距離2）と、その範囲にあるマスの数（自分を除く 6 + 12 = 18）。 */
+export const RIM_GAP_RANGE = 2;
+export const RIM_GAP_RING_CELLS = 18;
+
+/**
+ * (q, r) から距離 range 以内（自分を除く）のうち、盤面に無いマスの数。
+ * onBoard は盤面の全セル（空セルも含む）の座標キー "q,r" の集合。
+ */
+export function missingCellsWithin(onBoard: ReadonlySet<string>, q: number, r: number, range = RIM_GAP_RANGE): number {
+  let missing = 0;
+  for (let dq = -range; dq <= range; dq++) {
+    for (let dr = -range; dr <= range; dr++) {
+      if (dq === 0 && dr === 0) continue;
+      if (axialDistance(0, 0, dq, dr) > range) continue;
+      if (!onBoard.has(`${q + dq},${r + dr}`)) missing++;
+    }
+  }
+  return missing;
 }
 
 /** 開始地点の数。標準種族は初期鉱山2つ、LF4種族は建物1つ。 */

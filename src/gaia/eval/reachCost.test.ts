@@ -5,13 +5,17 @@
 // このテストを一緒に直す。
 
 import { describe, it, expect } from "vitest";
+import { axialDistance } from "../hex";
 import {
   HOP_COST_BY_DISTANCE,
   LF_REACH_PROFILES,
+  RIM_GAP_RANGE,
+  RIM_GAP_RING_CELLS,
   START_COUNT_LF,
   START_COUNT_STANDARD,
   TERRAFORM_WHEEL,
   hopCost,
+  missingCellsWithin,
   planStarts,
   reachCostsFrom,
   reachFactor,
@@ -87,6 +91,47 @@ describe("跳躍コストと到達係数", () => {
   it("開始地点の数は 標準2 / LF1", () => {
     expect(START_COUNT_STANDARD).toBe(2);
     expect(START_COUNT_LF).toBe(1);
+  });
+});
+
+describe("端の罰点「欠けマス × w」の欠けマス数（2026-10-04 確定）", () => {
+  /** 原点から距離 R 以内の全マス（自分を含む）を盤面にする */
+  const disk = (R: number): Set<string> => {
+    const s = new Set<string>();
+    for (let q = -R; q <= R; q++) for (let r = -R; r <= R; r++) if (axialDistance(0, 0, q, r) <= R) s.add(`${q},${r}`);
+    return s;
+  };
+
+  it("範囲は距離2、その範囲のマスは自分を除いて18", () => {
+    expect(RIM_GAP_RANGE).toBe(2);
+    expect(RIM_GAP_RING_CELLS).toBe(18);
+    expect(missingCellsWithin(new Set(), 0, 0)).toBe(18);
+  });
+
+  it("内側（距離2以内が全部盤面）の欠けは 0", () => {
+    expect(missingCellsWithin(disk(2), 0, 0)).toBe(0);
+    expect(missingCellsWithin(disk(5), 3, 0)).toBe(0);
+  });
+
+  it("半径5の六角形の盤面: 最外周の辺は 7・角は 10、その1つ内側は辺 3・角 5、2つ内側は 0", () => {
+    const b = disk(5);
+    // 最外周の辺の中ほど (5,-2) / (5,-3)、角 (5,0) / (5,-5)
+    expect(missingCellsWithin(b, 5, -2)).toBe(7);
+    expect(missingCellsWithin(b, 5, -3)).toBe(7);
+    expect(missingCellsWithin(b, 5, 0)).toBe(10);
+    expect(missingCellsWithin(b, 5, -5)).toBe(10);
+    // 1つ内側（外周）
+    expect(missingCellsWithin(b, 4, -2)).toBe(3);
+    expect(missingCellsWithin(b, 4, 0)).toBe(5);
+    // 2つ内側は 0
+    expect(missingCellsWithin(b, 3, -1)).toBe(0);
+    expect(missingCellsWithin(b, 3, 0)).toBe(0);
+  });
+
+  it("範囲を変えられる（距離1なら隣接6マスのうちの欠け。外周は 0）", () => {
+    expect(missingCellsWithin(disk(5), 5, -2, 1)).toBe(2);
+    expect(missingCellsWithin(disk(5), 5, 0, 1)).toBe(3);
+    expect(missingCellsWithin(disk(5), 4, -2, 1)).toBe(0);
   });
 });
 
