@@ -20,7 +20,15 @@ import { extractForEval } from "../src/gaia/eval/extractForEval";
 import { evaluateSoft } from "../src/gaia/eval/evaluateSoft";
 import { checkHardConstraints } from "../src/gaia/constraints";
 import { axialDistance } from "../src/gaia/hex";
-import { planStarts, stoneCostForColor, START_COUNT_STANDARD, type PlanetNode } from "../src/gaia/eval/reachCost";
+import {
+  planStarts,
+  stoneCostForColor,
+  stoneCostForLfFaction,
+  START_COUNT_LF,
+  START_COUNT_STANDARD,
+  type LfFactionId,
+  type PlanetNode,
+} from "../src/gaia/eval/reachCost";
 
 const N = Number(process.argv[2] ?? 60) || 60;
 const BASE_OUTER_CAP = Number(process.argv[3] ?? 3) || 3;
@@ -38,7 +46,9 @@ const soft = {
 const BASIC = ["BLACK", "BLUE", "BROWN", "ORANGE", "RED", "WHITE", "YELLOW"];
 
 type Planet = { key: string; color: string; pos: number; outer: boolean; touch: boolean; cov2: number; cov1: number };
-type Board = { planets: Planet[]; nodes: PlanetNode[] };
+/** LF4種族の候補（原始・小惑星）。現行は最外周/外周を掛けていないので pos ＝ 実装の value */
+type LfPlanet = { key: string; pos: number; outer: boolean; touch: boolean; cov2: number };
+type Board = { planets: Planet[]; nodes: PlanetNode[]; lf: Record<string, LfPlanet[]> };
 
 function loadBoards(templateId: string, outerCap: number): Board[] {
   const hard = {
@@ -84,7 +94,20 @@ function loadBoards(templateId: string, outerCap: number): Board[] {
     const nodes: PlanetNode[] = cells
       .filter((c) => c.isPlanet)
       .map((c) => ({ key: String(c.key), q: c.q, r: c.r, kind: String(c.colorKey ?? c.planetKind ?? "").toUpperCase() }));
-    out.push({ planets, nodes });
+    const lf: Record<string, LfPlanet[]> = {};
+    for (const [f, entry] of Object.entries((sa?.lf ?? {}) as Record<string, any>)) {
+      lf[f] = (entry.planets ?? []).map((p: any) => {
+        const cell = byKey.get(String(p.cellKey));
+        return {
+          key: String(p.cellKey),
+          pos: Number(p.value),
+          outer: extracted.outerCells.has(p.cellKey),
+          touch: extracted.touchCells.has(p.cellKey),
+          cov2: cell ? cov(cell.q, cell.r, 2) : 1,
+        };
+      });
+    }
+    out.push({ planets, nodes, lf });
   }
   return out;
 }
@@ -100,6 +123,10 @@ const VARIANTS: Variant[] = [
   { id: "V6", label: "欠け 距離1 ×(0.5+0.5c)", value: (p) => p.pos * (0.5 + 0.5 * p.cov1) },
   { id: "V7", label: "欠け 距離2 ×(0.25+0.75c)", value: (p) => p.pos * (0.25 + 0.75 * p.cov2) },
   { id: "V8", label: "欠け 距離2 ×c", value: (p) => p.pos * p.cov2 },
+  // 「通常の到達範囲（距離2以内の18マス）のうち盤面が無いマス1つにつき w 点引く」（加算・段階つき）
+  { id: "G4", label: "欠けマス×0.4点", value: (p) => p.pos - 0.4 * 18 * (1 - p.cov2) },
+  { id: "G5", label: "欠けマス×0.5点", value: (p) => p.pos - 0.5 * 18 * (1 - p.cov2) },
+  { id: "G10", label: "欠けマス×1点", value: (p) => p.pos - 1.0 * 18 * (1 - p.cov2) },
   { id: "NONE", label: "罰点なし", value: (p) => p.pos },
 ];
 
@@ -210,5 +237,35 @@ for (const [templateId, outerCap] of [["4p_lostFleet", 1], ["3p_lostFleet", 1], 
     const noneMean = stat(none.flatMap((r) => BASIC.map((c) => r.values[c]))).mean;
     const vs = stat(vals), ts = stat(tops);
     console.log(`  ${v.id.padEnd(4)} ${v.label.padEnd(20)}  ${f1(vs.mean).padStart(7)}      ${f1(ts.med).padStart(6)}        ${pct(stat(delta).mean / noneMean).padStart(6)}            ${pct(stat(condDelta).mean).padStart(7)}                   ${pct(rim / rimN).padStart(6)}          ${spearman(baseImb, imb).toFixed(3)}            ${pct(topChanged / boards.length)}`);
+  }
+
+  // 原始・小惑星（LF4種族）に同じ罰点を掛けたとき（現行は掛けていない）
+  if (templateId !== "base_34p") {
+    console.log(`\n  原始・小惑星に同じ罰点を掛けたとき（現行は掛けない。開始1ヶ所、種族ごとの入植コスト）`);
+    const factions = ["moweyds", "spaceGiants", "tinkerroids", "darkanians"] as LfFactionId[];
+    const lfValue = (b: Board, f: LfFactionId, v: Variant) => {
+      const mine = b.lf[f] ?? [];
+      if (mine.length === 0) return null;
+      const plan = planStarts({
+        nodes: b.nodes,
+        candidates: mine.map((p) => ({ key: p.key, value: v.value(p as any) })),
+        stoneCost: stoneCostForLfFaction(f),
+        startCount: START_COUNT_LF,
+      });
+      return plan ? { total: plan.total, startRim: mine.find((p) => p.key === plan.starts[0])!.outer || mine.find((p) => p.key === plan.starts[0])!.touch } : null;
+    };
+    const noneV = VARIANTS[VARIANTS.length - 1];
+    for (const f of factions) {
+      const base = boards.map((b) => lfValue(b, f, noneV)).filter(Boolean) as Array<{ total: number; startRim: boolean }>;
+      const rimStart = base.filter((x) => x.startRim).length;
+      const parts: string[] = [];
+      for (const id of ["V0", "V4", "G4", "G5", "G10"]) {
+        const v = VARIANTS.find((x) => x.id === id)!;
+        const res = boards.map((b) => lfValue(b, f, v)).filter(Boolean) as Array<{ total: number; startRim: boolean }>;
+        const rel = stat(res.map((x, i) => (base[i].total > 0 ? (x.total - base[i].total) / base[i].total : 0))).mean;
+        parts.push(`${id} ${pct(rel).padStart(6)}`);
+      }
+      console.log(`    ${f.padEnd(12)} 罰点なしの開始地点が最外周/外周: ${pct(rimStart / base.length).padStart(6)}   値の変化: ${parts.join(" / ")}`);
+    }
   }
 }
