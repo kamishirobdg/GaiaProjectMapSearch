@@ -46,7 +46,8 @@ export const EXTRA_INPUT_BG: Record<string, string> = {
 
 // --- #9 マーカー連動: 詳細表クリック→地図リング -----------------------------
 export type BreakdownMarker = { key: string; color: string; label?: string };
-export type MarkAxis = "total" | "scout" | "scoutCore" | "gaia" | "cluster" | "outer" | "touch";
+// "rim" は最外周＋外周（評価指数の「欠けマス罰点」の入力欄用。eval_v4）
+export type MarkAxis = "total" | "scout" | "scoutCore" | "gaia" | "cluster" | "outer" | "touch" | "rim";
 
 // 地図リング用の彩度高めの惑星色（ストロークとして視認できる濃さ）。
 //
@@ -139,10 +140,15 @@ export function axisMarkers(
     out.push({ key: k, color: RING_COLOR[p] ?? "#666666", label: `${markerColorLabel(p, lang)}${extra}` });
   };
   const dist = (d: any) => (d ? (lang === "ja" ? ` / 距離${d}` : ` / dist ${d}`) : "");
+  // 端の罰点（eval_v4）: ヒットに罰点と欠けマス数が付いていれば添える（例「最外周 −3.5（欠け7）」）
+  const rim = (h: any) =>
+    typeof h?.value === "number"
+      ? ` ${Math.round(h.value * 10) / 10}` + (typeof h?.missing === "number" ? (lang === "ja" ? `（欠け${h.missing}）` : ` (${h.missing} missing)`) : "")
+      : "";
   const doOuter = () =>
-    (audit.outerHits ?? []).forEach((h: any) => push(h.cellKey, h.planetType, lang === "ja" ? " / 最外周" : " / outer"));
+    (audit.outerHits ?? []).forEach((h: any) => push(h.cellKey, h.planetType, (lang === "ja" ? " / 最外周" : " / outer") + rim(h)));
   const doTouch = () =>
-    (audit.touchHits ?? []).forEach((h: any) => push(h.cellKey, h.planetType, lang === "ja" ? " / 外周" : " / touch"));
+    (audit.touchHits ?? []).forEach((h: any) => push(h.cellKey, h.planetType, (lang === "ja" ? " / 外周" : " / touch") + rim(h)));
   const byShip = (h: any) => opts?.scoutId == null || String(h.scoutId ?? "") === opts.scoutId;
   const doScout = () =>
     (audit.scout?.scoutHits ?? [])
@@ -168,7 +174,10 @@ export function axisMarkers(
     );
   if (axis === "outer") doOuter();
   else if (axis === "touch") doTouch();
-  else if (axis === "scout") doScout();
+  else if (axis === "rim") {
+    doOuter();
+    doTouch();
+  } else if (axis === "scout") doScout();
   else if (axis === "scoutCore") doScoutCore();
   else if (axis === "gaia") doGaia();
   else if (axis === "cluster") doCluster();
@@ -556,9 +565,12 @@ return (
             const vCore = best ? Number(best.core) || 0 : ex(a?.scoutCore?.extraByKind, k);
             const vGaia = best ? Number(best.gaia) || 0 : ex(a?.gaiaProximity?.extraByKind, k);
             const vCluster = best ? Number(best.cluster) || 0 : ex(a?.cluster?.extraByKind, k);
-            // 最外周/外周は原始・小惑星の種族評価に効かないので計算対象外
-            // （表示は「-」。2026-07-30 ユーザー確定）。
-            const vTotal = vScout + vCore + vGaia + vCluster;
+            // 最外周/外周（端の罰点）は eval_v4 から原始・小惑星にも掛かる（extraStart に outer/touch が
+            // 入る）。eval_v3 までの保存結果（outer/touch が無い）は従来どおり評価に入れず「-」。
+            const hasRim = !!best && typeof best.outer === "number";
+            const vOuter = hasRim ? Number(best.outer) || 0 : 0;
+            const vTouch = hasRim ? Number(best.touch) || 0 : 0;
+            const vTotal = vScout + vCore + vGaia + vCluster + vOuter + vTouch;
 
             const label = lang === "ja" ? EXTRA_LABEL_JA[k] : k;
 
@@ -587,10 +599,13 @@ return (
               if (colKey === "scoutCore") return val("scoutCore", vCore);
               if (colKey === "gaia") return val("gaia", vGaia);
               if (colKey === "cluster") return val("cluster", vCluster);
-              // 最外周/外周とその枚数は評価に使わないので「-」
-              if (colKey === "outer" || colKey === "touch") return <td style={tdStyle}>-</td>;
-              if (colKey === "cntOuter" || colKey === "cntTouch")
-                return hasCounts ? <td style={tdStyle}>-</td> : null;
+              // 最外周/外周: eval_v4 からは開始地点の惑星の罰点（マークもその惑星）。古い結果は「-」
+              if (colKey === "outer") return hasRim ? val("outer", vOuter) : <td style={tdStyle}>-</td>;
+              if (colKey === "touch") return hasRim ? val("touch", vTouch) : <td style={tdStyle}>-</td>;
+              if (colKey === "cntOuter")
+                return hasCounts ? <td style={tdStyle}>{hasRim ? ex(a?.outerCountExtraByKind, k) : "-"}</td> : null;
+              if (colKey === "cntTouch")
+                return hasCounts ? <td style={tdStyle}>{hasRim ? ex(a?.touchCountExtraByKind, k) : "-"}</td> : null;
               return null;
             };
 
@@ -613,11 +628,11 @@ return (
                   ? `${label}は「開始地点1ヶ所の値 ＋ 残りの同じ種別の惑星の値 × 到達係数」です` +
                     `（LF の種族は開始建物が1つ。係数は掛けません）。` +
                     (best.factionId ? `\n値は ${factionLabel(String(best.factionId))} の視点（この種別を母星にする2種族のうち大きい方）。` : "") +
-                    `\n最外周・外周は評価に使いません。`
+                    (hasRim ? `\n最外周・外周（欠けマス罰点）も基本色と同じように引きます。` : `\n最外周・外周は評価に使いません。`)
                   : `${k}: the single starting planet plus the remaining ${k} planets weighted by reachability ` +
                     `(Lost Fleet factions start with one structure; no scaling factor).` +
                     (best.factionId ? ` Shown for ${String(best.factionId)} (the stronger of the two factions).` : "") +
-                    ` Outer/touch are not counted.`
+                    (hasRim ? ` Outer/touch (rim gap penalty) are counted like the basic colours.` : ` Outer/touch are not counted.`)
               : "";
 
             return (

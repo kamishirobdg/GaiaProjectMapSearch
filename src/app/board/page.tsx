@@ -169,8 +169,12 @@ const DEFAULT_CONDITIONS = {
   // 次元横断を0.5で数えるので、色ごとの合計を丸めている（evaluateSoft 参照）。
   // wColorPref と wImbalance は「planetTypeTotals に掛ける係数」なので、
   // ここのスケールを変えても触らない（totals が変われば寄与も自動で追随する）。
-  wOuter: 3,
-  wTouch: 1,
+  //
+  // 2026-10-04（eval_v4）: 端の罰点を 最外周 −3 / 外周 −1 から「欠けマス × w」へ。
+  // 惑星から距離2以内の18マスのうち盤面に無いマス1つにつき w 点を引く。旧の −3/−1 は
+  // w ≈ 0.4 に相当し、0.5 は現行よりわずかに強く角が辺より重い（設計ノート 2.8 の実測:
+  // 影響は基本版 9.9% ≫ LF 1.0%、並びの相関 0.999 / 0.975）。
+  wRimGap: 0.5,
   wScout: 10,
   wScoutCore: 4,
   wScoutShips: [10, 10, 10, 10] as number[],
@@ -977,7 +981,7 @@ return (savedProfiles ?? []).filter((p) => {
         `centerMode=${String(hard?.centerMode ?? "")} ` +
         `maxConnectedPlanets=${String(hard?.maxConnectedPlanets ?? "")} ` +
         `h5IncludeScouts=${String(hard?.h5IncludeScouts ?? false)} ` +
-        `wOuter=${String(soft?.wOuter ?? "")} wTouch=${String(soft?.wTouch ?? "")} ` +
+        `wRimGap=${String(soft?.wRimGap ?? "")} wOuter=${String(soft?.wOuter ?? "")} wTouch=${String(soft?.wTouch ?? "")} ` +
         `wScout=${String(soft?.wScout ?? "")} wScoutCore=${String(soft?.wScoutCore ?? "")} ` +
         `wScoutByKey{twilight=${String(soft?.wScoutByScoutKey?.twilight ?? soft?.wScoutByScoutKey?.S1 ?? "")},` +
         `eclipse=${String(soft?.wScoutByScoutKey?.eclipse ?? soft?.wScoutByScoutKey?.S2 ?? "")},` +
@@ -1030,8 +1034,8 @@ return (savedProfiles ?? []).filter((p) => {
   }, [centerMode, centerModeOptions]);
   
   // Soft params
-  const [wOuter, setWOuter] = React.useState(DEFAULT_CONDITIONS.wOuter);
-  const [wTouch, setWTouch] = React.useState(DEFAULT_CONDITIONS.wTouch);
+  // 端の罰点「欠けマス × w」（eval_v4）。wOuter / wTouch の2つの入力欄を置き換えた。
+  const [wRimGap, setWRimGap] = React.useState(DEFAULT_CONDITIONS.wRimGap);
   // 既定値は「各軸が全体に占める割合」を実測して決めた（2026-07-30 ユーザー確定）。
   // 影響力の順を 船接触 > 船星系 > ガイア > 星系 > 最外周 > 外周 にしてある。
   // 実測(3p_lostFleet/24盤面): 31.2% / 27.0% / 23.4% / 13.9% / 3.3% / 1.2%
@@ -1375,8 +1379,9 @@ setSelectedSeedLabel(String(found.seed ?? ""));
         );
         // H5: field absent (older saved profiles) => restore as false (disabled).
         setH5IncludeScouts(!!params?.hard?.h5IncludeScouts);
-        if (params?.soft?.wOuter != null) setWOuter(Number(params.soft.wOuter));
-        if (params?.soft?.wTouch != null) setWTouch(Number(params.soft.wTouch));
+        // 欠けマス罰点: 0 のときはキーからフィールドを省くので、無ければ 0（無効）として復元する。
+        // eval_v3 までのプロファイル（wOuter / wTouch）も 0 になる（旧バージョンの印が付く）。
+        setWRimGap(params?.soft?.wRimGap != null ? Number(params.soft.wRimGap) : 0);
         if (params?.soft?.wScout != null) setWScout(Number(params.soft.wScout));
         if (params?.soft?.wScoutCore != null) setWScoutCore(Number(params.soft.wScoutCore));
         if (params?.soft?.scoutRadius != null) setScoutRadius(Number(params.soft.scoutRadius));
@@ -1452,7 +1457,7 @@ try {
 
       if (closePanel) setShowSavedConditions(false);
     },
-    [setWhich, setOuterSameColorMax, setCenterMode, setMaxConnectedPlanets, setH5IncludeScouts, setWOuter, setWTouch, setWScout, setWScoutCore, setScoutRadius, setWColorPref, setPrefBLACK, setPrefBLUE, setPrefBROWN, setPrefORANGE, setPrefRED, setPrefWHITE, setPrefYELLOW, setKeepTop, setShowSavedConditions, changeApplyExtraAxesLF]
+    [setWhich, setOuterSameColorMax, setCenterMode, setMaxConnectedPlanets, setH5IncludeScouts, setWRimGap, setWScout, setWScoutCore, setScoutRadius, setWColorPref, setPrefBLACK, setPrefBLUE, setPrefBROWN, setPrefORANGE, setPrefRED, setPrefWHITE, setPrefYELLOW, setKeepTop, setShowSavedConditions, changeApplyExtraAxesLF]
   );
 
   /**
@@ -1472,8 +1477,7 @@ try {
     setMaxConnectedPlanets(D.maxConnectedPlanets);
     setH5IncludeScouts(D.h5IncludeScouts);
 
-    setWOuter(D.wOuter);
-    setWTouch(D.wTouch);
+    setWRimGap(D.wRimGap);
     setWScout(D.wScout);
     setWScoutCore(D.wScoutCore);
     setWScoutS1(D.wScoutShips[0]);
@@ -1549,10 +1553,11 @@ try {
     const extraAxes = extraAxesOn
       ? { wGaiaDist1: wGaiaD1, wGaiaDist2: wGaiaD2, wGaiaDist3: wGaiaD3, wClusterSize }
       : {};
+    // 欠けマス罰点（eval_v4）: 0 のときはフィールドごと省く（互換の鉄則）。
+    const rimGap = wRimGap > 0 ? { wRimGap } : {};
     return isBase
       ? {
-          wOuter,
-          wTouch,
+          ...rimGap,
           wImbalance,
           imbalanceMetric,
           ...extraAxes,
@@ -1560,8 +1565,7 @@ try {
           colorPrefByType,
         }
       : {
-          wOuter,
-          wTouch,
+          ...rimGap,
           wScout,
           wScoutCore,
           scoutRadius,
@@ -1574,7 +1578,7 @@ try {
           wColorPref,
           colorPrefByType,
         };
-  }, [isBase, extraAxesOn, wOuter, wTouch, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wGaiaD1, wGaiaD2, wGaiaD3, wClusterSize, wColorPref, colorPrefByType]);
+  }, [isBase, extraAxesOn, wRimGap, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wGaiaD1, wGaiaD2, wGaiaD3, wClusterSize, wColorPref, colorPrefByType]);
 
   const searchKeyParams = React.useMemo(() => {
     return {
@@ -2180,8 +2184,7 @@ async function handleGenerateRank() {
         ...(maxConnectedPlanets > 0 && h5IncludeScouts && !isBase ? { h5IncludeScouts: true } : {}),
       },
       soft: {
-        wOuter,
-        wTouch,
+        ...(wRimGap > 0 ? { wRimGap } : {}),
         wScout,
         wScoutCore,
         scoutRadius,
@@ -3014,8 +3017,13 @@ const handleDeleteUsed = React.useCallback(
                     .map((k, i) => String(o?.[k] ?? o?.[`S${i + 1}`] ?? "-"))
                     .join("/");
                 const shipsLegend = lang === "ja" ? "トワ/エク/リベ/TF" : "tw/ec/rb/tf";
+                // 端の罰点: eval_v4 からは欠けマス罰点1つ、eval_v3 までは最外周/外周の2つ
+                const rimSummary =
+                  params?.soft?.wRimGap != null || (params?.soft?.wOuter == null && params?.soft?.wTouch == null)
+                    ? `${t("wRimGap")}=${String(params?.soft?.wRimGap ?? 0)}`
+                    : `${t("wOuter")}=${String(params?.soft?.wOuter ?? "-")}, ${t("wTouch")}=${String(params?.soft?.wTouch ?? "-")}`;
                 const softSummary = hasParams
-                  ? `${t("soft")}: ${t("wOuter")}=${String(params?.soft?.wOuter ?? "-")}, ${t("wTouch")}=${String(params?.soft?.wTouch ?? "-")}, ` +
+                  ? `${t("soft")}: ${rimSummary}, ` +
                     `${t("wScout")}[${shipsLegend}]=${fourShips(params?.soft?.wScoutByScoutKey)}, ` +
                     `${t("wScoutCore")}[${shipsLegend}]=${fourShips(params?.soft?.wScoutCoreByScoutKey)}` +
                     `${params?.soft?.scoutCoreAttributionMode === "best" ? `, ${t("scoutCoreAttribBest")}` : ""}, ` +
@@ -3463,13 +3471,18 @@ const handleDeleteUsed = React.useCallback(
                   <Hint label={t("soft")} tip={t("tipSoft")} />
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
-                  <label {...evalCellProps("outer:*", "outer")}>
-                    <Hint label={t("wOuter")} tip={t("tipWOuter")} />
-                    <input type="number" value={wOuter} min={0} max={10} onChange={(e) => setWOuter(Number(e.target.value) || 0)} style={{ width: 60 }} />
-                  </label>
-                  <label {...evalCellProps("touch:*", "touch")}>
-                    <Hint label={t("wTouch")} tip={t("tipWTouch")} />
-                    <input type="number" value={wTouch} min={0} max={10} onChange={(e) => setWTouch(Number(e.target.value) || 0)} style={{ width: 60 }} />
+                  {/* 欠けマス罰点（eval_v4）。クリックで最外周・外周の両方の惑星をマークする */}
+                  <label {...evalCellProps("rim:*", "rim")}>
+                    <Hint label={t("wRimGap")} tip={t("tipWRimGap")} />
+                    <input
+                      type="number"
+                      value={wRimGap}
+                      min={0}
+                      max={5}
+                      step={0.1}
+                      onChange={(e) => setWRimGap(Math.max(0, Number(e.target.value) || 0))}
+                      style={{ width: 60 }}
+                    />
                   </label>
                   {!isBase ? (
                     <label style={EVAL_CELL}>
