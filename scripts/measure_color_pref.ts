@@ -21,8 +21,7 @@ const W_COLOR_PREF = 25; // DEFAULT_CONDITIONS.wColorPref
 
 const hard = { outerSameColorMax: 1, centerMode: "NONE", maxConnectedPlanets: 0, h5IncludeScouts: false } as any;
 const soft = {
-  wOuter: 3,
-  wTouch: 1,
+  wRimGap: 0.5, // 2026-10-04（eval_v4）から。それまでは wOuter 3 / wTouch 1
   wScout: 10,
   wScoutCore: 4,
   scoutRadius: 3,

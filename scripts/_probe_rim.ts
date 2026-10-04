@@ -1,18 +1,23 @@
 // scripts/_probe_rim.ts
 //
 // 最外周・外周の扱いの比較（2026-10-03。「開始地点＋到達加重」の実装後）。
+// 2026-10-04 に「欠けマス × w」（w = 0.5、eval_v4）で実装した。このスクリプトは
+// 実装の判定基準「端のマイナスは基本版で大きく効き、LF ではほぼ効かない」の確認と、
+// 実装（IMPL）と机上の案 G5 が一致することの自己検算に使う。
 //
 //   npx tsx scripts/_probe_rim.ts [件数=60] [基本版の H2 上限=3]
 //
-// 実装と同じ評価（evaluateSoft の既定の評価指数）で惑星ごとの値を取り出し、最外周・外周の
-// 扱いだけを差し替えて色の値を作り直す（開始地点の選び直しも含む）。比べるのは
-//   V0 現行: 加算 −3 / −1
+// 実装と同じ評価（evaluateSoft の既定の評価指数、ただし端の罰点なし）で惑星ごとの正の値を
+// 取り出し、端の罰点だけを差し替えて色の値を作り直す（開始地点の選び直しも含む）。比べるのは
+//   V0 eval_v3 まで: 加算 −3 / −1
 //   V1 加算 −6 / −2       V2 加算 −8 / −3
 //   V3 乗算 ×0.5 / ×0.8   V4 乗算 ×0.7 / ×0.9（正の値に掛ける）
 //   V5 周囲の欠け: 距離2以内の盤面セル数/18 を c として 正の値 × (0.5 + 0.5c)
 //   V6 周囲の欠け: 距離1以内の盤面セル数/6  を c として 正の値 × (0.5 + 0.5c)
+//   V7 / V8 同じく ×(0.25+0.75c) / ×c
+//   G4 / G5 / G10 欠けマス1つにつき 0.4 / 0.5 / 1.0 点（G5 が eval_v4 の実装）
 //   NONE 罰点なし（参考）
-// 原始・小惑星には最外周・外周を効かせない（2026-07-30 確定）ので対象外。
+// 原始・小惑星（LF4種族）にも同じ罰点を掛けたときの効果を末尾に出す（eval_v4 から掛けている）。
 
 import { makeSearchPlacementFromSeed } from "../src/gaia/ssot/searchPlacementConfig";
 import { buildLogicalMapFromPlacement } from "../src/gaia/logicalMap/buildLogicalMap";
@@ -32,11 +37,12 @@ import {
 
 const N = Number(process.argv[2] ?? 60) || 60;
 const BASE_OUTER_CAP = Number(process.argv[3] ?? 3) || 3;
-const W_OUTER = 3;
-const W_TOUCH = 1;
+/** 実装の既定（src/app/board/page.tsx の DEFAULT_CONDITIONS.wRimGap） */
+const W_RIM_GAP = 0.5;
 
+// 端の罰点なし（wRimGap 0）で評価して「正の値」を取る。罰点は下の VARIANTS で掛ける。
 const soft = {
-  wOuter: W_OUTER, wTouch: W_TOUCH, wScout: 10, wScoutCore: 4, scoutRadius: 3,
+  wRimGap: 0, wScout: 10, wScoutCore: 4, scoutRadius: 3,
   wScoutByScoutKey: { twilight: 10, eclipse: 10, rebellion: 10, tfmars: 10 },
   wScoutCoreByScoutKey: { twilight: 3, eclipse: 3, rebellion: 3, tfmars: 3 },
   scoutCoreAttributionMode: "all",
@@ -46,9 +52,15 @@ const soft = {
 const BASIC = ["BLACK", "BLUE", "BROWN", "ORANGE", "RED", "WHITE", "YELLOW"];
 
 type Planet = { key: string; color: string; pos: number; outer: boolean; touch: boolean; cov2: number; cov1: number };
-/** LF4種族の候補（原始・小惑星）。現行は最外周/外周を掛けていないので pos ＝ 実装の value */
+/** LF4種族の候補（原始・小惑星）。罰点なしで評価しているので pos ＝ 実装の value */
 type LfPlanet = { key: string; pos: number; outer: boolean; touch: boolean; cov2: number };
-type Board = { planets: Planet[]; nodes: PlanetNode[]; lf: Record<string, LfPlanet[]> };
+type Board = {
+  planets: Planet[];
+  nodes: PlanetNode[];
+  lf: Record<string, LfPlanet[]>;
+  /** 実装（wRimGap = W_RIM_GAP）の色ごとの値と開始地点（自己検算用） */
+  impl: { totals: Record<string, number>; starts: Record<string, string[]> };
+};
 
 function loadBoards(templateId: string, outerCap: number): Board[] {
   const hard = {
@@ -65,6 +77,12 @@ function loadBoards(templateId: string, outerCap: number): Board[] {
     if (!checkHardConstraints(extracted, placement as any, hard).pass) continue;
     const { breakdown } = evaluateSoft(extracted, soft);
     const sa: any = (breakdown.audit as any).startAccess;
+    const implEval = evaluateSoft(extracted, { ...soft, wRimGap: W_RIM_GAP });
+    const implSa: any = (implEval.breakdown.audit as any).startAccess;
+    const impl = {
+      totals: Object.fromEntries(BASIC.map((c) => [c, Number((implEval.breakdown.planetTypeTotals as any)[c] ?? 0)])),
+      starts: Object.fromEntries(BASIC.map((c) => [c, (implSa?.byColor?.[c]?.starts ?? []) as string[]])),
+    };
     // 盤面上の全セル（空セルも）。周囲の欠け具合の計算に使う
     const cells = (extracted.cells ?? []) as any[];
     const onBoard = new Set(cells.map((c) => `${c.q},${c.r}`));
@@ -86,8 +104,8 @@ function loadBoards(templateId: string, outerCap: number): Board[] {
         if (!cell) continue;
         const outer = extracted.outerCells.has(p.cellKey);
         const touch = extracted.touchCells.has(p.cellKey);
-        // 実装の value は現行の加算（−3/−1）込み。正の値へ戻す
-        const pos = Number(p.value) + (outer ? W_OUTER : 0) + (touch ? W_TOUCH : 0);
+        // 罰点なしで評価しているので value がそのまま正の値
+        const pos = Number(p.value);
         planets.push({ key: String(p.cellKey), color: c, pos, outer, touch, cov2: cov(cell.q, cell.r, 2), cov1: cov(cell.q, cell.r, 1) });
       }
     }
@@ -107,14 +125,14 @@ function loadBoards(templateId: string, outerCap: number): Board[] {
         };
       });
     }
-    out.push({ planets, nodes, lf });
+    out.push({ planets, nodes, lf, impl });
   }
   return out;
 }
 
 type Variant = { id: string; label: string; value: (p: Planet) => number };
 const VARIANTS: Variant[] = [
-  { id: "V0", label: "現行 加算 −3/−1", value: (p) => p.pos - (p.outer ? 3 : 0) - (p.touch ? 1 : 0) },
+  { id: "V0", label: "eval_v3 加算 −3/−1", value: (p) => p.pos - (p.outer ? 3 : 0) - (p.touch ? 1 : 0) },
   { id: "V1", label: "加算 −6/−2", value: (p) => p.pos - (p.outer ? 6 : 0) - (p.touch ? 2 : 0) },
   { id: "V2", label: "加算 −8/−3", value: (p) => p.pos - (p.outer ? 8 : 0) - (p.touch ? 3 : 0) },
   { id: "V3", label: "乗算 ×0.5/×0.8", value: (p) => p.pos * (p.outer ? 0.5 : p.touch ? 0.8 : 1) },
@@ -125,7 +143,7 @@ const VARIANTS: Variant[] = [
   { id: "V8", label: "欠け 距離2 ×c", value: (p) => p.pos * p.cov2 },
   // 「通常の到達範囲（距離2以内の18マス）のうち盤面が無いマス1つにつき w 点引く」（加算・段階つき）
   { id: "G4", label: "欠けマス×0.4点", value: (p) => p.pos - 0.4 * 18 * (1 - p.cov2) },
-  { id: "G5", label: "欠けマス×0.5点", value: (p) => p.pos - 0.5 * 18 * (1 - p.cov2) },
+  { id: "G5", label: "欠けマス×0.5点 (実装)", value: (p) => p.pos - 0.5 * 18 * (1 - p.cov2) },
   { id: "G10", label: "欠けマス×1点", value: (p) => p.pos - 1.0 * 18 * (1 - p.cov2) },
   { id: "NONE", label: "罰点なし", value: (p) => p.pos },
 ];
@@ -195,7 +213,7 @@ for (const [templateId, outerCap] of [["4p_lostFleet", 1], ["3p_lostFleet", 1], 
     console.log(`    ${k.padEnd(4)} ${String(ps.length).padStart(5)}個 (${pct(ps.length / all.length)})  正の値 ${f1(stat(ps.map((p) => p.pos)).mean).padStart(5)}  c2 ${f2(c2.mean)} (${f2(c2.p10)}〜${f2(c2.p90)})  c1 ${f2(c1.mean)}`);
   }
 
-  // 現行（V0）での開始地点に最外周/外周が入る割合
+  // eval_v3（V0）での開始地点に最外周/外周が入る割合
   const base = boards.map((b) => colorValues(b, VARIANTS[0]));
   let rimStarts = 0, startsN = 0, colorsWithRimStart = 0, colorsN = 0;
   boards.forEach((b, i) => {
@@ -208,14 +226,14 @@ for (const [templateId, outerCap] of [["4p_lostFleet", 1], ["3p_lostFleet", 1], 
       if (hit) colorsWithRimStart++;
     }
   });
-  console.log(`  現行の開始地点のうち最外周/外周にあるもの: ${pct(rimStarts / startsN)}。開始地点に最外周/外周を含む色: ${pct(colorsWithRimStart / colorsN)}`);
+  console.log(`  eval_v3 の開始地点のうち最外周/外周にあるもの: ${pct(rimStarts / startsN)}。開始地点に最外周/外周を含む色: ${pct(colorsWithRimStart / colorsN)}`);
   const negative = all.filter((p) => VARIANTS[0].value(p) < 0).length;
-  console.log(`  現行の加算で惑星の値が負になるもの: ${negative}個 (${pct(negative / all.length)})。乗算なら 0 止まり`);
+  console.log(`  eval_v3 の加算で惑星の値が負になるもの: ${negative}個 (${pct(negative / all.length)})。乗算なら 0 止まり`);
 
   const none = boards.map((b) => colorValues(b, VARIANTS[VARIANTS.length - 1]));
   const baseImb = base.map((r) => std(BASIC.map((c) => r.values[c])));
   const baseTop = base.map((r) => BASIC.reduce((m, c) => (r.values[c] > r.values[m] ? c : m), BASIC[0]));
-  console.log(`\n  案                        色の値の平均  最上位 中央値   罰点の影響(全体)  開始地点に最外周/外周を含む色での影響  開始地点が最外周/外周  並びの相関(現行比)  最上位色が変わる盤面`);
+  console.log(`\n  案                        色の値の平均  最上位 中央値   罰点の影響(全体)  開始地点に最外周/外周を含む色での影響  開始地点が最外周/外周  並びの相関(V0比)  最上位色が変わる盤面`);
   for (const v of VARIANTS) {
     const res = v.id === "V0" ? base : v.id === "NONE" ? none : boards.map((b) => colorValues(b, v));
     const vals: number[] = [], tops: number[] = [], imb: number[] = [], delta: number[] = [], condDelta: number[] = [];
@@ -239,9 +257,26 @@ for (const [templateId, outerCap] of [["4p_lostFleet", 1], ["3p_lostFleet", 1], 
     console.log(`  ${v.id.padEnd(4)} ${v.label.padEnd(20)}  ${f1(vs.mean).padStart(7)}      ${f1(ts.med).padStart(6)}        ${pct(stat(delta).mean / noneMean).padStart(6)}            ${pct(stat(condDelta).mean).padStart(7)}                   ${pct(rim / rimN).padStart(6)}          ${spearman(baseImb, imb).toFixed(3)}            ${pct(topChanged / boards.length)}`);
   }
 
-  // 原始・小惑星（LF4種族）に同じ罰点を掛けたとき（現行は掛けていない）
+  // 自己検算: 実装（wRimGap = 0.5）の色の値と開始地点が G5 と一致するか。
+  // 実装は軸ごとに丸めてから足すので、値は丸め誤差（最大 ±3）の範囲で一致すればよい。
+  {
+    const g5 = VARIANTS.find((v) => v.id === "G5")!;
+    let maxDiff = 0, startsDiff = 0, n = 0;
+    boards.forEach((b) => {
+      const res = colorValues(b, g5);
+      for (const c of BASIC) {
+        if (res.starts[c].length === 0) continue;
+        n++;
+        maxDiff = Math.max(maxDiff, Math.abs(res.values[c] - b.impl.totals[c]));
+        if (res.starts[c].slice().sort().join("|") !== b.impl.starts[c].slice().sort().join("|")) startsDiff++;
+      }
+    });
+    console.log(`\n  自己検算: 実装（wRimGap ${W_RIM_GAP}）と G5 の差の最大 ${f1(maxDiff)}（軸ごとの丸めぶん）、開始地点が違う色 ${startsDiff}/${n}`);
+  }
+
+  // 原始・小惑星（LF4種族）に同じ罰点を掛けたとき（eval_v4 から掛けている）
   if (templateId !== "base_34p") {
-    console.log(`\n  原始・小惑星に同じ罰点を掛けたとき（現行は掛けない。開始1ヶ所、種族ごとの入植コスト）`);
+    console.log(`\n  原始・小惑星に同じ罰点を掛けたとき（開始1ヶ所、種族ごとの入植コスト。eval_v4 は G5）`);
     const factions = ["moweyds", "spaceGiants", "tinkerroids", "darkanians"] as LfFactionId[];
     const lfValue = (b: Board, f: LfFactionId, v: Variant) => {
       const mine = b.lf[f] ?? [];

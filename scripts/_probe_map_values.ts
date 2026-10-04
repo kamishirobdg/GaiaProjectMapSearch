@@ -20,8 +20,8 @@ const N = Number(process.argv[2] ?? 60) || 60;
 const BASE_OUTER_CAP = Number(process.argv[3] ?? 3) || 3;
 
 const soft = {
-  wOuter: 3,
-  wTouch: 1,
+  // 端の罰点は 2026-10-04（eval_v4）から「欠けマス × wRimGap」（それまでは wOuter 3 / wTouch 1）
+  wRimGap: 0.5,
   wScout: 10,
   wScoutCore: 4,
   scoutRadius: 3,
