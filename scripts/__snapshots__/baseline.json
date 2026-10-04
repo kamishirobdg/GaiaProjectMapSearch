@@ -155,8 +155,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1081.9483559292278,
-          "value": 10.819483559292278
+          "score": -1096.5623464225994,
+          "value": 10.965623464225994
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -172,11 +172,11 @@
           "BLUE": 52,
           "BROWN": 37,
           "ORANGE": 33,
-          "RED": 24,
+          "RED": 23,
           "WHITE": 22,
           "YELLOW": 48
         },
-        "score": -1081.948356,
+        "score": -1096.562346,
         "scoutByType": {
           "BLACK": 10,
           "BLUE": 23,
@@ -362,8 +362,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -825.8576247311219,
-          "value": 8.258576247311218
+          "score": -834.4618209434419,
+          "value": 8.344618209434419
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -376,14 +376,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 45,
-          "BLUE": 30,
-          "BROWN": 49,
+          "BLUE": 31,
+          "BROWN": 48,
           "ORANGE": 48,
-          "RED": 33,
-          "WHITE": 55,
+          "RED": 32,
+          "WHITE": 56,
           "YELLOW": 43
         },
-        "score": -825.857625,
+        "score": -834.461821,
         "scoutByType": {
           "BLACK": 16,
           "BLUE": 8,
@@ -569,8 +569,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -946.9607668100887,
-          "value": 9.469607668100886
+          "score": -942.2075684480657,
+          "value": 9.422075684480657
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -582,7 +582,7 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 41,
+          "BLACK": 40,
           "BLUE": 37,
           "BROWN": 46,
           "ORANGE": 28,
@@ -590,7 +590,7 @@
           "WHITE": 36,
           "YELLOW": 22
         },
-        "score": -946.960767,
+        "score": -942.207568,
         "scoutByType": {
           "BLACK": 15,
           "BLUE": 18,
@@ -786,8 +786,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -865.9075691823851,
-          "value": 8.659075691823851
+          "score": -871.7797887081348,
+          "value": 8.717797887081348
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -801,13 +801,13 @@
         "planetTypeTotals": {
           "BLACK": 24,
           "BLUE": 38,
-          "BROWN": 36,
+          "BROWN": 35,
           "ORANGE": 55,
           "RED": 36,
           "WHITE": 43,
           "YELLOW": 42
         },
-        "score": -865.907569,
+        "score": -871.779789,
         "scoutByType": {
           "BLACK": 5,
           "BLUE": 17,
@@ -1003,8 +1003,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -829.3100156399996,
-          "value": 8.293100156399996
+          "score": -828.0786712108251,
+          "value": 8.28078671210825
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -1017,14 +1017,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 43,
-          "BLUE": 25,
-          "BROWN": 41,
+          "BLUE": 24,
+          "BROWN": 40,
           "ORANGE": 18,
           "RED": 29,
           "WHITE": 33,
           "YELLOW": 37
         },
-        "score": -829.310016,
+        "score": -828.078671,
         "scoutByType": {
           "BLACK": 14,
           "BLUE": 9,
@@ -1225,8 +1225,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1670.6347321192823,
-          "value": 16.706347321192823
+          "score": -1659.481108967622,
+          "value": 16.59481108967622
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -1239,14 +1239,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 35,
-          "BLUE": 22,
+          "BLUE": 23,
           "BROWN": 49,
           "ORANGE": 72,
           "RED": 27,
-          "WHITE": 36,
+          "WHITE": 35,
           "YELLOW": 21
         },
-        "score": -1670.634732,
+        "score": -1659.481109,
         "scoutByType": {
           "BLACK": 14,
           "BLUE": 14,
@@ -1437,8 +1437,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1060.6120681868906,
-          "value": 10.606120681868907
+          "score": -1059.2642806809502,
+          "value": 10.592642806809502
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -1450,15 +1450,15 @@
           "YELLOW": 0
         },
         "planetTypeTotals": {
-          "BLACK": 51,
+          "BLACK": 50,
           "BLUE": 53,
           "BROWN": 33,
           "ORANGE": 42,
           "RED": 32,
           "WHITE": 64,
-          "YELLOW": 49
+          "YELLOW": 50
         },
-        "score": -1060.612068,
+        "score": -1059.264281,
         "scoutByType": {
           "BLACK": 19,
           "BLUE": 17,
@@ -1659,8 +1659,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1777.983264768237,
-          "value": 17.77983264768237
+          "score": -1806.902863793091,
+          "value": 18.06902863793091
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -1672,19 +1672,19 @@
           "YELLOW": 3
         },
         "planetTypeTotals": {
-          "BLACK": 25,
-          "BLUE": 13,
+          "BLACK": 26,
+          "BLUE": 12,
           "BROWN": 19,
           "ORANGE": 52,
           "RED": 36,
           "WHITE": 57,
-          "YELLOW": 7
+          "YELLOW": 6
         },
-        "score": -1777.983265,
+        "score": -1806.902864,
         "scoutByType": {
           "BLACK": 10,
           "BLUE": 9,
-          "BROWN": 9,
+          "BROWN": 13,
           "ORANGE": 21,
           "RED": 16,
           "WHITE": 22,
@@ -1693,7 +1693,7 @@
         "scoutCoreByType": {
           "BLACK": 19,
           "BLUE": 4,
-          "BROWN": 11,
+          "BROWN": 7,
           "ORANGE": 31,
           "RED": 21,
           "WHITE": 35,
@@ -1866,8 +1866,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1088.1551510024024,
-          "value": 10.881551510024025
+          "score": -1084.5858797772746,
+          "value": 10.845858797772745
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -1880,14 +1880,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 40,
-          "BLUE": 29,
-          "BROWN": 42,
+          "BLUE": 28,
+          "BROWN": 41,
           "ORANGE": 44,
           "RED": 48,
-          "WHITE": 68,
+          "WHITE": 67,
           "YELLOW": 45
         },
-        "score": -1088.155151,
+        "score": -1084.58588,
         "scoutByType": {
           "BLACK": 16,
           "BLUE": 12,
@@ -2083,8 +2083,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1032.3343865794095,
-          "value": 10.323343865794095
+          "score": -1045.300464567241,
+          "value": 10.45300464567241
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -2096,15 +2096,15 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 40,
+          "BLACK": 39,
           "BLUE": 60,
           "BROWN": 72,
           "ORANGE": 66,
-          "RED": 57,
-          "WHITE": 47,
+          "RED": 58,
+          "WHITE": 48,
           "YELLOW": 50
         },
-        "score": -1032.334387,
+        "score": -1045.300465,
         "scoutByType": {
           "BLACK": 14,
           "BLUE": 19,
@@ -2290,8 +2290,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1182.007976767863,
-          "value": 11.820079767678632
+          "score": -1224.4115621266355,
+          "value": 12.244115621266356
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -2303,15 +2303,15 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 6,
-          "BLUE": 36,
+          "BLACK": 5,
+          "BLUE": 35,
           "BROWN": 30,
-          "ORANGE": 36,
+          "ORANGE": 35,
           "RED": 33,
           "WHITE": 35,
-          "YELLOW": 48
+          "YELLOW": 49
         },
-        "score": -1182.007977,
+        "score": -1224.411562,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 11,
@@ -2517,8 +2517,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1366.3596801392393,
-          "value": 13.663596801392393
+          "score": -1379.8846446906573,
+          "value": 13.798846446906573
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -2530,15 +2530,15 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 18,
+          "BLACK": 17,
           "BLUE": 43,
           "BROWN": 35,
           "ORANGE": 59,
           "RED": 56,
-          "WHITE": 30,
+          "WHITE": 31,
           "YELLOW": 31
         },
-        "score": -1366.35968,
+        "score": -1379.884645,
         "scoutByType": {
           "BLACK": 11,
           "BLUE": 18,
@@ -2724,8 +2724,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1077.601266608349,
-          "value": 10.77601266608349
+          "score": -1093.76712814577,
+          "value": 10.937671281457698
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -2738,14 +2738,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 54,
-          "BLUE": 34,
+          "BLUE": 33,
           "BROWN": 55,
           "ORANGE": 64,
           "RED": 36,
           "WHITE": 38,
           "YELLOW": 40
         },
-        "score": -1077.601267,
+        "score": -1093.767128,
         "scoutByType": {
           "BLACK": 18,
           "BLUE": 11,
@@ -2753,7 +2753,7 @@
           "ORANGE": 21,
           "RED": 9,
           "WHITE": 13,
-          "YELLOW": 14
+          "YELLOW": 12
         },
         "scoutCoreByType": {
           "BLACK": 36,
@@ -2762,7 +2762,7 @@
           "ORANGE": 43,
           "RED": 28,
           "WHITE": 26,
-          "YELLOW": 27
+          "YELLOW": 28
         },
         "scoutCoreHitsCount": 129,
         "scoutCoreHitsValueSum": 300,
@@ -2936,8 +2936,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -486.1342722049588,
-          "value": 4.861342722049588
+          "score": -513.8887356744272,
+          "value": 5.138887356744271
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -2951,13 +2951,13 @@
         "planetTypeTotals": {
           "BLACK": 26,
           "BLUE": 26,
-          "BROWN": 15,
+          "BROWN": 14,
           "ORANGE": 32,
           "RED": 26,
           "WHITE": 24,
           "YELLOW": 21
         },
-        "score": -486.134272,
+        "score": -513.888736,
         "scoutByType": {
           "BLACK": 10,
           "BLUE": 12,
@@ -3153,8 +3153,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1308.6837132112898,
-          "value": 13.086837132112898
+          "score": -1283.3311246557546,
+          "value": 12.833311246557546
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -3169,12 +3169,12 @@
           "BLACK": 48,
           "BLUE": 63,
           "BROWN": 38,
-          "ORANGE": 29,
+          "ORANGE": 30,
           "RED": 29,
           "WHITE": 26,
-          "YELLOW": 53
+          "YELLOW": 52
         },
-        "score": -1308.683713,
+        "score": -1283.331125,
         "scoutByType": {
           "BLACK": 22,
           "BLUE": 18,
@@ -3370,8 +3370,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1033.7172865786024,
-          "value": 10.337172865786025
+          "score": -1023.599092438449,
+          "value": 10.23599092438449
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -3387,11 +3387,11 @@
           "BLUE": 50,
           "BROWN": 49,
           "ORANGE": 31,
-          "RED": 47,
+          "RED": 48,
           "WHITE": 38,
-          "YELLOW": 21
+          "YELLOW": 22
         },
-        "score": -1033.717287,
+        "score": -1023.599092,
         "scoutByType": {
           "BLACK": 12,
           "BLUE": 17,
@@ -3587,8 +3587,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -2181.6488802588497,
-          "value": 21.8164888025885
+          "score": -2175.4661710135806,
+          "value": 21.754661710135807
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -3600,15 +3600,15 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 65,
-          "BLUE": 46,
+          "BLACK": 64,
+          "BLUE": 45,
           "BROWN": 53,
           "ORANGE": 31,
           "RED": 95,
           "WHITE": 29,
           "YELLOW": 34
         },
-        "score": -2181.64888,
+        "score": -2175.466171,
         "scoutByType": {
           "BLACK": 19,
           "BLUE": 17,
@@ -3814,8 +3814,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1267.6508886559438,
-          "value": 12.676508886559438
+          "score": -1312.4210374692402,
+          "value": 13.124210374692401
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -3828,14 +3828,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 24,
-          "BLUE": 34,
-          "BROWN": 23,
-          "ORANGE": 39,
-          "RED": 52,
-          "WHITE": 28,
+          "BLUE": 33,
+          "BROWN": 22,
+          "ORANGE": 38,
+          "RED": 53,
+          "WHITE": 27,
           "YELLOW": 58
         },
-        "score": -1267.650889,
+        "score": -1312.421037,
         "scoutByType": {
           "BLACK": 11,
           "BLUE": 12,
@@ -4016,8 +4016,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -486.9731585445518,
-          "value": 4.869731585445518
+          "score": -514.6823867043378,
+          "value": 5.146823867043378
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -4034,10 +4034,10 @@
           "BROWN": 52,
           "ORANGE": 41,
           "RED": 46,
-          "WHITE": 42,
+          "WHITE": 40,
           "YELLOW": 41
         },
-        "score": -486.973159,
+        "score": -514.682387,
         "scoutByType": {
           "BLACK": 15,
           "BLUE": 24,
@@ -4211,8 +4211,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -419.9125273342591,
-          "value": 4.199125273342591
+          "score": -437.05881545081013,
+          "value": 4.370588154508101
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -4226,13 +4226,13 @@
         "planetTypeTotals": {
           "BLACK": 33,
           "BLUE": 38,
-          "BROWN": 37,
+          "BROWN": 36,
           "ORANGE": 37,
           "RED": 47,
-          "WHITE": 34,
+          "WHITE": 33,
           "YELLOW": 38
         },
-        "score": -419.912527,
+        "score": -437.058815,
         "scoutByType": {
           "BLACK": 12,
           "BLUE": 15,
@@ -4428,8 +4428,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -976.8754855587862,
-          "value": 9.768754855587861
+          "score": -997.7525765848128,
+          "value": 9.977525765848128
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -4446,10 +4446,10 @@
           "BROWN": 52,
           "ORANGE": 44,
           "RED": 52,
-          "WHITE": 31,
+          "WHITE": 30,
           "YELLOW": 39
         },
-        "score": -976.875486,
+        "score": -997.752577,
         "scoutByType": {
           "BLACK": 16,
           "BLUE": 18,
@@ -4645,8 +4645,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1374.1045321612626,
-          "value": 13.741045321612626
+          "score": -1400.4372495031394,
+          "value": 14.004372495031394
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -4658,15 +4658,15 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 43,
+          "BLACK": 42,
           "BLUE": 35,
-          "BROWN": 35,
+          "BROWN": 34,
           "ORANGE": 54,
           "RED": 58,
           "WHITE": 76,
           "YELLOW": 59
         },
-        "score": -1374.104532,
+        "score": -1400.43725,
         "scoutByType": {
           "BLACK": 11,
           "BLUE": 15,
@@ -4852,8 +4852,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -903.0560359588062,
-          "value": 9.030560359588062
+          "score": -910.9313466817064,
+          "value": 9.109313466817063
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -4866,14 +4866,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 39,
-          "BLUE": 29,
+          "BLUE": 30,
           "BROWN": 44,
           "ORANGE": 14,
           "RED": 34,
-          "WHITE": 25,
+          "WHITE": 24,
           "YELLOW": 31
         },
-        "score": -903.056036,
+        "score": -910.931347,
         "scoutByType": {
           "BLACK": 15,
           "BLUE": 13,
@@ -5054,8 +5054,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1139.8173860182112,
-          "value": 11.398173860182112
+          "score": -1151.3966674062792,
+          "value": 11.513966674062791
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -5067,15 +5067,15 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 39,
-          "BLUE": 29,
+          "BLACK": 38,
+          "BLUE": 28,
           "BROWN": 31,
           "ORANGE": 53,
           "RED": 54,
           "WHITE": 41,
           "YELLOW": 21
         },
-        "score": -1139.817386,
+        "score": -1151.396667,
         "scoutByType": {
           "BLACK": 18,
           "BLUE": 15,
@@ -5266,8 +5266,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -714.8569144683887,
-          "value": 7.148569144683887
+          "score": -746.1465632686054,
+          "value": 7.461465632686054
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -5279,15 +5279,15 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 43,
-          "BLUE": 32,
+          "BLACK": 44,
+          "BLUE": 33,
           "BROWN": 37,
           "ORANGE": 44,
-          "RED": 23,
+          "RED": 22,
           "WHITE": 39,
           "YELLOW": 44
         },
-        "score": -714.856914,
+        "score": -746.146563,
         "scoutByType": {
           "BLACK": 18,
           "BLUE": 13,
@@ -5488,8 +5488,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -979.7958971132712,
-          "value": 9.797958971132712
+          "score": -991.1856433543803,
+          "value": 9.911856433543804
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -5501,15 +5501,15 @@
           "YELLOW": 0
         },
         "planetTypeTotals": {
-          "BLACK": 45,
+          "BLACK": 44,
           "BLUE": 39,
-          "BROWN": 43,
+          "BROWN": 42,
           "ORANGE": 44,
           "RED": 28,
-          "WHITE": 19,
+          "WHITE": 18,
           "YELLOW": 48
         },
-        "score": -979.795897,
+        "score": -991.185643,
         "scoutByType": {
           "BLACK": 17,
           "BLUE": 18,
@@ -5907,8 +5907,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -692.8203230275509,
-          "value": 6.928203230275509
+          "score": -695.759752107767,
+          "value": 6.95759752107767
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -5924,17 +5924,17 @@
           "BLUE": 37,
           "BROWN": 43,
           "ORANGE": 28,
-          "RED": 31,
+          "RED": 30,
           "WHITE": 19,
           "YELLOW": 32
         },
-        "score": -692.820323,
+        "score": -695.759752,
         "scoutByType": {
           "BLACK": 11,
           "BLUE": 17,
           "BROWN": 15,
           "ORANGE": 10,
-          "RED": 15,
+          "RED": 12,
           "WHITE": 10,
           "YELLOW": 15
         },
@@ -5943,7 +5943,7 @@
           "BLUE": 20,
           "BROWN": 28,
           "ORANGE": 19,
-          "RED": 16,
+          "RED": 18,
           "WHITE": 9,
           "YELLOW": 17
         },
@@ -6119,8 +6119,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1528.6381827880498,
-          "value": 15.286381827880497
+          "score": -1556.290723588151,
+          "value": 15.562907235881509
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -6132,15 +6132,15 @@
           "YELLOW": 0
         },
         "planetTypeTotals": {
-          "BLACK": 32,
+          "BLACK": 31,
           "BLUE": 78,
           "BROWN": 55,
-          "ORANGE": 36,
+          "ORANGE": 35,
           "RED": 40,
           "WHITE": 39,
           "YELLOW": 60
         },
-        "score": -1528.638183,
+        "score": -1556.290724,
         "scoutByType": {
           "BLACK": 14,
           "BLUE": 23,
@@ -6573,8 +6573,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1089.4671979964353,
-          "value": 10.894671979964354
+          "score": -1120.4955172072903,
+          "value": 11.204955172072902
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -6586,15 +6586,15 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 26,
+          "BLACK": 25,
           "BLUE": 49,
           "BROWN": 30,
           "ORANGE": 42,
-          "RED": 27,
+          "RED": 26,
           "WHITE": 36,
           "YELLOW": 57
         },
-        "score": -1089.467198,
+        "score": -1120.495517,
         "scoutByType": {
           "BLACK": 9,
           "BLUE": 16,
@@ -6815,8 +6815,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -903.7337516534119,
-          "value": 9.03733751653412
+          "score": -927.141756547883,
+          "value": 9.27141756547883
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -6832,11 +6832,11 @@
           "BLUE": 40,
           "BROWN": 48,
           "ORANGE": 48,
-          "RED": 32,
+          "RED": 31,
           "WHITE": 45,
           "YELLOW": 49
         },
-        "score": -903.733752,
+        "score": -927.141757,
         "scoutByType": {
           "BLACK": 19,
           "BLUE": 14,
@@ -7052,8 +7052,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -324.50904833144415,
-          "value": 3.2450904833144416
+          "score": -328.2607226593159,
+          "value": 3.282607226593159
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -7068,12 +7068,12 @@
           "BLACK": 52,
           "BLUE": 47,
           "BROWN": 41,
-          "ORANGE": 46,
-          "RED": 47,
+          "ORANGE": 45,
+          "RED": 46,
           "WHITE": 44,
           "YELLOW": 49
         },
-        "score": -324.509048,
+        "score": -328.260723,
         "scoutByType": {
           "BLACK": 12,
           "BLUE": 18,
@@ -7284,8 +7284,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1588.221955392834,
-          "value": 15.882219553928339
+          "score": -1620.1536838163452,
+          "value": 16.201536838163452
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -7297,15 +7297,15 @@
           "YELLOW": 0
         },
         "planetTypeTotals": {
-          "BLACK": 22,
+          "BLACK": 21,
           "BLUE": 54,
           "BROWN": 54,
           "ORANGE": 34,
           "RED": 36,
-          "WHITE": 28,
+          "WHITE": 27,
           "YELLOW": 70
         },
-        "score": -1588.221955,
+        "score": -1620.153684,
         "scoutByType": {
           "BLACK": 8,
           "BLUE": 21,
@@ -7738,8 +7738,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -915.6240205121181,
-          "value": 9.15624020512118
+          "score": -939.3875555870626,
+          "value": 9.393875555870626
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -7751,21 +7751,21 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 34,
+          "BLACK": 33,
           "BLUE": 26,
-          "BROWN": 23,
+          "BROWN": 22,
           "ORANGE": 33,
-          "RED": 17,
+          "RED": 16,
           "WHITE": 48,
-          "YELLOW": 28
+          "YELLOW": 29
         },
-        "score": -915.624021,
+        "score": -939.387556,
         "scoutByType": {
           "BLACK": 15,
           "BLUE": 8,
           "BROWN": 10,
           "ORANGE": 14,
-          "RED": 11,
+          "RED": 13,
           "WHITE": 14,
           "YELLOW": 12
         },
@@ -7774,7 +7774,7 @@
           "BLUE": 19,
           "BROWN": 14,
           "ORANGE": 19,
-          "RED": 8,
+          "RED": 4,
           "WHITE": 34,
           "YELLOW": 17
         },
@@ -7980,8 +7980,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1257.4674905523077,
-          "value": 12.574674905523077
+          "score": -1260.385428577873,
+          "value": 12.60385428577873
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -7995,13 +7995,13 @@
         "planetTypeTotals": {
           "BLACK": 44,
           "BLUE": 75,
-          "BROWN": 49,
+          "BROWN": 48,
           "ORANGE": 38,
           "RED": 43,
           "WHITE": 44,
           "YELLOW": 65
         },
-        "score": -1257.467491,
+        "score": -1260.385429,
         "scoutByType": {
           "BLACK": 12,
           "BLUE": 21,
@@ -8207,8 +8207,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1273.2731402946965,
-          "value": 12.732731402946966
+          "score": -1262.4886340163257,
+          "value": 12.624886340163258
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -8221,14 +8221,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 40,
-          "BLUE": 23,
-          "BROWN": 61,
+          "BLUE": 22,
+          "BROWN": 60,
           "ORANGE": 25,
           "RED": 29,
           "WHITE": 32,
           "YELLOW": 48
         },
-        "score": -1273.27314,
+        "score": -1262.488634,
         "scoutByType": {
           "BLACK": 21,
           "BLUE": 4,
@@ -8439,8 +8439,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1169.6851137404983,
-          "value": 11.696851137404984
+          "score": -1191.2949565365363,
+          "value": 11.912949565365363
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -8453,14 +8453,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 49,
-          "BLUE": 23,
+          "BLUE": 22,
           "BROWN": 35,
           "ORANGE": 63,
           "RED": 41,
           "WHITE": 35,
           "YELLOW": 37
         },
-        "score": -1169.685114,
+        "score": -1191.294957,
         "scoutByType": {
           "BLACK": 16,
           "BLUE": 11,
@@ -8671,8 +8671,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -2034.4983837470572,
-          "value": 20.344983837470572
+          "score": -2027.464486716835,
+          "value": 20.274644867168348
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -8685,19 +8685,19 @@
         },
         "planetTypeTotals": {
           "BLACK": 90,
-          "BLUE": 26,
-          "BROWN": 37,
+          "BLUE": 27,
+          "BROWN": 36,
           "ORANGE": 57,
           "RED": 30,
           "WHITE": 48,
           "YELLOW": 60
         },
-        "score": -2034.498384,
+        "score": -2027.464487,
         "scoutByType": {
           "BLACK": 31,
-          "BLUE": 10,
+          "BLUE": 12,
           "BROWN": 14,
-          "ORANGE": 22,
+          "ORANGE": 20,
           "RED": 9,
           "WHITE": 18,
           "YELLOW": 18
@@ -8706,7 +8706,7 @@
           "BLACK": 59,
           "BLUE": 17,
           "BROWN": 24,
-          "ORANGE": 36,
+          "ORANGE": 37,
           "RED": 22,
           "WHITE": 31,
           "YELLOW": 42
@@ -8898,8 +8898,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -868.2612228012996,
-          "value": 8.682612228012996
+          "score": -866.3788114317889,
+          "value": 8.663788114317889
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -8917,9 +8917,9 @@
           "ORANGE": 21,
           "RED": 20,
           "WHITE": 43,
-          "YELLOW": 27
+          "YELLOW": 26
         },
-        "score": -868.261223,
+        "score": -866.378811,
         "scoutByType": {
           "BLACK": 14,
           "BLUE": 7,
@@ -9115,8 +9115,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -671.2765785411846,
-          "value": 6.712765785411846
+          "score": -667.3126122358093,
+          "value": 6.673126122358093
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -9128,7 +9128,7 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 39,
+          "BLACK": 38,
           "BLUE": 38,
           "BROWN": 28,
           "ORANGE": 25,
@@ -9136,7 +9136,7 @@
           "WHITE": 42,
           "YELLOW": 43
         },
-        "score": -671.276579,
+        "score": -667.312612,
         "scoutByType": {
           "BLACK": 15,
           "BLUE": 13,
@@ -9362,8 +9362,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -904.6365827992894,
-          "value": 9.046365827992894
+          "score": -925.3791280400941,
+          "value": 9.253791280400941
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -9375,15 +9375,15 @@
           "YELLOW": 0
         },
         "planetTypeTotals": {
-          "BLACK": 34,
+          "BLACK": 33,
           "BLUE": 40,
           "BROWN": 48,
           "ORANGE": 54,
-          "RED": 44,
-          "WHITE": 54,
+          "RED": 43,
+          "WHITE": 53,
           "YELLOW": 63
         },
-        "score": -904.636583,
+        "score": -925.379128,
         "scoutByType": {
           "BLACK": 13,
           "BLUE": 14,
@@ -9594,8 +9594,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1089.4671979964353,
-          "value": 10.894671979964352
+          "score": -1101.5758656375428,
+          "value": 11.015758656375429
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -9608,14 +9608,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 36,
-          "BLUE": 46,
+          "BLUE": 47,
           "BROWN": 41,
           "ORANGE": 28,
           "RED": 55,
           "WHITE": 19,
           "YELLOW": 35
         },
-        "score": -1089.467198,
+        "score": -1101.575866,
         "scoutByType": {
           "BLACK": 16,
           "BLUE": 18,
@@ -9836,8 +9836,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1255.518431012562,
-          "value": 12.555184310125618
+          "score": -1275.9950099064347,
+          "value": 12.759950099064346
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -9854,10 +9854,10 @@
           "BROWN": 44,
           "ORANGE": 24,
           "RED": 58,
-          "WHITE": 25,
+          "WHITE": 24,
           "YELLOW": 50
         },
-        "score": -1255.518431,
+        "score": -1275.99501,
         "scoutByType": {
           "BLACK": 20,
           "BLUE": 10,
@@ -10068,8 +10068,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -863.3111388421788,
-          "value": 8.633111388421788
+          "score": -844.6711713768277,
+          "value": 8.446711713768277
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -10082,14 +10082,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 45,
-          "BLUE": 57,
+          "BLUE": 56,
           "BROWN": 42,
-          "ORANGE": 43,
+          "ORANGE": 44,
           "RED": 63,
-          "WHITE": 46,
+          "WHITE": 45,
           "YELLOW": 36
         },
-        "score": -863.311139,
+        "score": -844.671171,
         "scoutByType": {
           "BLACK": 18,
           "BLUE": 16,
@@ -10305,8 +10305,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1573.3754174009562,
-          "value": 15.733754174009562
+          "score": -1577.9087167410373,
+          "value": 15.779087167410372
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -10322,11 +10322,11 @@
           "BLUE": 67,
           "BROWN": 59,
           "ORANGE": 36,
-          "RED": 28,
-          "WHITE": 32,
+          "RED": 27,
+          "WHITE": 33,
           "YELLOW": 62
         },
-        "score": -1573.375417,
+        "score": -1577.908717,
         "scoutByType": {
           "BLACK": 11,
           "BLUE": 22,
@@ -10542,8 +10542,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1262.0035900204443,
-          "value": 12.620035900204444
+          "score": -1288.8849792731382,
+          "value": 12.888849792731383
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -10557,13 +10557,13 @@
         "planetTypeTotals": {
           "BLACK": 49,
           "BLUE": 46,
-          "BROWN": 40,
+          "BROWN": 39,
           "ORANGE": 62,
-          "RED": 19,
+          "RED": 18,
           "WHITE": 41,
           "YELLOW": 31
         },
-        "score": -1262.00359,
+        "score": -1288.884979,
         "scoutByType": {
           "BLACK": 20,
           "BLUE": 15,
@@ -10774,8 +10774,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1382.987006889251,
-          "value": 13.829870068892511
+          "score": -1382.544238506881,
+          "value": 13.82544238506881
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -10790,12 +10790,12 @@
           "BLACK": 48,
           "BLUE": 58,
           "BROWN": 31,
-          "ORANGE": 49,
+          "ORANGE": 48,
           "RED": 30,
           "WHITE": 48,
           "YELLOW": 73
         },
-        "score": -1382.987007,
+        "score": -1382.544239,
         "scoutByType": {
           "BLACK": 23,
           "BLUE": 19,
@@ -11233,8 +11233,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1226.7428252016289,
-          "value": 12.267428252016288
+          "score": -1200.5100956659708,
+          "value": 12.005100956659708
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -11247,14 +11247,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 39,
-          "BLUE": 55,
-          "BROWN": 38,
+          "BLUE": 54,
+          "BROWN": 37,
           "ORANGE": 43,
           "RED": 55,
-          "WHITE": 24,
+          "WHITE": 25,
           "YELLOW": 63
         },
-        "score": -1226.742825,
+        "score": -1200.510096,
         "scoutByType": {
           "BLACK": 12,
           "BLUE": 22,
@@ -11465,8 +11465,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -775.3866711492519,
-          "value": 7.7538667114925195
+          "score": -820.15429110899,
+          "value": 8.2015429110899
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -11480,13 +11480,13 @@
         "planetTypeTotals": {
           "BLACK": 33,
           "BLUE": 42,
-          "BROWN": 20,
-          "ORANGE": 38,
+          "BROWN": 18,
+          "ORANGE": 37,
           "RED": 42,
-          "WHITE": 38,
-          "YELLOW": 45
+          "WHITE": 37,
+          "YELLOW": 44
         },
-        "score": -775.386671,
+        "score": -820.154291,
         "scoutByType": {
           "BLACK": 14,
           "BLUE": 10,
@@ -11712,8 +11712,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -975.2027523357722,
-          "value": 9.752027523357722
+          "score": -996.9340755638802,
+          "value": 9.969340755638802
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -11725,15 +11725,15 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 33,
+          "BLACK": 34,
           "BLUE": 44,
           "BROWN": 44,
           "ORANGE": 42,
           "RED": 21,
           "WHITE": 31,
-          "YELLOW": 19
+          "YELLOW": 18
         },
-        "score": -975.202752,
+        "score": -996.934076,
         "scoutByType": {
           "BLACK": 11,
           "BLUE": 18,
@@ -11939,8 +11939,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -836.416066760254,
-          "value": 8.36416066760254
+          "score": -851.4093957572193,
+          "value": 8.514093957572193
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -11952,15 +11952,15 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 29,
+          "BLACK": 28,
           "BLUE": 40,
           "BROWN": 30,
           "ORANGE": 52,
-          "RED": 46,
+          "RED": 45,
           "WHITE": 49,
           "YELLOW": 45
         },
-        "score": -836.416067,
+        "score": -851.409396,
         "scoutByType": {
           "BLACK": 9,
           "BLUE": 13,
@@ -12166,8 +12166,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -723.0886134196436,
-          "value": 7.230886134196436
+          "score": -695.7597521077669,
+          "value": 6.957597521077669
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -12183,11 +12183,11 @@
           "BLUE": 35,
           "BROWN": 33,
           "ORANGE": 34,
-          "RED": 51,
+          "RED": 50,
           "WHITE": 26,
           "YELLOW": 41
         },
-        "score": -723.088613,
+        "score": -695.759752,
         "scoutByType": {
           "BLACK": 15,
           "BLUE": 13,
@@ -12388,8 +12388,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1348.771171648248,
-          "value": 13.48771171648248
+          "score": -1366.3596801392393,
+          "value": 13.663596801392393
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -12404,12 +12404,12 @@
           "BLACK": 72,
           "BLUE": 34,
           "BROWN": 40,
-          "ORANGE": 37,
+          "ORANGE": 35,
           "RED": 29,
-          "WHITE": 44,
+          "WHITE": 43,
           "YELLOW": 54
         },
-        "score": -1348.771172,
+        "score": -1366.35968,
         "scoutByType": {
           "BLACK": 25,
           "BLUE": 10,
@@ -12842,8 +12842,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1405.5284429998678,
-          "value": 14.055284429998679
+          "score": -1435.127811985641,
+          "value": 14.351278119856412
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -12855,21 +12855,21 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 42,
+          "BLACK": 41,
           "BLUE": 49,
-          "BROWN": 24,
+          "BROWN": 23,
           "ORANGE": 56,
-          "RED": 25,
-          "WHITE": 19,
-          "YELLOW": 52
+          "RED": 24,
+          "WHITE": 18,
+          "YELLOW": 51
         },
-        "score": -1405.528443,
+        "score": -1435.127812,
         "scoutByType": {
           "BLACK": 14,
           "BLUE": 16,
           "BROWN": 9,
           "ORANGE": 17,
-          "RED": 10,
+          "RED": 11,
           "WHITE": 7,
           "YELLOW": 18
         },
@@ -12878,7 +12878,7 @@
           "BLUE": 33,
           "BROWN": 16,
           "ORANGE": 41,
-          "RED": 16,
+          "RED": 13,
           "WHITE": 13,
           "YELLOW": 36
         },
@@ -13074,8 +13074,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1386.3768666298968,
-          "value": 13.863768666298968
+          "score": -1405.5284429998678,
+          "value": 14.055284429998679
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -13087,7 +13087,7 @@
           "YELLOW": 0
         },
         "planetTypeTotals": {
-          "BLACK": 29,
+          "BLACK": 28,
           "BLUE": 53,
           "BROWN": 46,
           "ORANGE": 49,
@@ -13095,7 +13095,7 @@
           "WHITE": 75,
           "YELLOW": 33
         },
-        "score": -1386.376867,
+        "score": -1405.528443,
         "scoutByType": {
           "BLACK": 11,
           "BLUE": 22,
@@ -13306,8 +13306,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1138.2048164024052,
-          "value": 11.382048164024052
+          "score": -1157.2310372044935,
+          "value": 11.572310372044935
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -13323,11 +13323,11 @@
           "BLUE": 32,
           "BROWN": 49,
           "ORANGE": 36,
-          "RED": 21,
+          "RED": 20,
           "WHITE": 21,
           "YELLOW": 52
         },
-        "score": -1138.204816,
+        "score": -1157.231037,
         "scoutByType": {
           "BLACK": 18,
           "BLUE": 13,
@@ -13464,8 +13464,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -586.5847190756517,
-          "value": 5.865847190756517
+          "score": -589.7076411585798,
+          "value": 5.8970764115857985
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -13477,15 +13477,15 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 29,
+          "BLACK": 28,
           "BLUE": 12,
           "BROWN": 10,
           "ORANGE": 19,
-          "RED": 15,
+          "RED": 12,
           "WHITE": 21,
           "YELLOW": 19
         },
-        "score": -586.584719,
+        "score": -589.707641,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -13632,8 +13632,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -615.1157183317424,
-          "value": 6.151157183317424
+          "score": -622.699849077239,
+          "value": 6.226998490772391
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -13647,13 +13647,13 @@
         "planetTypeTotals": {
           "BLACK": 28,
           "BLUE": 12,
-          "BROWN": 12,
+          "BROWN": 11,
           "ORANGE": 15,
-          "RED": 12,
+          "RED": 11,
           "WHITE": 16,
-          "YELLOW": 25
+          "YELLOW": 24
         },
-        "score": -615.115718,
+        "score": -622.699849,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -13795,8 +13795,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -879.7031039051802,
-          "value": 8.797031039051802
+          "score": -918.7391537607731,
+          "value": 9.18739153760773
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -13810,13 +13810,13 @@
         "planetTypeTotals": {
           "BLACK": 20,
           "BLUE": 22,
-          "BROWN": 12,
+          "BROWN": 11,
           "ORANGE": 13,
-          "RED": 12,
+          "RED": 10,
           "WHITE": 39,
           "YELLOW": 19
         },
-        "score": -879.703104,
+        "score": -918.739154,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -13943,8 +13943,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -319.43828249996994,
-          "value": 3.1943828249996993
+          "score": -302.3715784073818,
+          "value": 3.0237157840738176
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -13956,15 +13956,15 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 16,
-          "BLUE": 13,
-          "BROWN": 16,
+          "BLACK": 15,
+          "BLUE": 14,
+          "BROWN": 15,
           "ORANGE": 22,
           "RED": 14,
-          "WHITE": 21,
+          "WHITE": 20,
           "YELLOW": 19
         },
-        "score": -319.438282,
+        "score": -302.371578,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -14106,8 +14106,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -381.19040183218095,
-          "value": 3.8119040183218096
+          "score": -370.32803990902056,
+          "value": 3.7032803990902057
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -14119,15 +14119,15 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 22,
-          "BLUE": 14,
+          "BLACK": 20,
+          "BLUE": 13,
           "BROWN": 14,
-          "ORANGE": 9,
+          "ORANGE": 8,
           "RED": 16,
           "WHITE": 19,
           "YELLOW": 15
         },
-        "score": -381.190402,
+        "score": -370.32804,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -14254,8 +14254,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -549.5824017620384,
-          "value": 5.495824017620384
+          "score": -589.0150893739515,
+          "value": 5.890150893739515
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -14268,14 +14268,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 22,
-          "BLUE": 18,
-          "BROWN": 9,
-          "ORANGE": 13,
+          "BLUE": 19,
+          "BROWN": 8,
+          "ORANGE": 12,
           "RED": 23,
           "WHITE": 26,
           "YELLOW": 17
         },
-        "score": -549.582402,
+        "score": -589.015089,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -14422,8 +14422,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -832.993127835043,
-          "value": 8.32993127835043
+          "score": -837.3914794144482,
+          "value": 8.373914794144483
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -14435,15 +14435,15 @@
           "YELLOW": 0
         },
         "planetTypeTotals": {
-          "BLACK": 9,
+          "BLACK": 8,
           "BLUE": 15,
-          "BROWN": 18,
+          "BROWN": 17,
           "ORANGE": 16,
-          "RED": 24,
+          "RED": 25,
           "WHITE": 24,
-          "YELLOW": 37
+          "YELLOW": 36
         },
-        "score": -832.993128,
+        "score": -837.391479,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -14590,8 +14590,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -740.6560798180411,
-          "value": 7.406560798180411
+          "score": -734.8469228349535,
+          "value": 7.3484692283495345
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -14604,14 +14604,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 35,
-          "BLUE": 20,
+          "BLUE": 19,
           "BROWN": 13,
           "ORANGE": 11,
-          "RED": 16,
+          "RED": 17,
           "WHITE": 22,
           "YELLOW": 16
         },
-        "score": -740.65608,
+        "score": -734.846923,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -14733,8 +14733,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -391.7516914514882,
-          "value": 3.9175169145148825
+          "score": -420.883424647321,
+          "value": 4.20883424647321
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -14746,15 +14746,15 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 14,
-          "BLUE": 15,
-          "BROWN": 15,
-          "ORANGE": 10,
+          "BLACK": 15,
+          "BLUE": 14,
+          "BROWN": 13,
+          "ORANGE": 9,
           "RED": 24,
-          "WHITE": 17,
-          "YELLOW": 15
+          "WHITE": 16,
+          "YELLOW": 14
         },
-        "score": -391.751691,
+        "score": -420.883425,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -14886,8 +14886,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -365.89281356759136,
-          "value": 3.6589281356759136
+          "score": -387.03477668983044,
+          "value": 3.8703477668983046
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -14900,14 +14900,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 12,
-          "BLUE": 15,
+          "BLUE": 14,
           "BROWN": 21,
-          "ORANGE": 9,
-          "RED": 17,
+          "ORANGE": 8,
+          "RED": 16,
           "WHITE": 18,
-          "YELLOW": 16
+          "YELLOW": 15
         },
-        "score": -365.892814,
+        "score": -387.034777,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -15044,8 +15044,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -452.65655765013895,
-          "value": 4.5265655765013895
+          "score": -494.8716593053935,
+          "value": 4.948716593053935
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -15059,13 +15059,13 @@
         "planetTypeTotals": {
           "BLACK": 17,
           "BLUE": 23,
-          "BROWN": 9,
-          "ORANGE": 11,
+          "BROWN": 7,
+          "ORANGE": 12,
           "RED": 20,
-          "WHITE": 18,
+          "WHITE": 19,
           "YELLOW": 16
         },
-        "score": -452.656558,
+        "score": -494.871659,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -15207,8 +15207,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -369.2242280948596,
-          "value": 3.6922422809485957
+          "score": -384.9198167230708,
+          "value": 3.8491981672307083
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -15220,15 +15220,15 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 16,
-          "BLUE": 16,
+          "BLACK": 17,
+          "BLUE": 17,
           "BROWN": 13,
           "ORANGE": 16,
-          "RED": 17,
+          "RED": 14,
           "WHITE": 25,
           "YELLOW": 21
         },
-        "score": -369.224228,
+        "score": -384.919817,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -15355,8 +15355,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -341.66459266003994,
-          "value": 3.4166459266003995
+          "score": -344.0455593940656,
+          "value": 3.440455593940656
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -15368,15 +15368,15 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 19,
-          "BLUE": 15,
+          "BLACK": 18,
+          "BLUE": 14,
           "BROWN": 10,
-          "ORANGE": 16,
-          "RED": 16,
+          "ORANGE": 17,
+          "RED": 15,
           "WHITE": 17,
           "YELLOW": 22
         },
-        "score": -341.664593,
+        "score": -344.045559,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -15513,8 +15513,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -502.64605959311945,
-          "value": 5.026460595931194
+          "score": -498.1598792617913,
+          "value": 4.981598792617913
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -15528,13 +15528,13 @@
         "planetTypeTotals": {
           "BLACK": 23,
           "BLUE": 12,
-          "BROWN": 17,
-          "ORANGE": 7,
-          "RED": 17,
-          "WHITE": 10,
+          "BROWN": 16,
+          "ORANGE": 6,
+          "RED": 16,
+          "WHITE": 11,
           "YELLOW": 11
         },
-        "score": -502.64606,
+        "score": -498.159879,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -15666,8 +15666,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -656.2105187346201,
-          "value": 6.562105187346201
+          "score": -631.8098396427423,
+          "value": 6.318098396427423
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -15679,15 +15679,15 @@
           "YELLOW": 0
         },
         "planetTypeTotals": {
-          "BLACK": 31,
+          "BLACK": 29,
           "BLUE": 22,
           "BROWN": 10,
           "ORANGE": 20,
-          "RED": 14,
-          "WHITE": 16,
+          "RED": 12,
+          "WHITE": 17,
           "YELLOW": 25
         },
-        "score": -656.210519,
+        "score": -631.80984,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -15829,8 +15829,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -570.3561365050608,
-          "value": 5.703561365050608
+          "score": -621.0590034081188,
+          "value": 6.2105900340811875
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -15844,13 +15844,13 @@
         "planetTypeTotals": {
           "BLACK": 27,
           "BLUE": 18,
-          "BROWN": 14,
+          "BROWN": 12,
           "ORANGE": 11,
-          "RED": 14,
+          "RED": 12,
           "WHITE": 20,
           "YELLOW": 26
         },
-        "score": -570.356137,
+        "score": -621.059003,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -15982,8 +15982,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -598.6379097073417,
-          "value": 5.986379097073417
+          "score": -634.0668863192042,
+          "value": 6.340668863192042
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -15996,14 +15996,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 15,
-          "BLUE": 18,
-          "BROWN": 9,
+          "BLUE": 19,
+          "BROWN": 7,
           "ORANGE": 11,
-          "RED": 22,
+          "RED": 21,
           "WHITE": 28,
-          "YELLOW": 17
+          "YELLOW": 16
         },
-        "score": -598.63791,
+        "score": -634.066886,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -16140,8 +16140,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -305.72763655760997,
-          "value": 3.0572763655760995
+          "score": -301.0186786529354,
+          "value": 3.010186786529354
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -16153,15 +16153,15 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 15,
-          "BLUE": 17,
-          "BROWN": 20,
+          "BLACK": 16,
+          "BLUE": 16,
+          "BROWN": 19,
           "ORANGE": 15,
-          "RED": 20,
-          "WHITE": 11,
+          "RED": 19,
+          "WHITE": 10,
           "YELLOW": 19
         },
-        "score": -305.727637,
+        "score": -301.018679,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -16303,8 +16303,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -771.6930763468288,
-          "value": 7.716930763468288
+          "score": -831.5218406202998,
+          "value": 8.315218406202998
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -16316,15 +16316,15 @@
           "YELLOW": 3
         },
         "planetTypeTotals": {
-          "BLACK": 11,
-          "BLUE": 25,
-          "BROWN": 17,
+          "BLACK": 8,
+          "BLUE": 24,
+          "BROWN": 16,
           "ORANGE": 12,
           "RED": 31,
           "WHITE": 29,
-          "YELLOW": 14
+          "YELLOW": 13
         },
-        "score": -771.693076,
+        "score": -831.521841,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -16471,8 +16471,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -592.4697529522206,
-          "value": 5.924697529522206
+          "score": -613.7871731125953,
+          "value": 6.137871731125952
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -16484,7 +16484,7 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 9,
+          "BLACK": 8,
           "BLUE": 24,
           "BROWN": 14,
           "ORANGE": 17,
@@ -16492,7 +16492,7 @@
           "WHITE": 15,
           "YELLOW": 16
         },
-        "score": -592.469753,
+        "score": -613.787173,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -16639,8 +16639,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -620.4014500173846,
-          "value": 6.204014500173846
+          "score": -668.5347975312908,
+          "value": 6.685347975312908
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -16653,14 +16653,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 30,
-          "BLUE": 25,
-          "BROWN": 10,
-          "ORANGE": 18,
+          "BLUE": 24,
+          "BROWN": 8,
+          "ORANGE": 17,
           "RED": 18,
           "WHITE": 18,
           "YELLOW": 26
         },
-        "score": -620.40145,
+        "score": -668.534798,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -16797,8 +16797,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -253.14350209527646,
-          "value": 2.5314350209527645
+          "score": -254.75077857324297,
+          "value": 2.5475077857324298
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -16814,11 +16814,11 @@
           "BLUE": 19,
           "BROWN": 12,
           "ORANGE": 20,
-          "RED": 15,
-          "WHITE": 15,
-          "YELLOW": 15
+          "RED": 14,
+          "WHITE": 16,
+          "YELLOW": 16
         },
-        "score": -253.143502,
+        "score": -254.750779,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -16945,8 +16945,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -370.32803990902056,
-          "value": 3.7032803990902057
+          "score": -364.2156795423418,
+          "value": 3.6421567954234177
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -16959,14 +16959,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 14,
-          "BLUE": 21,
-          "BROWN": 15,
+          "BLUE": 20,
+          "BROWN": 13,
           "ORANGE": 14,
-          "RED": 15,
-          "WHITE": 11,
-          "YELLOW": 22
+          "RED": 14,
+          "WHITE": 10,
+          "YELLOW": 21
         },
-        "score": -370.32804,
+        "score": -364.21568,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -17103,8 +17103,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -520.5962045225314,
-          "value": 5.205962045225314
+          "score": -511.10125199995196,
+          "value": 5.1110125199995196
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -17116,15 +17116,15 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 22,
+          "BLACK": 21,
           "BLUE": 22,
-          "BROWN": 9,
+          "BROWN": 8,
           "ORANGE": 13,
-          "RED": 19,
-          "WHITE": 14,
+          "RED": 18,
+          "WHITE": 15,
           "YELLOW": 9
         },
-        "score": -520.596205,
+        "score": -511.101252,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -17261,8 +17261,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -776.1758689832072,
-          "value": 7.761758689832072
+          "score": -813.1571126147261,
+          "value": 8.13157112614726
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -17276,13 +17276,13 @@
         "planetTypeTotals": {
           "BLACK": 29,
           "BLUE": 20,
-          "BROWN": 12,
+          "BROWN": 11,
           "ORANGE": 21,
-          "RED": 19,
-          "WHITE": 14,
+          "RED": 18,
+          "WHITE": 13,
           "YELLOW": 36
         },
-        "score": -776.175869,
+        "score": -813.157113,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -17424,8 +17424,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -465.54773533715206,
-          "value": 4.655477353371521
+          "score": -514.6823867043378,
+          "value": 5.146823867043378
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -17437,15 +17437,15 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 27,
-          "BLUE": 18,
+          "BLACK": 28,
+          "BLUE": 17,
           "BROWN": 22,
-          "ORANGE": 17,
-          "RED": 14,
+          "ORANGE": 16,
+          "RED": 13,
           "WHITE": 20,
           "YELLOW": 12
         },
-        "score": -465.547735,
+        "score": -514.682387,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -17577,8 +17577,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -377.424137532083,
-          "value": 3.7742413753208304
+          "score": -369.77654587270814,
+          "value": 3.697765458727081
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -17590,15 +17590,15 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 18,
-          "BLUE": 19,
+          "BLACK": 19,
+          "BLUE": 20,
           "BROWN": 19,
           "ORANGE": 14,
-          "RED": 26,
-          "WHITE": 14,
-          "YELLOW": 20
+          "RED": 25,
+          "WHITE": 13,
+          "YELLOW": 19
         },
-        "score": -377.424138,
+        "score": -369.776546,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -17750,8 +17750,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -520.9880722517278,
-          "value": 5.209880722517277
+          "score": -536.4280958719597,
+          "value": 5.364280958719597
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -17764,14 +17764,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 25,
-          "BLUE": 11,
+          "BLUE": 9,
           "BROWN": 11,
-          "ORANGE": 9,
-          "RED": 18,
+          "ORANGE": 8,
+          "RED": 16,
           "WHITE": 11,
           "YELLOW": 13
         },
-        "score": -520.988072,
+        "score": -536.428096,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -17898,8 +17898,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -511.10125199995196,
-          "value": 5.1110125199995196
+          "score": -517.4505793221381,
+          "value": 5.174505793221381
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -17911,15 +17911,15 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 27,
+          "BLACK": 26,
           "BLUE": 19,
           "BROWN": 14,
-          "ORANGE": 13,
+          "ORANGE": 12,
           "RED": 26,
           "WHITE": 19,
-          "YELLOW": 16
+          "YELLOW": 15
         },
-        "score": -511.101252,
+        "score": -517.450579,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -18056,8 +18056,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -238.1904571504724,
-          "value": 2.381904571504724
+          "score": -264.1891715558133,
+          "value": 2.641891715558133
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -18069,15 +18069,15 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 19,
+          "BLACK": 18,
           "BLUE": 17,
-          "BROWN": 14,
-          "ORANGE": 12,
+          "BROWN": 15,
+          "ORANGE": 10,
           "RED": 14,
           "WHITE": 14,
           "YELLOW": 18
         },
-        "score": -238.190457,
+        "score": -264.189172,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -18229,8 +18229,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -593.8459911664722,
-          "value": 5.938459911664722
+          "score": -592.4697529522206,
+          "value": 5.924697529522206
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -18242,15 +18242,15 @@
           "YELLOW": 3
         },
         "planetTypeTotals": {
-          "BLACK": 10,
-          "BLUE": 21,
-          "BROWN": 13,
+          "BLACK": 9,
+          "BLUE": 20,
+          "BROWN": 12,
           "ORANGE": 12,
           "RED": 27,
           "WHITE": 18,
-          "YELLOW": 10
+          "YELLOW": 11
         },
-        "score": -593.845991,
+        "score": -592.469753,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -18387,8 +18387,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -520.5962045225314,
-          "value": 5.205962045225314
+          "score": -539.0846361175203,
+          "value": 5.390846361175202
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -18404,11 +18404,11 @@
           "BLUE": 18,
           "BROWN": 13,
           "ORANGE": 17,
-          "RED": 16,
+          "RED": 14,
           "WHITE": 15,
           "YELLOW": 30
         },
-        "score": -520.596205,
+        "score": -539.084636,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -18555,8 +18555,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -336.8521749300456,
-          "value": 3.368521749300456
+          "score": -381.19040183218095,
+          "value": 3.8119040183218096
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -18568,15 +18568,15 @@
           "YELLOW": 3
         },
         "planetTypeTotals": {
-          "BLACK": 15,
-          "BLUE": 20,
-          "BROWN": 11,
+          "BLACK": 13,
+          "BLUE": 21,
+          "BROWN": 10,
           "ORANGE": 19,
-          "RED": 19,
+          "RED": 20,
           "WHITE": 18,
-          "YELLOW": 12
+          "YELLOW": 14
         },
-        "score": -336.852175,
+        "score": -381.190402,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -18708,8 +18708,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -567.8459118386226,
-          "value": 5.678459118386225
+          "score": -577.8213833187623,
+          "value": 5.778213833187623
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -18721,15 +18721,15 @@
           "YELLOW": 3
         },
         "planetTypeTotals": {
-          "BLACK": 21,
-          "BLUE": 28,
+          "BLACK": 20,
+          "BLUE": 29,
           "BROWN": 15,
-          "ORANGE": 11,
-          "RED": 16,
+          "ORANGE": 12,
+          "RED": 15,
           "WHITE": 12,
           "YELLOW": 12
         },
-        "score": -567.845912,
+        "score": -577.821383,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -18861,8 +18861,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -447.21359549995793,
-          "value": 4.47213595499958
+          "score": -406.0762972443398,
+          "value": 4.060762972443398
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -18875,14 +18875,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 11,
-          "BLUE": 21,
+          "BLUE": 20,
           "BROWN": 15,
-          "ORANGE": 12,
+          "ORANGE": 11,
           "RED": 16,
-          "WHITE": 13,
-          "YELLOW": 24
+          "WHITE": 12,
+          "YELLOW": 22
         },
-        "score": -447.213595,
+        "score": -406.076297,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -19004,8 +19004,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -464.2307659791977,
-          "value": 4.642307659791977
+          "score": -531.4592925068079,
+          "value": 5.314592925068078
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -19017,15 +19017,15 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 13,
+          "BLACK": 12,
           "BLUE": 23,
-          "BROWN": 16,
+          "BROWN": 14,
           "ORANGE": 28,
-          "RED": 24,
+          "RED": 25,
           "WHITE": 21,
           "YELLOW": 21
         },
-        "score": -464.230766,
+        "score": -531.459293,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -19167,8 +19167,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -412.06300291017027,
-          "value": 4.120630029101703
+          "score": -438.9226141639205,
+          "value": 4.389226141639205
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -19182,13 +19182,13 @@
         "planetTypeTotals": {
           "BLACK": 20,
           "BLUE": 27,
-          "BROWN": 22,
+          "BROWN": 23,
           "ORANGE": 14,
           "RED": 22,
-          "WHITE": 15,
+          "WHITE": 14,
           "YELLOW": 19
         },
-        "score": -412.063003,
+        "score": -438.922614,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -19320,8 +19320,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -289.9683304312063,
-          "value": 2.899683304312063
+          "score": -294.8538205792899,
+          "value": 2.9485382057928993
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -19334,14 +19334,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 15,
-          "BLUE": 12,
-          "BROWN": 14,
+          "BLUE": 13,
+          "BROWN": 12,
           "ORANGE": 19,
-          "RED": 14,
+          "RED": 15,
           "WHITE": 20,
           "YELLOW": 19
         },
-        "score": -289.96833,
+        "score": -294.853821,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -19483,8 +19483,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -401.52769493014847,
-          "value": 4.015276949301485
+          "score": -446.2999814803803,
+          "value": 4.462999814803803
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -19499,12 +19499,12 @@
           "BLACK": 21,
           "BLUE": 18,
           "BROWN": 17,
-          "ORANGE": 21,
-          "RED": 24,
+          "ORANGE": 22,
+          "RED": 25,
           "WHITE": 11,
-          "YELLOW": 15
+          "YELLOW": 14
         },
-        "score": -401.527695,
+        "score": -446.299981,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -19626,8 +19626,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -649.6466857658328,
-          "value": 6.496466857658327
+          "score": -652.1549834579043,
+          "value": 6.5215498345790435
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -19640,14 +19640,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 12,
-          "BLUE": 34,
-          "BROWN": 17,
-          "ORANGE": 21,
+          "BLUE": 33,
+          "BROWN": 15,
+          "ORANGE": 20,
           "RED": 27,
-          "WHITE": 23,
-          "YELLOW": 22
+          "WHITE": 22,
+          "YELLOW": 21
         },
-        "score": -649.646686,
+        "score": -652.154983,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -19937,8 +19937,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -302.3715784073818,
-          "value": 3.0237157840738176
+          "score": -315.5817433482074,
+          "value": 3.155817433482074
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -19950,15 +19950,15 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 18,
+          "BLACK": 19,
           "BLUE": 13,
           "BROWN": 12,
-          "ORANGE": 20,
-          "RED": 17,
-          "WHITE": 13,
-          "YELLOW": 12
+          "ORANGE": 19,
+          "RED": 16,
+          "WHITE": 12,
+          "YELLOW": 11
         },
-        "score": -302.371578,
+        "score": -315.581743,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -20080,8 +20080,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -491.14609821917384,
-          "value": 4.9114609821917385
+          "score": -501.0193690500052,
+          "value": 5.010193690500052
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -20095,13 +20095,13 @@
         "planetTypeTotals": {
           "BLACK": 15,
           "BLUE": 24,
-          "BROWN": 10,
-          "ORANGE": 12,
-          "RED": 20,
-          "WHITE": 10,
+          "BROWN": 9,
+          "ORANGE": 13,
+          "RED": 19,
+          "WHITE": 9,
           "YELLOW": 13
         },
-        "score": -491.146098,
+        "score": -501.019369,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -20243,8 +20243,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -361.4031611621005,
-          "value": 3.614031611621005
+          "score": -364.2156795423418,
+          "value": 3.6421567954234177
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -20257,14 +20257,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 16,
-          "BLUE": 16,
+          "BLUE": 15,
           "BROWN": 13,
           "ORANGE": 11,
           "RED": 23,
           "WHITE": 16,
           "YELLOW": 19
         },
-        "score": -361.403161,
+        "score": -364.21568,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -20396,8 +20396,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -471.2120714991612,
-          "value": 4.712120714991612
+          "score": -442.1653583012046,
+          "value": 4.421653583012046
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -20409,15 +20409,15 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 22,
+          "BLACK": 21,
           "BLUE": 12,
           "BROWN": 10,
           "ORANGE": 19,
           "RED": 21,
-          "WHITE": 19,
+          "WHITE": 17,
           "YELLOW": 11
         },
-        "score": -471.212071,
+        "score": -442.165358,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -20554,8 +20554,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -322.6168511610347,
-          "value": 3.226168511610347
+          "score": -329.5017884191656,
+          "value": 3.295017884191656
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -20567,15 +20567,15 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 18,
-          "BLUE": 13,
+          "BLACK": 19,
+          "BLUE": 12,
           "BROWN": 12,
-          "ORANGE": 14,
-          "RED": 18,
+          "ORANGE": 13,
+          "RED": 17,
           "WHITE": 20,
-          "YELLOW": 11
+          "YELLOW": 12
         },
-        "score": -322.616851,
+        "score": -329.501788,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -20702,8 +20702,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -369.77654587270814,
-          "value": 3.697765458727081
+          "score": -383.32593899996397,
+          "value": 3.8332593899996397
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -20715,15 +20715,15 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 19,
+          "BLACK": 17,
           "BLUE": 17,
-          "BROWN": 10,
+          "BROWN": 9,
           "ORANGE": 16,
-          "RED": 19,
-          "WHITE": 19,
+          "RED": 18,
+          "WHITE": 18,
           "YELLOW": 23
         },
-        "score": -369.776546,
+        "score": -383.325939,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -20845,8 +20845,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -335.6382892705923,
-          "value": 3.356382892705923
+          "score": -336.85217493004563,
+          "value": 3.3685217493004562
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -20858,15 +20858,15 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 13,
-          "BLUE": 13,
+          "BLACK": 12,
+          "BLUE": 12,
           "BROWN": 11,
           "ORANGE": 19,
           "RED": 17,
-          "WHITE": 21,
-          "YELLOW": 17
+          "WHITE": 20,
+          "YELLOW": 16
         },
-        "score": -335.638289,
+        "score": -336.852175,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -20998,8 +20998,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -587.9747322073337,
-          "value": 5.879747322073336
+          "score": -623.3549779791837,
+          "value": 6.233549779791836
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -21011,15 +21011,15 @@
           "YELLOW": 3
         },
         "planetTypeTotals": {
-          "BLACK": 25,
+          "BLACK": 26,
           "BLUE": 15,
           "BROWN": 20,
           "ORANGE": 10,
           "RED": 25,
           "WHITE": 13,
-          "YELLOW": 11
+          "YELLOW": 10
         },
-        "score": -587.974732,
+        "score": -623.354978,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -21156,8 +21156,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -333.80918415851204,
-          "value": 3.3380918415851206
+          "score": -361.9674131234265,
+          "value": 3.619674131234265
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -21169,15 +21169,15 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 23,
+          "BLACK": 24,
           "BLUE": 15,
-          "BROWN": 15,
+          "BROWN": 16,
           "ORANGE": 19,
           "RED": 24,
-          "WHITE": 17,
-          "YELLOW": 20
+          "WHITE": 16,
+          "YELLOW": 22
         },
-        "score": -333.809184,
+        "score": -361.967413,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -21309,8 +21309,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -397.9539507766891,
-          "value": 3.979539507766891
+          "score": -465.109159888563,
+          "value": 4.65109159888563
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -21322,15 +21322,15 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 15,
+          "BLACK": 13,
           "BLUE": 22,
-          "BROWN": 15,
+          "BROWN": 14,
           "ORANGE": 15,
-          "RED": 22,
-          "WHITE": 14,
+          "RED": 23,
+          "WHITE": 13,
           "YELLOW": 24
         },
-        "score": -397.953951,
+        "score": -465.10916,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -21472,8 +21472,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -410.57451037714037,
-          "value": 4.105745103771404
+          "score": -506.6899385990913,
+          "value": 5.066899385990913
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -21486,14 +21486,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 15,
-          "BLUE": 22,
-          "BROWN": 11,
+          "BLUE": 23,
+          "BROWN": 9,
           "ORANGE": 14,
-          "RED": 12,
-          "WHITE": 16,
-          "YELLOW": 22
+          "RED": 11,
+          "WHITE": 14,
+          "YELLOW": 23
         },
-        "score": -410.57451,
+        "score": -506.689939,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -21625,8 +21625,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -543.6085025840127,
-          "value": 5.436085025840128
+          "score": -542.1047417431507,
+          "value": 5.421047417431507
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -21638,15 +21638,15 @@
           "YELLOW": 3
         },
         "planetTypeTotals": {
-          "BLACK": 18,
-          "BLUE": 19,
+          "BLACK": 17,
+          "BLUE": 20,
           "BROWN": 13,
-          "ORANGE": 19,
+          "ORANGE": 20,
           "RED": 28,
           "WHITE": 11,
-          "YELLOW": 12
+          "YELLOW": 13
         },
-        "score": -543.608503,
+        "score": -542.104742,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -21768,8 +21768,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -780.8943067837971,
-          "value": 7.808943067837971
+          "score": -781.4168189244195,
+          "value": 7.814168189244196
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -21782,14 +21782,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 36,
-          "BLUE": 20,
+          "BLUE": 19,
           "BROWN": 16,
           "ORANGE": 17,
           "RED": 24,
           "WHITE": 9,
           "YELLOW": 17
         },
-        "score": -780.894307,
+        "score": -781.416819,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -21929,7 +21929,7 @@
           "YELLOW": 3
         },
         "planetTypeTotals": {
-          "BLACK": 14,
+          "BLACK": 13,
           "BLUE": 13,
           "BROWN": 15,
           "ORANGE": 13,
@@ -22074,8 +22074,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -462.4689730353899,
-          "value": 4.624689730353899
+          "score": -482.3412290324038,
+          "value": 4.823412290324038
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -22087,15 +22087,15 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 17,
+          "BLACK": 16,
           "BLUE": 16,
-          "BROWN": 12,
+          "BROWN": 11,
           "ORANGE": 15,
-          "RED": 18,
+          "RED": 17,
           "WHITE": 28,
           "YELLOW": 17
         },
-        "score": -462.468973,
+        "score": -482.341229,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -22222,8 +22222,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -306.3944369932459,
-          "value": 3.063944369932459
+          "score": -306.39443699324596,
+          "value": 3.0639443699324596
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -22235,11 +22235,11 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 18,
-          "BLUE": 13,
-          "BROWN": 9,
+          "BLACK": 17,
+          "BLUE": 15,
+          "BROWN": 8,
           "ORANGE": 12,
-          "RED": 17,
+          "RED": 16,
           "WHITE": 16,
           "YELLOW": 17
         },
@@ -22390,8 +22390,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -566.7666978536392,
-          "value": 5.667666978536392
+          "score": -571.7856027482715,
+          "value": 5.717856027482714
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -22407,11 +22407,11 @@
           "BLUE": 14,
           "BROWN": 15,
           "ORANGE": 17,
-          "RED": 23,
+          "RED": 22,
           "WHITE": 27,
-          "YELLOW": 16
+          "YELLOW": 15
         },
-        "score": -566.766698,
+        "score": -571.785603,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -22548,8 +22548,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -450.3966505838413,
-          "value": 4.503966505838413
+          "score": -511.10125199995184,
+          "value": 5.111012519999519
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -22561,15 +22561,15 @@
           "YELLOW": 3
         },
         "planetTypeTotals": {
-          "BLACK": 21,
-          "BLUE": 7,
+          "BLACK": 22,
+          "BLUE": 6,
           "BROWN": 9,
           "ORANGE": 15,
-          "RED": 15,
-          "WHITE": 18,
-          "YELLOW": 13
+          "RED": 14,
+          "WHITE": 19,
+          "YELLOW": 12
         },
-        "score": -450.396651,
+        "score": -511.101252,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -22701,8 +22701,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -495.69575922564206,
-          "value": 4.956957592256421
+          "score": -539.0846361175202,
+          "value": 5.3908463611752016
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -22715,14 +22715,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 18,
-          "BLUE": 16,
-          "BROWN": 13,
-          "ORANGE": 21,
-          "RED": 28,
+          "BLUE": 15,
+          "BROWN": 11,
+          "ORANGE": 22,
+          "RED": 27,
           "WHITE": 14,
-          "YELLOW": 23
+          "YELLOW": 24
         },
-        "score": -495.695759,
+        "score": -539.084636,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -22859,8 +22859,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -413.54613788943226,
-          "value": 4.135461378894322
+          "score": -391.7516914514883,
+          "value": 3.917516914514883
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -22878,9 +22878,9 @@
           "ORANGE": 18,
           "RED": 24,
           "WHITE": 13,
-          "YELLOW": 27
+          "YELLOW": 26
         },
-        "score": -413.546138,
+        "score": -391.751691,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -23037,8 +23037,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -328.2607226593159,
-          "value": 3.282607226593159
+          "score": -373.61990944634346,
+          "value": 3.7361990944634345
         },
         "outerCountByType": {
           "BLACK": 4,
@@ -23051,14 +23051,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 12,
-          "BLUE": 18,
-          "BROWN": 16,
-          "ORANGE": 21,
-          "RED": 16,
-          "WHITE": 21,
+          "BLUE": 16,
+          "BROWN": 15,
+          "ORANGE": 22,
+          "RED": 15,
+          "WHITE": 22,
           "YELLOW": 13
         },
-        "score": -328.260723,
+        "score": -373.619909,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -23200,8 +23200,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -542.1047417431507,
-          "value": 5.421047417431508
+          "score": -609.449400220044,
+          "value": 6.094494002200441
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -23214,14 +23214,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 23,
-          "BLUE": 11,
+          "BLUE": 9,
           "BROWN": 14,
           "ORANGE": 14,
-          "RED": 12,
-          "WHITE": 21,
-          "YELLOW": 6
+          "RED": 11,
+          "WHITE": 22,
+          "YELLOW": 5
         },
-        "score": -542.104742,
+        "score": -609.4494,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -23363,8 +23363,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -412.06300291017027,
-          "value": 4.120630029101703
+          "score": -442.1653583012046,
+          "value": 4.421653583012046
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -23381,10 +23381,10 @@
           "BROWN": 8,
           "ORANGE": 12,
           "RED": 14,
-          "WHITE": 19,
-          "YELLOW": 11
+          "WHITE": 20,
+          "YELLOW": 10
         },
-        "score": -412.063003,
+        "score": -442.165358,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -23516,8 +23516,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -437.05881545081013,
-          "value": 4.370588154508101
+          "score": -456.24912636203743,
+          "value": 4.562491263620374
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -23533,11 +23533,11 @@
           "BLUE": 20,
           "BROWN": 11,
           "ORANGE": 18,
-          "RED": 19,
+          "RED": 17,
           "WHITE": 27,
-          "YELLOW": 20
+          "YELLOW": 22
         },
-        "score": -437.058815,
+        "score": -456.249126,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -23674,8 +23674,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -205.03857277724745,
-          "value": 2.0503857277724746
+          "score": -219.46130708196026,
+          "value": 2.1946130708196026
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -23688,14 +23688,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 11,
-          "BLUE": 13,
+          "BLUE": 12,
           "BROWN": 15,
           "ORANGE": 10,
           "RED": 16,
           "WHITE": 13,
-          "YELLOW": 11
+          "YELLOW": 10
         },
-        "score": -205.038573,
+        "score": -219.461307,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -23847,8 +23847,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -599.6597674804387,
-          "value": 5.996597674804388
+          "score": -606.4281507654607,
+          "value": 6.0642815076546075
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -23865,10 +23865,10 @@
           "BROWN": 18,
           "ORANGE": 15,
           "RED": 32,
-          "WHITE": 18,
+          "WHITE": 16,
           "YELLOW": 20
         },
-        "score": -599.659767,
+        "score": -606.428151,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -24000,8 +24000,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -618.0945043652553,
-          "value": 6.180945043652553
+          "score": -653.405521487387,
+          "value": 6.534055214873869
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -24013,15 +24013,15 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 11,
-          "BLUE": 12,
+          "BLACK": 10,
+          "BLUE": 11,
           "BROWN": 15,
           "ORANGE": 16,
-          "RED": 17,
+          "RED": 15,
           "WHITE": 30,
           "YELLOW": 23
         },
-        "score": -618.094504,
+        "score": -653.405521,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -24173,8 +24173,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -696.9320524371697,
-          "value": 6.969320524371696
+          "score": -730.669248716824,
+          "value": 7.30669248716824
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -24188,13 +24188,13 @@
         "planetTypeTotals": {
           "BLACK": 18,
           "BLUE": 29,
-          "BROWN": 10,
-          "ORANGE": 9,
-          "RED": 25,
+          "BROWN": 9,
+          "ORANGE": 7,
+          "RED": 24,
           "WHITE": 14,
           "YELLOW": 14
         },
-        "score": -696.932052,
+        "score": -730.669249,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -24331,8 +24331,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -604.0678431961707,
-          "value": 6.040678431961706
+          "score": -643.0158534243942,
+          "value": 6.430158534243942
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -24344,15 +24344,15 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 23,
-          "BLUE": 14,
+          "BLACK": 24,
+          "BLUE": 13,
           "BROWN": 18,
-          "ORANGE": 18,
+          "ORANGE": 16,
           "RED": 26,
           "WHITE": 33,
-          "YELLOW": 27
+          "YELLOW": 26
         },
-        "score": -604.067843,
+        "score": -643.015853,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -24494,8 +24494,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -446.2999814803802,
-          "value": 4.462999814803802
+          "score": -470.34507523298083,
+          "value": 4.703450752329808
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -24507,15 +24507,15 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 16,
-          "BLUE": 17,
+          "BLACK": 15,
+          "BLUE": 16,
           "BROWN": 12,
           "ORANGE": 23,
           "RED": 25,
           "WHITE": 24,
-          "YELLOW": 18
+          "YELLOW": 17
         },
-        "score": -446.299981,
+        "score": -470.345075,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -24672,8 +24672,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -546.2301226944331,
-          "value": 5.462301226944332
+          "score": -569.9982098074287,
+          "value": 5.699982098074287
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -24685,15 +24685,15 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 22,
-          "BLUE": 24,
+          "BLACK": 21,
+          "BLUE": 22,
           "BROWN": 17,
-          "ORANGE": 10,
-          "RED": 14,
+          "ORANGE": 9,
+          "RED": 12,
           "WHITE": 20,
           "YELLOW": 27
         },
-        "score": -546.230123,
+        "score": -569.99821,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -24825,8 +24825,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -728.711471134677,
-          "value": 7.28711471134677
+          "score": -723.934826246853,
+          "value": 7.23934826246853
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -24838,15 +24838,15 @@
           "YELLOW": 1
         },
         "planetTypeTotals": {
-          "BLACK": 12,
+          "BLACK": 13,
           "BLUE": 27,
-          "BROWN": 10,
+          "BROWN": 9,
           "ORANGE": 20,
           "RED": 22,
-          "WHITE": 14,
-          "YELLOW": 31
+          "WHITE": 13,
+          "YELLOW": 30
         },
-        "score": -728.711471,
+        "score": -723.934826,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -24978,8 +24978,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -389.13824205360675,
-          "value": 3.8913824205360674
+          "score": -395.8973274443148,
+          "value": 3.958973274443148
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -24992,14 +24992,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 19,
-          "BLUE": 13,
+          "BLUE": 11,
           "BROWN": 14,
-          "ORANGE": 17,
-          "RED": 19,
-          "WHITE": 21,
+          "ORANGE": 16,
+          "RED": 20,
+          "WHITE": 19,
           "YELLOW": 9
         },
-        "score": -389.138242,
+        "score": -395.897327,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -25131,8 +25131,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -276.2725657973388,
-          "value": 2.762725657973388
+          "score": -258.72528966106904,
+          "value": 2.5872528966106905
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -25144,15 +25144,15 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 15,
+          "BLACK": 16,
           "BLUE": 21,
           "BROWN": 18,
-          "ORANGE": 23,
+          "ORANGE": 22,
           "RED": 19,
           "WHITE": 17,
-          "YELLOW": 15
+          "YELLOW": 14
         },
-        "score": -276.272566,
+        "score": -258.72529,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -25284,8 +25284,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -322.6168511610347,
-          "value": 3.226168511610347
+          "score": -294.8538205792899,
+          "value": 2.9485382057928993
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -25301,11 +25301,11 @@
           "BLUE": 19,
           "BROWN": 13,
           "ORANGE": 13,
-          "RED": 20,
+          "RED": 19,
           "WHITE": 11,
-          "YELLOW": 13
+          "YELLOW": 14
         },
-        "score": -322.616851,
+        "score": -294.853821,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -25437,8 +25437,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -608.779307218929,
-          "value": 6.0877930721892906
+          "score": -649.6466857658328,
+          "value": 6.496466857658327
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -25452,13 +25452,13 @@
         "planetTypeTotals": {
           "BLACK": 22,
           "BLUE": 24,
-          "BROWN": 16,
-          "ORANGE": 19,
+          "BROWN": 15,
+          "ORANGE": 18,
           "RED": 33,
-          "WHITE": 13,
+          "WHITE": 12,
           "YELLOW": 25
         },
-        "score": -608.779307,
+        "score": -649.646686,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -25600,8 +25600,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -543.6085025840127,
-          "value": 5.436085025840128
+          "score": -597.2727131533392,
+          "value": 5.972727131533392
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -25613,15 +25613,15 @@
           "YELLOW": 3
         },
         "planetTypeTotals": {
-          "BLACK": 11,
-          "BLUE": 18,
-          "BROWN": 8,
-          "ORANGE": 19,
-          "RED": 24,
-          "WHITE": 17,
+          "BLACK": 10,
+          "BLUE": 17,
+          "BROWN": 6,
+          "ORANGE": 20,
+          "RED": 23,
+          "WHITE": 16,
           "YELLOW": 23
         },
-        "score": -543.608503,
+        "score": -597.272713,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -25758,8 +25758,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -385.44964466377263,
-          "value": 3.854496446637726
+          "score": -374.16573867739413,
+          "value": 3.7416573867739413
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -25771,15 +25771,15 @@
           "YELLOW": 3
         },
         "planetTypeTotals": {
-          "BLACK": 14,
-          "BLUE": 13,
+          "BLACK": 13,
+          "BLUE": 14,
           "BROWN": 6,
           "ORANGE": 19,
-          "RED": 17,
+          "RED": 16,
           "WHITE": 16,
-          "YELLOW": 13
+          "YELLOW": 14
         },
-        "score": -385.449645,
+        "score": -374.165739,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -25906,8 +25906,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -255.55062599997592,
-          "value": 2.5555062599997593
+          "score": -271.05237087157536,
+          "value": 2.710523708715754
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -25921,13 +25921,13 @@
         "planetTypeTotals": {
           "BLACK": 18,
           "BLUE": 16,
-          "BROWN": 13,
+          "BROWN": 12,
           "ORANGE": 11,
           "RED": 15,
           "WHITE": 16,
           "YELLOW": 19
         },
-        "score": -255.550626,
+        "score": -271.052371,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -26059,8 +26059,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -429.99762695121177,
-          "value": 4.2999762695121175
+          "score": -430.4719763805532,
+          "value": 4.304719763805532
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -26074,13 +26074,13 @@
         "planetTypeTotals": {
           "BLACK": 21,
           "BLUE": 22,
-          "BROWN": 17,
+          "BROWN": 16,
           "ORANGE": 11,
-          "RED": 17,
+          "RED": 16,
           "WHITE": 19,
           "YELLOW": 10
         },
-        "score": -429.997627,
+        "score": -430.471976,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -26217,8 +26217,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -522.9430062206609,
-          "value": 5.2294300622066086
+          "score": -540.9741779646139,
+          "value": 5.409741779646139
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -26233,12 +26233,12 @@
           "BLACK": 13,
           "BLUE": 24,
           "BROWN": 12,
-          "ORANGE": 7,
-          "RED": 18,
+          "ORANGE": 6,
+          "RED": 16,
           "WHITE": 18,
-          "YELLOW": 11
+          "YELLOW": 10
         },
-        "score": -522.943006,
+        "score": -540.974178,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -26365,8 +26365,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -345.8205267688629,
-          "value": 3.4582052676886295
+          "score": -348.17307448439834,
+          "value": 3.481730744843983
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -26381,12 +26381,12 @@
           "BLACK": 24,
           "BLUE": 16,
           "BROWN": 12,
-          "ORANGE": 19,
+          "ORANGE": 18,
           "RED": 19,
-          "WHITE": 16,
+          "WHITE": 15,
           "YELLOW": 16
         },
-        "score": -345.820527,
+        "score": -348.173074,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -26518,8 +26518,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -451.75395145262564,
-          "value": 4.5175395145262565
+          "score": -443.5478484645721,
+          "value": 4.435478484645721
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -26531,15 +26531,15 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 23,
+          "BLACK": 21,
           "BLUE": 11,
-          "BROWN": 18,
+          "BROWN": 17,
           "ORANGE": 26,
           "RED": 18,
           "WHITE": 20,
           "YELLOW": 23
         },
-        "score": -451.753951,
+        "score": -443.547848,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -26666,8 +26666,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -581.6935163286381,
-          "value": 5.816935163286381
+          "score": -577.8213833187624,
+          "value": 5.778213833187624
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -26680,14 +26680,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 18,
-          "BLUE": 17,
+          "BLUE": 16,
           "BROWN": 9,
-          "ORANGE": 19,
-          "RED": 30,
-          "WHITE": 15,
+          "ORANGE": 20,
+          "RED": 29,
+          "WHITE": 13,
           "YELLOW": 17
         },
-        "score": -581.693516,
+        "score": -577.821383,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -26834,8 +26834,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -559.1538797365979,
-          "value": 5.5915387973659785
+          "score": -636.6365701473483,
+          "value": 6.366365701473483
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -26847,15 +26847,15 @@
           "YELLOW": 2
         },
         "planetTypeTotals": {
-          "BLACK": 23,
+          "BLACK": 22,
           "BLUE": 23,
           "BROWN": 19,
-          "ORANGE": 14,
+          "ORANGE": 13,
           "RED": 30,
-          "WHITE": 12,
-          "YELLOW": 20
+          "WHITE": 9,
+          "YELLOW": 21
         },
-        "score": -559.15388,
+        "score": -636.63657,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -26987,8 +26987,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -341.66459266003994,
-          "value": 3.4166459266003995
+          "score": -345.8205267688629,
+          "value": 3.4582052676886295
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -27002,13 +27002,13 @@
         "planetTypeTotals": {
           "BLACK": 18,
           "BLUE": 16,
-          "BROWN": 13,
+          "BROWN": 14,
           "ORANGE": 9,
-          "RED": 13,
+          "RED": 12,
           "WHITE": 20,
           "YELLOW": 13
         },
-        "score": -341.664593,
+        "score": -345.820527,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -27150,8 +27150,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -350.5098327538656,
-          "value": 3.5050983275386565
+          "score": -384.3892584878203,
+          "value": 3.843892584878203
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -27163,15 +27163,15 @@
           "YELLOW": 3
         },
         "planetTypeTotals": {
-          "BLACK": 19,
-          "BLUE": 18,
-          "BROWN": 11,
-          "ORANGE": 11,
+          "BLACK": 20,
+          "BLUE": 19,
+          "BROWN": 10,
+          "ORANGE": 12,
           "RED": 17,
           "WHITE": 18,
           "YELLOW": 11
         },
-        "score": -350.509833,
+        "score": -384.389258,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -27308,8 +27308,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -609.1144458665098,
-          "value": 6.091144458665098
+          "score": -590.3993805649092,
+          "value": 5.903993805649092
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -27323,13 +27323,13 @@
         "planetTypeTotals": {
           "BLACK": 17,
           "BLUE": 16,
-          "BROWN": 12,
+          "BROWN": 11,
           "ORANGE": 10,
-          "RED": 29,
-          "WHITE": 14,
+          "RED": 28,
+          "WHITE": 13,
           "YELLOW": 10
         },
-        "score": -609.114446,
+        "score": -590.399381,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -27466,8 +27466,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -511.10125199995196,
-          "value": 5.1110125199995196
+          "score": -580.6400409400451,
+          "value": 5.80640040940045
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -27480,14 +27480,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 18,
-          "BLUE": 20,
-          "BROWN": 8,
-          "ORANGE": 9,
-          "RED": 21,
+          "BLUE": 21,
+          "BROWN": 7,
+          "ORANGE": 8,
+          "RED": 22,
           "WHITE": 21,
-          "YELLOW": 16
+          "YELLOW": 15
         },
-        "score": -511.101252,
+        "score": -580.640041,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -27536,7 +27536,7 @@
       "scoutCoreAttributionMode": "all",
       "scoutRadius": 3,
       "wImbalance": 100,
-      "wOuter": 3,
+      "wRimGap": 0.5,
       "wScout": 6,
       "wScoutByScoutKey": {
         "eclipse": 6,
@@ -27550,8 +27550,7 @@
         "rebellion": 3,
         "tfmars": 3,
         "twilight": 3
-      },
-      "wTouch": 1
+      }
     },
     "templateIds": [
       "3p_lostFleet",

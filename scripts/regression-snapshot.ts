@@ -66,9 +66,9 @@ const HARD_PARAMS: HardParams = {
 // 重みのスケールは evaluateSoft の DISTANCE_FALLOFF と揃える（距離減衰が絶対値の
 // 引き算なので、片方だけ動かすと減衰の形が変わる。2026-07-31）。
 // wImbalance は planetTypeTotals に掛ける係数なのでスケールに追随しない。
+// 端の罰点は 2026-10-04（eval_v4）から「欠けマス × wRimGap」（wOuter 3 / wTouch 1 の後継。既定 0.5）。
 const SOFT_PARAMS: SoftParams = {
-  wOuter: 3,
-  wTouch: 1,
+  wRimGap: 0.5,
   wScout: 6,
   scoutRadius: 3,
   wScoutByScoutKey: { twilight: 6, eclipse: 6, rebellion: 6, tfmars: 6 },

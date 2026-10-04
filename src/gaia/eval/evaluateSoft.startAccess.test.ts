@@ -4,13 +4,16 @@
 //   色ごとの値 ＝ 開始地点2ヶ所の値 ＋ Σ 残りの同色惑星の値 × 到達係数
 //   原始・小惑星 ＝ LF4種族ごとに開始1ヶ所、行の値は2種族のうち大きい方、係数は掛けない
 // 2026-07-31〜2026-10-02 の「最良の1惑星 × 2.75」（extraBest）はこれに置き換わった。
+// 端の罰点「欠けマス × w」（2026-10-04 確定、eval_v4。設計ノート 2.8）は末尾の describe。
 //
 // evaluateSoft が読むのは cells / planetCells / scoutCells / outerCells / touchCells
-// だけなので、baseAxes テストと同じく最小のフェイクを組む。
+// だけなので、baseAxes テストと同じく最小のフェイクを組む。欠けマスは cells（空セルも含む
+// 盤面の全セル）から数えるので、端の罰点のテストだけは空セルを足して盤面の形を作る。
 
 import { describe, it, expect } from "vitest";
 import { evaluateSoft, type SoftParams } from "./evaluateSoft";
 import type { AxialKey, EvalCell, ExtractedForEval } from "./extractForEval";
+import { axialDistance } from "../hex";
 
 type Spec = { q: number; r: number; color?: string; kind?: "GAIA" | "TRANSDIM" | "PROTO" | "ASTEROID" };
 
@@ -46,7 +49,7 @@ function extractedOf(cells: EvalCell[], scouts: any[] = []): ExtractedForEval {
     seed: 0,
     placementHash: "x",
     cells,
-    planetCells: cells.filter((c) => !(c as any).isExcludedPlanet),
+    planetCells: cells.filter((c) => (c as any).isPlanet && !(c as any).isExcludedPlanet),
     normalPlanetCells: cells.filter((c) => (c as any).isNormalPlanet),
     normalPlanetsByColor: {},
     scoutCells: scouts,
@@ -200,14 +203,20 @@ describe("原始・小惑星: LF4種族ごとに開始1ヶ所、係数なし", (
     expect(r.breakdown.planetTypeTotals.RED).toBe(30);
   });
 
-  it("最外周・外周は原始・小惑星の評価に入れない（2026-07-30 確定）", () => {
+  it("最外周・外周（端の罰点）は原始・小惑星の評価にも入る（2026-10-04 確定。eval_v3 までは入れていなかった）", () => {
     const e = extractedOf([cell({ q: 0, r: 0, kind: "PROTO" })]);
     (e as any).outerCells = new Set(["0,0"]);
     (e as any).touchCells = new Set(["0,0"]);
     const r = evaluateSoft(e, { ...BASE_SOFT, wOuter: 3, wTouch: 1 });
-    expect(extraStartOf(r, "PROTO").total).toBe(0);
-    // 監査側には従来どおり最外周/外周の分が残っている
+    const st = extraStartOf(r, "PROTO");
+    expect(st.outer).toBe(-3);
+    expect(st.touch).toBe(-1);
+    expect(st.total).toBe(-4);
+    expect(auditOf(r).startAccess.lf.moweyds.total).toBe(-4);
+    expect(auditOf(r).startAccess.lf.moweyds.planets[0].value).toBe(-4);
+    // 監査の種別ごとの単純合算も同じ罰点
     expect(auditOf(r).outerExtraByKind?.PROTO).toBe(-3);
+    expect(auditOf(r).touchExtraByKind?.PROTO).toBe(-1);
   });
 
   it("原始・小惑星が無い盤面では extraStart も lf も出さない", () => {
@@ -224,5 +233,100 @@ describe("原始・小惑星: LF4種族ごとに開始1ヶ所、係数なし", (
     const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 10, wColorPref: 2, colorPrefByType: { PROTO: 1 } as any });
     expect(r.breakdown.colorPreference?.valueExtraByKind?.PROTO).toBe(10);
     expect(r.breakdown.colorPreference?.scoreExtraByKind?.PROTO).toBe(20);
+  });
+});
+
+describe("端の罰点「欠けマス × w」（2026-10-04 確定、eval_v4）", () => {
+  /** 原点から距離 R 以内の空セル。惑星と同じ座標は惑星側が勝つ（cells に両方入れない） */
+  const space = (q: number, r: number): EvalCell =>
+    ({ key: `${q},${r}` as AxialKey, q, r, slotId: "L1", sectorId: "01", kind: "space", tags: [], isPlanet: false } as unknown as EvalCell);
+  const boardOf = (R: number, planets: EvalCell[]): ExtractedForEval => {
+    const taken = new Set(planets.map((p) => String(p.key)));
+    const cells: EvalCell[] = [...planets];
+    for (let q = -R; q <= R; q++) for (let r = -R; r <= R; r++) if (axialDistance(0, 0, q, r) <= R && !taken.has(`${q},${r}`)) cells.push(space(q, r));
+    const e = extractedOf(cells);
+    // 最外周＝距離 R、外周＝距離 R−1
+    (e as any).outerCells = new Set(cells.filter((c) => axialDistance(0, 0, c.q, c.r) === R).map((c) => c.key));
+    (e as any).touchCells = new Set(cells.filter((c) => axialDistance(0, 0, c.q, c.r) === R - 1).map((c) => c.key));
+    return e;
+  };
+
+  it("罰点 ＝ −w × 距離2以内の欠けマス数。最外周セルは「最外周」の列、外周セルは「外周」の列", () => {
+    // 半径5の六角形。(5,-2) は最外周の辺（欠け7）、(4,0) は外周の角寄り（欠け5）、(0,0) は内側（欠け0）
+    const e = boardOf(5, [cell({ q: 5, r: -2, color: "RED" }), cell({ q: 4, r: 0, color: "BLUE" }), cell({ q: 0, r: 0, color: "WHITE" })]);
+    const r = evaluateSoft(e, { ...BASE_SOFT, wRimGap: 0.5 });
+    const ax = r.breakdown.axesByType;
+    expect(ax.outer.RED).toBe(Math.round(-0.5 * 7)); // −3.5 → −3（軸ごとに丸める）
+    expect(ax.touch.RED).toBe(0);
+    expect(ax.outer.BLUE).toBe(0);
+    expect(ax.touch.BLUE).toBe(Math.round(-0.5 * 5)); // −2.5 → −2
+    expect(ax.outer.WHITE).toBe(0);
+    expect(ax.touch.WHITE).toBe(0);
+    expect(r.breakdown.planetTypeTotals.RED).toBe(ax.outer.RED);
+    expect(r.breakdown.planetTypeTotals.BLUE).toBe(ax.touch.BLUE);
+    // 惑星ごとの値（丸める前）
+    expect(auditOf(r).startAccess.byColor.RED.planets[0].value).toBe(-3.5);
+    expect(auditOf(r).startAccess.byColor.BLUE.planets[0].value).toBe(-2.5);
+    // 記録: 定数と欠けマス数（内側の惑星は載らない）。ヒットには欠けと罰点が付く
+    const rg = auditOf(r).rimGap;
+    expect(rg).toEqual({ w: 0.5, range: 2, ringCells: 18, missingByCell: { "5,-2": 7, "4,0": 5 } });
+    expect(auditOf(r).outerHits).toEqual([expect.objectContaining({ cellKey: "5,-2", planetType: "RED", missing: 7, value: -3.5 })]);
+    expect(auditOf(r).touchHits).toEqual([expect.objectContaining({ cellKey: "4,0", planetType: "BLUE", missing: 5, value: -2.5 })]);
+    // 枚数は従来どおり
+    expect(auditOf(r).outerCountByType.RED).toBe(1);
+    expect(auditOf(r).touchCountByType.BLUE).toBe(1);
+  });
+
+  it("角は辺より重い（最外周の角は欠け10、辺は7）", () => {
+    const e = boardOf(5, [cell({ q: 5, r: 0, color: "RED" }), cell({ q: 5, r: -2, color: "BLUE" })]);
+    const r = evaluateSoft(e, { ...BASE_SOFT, wRimGap: 1 });
+    expect(r.breakdown.axesByType.outer.RED).toBe(-10);
+    expect(r.breakdown.axesByType.outer.BLUE).toBe(-7);
+  });
+
+  it("原始・小惑星にも同じ罰点が掛かり、行の値（extraStart）と種族ごとの値に入る", () => {
+    const e = boardOf(5, [cell({ q: 5, r: -2, kind: "PROTO" }), cell({ q: 4, r: 0, kind: "ASTEROID" })]);
+    const r = evaluateSoft(e, { ...BASE_SOFT, wRimGap: 1 });
+    const proto = extraStartOf(r, "PROTO");
+    expect(proto.outer).toBe(-7);
+    expect(proto.touch).toBe(0);
+    expect(proto.total).toBe(-7);
+    const ast = extraStartOf(r, "ASTEROID");
+    expect(ast.outer).toBe(0);
+    expect(ast.touch).toBe(-5);
+    expect(ast.total).toBe(-5);
+    expect(auditOf(r).startAccess.lf.tinkerroids.total).toBe(-5);
+    expect(auditOf(r).startAccess.lf.darkanians.touch).toBe(-5);
+    expect(auditOf(r).outerExtraByKind?.PROTO).toBe(-7);
+    expect(auditOf(r).touchExtraByKind?.ASTEROID).toBe(-5);
+  });
+
+  it("下限は無い: 参考程度の惑星が負の値で色の値を引き下げる（開始地点の選び方にも効く）", () => {
+    // 赤 (0,0)=内側 0、(5,-2)=最外周の辺 −7（w=1）、(3,0)=内側 0。
+    // 開始は {0,0 / 3,0}（距離3＝コスト1.5 → 到達係数 0.71）、(5,-2) は (3,0) から距離2（コスト1 → 1.0）で −7 がそのまま足される
+    const e = boardOf(5, [cell({ q: 0, r: 0, color: "RED" }), cell({ q: 3, r: 0, color: "RED" }), cell({ q: 5, r: -2, color: "RED" })]);
+    const r = evaluateSoft(e, { ...BASE_SOFT, wRimGap: 1 });
+    const sa = auditOf(r).startAccess.byColor.RED;
+    expect(sa.starts.slice().sort()).toEqual(["0,0", "3,0"]);
+    const rim = sa.planets.find((p: any) => p.cellKey === "5,-2");
+    expect(rim.value).toBe(-7);
+    expect(rim.weight).toBe(1);
+    expect(r.breakdown.planetTypeTotals.RED).toBe(-7);
+  });
+
+  it("wRimGap を省略（0）すれば罰点なし。記録（rimGap）も出さない", () => {
+    const e = boardOf(5, [cell({ q: 5, r: -2, color: "RED" })]);
+    const r = evaluateSoft(e, BASE_SOFT);
+    expect(r.breakdown.axesByType.outer.RED).toBe(0);
+    expect(r.breakdown.planetTypeTotals.RED).toBe(0);
+    expect(auditOf(r).rimGap).toBeUndefined();
+    expect(auditOf(r).outerHits[0].missing).toBe(0);
+  });
+
+  it("eval_v3 までの wOuter / wTouch は、指定があれば wRimGap に加えて効く（古い調査スクリプト用）", () => {
+    const e = boardOf(5, [cell({ q: 5, r: -2, color: "RED" }), cell({ q: 4, r: 0, color: "BLUE" })]);
+    const r = evaluateSoft(e, { ...BASE_SOFT, wRimGap: 1, wOuter: 3, wTouch: 1 });
+    expect(r.breakdown.axesByType.outer.RED).toBe(-10); // −7 − 3
+    expect(r.breakdown.axesByType.touch.BLUE).toBe(-6); // −5 − 1
   });
 });

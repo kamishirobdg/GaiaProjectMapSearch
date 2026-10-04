@@ -31,7 +31,10 @@ export const SEARCH_ALGO_VERSION = "search_v1";
 // docs/design-notes.md 2.6）。原始・小惑星は LF4種族ごとに開始1ヶ所で、×2.75 の係数を廃止。
 // 盤面の生成は不変で評価値だけが変わるので、旧バージョンの候補は「コピー」で引き継げる
 // （コピー時に現バージョンで再評価する）。
-export const EVAL_VERSION = "eval_v3";
+// eval_v4 (2026-10-04): 端の罰点を「最外周 −3 / 外周 −1（惑星1つにつき）」から「欠けマス × w」
+// （惑星から距離2以内の18マスのうち盤面に無いマス1つにつき w、既定 0.5）に変えた。角が辺より重く、
+// 原始・小惑星にも掛ける。入力欄は wOuter / wTouch の2つから wRimGap 1つへ（docs/design-notes.md 2.8）。
+export const EVAL_VERSION = "eval_v4";
 
 export type PersistedCandidate = {
   id: string; // `${searchKey}:${placementHash}`

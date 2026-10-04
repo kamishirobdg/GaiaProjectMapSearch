@@ -1,8 +1,10 @@
 // src/gaia/eval/evaluateSoft.ts
 //
 // SSOT (soft):
-// - まず outer/touch/scout/scoutCore を「惑星種別別」に集計
-// - planetTypeTotals = outer + touch + scout + scoutCore
+// - 惑星ごとに outer/touch/scout/scoutCore/gaia/cluster の値を持ち（perPlanet）、
+//   色ごとの値は「開始地点＋到達加重」で足す（reachCost.ts、2026-10-03）
+// - outer/touch は端の罰点「欠けマス × wRimGap」（2026-10-04、eval_v4）
+// - planetTypeTotals = outer + touch + scout + scoutCore (+ gaia + cluster)
 // - map score は planetTypeTotals の乖離（imbalance）のみ
 //
 // ScoutCore (確定仕様):
@@ -12,7 +14,7 @@
 // - 同一ScoutCore惑星に複数Scout惑星がある場合は合算
 // - ScoutセルはScoutCoreに関与しない（Scout惑星集合のみが起点）
 //
-import type { ExtractedForEval, PlanetKind } from "./extractForEval";
+import type { AxialKey, ExtractedForEval, PlanetKind } from "./extractForEval";
 import { axialDistance } from "../hex";
 import { connectedComponents } from "../logicalMap/buildLogicalMap";
 import {
@@ -21,8 +23,11 @@ import {
   LF_REACH_PROFILES,
   REACH_DECAY,
   REACH_FREE_COST,
+  RIM_GAP_RANGE,
+  RIM_GAP_RING_CELLS,
   START_COUNT_LF,
   START_COUNT_STANDARD,
+  missingCellsWithin,
   planStarts,
   stoneCostForColor,
   stoneCostForLfFaction,
@@ -43,8 +48,20 @@ export type AxisByType = Record<PlanetType, number>;
 export type CountByType = Record<PlanetType, number>;
 
 export type SoftParams = {
-  wOuter: number;
-  wTouch: number;
+  /**
+   * 端の罰点「欠けマス × w」（2026-10-04 ユーザー確定、eval_v4。docs/design-notes.md 2.8）。
+   * 惑星から距離2以内の18マスのうち盤面に無いマス1つにつき w 点を引く。最外周セルの惑星は
+   * 「最外周」の列、外周（最外周の1つ内側）セルの惑星は「外周」の列に入る。内側は欠け0。
+   * 加算で下限は無く、原始・小惑星にも掛ける。0 / 省略 ＝ 罰点なし。
+   */
+  wRimGap?: number;
+  /**
+   * eval_v3 までの端の罰点（最外周の惑星1つにつき wOuter、外周は wTouch を引く）。
+   * 入力欄は wRimGap に置き換えたので新しい検索キーには入らないが、指定があれば
+   * 従来どおり wRimGap に加えて効く（古い調査スクリプトのため）。
+   */
+  wOuter?: number;
+  wTouch?: number;
 
   wScout: number;
   scoutRadius: number;
@@ -137,7 +154,18 @@ export type SoftBreakdown = {
     outerCountByType: CountByType;
     touchCountByType: CountByType;
 
-    /** PROTO/ASTEROID 分（軸には入らない表示用。値は重み適用後／Count は素の枚数） */
+    /**
+     * 端の罰点「欠けマス × w」の記録（wRimGap が非0のときだけ。2026-10-04、eval_v4）。
+     * missingByCell は欠けのある惑星だけ（内側の惑星は載らない＝0）。
+     */
+    rimGap?: {
+      w: number;
+      range: number;
+      ringCells: number;
+      missingByCell: Record<string, number>;
+    };
+
+    /** PROTO/ASTEROID 分（種別ごとの単純合算。表示のフォールバック用。値は重み適用後／Count は素の枚数） */
     outerExtraByKind?: Record<string, number>;
     touchExtraByKind?: Record<string, number>;
     outerCountExtraByKind?: Record<string, number>;
@@ -178,7 +206,11 @@ export type SoftBreakdown = {
       freeCost: number;
       /** 基本7色: 開始地点のセル座標と、同色の全惑星の到達コスト・重み・値 */
       byColor: Record<string, { starts: string[]; planets: StartAccessPlanet[] }>;
-      /** LF4種族ごと（原始・小惑星は種族で入植コストが違う）。開始1ヶ所、最外周/外周は入れない */
+      /**
+       * LF4種族ごと（原始・小惑星は種族で入植コストが違う）。開始1ヶ所。
+       * 最外周/外周（端の罰点）は eval_v4 から入る（eval_v3 までは入れていなかったので、
+       * 古い記録では outer/touch が無い）。
+       */
       lf?: Record<
         string,
         {
@@ -188,6 +220,8 @@ export type SoftBreakdown = {
           core: number;
           gaia: number;
           cluster: number;
+          outer?: number;
+          touch?: number;
           total: number;
           planets: StartAccessPlanet[];
         }
@@ -196,13 +230,25 @@ export type SoftBreakdown = {
     /**
      * 原始・小惑星の行の値（extraBest の後継、2026-10-03）。その種別を母星にする2種族のうち
      * 値の大きい方（案A）。係数は掛けない（LF4種族は開始建物が1つなので、その実態のまま）。
+     * outer/touch は eval_v4 から（端の罰点を原始・小惑星にも掛ける）。
      */
     extraStart?: Record<
       string,
-      { factionId: string; cellKey: string; scout: number; core: number; gaia: number; cluster: number; total: number }
+      {
+        factionId: string;
+        cellKey: string;
+        scout: number;
+        core: number;
+        gaia: number;
+        cluster: number;
+        outer?: number;
+        touch?: number;
+        total: number;
+      }
     >;
 
-    // planetType は基本7色に加え PROTO/ASTEROID も入る（マーカー用）
+    // planetType は基本7色に加え PROTO/ASTEROID も入る（マーカー用）。
+    // missing / value は eval_v4 から（その惑星の欠けマス数と罰点。マーカーのホバー用）。
     outerHits: Array<{
       cellKey: string;
       planetType: PlanetType | string;
@@ -210,6 +256,8 @@ export type SoftBreakdown = {
       slotId: string;
       sectorId: string;
       tags: string[];
+      missing?: number;
+      value?: number;
     }>;
     touchHits: Array<{
       cellKey: string;
@@ -218,6 +266,8 @@ export type SoftBreakdown = {
       slotId: string;
       sectorId: string;
       tags: string[];
+      missing?: number;
+      value?: number;
     }>;
 
     // SSOT: breakdown.audit.scout は必ず出す
@@ -455,6 +505,7 @@ function collectExcludedPlanetCountsBestEffort(extracted: ExtractedForEval): Rec
 }
 
 export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): SoftEvalResult {
+  const wRimGap = num(params.wRimGap, 0);
   const wOuter = num(params.wOuter, 0);
   const wTouch = num(params.wTouch, 0);
   const wScout = num(params.wScout, 0);
@@ -501,7 +552,30 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
     if (e) e[axis] += v;
   };
 
-  // ===== outer / touch (normal planets only) =====
+  // ===== 端の罰点: 最外周 / 外周（2026-10-04 から「欠けマス × w」、eval_v4）=====
+  //
+  // 惑星ごとの罰点 ＝ −wRimGap × 「距離2以内の18マスのうち盤面に無いマスの数」
+  //                 （＋ eval_v3 までの −wOuter / −wTouch。指定があるときだけ）。
+  // 最外周セルの惑星は「最外周」の列へ、外周（最外周の1つ内側）セルの惑星は「外周」の列へ。
+  // 内側の惑星は欠け0なので列に入らない（全テンプレで実測。両方に属するセルも無い）。
+  // 基本7色も原始・小惑星も同じ式で、どちらも評価（開始地点＋到達加重）に入る。
+  // 盤面のセル集合は extracted.cells（空セルも含む全セル）。
+  const onBoard = new Set<string>((extracted.cells ?? extracted.planetCells).map((c) => String(c.key)));
+  const rimMissingByCell: Record<string, number> = {};
+  const rimPenaltyOf = (p: { key: AxialKey; q: number; r: number }): { outer: number; touch: number; missing: number } => {
+    const inOuter = extracted.outerCells.has(p.key);
+    const inTouch = extracted.touchCells.has(p.key);
+    const missing = wRimGap !== 0 ? missingCellsWithin(onBoard, p.q, p.r) : 0;
+    if (missing > 0) rimMissingByCell[p.key] = missing;
+    const gap = -wRimGap * missing;
+    // 欠けマスの罰点は1回だけ: 最外周セルなら「最外周」、それ以外は「外周」の列。
+    // 欠けがあるのに最外周でも外周でもないセル（現行テンプレには無い）も外周の列に入れて、
+    // 列の合計と評価が一致したままにする。
+    const outer = (inOuter ? gap : 0) - (inOuter ? wOuter : 0);
+    const touch = (inOuter ? 0 : gap) - (inTouch ? wTouch : 0);
+    return { outer, touch, missing };
+  };
+
   const outerCountByType: CountByType = zeroAxis();
   const touchCountByType: CountByType = zeroAxis();
 
@@ -511,55 +585,45 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
   for (const p of extracted.normalPlanetCells) {
     const t = toPlanetType((p as any).planetKind as any, (p as any).colorKey);
     if (!t) continue;
+    const pen = rimPenaltyOf(p as any);
+    const hit = {
+      cellKey: p.key,
+      planetType: t,
+      kind: (p as any).kind,
+      slotId: (p as any).slotId,
+      sectorId: (p as any).sectorId,
+      tags: (p as any).tags ?? [],
+      missing: pen.missing,
+    };
 
     if (extracted.outerCells.has(p.key)) {
       outerCountByType[t] += 1;
-      addPlanetAxis(p.key, "outer", -wOuter);
-      outerHits.push({
-        cellKey: p.key,
-        planetType: t,
-        kind: (p as any).kind,
-        slotId: (p as any).slotId,
-        sectorId: (p as any).sectorId,
-        tags: (p as any).tags ?? [],
-      });
+      addPlanetAxis(p.key, "outer", pen.outer);
+      outerHits.push({ ...hit, value: pen.outer });
     }
 
     if (extracted.touchCells.has(p.key)) {
       touchCountByType[t] += 1;
-      addPlanetAxis(p.key, "touch", -wTouch);
-      touchHits.push({
-        cellKey: p.key,
-        planetType: t,
-        kind: (p as any).kind,
-        slotId: (p as any).slotId,
-        sectorId: (p as any).sectorId,
-        tags: (p as any).tags ?? [],
-      });
+      addPlanetAxis(p.key, "touch", pen.touch);
+      touchHits.push({ ...hit, value: pen.touch });
+    } else if (!extracted.outerCells.has(p.key) && pen.touch !== 0) {
+      addPlanetAxis(p.key, "touch", pen.touch);
+      touchHits.push({ ...hit, value: pen.touch });
     }
   }
 
-  const outerAxis = zeroAxis();
-  const touchAxis = zeroAxis();
-  for (const t of PLANET_TYPES) {
-    outerAxis[t] = -wOuter * outerCountByType[t];
-    touchAxis[t] = -wTouch * touchCountByType[t];
-  }
-
   // PROTO/ASTEROID（基本7色に入らない惑星）の最外周/外周。
-  // scout/scoutCore の extraByKind と同じ扱いで、監査・表示・マーカー用にだけ集計する。
-  // 軸（outerAxis/touchAxis）と planetTypeTotals には入れないのでスコアは不変
-  // ＝既存の保存結果・回帰スナップショットに影響しない（2026-07-30）。
+  // 惑星ごとの罰点は perPlanet に持ち、評価（LF4種族ごとの開始地点＋到達加重）に入る（eval_v4）。
+  // 種別ごとの単純合算（extraByKind）は監査・表示のフォールバック用に従来どおり残す。
   const outerExtraByKind: Record<string, number> = {};
   const touchExtraByKind: Record<string, number> = {};
   const outerCountExtraByKind: Record<string, number> = {};
   const touchCountExtraByKind: Record<string, number> = {};
 
-  // PROTO/ASTEROID の種別ごとの単純合算（extraByKind）は監査・表示のフォールバック用に
-  // 従来どおり残す。惑星ごとの寄与は perPlanet（上）で持ち、評価は「開始地点＋到達加重」で作る。
   for (const p of extracted.planetCells) {
     if (toPlanetType((p as any).planetKind as any, (p as any).colorKey)) continue;
     const kindU = String((p as any).planetKind ?? "").toUpperCase() || "UNKNOWN";
+    const pen = rimPenaltyOf(p as any);
     const hit = {
       cellKey: p.key,
       planetType: kindU,
@@ -567,16 +631,23 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
       slotId: (p as any).slotId,
       sectorId: (p as any).sectorId,
       tags: (p as any).tags ?? [],
+      missing: pen.missing,
     };
     if (extracted.outerCells.has(p.key)) {
       outerCountExtraByKind[kindU] = (outerCountExtraByKind[kindU] ?? 0) + 1;
-      outerExtraByKind[kindU] = (outerExtraByKind[kindU] ?? 0) + -wOuter;
-      outerHits.push(hit);
+      outerExtraByKind[kindU] = (outerExtraByKind[kindU] ?? 0) + pen.outer;
+      addPlanetAxis(p.key, "outer", pen.outer);
+      outerHits.push({ ...hit, value: pen.outer });
     }
     if (extracted.touchCells.has(p.key)) {
       touchCountExtraByKind[kindU] = (touchCountExtraByKind[kindU] ?? 0) + 1;
-      touchExtraByKind[kindU] = (touchExtraByKind[kindU] ?? 0) + -wTouch;
-      touchHits.push({ ...hit });
+      touchExtraByKind[kindU] = (touchExtraByKind[kindU] ?? 0) + pen.touch;
+      addPlanetAxis(p.key, "touch", pen.touch);
+      touchHits.push({ ...hit, value: pen.touch });
+    } else if (!extracted.outerCells.has(p.key) && pen.touch !== 0) {
+      touchExtraByKind[kindU] = (touchExtraByKind[kindU] ?? 0) + pen.touch;
+      addPlanetAxis(p.key, "touch", pen.touch);
+      touchHits.push({ ...hit, value: pen.touch });
     }
   }
 
@@ -947,8 +1018,8 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
     }));
   const AXES = ["outer", "touch", "scout", "core", "gaia", "cluster"] as const;
   type AxisKey = (typeof AXES)[number];
-  const planetValue = (e: PlanetAcc, withRim: boolean) =>
-    e.scout + e.core + e.gaia + e.cluster + (withRim ? e.outer + e.touch : 0);
+  // 惑星の値は6軸の和。端の罰点（outer/touch）は基本7色も原始・小惑星も入れる（eval_v4）。
+  const planetValue = (e: PlanetAcc) => e.scout + e.core + e.gaia + e.cluster + e.outer + e.touch;
   const weightedAxes = (plan: StartPlan, members: PlanetAcc[]): Record<AxisKey, number> => {
     const sums: Record<AxisKey, number> = { outer: 0, touch: 0, scout: 0, core: 0, gaia: 0, cluster: 0 };
     for (const e of members) {
@@ -959,13 +1030,13 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
     for (const ax of AXES) rounded[ax] = Math.round(sums[ax]);
     return rounded;
   };
-  const planetRows = (plan: StartPlan, members: PlanetAcc[], withRim: boolean): StartAccessPlanet[] =>
+  const planetRows = (plan: StartPlan, members: PlanetAcc[]): StartAccessPlanet[] =>
     members
       .map((e) => ({
         cellKey: e.key,
         cost: plan.costs.get(e.key) ?? Infinity,
         weight: plan.weights.get(e.key) ?? 0,
-        value: planetValue(e, withRim),
+        value: planetValue(e),
       }))
       .sort((a, b) => b.weight - a.weight || a.cellKey.localeCompare(b.cellKey));
 
@@ -982,7 +1053,7 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
     if (members.length === 0) continue;
     const plan = planStarts({
       nodes,
-      candidates: members.map((e) => ({ key: e.key, value: planetValue(e, true) })),
+      candidates: members.map((e) => ({ key: e.key, value: planetValue(e) })),
       stoneCost: stoneCostForColor(t),
       startCount: START_COUNT_STANDARD,
     });
@@ -994,9 +1065,9 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
     aggCore[t] = ax.core;
     aggGaia[t] = ax.gaia;
     aggCluster[t] = ax.cluster;
-    startByColor[t] = { starts: plan.starts, planets: planetRows(plan, members, true) };
+    startByColor[t] = { starts: plan.starts, planets: planetRows(plan, members) };
   }
-  // LF4種族（開始1ヶ所、種族ごとの入植コスト、最外周/外周は入れない）
+  // LF4種族（開始1ヶ所、種族ごとの入植コスト。端の罰点も入る＝eval_v4）
   type LfStart = NonNullable<NonNullable<SoftBreakdown["audit"]["startAccess"]>["lf"]>[string];
   type ExtraStart = NonNullable<SoftBreakdown["audit"]["extraStart"]>[string];
   const startLf: Record<string, LfStart> = {};
@@ -1007,13 +1078,13 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
     if (members.length === 0) continue;
     const plan = planStarts({
       nodes,
-      candidates: members.map((e) => ({ key: e.key, value: planetValue(e, false) })),
+      candidates: members.map((e) => ({ key: e.key, value: planetValue(e) })),
       stoneCost: stoneCostForLfFaction(f),
       startCount: START_COUNT_LF,
     });
     if (!plan) continue;
     const ax = weightedAxes(plan, members);
-    const total = ax.scout + ax.core + ax.gaia + ax.cluster;
+    const total = ax.scout + ax.core + ax.gaia + ax.cluster + ax.outer + ax.touch;
     startLf[f] = {
       kind: home,
       start: plan.starts[0],
@@ -1021,12 +1092,24 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
       core: ax.core,
       gaia: ax.gaia,
       cluster: ax.cluster,
+      outer: ax.outer,
+      touch: ax.touch,
       total,
-      planets: planetRows(plan, members, false),
+      planets: planetRows(plan, members),
     };
     const cur = extraStart[home];
     if (!cur || total > cur.total) {
-      extraStart[home] = { factionId: f, cellKey: plan.starts[0], scout: ax.scout, core: ax.core, gaia: ax.gaia, cluster: ax.cluster, total };
+      extraStart[home] = {
+        factionId: f,
+        cellKey: plan.starts[0],
+        scout: ax.scout,
+        core: ax.core,
+        gaia: ax.gaia,
+        cluster: ax.cluster,
+        outer: ax.outer,
+        touch: ax.touch,
+        total,
+      };
     }
   }
   const startAccess: NonNullable<SoftBreakdown["audit"]["startAccess"]> = {
@@ -1114,7 +1197,11 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
       audit: {
         outerCountByType,
         touchCountByType,
-        // PROTO/ASTEROID 分（軸には入らない表示・マーカー用。2026-07-30）
+        // 端の罰点「欠けマス × w」の記録（2026-10-04、eval_v4）
+        ...(wRimGap !== 0
+          ? { rimGap: { w: wRimGap, range: RIM_GAP_RANGE, ringCells: RIM_GAP_RING_CELLS, missingByCell: rimMissingByCell } }
+          : {}),
+        // PROTO/ASTEROID 分（種別ごとの単純合算。表示のフォールバック用。2026-07-30）
         outerExtraByKind,
         touchExtraByKind,
         outerCountExtraByKind,
