@@ -24,7 +24,20 @@
 //   内側の惑星は欠け0、外周（最外周の1つ内側）は平均 2.7 マス、最外周は辺で約7・角で約10。
 //   加算で下限は無い。基本版と LF で同じ式、原始・小惑星にも掛ける。
 //
-// 実測と経緯は docs/design-notes.md 2.6 / 2.8 節、調査は scripts/_probe_map_aggregation.ts と
+// 種族ごとの計算（2026-10-05 ユーザー確定、eval_v5。docs/design-notes.md 2.7）:
+//   色ではなく種族ごとに開始地点と到達加重を計算する。基本14種族は上の色の定数を基準に、
+//   種族の性質で違うところだけを変える（BASIC_REACH_PROFILES）:
+//     開始建物の数: ゼノ族 3 / ダー・シュワーム人 1（惑星首府）/ 他 2
+//     航行 Lv1 開始（グリーン人・アンバス人）: 距離2の跳躍 1 → 0.5（初手から研究なしで届く）
+//     航行を伸ばせない（バルタック人、首府まで Lv0）: 距離2の跳躍 1 → 1.5（QIC 1つの距離3と同じ）
+//     改造 Lv1 開始（ジオデン人）: 改造の歩数 × 2/3（鉱石 3 → 2 の比）
+//     ガイア Lv1 開始（地球人・バルタック人・モウェイド人）: 次元横断 1 → 0.5（ガイアフォーマーを
+//       最初から持つ。ガイア惑星は誰でも QIC 1つなので 1 のまま）
+//     ガイア惑星に鉱石で入植（グリーン人）: ガイア惑星 1 → 0.5（次元横断は 1 のまま）
+//     ランティダ人の「他家の惑星に鉱山」、経済・科学・AI の初期研究は到達に無関係なので扱わない。
+//   検索の偏り項と色優遇は、色の代表値（その色の2種族のうち大きい方）で従来どおり7色で測る（案A）。
+//
+// 実測と経緯は docs/design-notes.md 2.6 / 2.7 / 2.8 節、調査は scripts/_probe_map_aggregation.ts と
 // scripts/_probe_rim.ts。
 
 import { axialDistance } from "../hex";
@@ -97,16 +110,18 @@ export type LfReachProfile = {
   home: "PROTO" | "ASTEROID";
   /** 標準惑星（基本7色）の改造の歩数 */
   standard: number;
-  /** ガイア惑星・次元横断惑星の歩数相当（QIC 2 の種族は 2） */
+  /** ガイア惑星の歩数相当（QIC 2 の種族は 2） */
   gaia: number;
+  /** 次元横断惑星の歩数相当。ガイア Lv1 開始のモウェイド人は 0.5（2026-10-05）、他はガイア惑星と同じ */
+  transdim: number;
 };
 
 /** LF4種族の入植コスト（LF ルール p13。ティンカーロイド・モウェイド人の標準惑星は相手次第なので既定1） */
 export const LF_REACH_PROFILES: Record<LfFactionId, LfReachProfile> = {
-  moweyds: { home: "PROTO", standard: 1, gaia: 1 },
-  spaceGiants: { home: "PROTO", standard: 2, gaia: 2 },
-  tinkerroids: { home: "ASTEROID", standard: 1, gaia: 2 },
-  darkanians: { home: "ASTEROID", standard: 1, gaia: 2 },
+  moweyds: { home: "PROTO", standard: 1, gaia: 1, transdim: 0.5 },
+  spaceGiants: { home: "PROTO", standard: 2, gaia: 2, transdim: 2 },
+  tinkerroids: { home: "ASTEROID", standard: 1, gaia: 2, transdim: 2 },
+  darkanians: { home: "ASTEROID", standard: 1, gaia: 2, transdim: 2 },
 };
 
 /** LF4種族の視点。母星種別は無いので、同じ種別の惑星にも原始3・小惑星2を払う。 */
@@ -114,7 +129,89 @@ export function stoneCostForLfFaction(id: LfFactionId): StoneCostFn {
   const p = LF_REACH_PROFILES[id];
   return (kind) => {
     if (BASIC_COLORS.has(kind)) return p.standard;
-    if (kind === "GAIA" || kind === "TRANSDIM") return p.gaia;
+    if (kind === "GAIA") return p.gaia;
+    if (kind === "TRANSDIM") return p.transdim;
+    if (kind === "PROTO") return STONE_COST_PROTO;
+    if (kind === "ASTEROID") return STONE_COST_ASTEROID;
+    return 3;
+  };
+}
+
+// ===== 基本14種族（2026-10-05 ユーザー確定）=====
+
+export type BasicFactionId =
+  | "terrans"
+  | "lantids"
+  | "xenos"
+  | "gleens"
+  | "taklons"
+  | "ambas"
+  | "hadschHallas"
+  | "ivits"
+  | "geodens"
+  | "balTaks"
+  | "firaks"
+  | "bescods"
+  | "nevlas"
+  | "itars";
+
+export type BasicReachProfile = {
+  /** 母星色（基本7色） */
+  color: string;
+  /** 開始建物の数（鉱山2。ゼノ族は鉱山3、ダー・シュワーム人は惑星首府1） */
+  startCount: number;
+  /** 距離2の跳躍コスト（既定 1。航行 Lv1 開始は 0.5、航行を伸ばせないバルタック人は 1.5） */
+  hop2?: number;
+  /** 改造の歩数に掛ける係数（既定 1。改造 Lv1 開始のジオデン人は 2/3） */
+  terraformScale?: number;
+  /** ガイア惑星の入植コスト（既定 1。鉱石で入植するグリーン人は 0.5） */
+  gaia?: number;
+  /** 次元横断惑星の入植コスト（既定 1。ガイア Lv1 開始の地球人・バルタック人は 0.5） */
+  transdim?: number;
+};
+
+export const BASIC_FACTION_ORDER: readonly BasicFactionId[] = [
+  "terrans", "lantids", "xenos", "gleens", "taklons", "ambas", "hadschHallas",
+  "ivits", "geodens", "balTaks", "firaks", "bescods", "nevlas", "itars",
+];
+
+export const BASIC_REACH_PROFILES: Record<BasicFactionId, BasicReachProfile> = {
+  terrans: { color: "BLUE", startCount: 2, transdim: 0.5 },
+  lantids: { color: "BLUE", startCount: 2 },
+  xenos: { color: "YELLOW", startCount: 3 },
+  gleens: { color: "YELLOW", startCount: 2, hop2: 0.5, gaia: 0.5 },
+  taklons: { color: "BROWN", startCount: 2 },
+  ambas: { color: "BROWN", startCount: 2, hop2: 0.5 },
+  hadschHallas: { color: "RED", startCount: 2 },
+  ivits: { color: "RED", startCount: 1 },
+  geodens: { color: "ORANGE", startCount: 2, terraformScale: 2 / 3 },
+  balTaks: { color: "ORANGE", startCount: 2, hop2: 1.5, transdim: 0.5 },
+  firaks: { color: "BLACK", startCount: 2 },
+  bescods: { color: "BLACK", startCount: 2 },
+  nevlas: { color: "WHITE", startCount: 2 },
+  itars: { color: "WHITE", startCount: 2 },
+};
+
+/** 跳躍コスト関数（距離 → コスト）。種族ごとに距離2だけ変わる。 */
+export type HopCostFn = (distance: number) => number;
+
+export function hopCostForBasicFaction(id: BasicFactionId): HopCostFn {
+  const h2 = BASIC_REACH_PROFILES[id].hop2;
+  if (h2 == null) return hopCost;
+  return (d) => (d === 2 ? h2 : hopCost(d));
+}
+
+/** 基本14種族の視点。色の定数を基準に、改造の係数・ガイア・次元横断だけが種族で変わる。 */
+export function stoneCostForBasicFaction(id: BasicFactionId): StoneCostFn {
+  const p = BASIC_REACH_PROFILES[id];
+  const scale = p.terraformScale ?? 1;
+  const gaia = p.gaia ?? STONE_COST_GAIA;
+  const transdim = p.transdim ?? STONE_COST_TRANSDIM;
+  return (kind) => {
+    if (kind === p.color) return 0;
+    if (BASIC_COLORS.has(kind)) return terraformSteps(kind, p.color) * scale;
+    if (kind === "GAIA") return gaia;
+    if (kind === "TRANSDIM") return transdim;
     if (kind === "PROTO") return STONE_COST_PROTO;
     if (kind === "ASTEROID") return STONE_COST_ASTEROID;
     return 3;
@@ -141,15 +238,21 @@ export function missingCellsWithin(onBoard: ReadonlySet<string>, q: number, r: n
   return missing;
 }
 
-/** 開始地点の数。標準種族は初期鉱山2つ、LF4種族は建物1つ。 */
+/** 開始地点の数。標準種族は初期鉱山2つ（ゼノ族3・ダー・シュワーム人1は BASIC_REACH_PROFILES）、LF4種族は建物1つ。 */
 export const START_COUNT_STANDARD = 2;
 export const START_COUNT_LF = 1;
 
 /**
  * 起点 src から全ノードへの最小到達コスト（Dijkstra。ノード数は数十なので O(n^2)）。
  * 到着した惑星ごとに入植コストを払う（起点は払わない）。到達不能は Infinity。
+ * hop は跳躍コスト関数（既定は色の表。種族ごとの表は hopCostForBasicFaction）。
  */
-export function reachCostsFrom(nodes: readonly PlanetNode[], src: number, stoneCost: StoneCostFn): number[] {
+export function reachCostsFrom(
+  nodes: readonly PlanetNode[],
+  src: number,
+  stoneCost: StoneCostFn,
+  hop: HopCostFn = hopCost
+): number[] {
   const n = nodes.length;
   const dist = new Array<number>(n).fill(Infinity);
   const done = new Array<boolean>(n).fill(false);
@@ -164,7 +267,7 @@ export function reachCostsFrom(nodes: readonly PlanetNode[], src: number, stoneC
     for (let w = 0; w < n; w++) {
       if (done[w]) continue;
       const b = nodes[w];
-      const h = hopCost(axialDistance(a.q, a.r, b.q, b.r));
+      const h = hop(axialDistance(a.q, a.r, b.q, b.r));
       if (h === Infinity) continue;
       const nd = dist[u] + h + stoneCost(b.kind);
       if (nd < dist[w]) dist[w] = nd;
@@ -195,15 +298,18 @@ export function planStarts(args: {
   candidates: readonly StartCandidate[];
   stoneCost: StoneCostFn;
   startCount: number;
+  /** 跳躍コスト関数（省略時は色の表） */
+  hopCost?: HopCostFn;
 }): StartPlan | null {
   const { nodes, candidates, stoneCost } = args;
+  const hop = args.hopCost ?? hopCost;
   if (candidates.length === 0) return null;
   const index = new Map<string, number>();
   nodes.forEach((n, i) => index.set(n.key, i));
   const costFrom = new Map<string, number[]>();
   for (const c of candidates) {
     const i = index.get(c.key);
-    costFrom.set(c.key, i == null ? [] : reachCostsFrom(nodes, i, stoneCost));
+    costFrom.set(c.key, i == null ? [] : reachCostsFrom(nodes, i, stoneCost, hop));
   }
   const costOf = (from: StartCandidate, to: StartCandidate): number => {
     const i = index.get(to.key);
@@ -237,12 +343,19 @@ export function planStarts(args: {
       best = { starts: starts.map((s) => s.key), weights, costs, total };
     }
   };
-  if (k === 1) {
-    for (const a of sorted) consider([a]);
-  } else {
-    for (let i = 0; i < sorted.length; i++) {
-      for (let j = i + 1; j < sorted.length; j++) consider([sorted[i], sorted[j]]);
+  // k 個の組み合わせを座標順で総当たり（k=1 は単体、2 は対、3 はゼノ族の鉱山3つ）
+  const pick: StartCandidate[] = [];
+  const walk = (from: number) => {
+    if (pick.length === k) {
+      consider(pick.slice());
+      return;
     }
-  }
+    for (let i = from; i <= sorted.length - (k - pick.length); i++) {
+      pick.push(sorted[i]);
+      walk(i + 1);
+      pick.pop();
+    }
+  };
+  walk(0);
   return best;
 }

@@ -7,6 +7,8 @@
 import { describe, it, expect } from "vitest";
 import { axialDistance } from "../hex";
 import {
+  BASIC_FACTION_ORDER,
+  BASIC_REACH_PROFILES,
   HOP_COST_BY_DISTANCE,
   LF_REACH_PROFILES,
   RIM_GAP_RANGE,
@@ -15,15 +17,18 @@ import {
   START_COUNT_STANDARD,
   TERRAFORM_WHEEL,
   hopCost,
+  hopCostForBasicFaction,
   missingCellsWithin,
   planStarts,
   reachCostsFrom,
   reachFactor,
+  stoneCostForBasicFaction,
   stoneCostForColor,
   stoneCostForLfFaction,
   terraformSteps,
   type PlanetNode,
 } from "./reachCost";
+import { FACTIONS } from "./factionWeights";
 
 const node = (q: number, r: number, kind: string): PlanetNode => ({ key: `${q},${r}`, q, r, kind });
 
@@ -53,7 +58,12 @@ describe("改造の輪と入植コスト", () => {
   });
 
   it("LF4種族の視点: 母星種別が無いので同じ種別にも原始3・小惑星2を払う", () => {
-    expect(LF_REACH_PROFILES.darkanians).toEqual({ home: "ASTEROID", standard: 1, gaia: 2 });
+    expect(LF_REACH_PROFILES.darkanians).toEqual({ home: "ASTEROID", standard: 1, gaia: 2, transdim: 2 });
+    // ガイア Lv1 開始のモウェイド人は次元横断 0.5（2026-10-05 ユーザー確定）。ガイア惑星は 1 のまま
+    expect(LF_REACH_PROFILES.moweyds).toEqual({ home: "PROTO", standard: 1, gaia: 1, transdim: 0.5 });
+    expect(stoneCostForLfFaction("moweyds")("TRANSDIM")).toBe(0.5);
+    expect(stoneCostForLfFaction("moweyds")("GAIA")).toBe(1);
+    expect(stoneCostForLfFaction("spaceGiants")("TRANSDIM")).toBe(2);
     expect(LF_REACH_PROFILES.tinkerroids.standard).toBe(1); // 相手次第で1か3。Map 探索では既定1
     expect(LF_REACH_PROFILES.moweyds.standard).toBe(1);
     expect(LF_REACH_PROFILES.spaceGiants.standard).toBe(2);
@@ -64,6 +74,77 @@ describe("改造の輪と入植コスト", () => {
     expect(d("GAIA")).toBe(2);
     expect(stoneCostForLfFaction("spaceGiants")("WHITE")).toBe(2);
     expect(stoneCostForLfFaction("moweyds")("GAIA")).toBe(1);
+  });
+});
+
+describe("基本14種族の到達プロファイル（2026-10-05 ユーザー確定）", () => {
+  it("母星色は種族の定義と一致し、14種族すべてにプロファイルがある", () => {
+    expect(BASIC_FACTION_ORDER).toHaveLength(14);
+    for (const id of BASIC_FACTION_ORDER) {
+      const def = FACTIONS.find((f) => f.id === id)!;
+      expect(def).toBeDefined();
+      expect(BASIC_REACH_PROFILES[id].color).toBe(def.color);
+    }
+  });
+
+  it("開始建物の数: ゼノ族3 / ダー・シュワーム人1 / 他2", () => {
+    expect(BASIC_REACH_PROFILES.xenos.startCount).toBe(3);
+    expect(BASIC_REACH_PROFILES.ivits.startCount).toBe(1);
+    for (const id of BASIC_FACTION_ORDER) if (id !== "xenos" && id !== "ivits") expect(BASIC_REACH_PROFILES[id].startCount).toBe(2);
+  });
+
+  it("航行: Lv1 開始のグリーン人・アンバス人は距離2が 0.5、伸ばせないバルタック人は 1.5、他は色の表", () => {
+    expect(hopCostForBasicFaction("gleens")(2)).toBe(0.5);
+    expect(hopCostForBasicFaction("ambas")(2)).toBe(0.5);
+    expect(hopCostForBasicFaction("balTaks")(2)).toBe(1.5);
+    expect(hopCostForBasicFaction("terrans")(2)).toBe(1);
+    // 距離2以外は全員同じ
+    for (const id of BASIC_FACTION_ORDER) {
+      const h = hopCostForBasicFaction(id);
+      expect([h(1), h(3), h(4), h(5), h(6)]).toEqual([0, 1.5, 2, 3, Infinity]);
+    }
+  });
+
+  it("改造: ジオデン人は歩数 × 2/3、他は色の表そのもの", () => {
+    const g = stoneCostForBasicFaction("geodens"); // 橙。輪で隣は RED / YELLOW
+    expect(g("ORANGE")).toBe(0);
+    expect(g("RED")).toBeCloseTo(2 / 3, 10);
+    expect(g("BLUE")).toBeCloseTo(4 / 3, 10); // 2歩
+    expect(g("BLACK")).toBeCloseTo(2, 10); // 3歩
+    const t = stoneCostForBasicFaction("taklons");
+    for (const k of ["BLACK", "BLUE", "BROWN", "ORANGE", "RED", "WHITE", "YELLOW", "GAIA", "TRANSDIM", "PROTO", "ASTEROID"]) {
+      expect(t(k)).toBe(stoneCostForColor("BROWN")(k));
+    }
+  });
+
+  it("ガイア Lv1 開始の地球人・バルタック人は次元横断 0.5（ガイア惑星は 1）、グリーン人はガイア惑星 0.5（次元横断は 1）", () => {
+    expect(stoneCostForBasicFaction("terrans")("TRANSDIM")).toBe(0.5);
+    expect(stoneCostForBasicFaction("terrans")("GAIA")).toBe(1);
+    expect(stoneCostForBasicFaction("balTaks")("TRANSDIM")).toBe(0.5);
+    expect(stoneCostForBasicFaction("balTaks")("GAIA")).toBe(1);
+    expect(stoneCostForBasicFaction("gleens")("GAIA")).toBe(0.5);
+    expect(stoneCostForBasicFaction("gleens")("TRANSDIM")).toBe(1);
+    expect(stoneCostForBasicFaction("lantids")("GAIA")).toBe(1);
+    expect(stoneCostForBasicFaction("lantids")("TRANSDIM")).toBe(1);
+  });
+
+  it("プロファイルの表そのもの（変えるときはユーザー判断）", () => {
+    expect(BASIC_REACH_PROFILES).toEqual({
+      terrans: { color: "BLUE", startCount: 2, transdim: 0.5 },
+      lantids: { color: "BLUE", startCount: 2 },
+      xenos: { color: "YELLOW", startCount: 3 },
+      gleens: { color: "YELLOW", startCount: 2, hop2: 0.5, gaia: 0.5 },
+      taklons: { color: "BROWN", startCount: 2 },
+      ambas: { color: "BROWN", startCount: 2, hop2: 0.5 },
+      hadschHallas: { color: "RED", startCount: 2 },
+      ivits: { color: "RED", startCount: 1 },
+      geodens: { color: "ORANGE", startCount: 2, terraformScale: 2 / 3 },
+      balTaks: { color: "ORANGE", startCount: 2, hop2: 1.5, transdim: 0.5 },
+      firaks: { color: "BLACK", startCount: 2 },
+      bescods: { color: "BLACK", startCount: 2 },
+      nevlas: { color: "WHITE", startCount: 2 },
+      itars: { color: "WHITE", startCount: 2 },
+    });
   });
 });
 
@@ -237,6 +318,35 @@ describe("開始地点の総当たり", () => {
     expect(two.starts).toEqual(["4,0"]);
     expect(two.costs.get("0,0")).toBe(5);
     expect(two.total).toBeCloseTo(20.75, 10);
+  });
+
+  it("ゼノ族は3ヶ所の組を総当たり。ダー・シュワーム人は1ヶ所", () => {
+    const nodes = [node(0, 0, "YELLOW"), node(3, 0, "YELLOW"), node(6, 0, "YELLOW"), node(9, 0, "YELLOW")];
+    const cands = [
+      { key: "0,0", value: 10 },
+      { key: "3,0", value: 20 },
+      { key: "6,0", value: 30 },
+      { key: "9,0", value: 5 },
+    ];
+    const x = planStarts({ nodes, candidates: cands, stoneCost: stoneCostForBasicFaction("xenos"), startCount: BASIC_REACH_PROFILES.xenos.startCount })!;
+    expect(x.starts).toHaveLength(3);
+    expect(x.starts.sort()).toEqual(["0,0", "3,0", "6,0"]); // 上位3つ ＋ (9,0) は (6,0) から距離3 → 0.71
+    expect(x.total).toBeCloseTo(60 + 5 * Math.SQRT1_2, 10);
+    const iv = planStarts({ nodes, candidates: cands, stoneCost: stoneCostForBasicFaction("ivits"), startCount: BASIC_REACH_PROFILES.ivits.startCount })!;
+    expect(iv.starts).toHaveLength(1);
+  });
+
+  it("種族ごとの跳躍表を渡せる（グリーン人は距離2が 0.5）", () => {
+    const nodes = [node(0, 0, "YELLOW"), node(2, 0, "YELLOW")];
+    const cands = [
+      { key: "0,0", value: 10 },
+      { key: "2,0", value: 10 },
+    ];
+    const g = planStarts({ nodes, candidates: cands, stoneCost: stoneCostForBasicFaction("gleens"), startCount: 1, hopCost: hopCostForBasicFaction("gleens") })!;
+    expect(g.costs.get("2,0")).toBe(0.5);
+    expect(g.weights.get("2,0")).toBe(1); // コスト1以下は割引なし
+    const t = planStarts({ nodes, candidates: cands, stoneCost: stoneCostForColor("YELLOW"), startCount: 1 })!;
+    expect(t.costs.get("2,0")).toBe(1);
   });
 
   it("候補が無ければ null、到達不能な残りは重み0", () => {
