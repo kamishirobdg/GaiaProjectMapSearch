@@ -1,6 +1,6 @@
 // scripts/_probe_map_values.ts
 //
-// Map 評価値の桁の実測（2026-10-03、「開始地点＋到達加重」の実装後）。
+// Map 評価値の桁の実測（2026-10-03、「開始地点＋到達加重」の実装後。2026-10-05 に種族ごとの値を追加）。
 //
 //   npx tsx scripts/_probe_map_values.ts [件数=60] [基本版の H2 上限=3]
 //
@@ -14,7 +14,7 @@ import { buildLogicalMapFromPlacement } from "../src/gaia/logicalMap/buildLogica
 import { extractForEval } from "../src/gaia/eval/extractForEval";
 import { evaluateSoft } from "../src/gaia/eval/evaluateSoft";
 import { checkHardConstraints } from "../src/gaia/constraints";
-import { LF_FACTION_ORDER } from "../src/gaia/eval/reachCost";
+import { BASIC_FACTION_ORDER, BASIC_REACH_PROFILES, LF_FACTION_ORDER } from "../src/gaia/eval/reachCost";
 
 const N = Number(process.argv[2] ?? 60) || 60;
 const BASE_OUTER_CAP = Number(process.argv[3] ?? 3) || 3;
@@ -58,6 +58,8 @@ for (const [templateId, outerCap] of [["4p_lostFleet", 1], ["3p_lostFleet", 1], 
   const tops: number[] = [];
   const restShare: number[] = [];
   const lfVals: Record<string, number[]> = {};
+  const facVals: Record<string, number[]> = {};
+  const pairDiff: Record<string, number[]> = {};
   let seed = 0;
   let boards = 0;
   const t0 = Date.now();
@@ -82,8 +84,17 @@ for (const [templateId, outerCap] of [["4p_lostFleet", 1], ["3p_lostFleet", 1], 
       restShare.push(rest / totals[c]);
     }
     for (const f of LF_FACTION_ORDER) {
-      const v = sa?.lf?.[f]?.total;
+      const v = sa?.byFaction?.[f]?.total;
       if (typeof v === "number") (lfVals[f] ??= []).push(v);
+    }
+    for (const f of BASIC_FACTION_ORDER) {
+      const v = sa?.byFaction?.[f]?.total;
+      if (typeof v === "number") (facVals[f] ??= []).push(v);
+    }
+    for (const c of BASIC) {
+      const pair = BASIC_FACTION_ORDER.filter((f) => BASIC_REACH_PROFILES[f].color === c);
+      const a = sa?.byFaction?.[pair[0]]?.total, b = sa?.byFaction?.[pair[1]]?.total;
+      if (typeof a === "number" && typeof b === "number") (pairDiff[c] ??= []).push(a - b);
     }
   }
   const ms = Date.now() - t0;
@@ -98,5 +109,20 @@ for (const [templateId, outerCap] of [["4p_lostFleet", 1], ["3p_lostFleet", 1], 
     if (!xs || xs.length === 0) continue;
     const s = stat(xs);
     console.log(`  ${f.padEnd(12)} 平均 ${f1(s.mean).padStart(5)}  中央 ${f1(s.med).padStart(5)}  標準色の平均との比 ${(s.mean / vs.mean).toFixed(2)}`);
+  }
+  console.log(`  基本14種族（eval_v5、種族ごとの到達コスト）: 平均 / 中央 / 色の代表値の平均との比`);
+  for (const f of BASIC_FACTION_ORDER) {
+    const xs = facVals[f];
+    if (!xs || xs.length === 0) continue;
+    const s = stat(xs);
+    console.log(`    ${f.padEnd(12)} ${BASIC_REACH_PROFILES[f].color.padEnd(6)} 平均 ${f1(s.mean).padStart(5)}  中央 ${f1(s.med).padStart(5)}  比 ${(s.mean / vs.mean).toFixed(2)}`);
+  }
+  console.log(`  同色2種族の差（前者 − 後者）の平均 / 10〜90%:`);
+  for (const c of BASIC) {
+    const xs = pairDiff[c];
+    if (!xs || xs.length === 0) continue;
+    const pair = BASIC_FACTION_ORDER.filter((f) => BASIC_REACH_PROFILES[f].color === c);
+    const s = stat(xs);
+    console.log(`    ${c.padEnd(6)} ${pair[0]} − ${pair[1]}: ${f1(s.mean).padStart(6)}  (${f1(s.p10)}〜${f1(s.p90)})`);
   }
 }
