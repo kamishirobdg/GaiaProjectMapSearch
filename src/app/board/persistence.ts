@@ -34,7 +34,11 @@ export const SEARCH_ALGO_VERSION = "search_v1";
 // eval_v4 (2026-10-04): 端の罰点を「最外周 −3 / 外周 −1（惑星1つにつき）」から「欠けマス × w」
 // （惑星から距離2以内の18マスのうち盤面に無いマス1つにつき w、既定 0.5）に変えた。角が辺より重く、
 // 原始・小惑星にも掛ける。入力欄は wOuter / wTouch の2つから wRimGap 1つへ（docs/design-notes.md 2.8）。
-export const EVAL_VERSION = "eval_v4";
+// eval_v5 (2026-10-05): 色ごとではなく種族ごとに開始地点と到達加重を計算する（基本14種族は開始建物の数・
+// 航行・改造・ガイアの初期研究で到達コストが変わる。reachCost.ts の BASIC_REACH_PROFILES）。色の値は
+// その色の2種族のうち大きい方（案A）で、検索の偏り項と色優遇は従来どおり7色で測る。内訳表は種族の行。
+// docs/design-notes.md 2.7。
+export const EVAL_VERSION = "eval_v5";
 
 export type PersistedCandidate = {
   id: string; // `${searchKey}:${placementHash}`

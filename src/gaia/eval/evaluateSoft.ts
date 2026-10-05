@@ -18,6 +18,8 @@ import type { AxialKey, ExtractedForEval, PlanetKind } from "./extractForEval";
 import { axialDistance } from "../hex";
 import { connectedComponents } from "../logicalMap/buildLogicalMap";
 import {
+  BASIC_FACTION_ORDER,
+  BASIC_REACH_PROFILES,
   HOP_COST_BY_DISTANCE,
   LF_FACTION_ORDER,
   LF_REACH_PROFILES,
@@ -26,10 +28,10 @@ import {
   RIM_GAP_RANGE,
   RIM_GAP_RING_CELLS,
   START_COUNT_LF,
-  START_COUNT_STANDARD,
+  hopCostForBasicFaction,
   missingCellsWithin,
   planStarts,
-  stoneCostForColor,
+  stoneCostForBasicFaction,
   stoneCostForLfFaction,
   type PlanetNode,
   type StartPlan,
@@ -112,6 +114,23 @@ export type StartAccessPlanet = {
   weight: number;
   /** 重みを掛ける前の惑星の値（基本色は最外周/外周込み） */
   value: number;
+};
+
+/** 種族1つぶんの「開始地点＋到達加重」の集計（eval_v5） */
+export type FactionStart = {
+  /** 母星色（基本7色）か PROTO / ASTEROID */
+  color: string;
+  /** 開始地点のセル座標（ゼノ族 3・ダー・シュワーム人 1・LF4種族 1・他 2） */
+  starts: string[];
+  scout: number;
+  core: number;
+  gaia: number;
+  cluster: number;
+  outer: number;
+  touch: number;
+  total: number;
+  /** 同色（同種別）の全惑星の到達コスト・重み・値 */
+  planets: StartAccessPlanet[];
 };
 
 export type SoftBreakdown = {
@@ -204,28 +223,27 @@ export type SoftBreakdown = {
       hopCostByDistance: number[];
       decay: number;
       freeCost: number;
-      /** 基本7色: 開始地点のセル座標と、同色の全惑星の到達コスト・重み・値 */
+      /**
+       * 基本7色: 開始地点のセル座標と、同色の全惑星の到達コスト・重み・値。
+       * eval_v5 からは色の代表種族（representative）のもの。
+       */
       byColor: Record<string, { starts: string[]; planets: StartAccessPlanet[] }>;
       /**
-       * LF4種族ごと（原始・小惑星は種族で入植コストが違う）。開始1ヶ所。
-       * 最外周/外周（端の罰点）は eval_v4 から入る（eval_v3 までは入れていなかったので、
-       * 古い記録では outer/touch が無い）。
+       * 種族ごとの集計（2026-10-05、eval_v5。docs/design-notes.md 2.7）。基本14種族は色の定数を
+       * 基準に種族の性質（開始建物の数・航行・改造・ガイア）で到達コストが変わり、LF4種族は
+       * 原始・小惑星から開始1ヶ所（eval_v4 までの `lf` の後継）。各軸は重み付き和を軸ごとに
+       * 丸めたもので、total はその合計。
        */
-      lf?: Record<
-        string,
-        {
-          kind: string;
-          start: string;
-          scout: number;
-          core: number;
-          gaia: number;
-          cluster: number;
-          outer?: number;
-          touch?: number;
-          total: number;
-          planets: StartAccessPlanet[];
-        }
-      >;
+      byFaction?: Record<string, FactionStart>;
+      /**
+       * 色ごとの代表種族（その色の2種族のうち total の大きい方。同点は FACTIONS の順で先）。
+       * 検索の偏り項と色優遇はこの代表値（planetTypeTotals）で測る（案A）。
+       */
+      representative?: Record<string, string>;
+      /**
+       * eval_v4 までの LF4種族の記録（byFaction に統合した。古い保存結果の読み出し用に型だけ残す）。
+       */
+      lf?: Record<string, FactionStart & { kind: string; start: string }>;
     };
     /**
      * 原始・小惑星の行の値（extraBest の後継、2026-10-03）。その種別を母星にする2種族のうち
@@ -1048,68 +1066,97 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
   const aggCluster = zeroAxis();
   const startByColor: Record<string, { starts: string[]; planets: StartAccessPlanet[] }> = {};
   const allPlanets = [...perPlanet.values()];
-  for (const t of PLANET_TYPES) {
-    const members = allPlanets.filter((e) => e.type === t);
-    if (members.length === 0) continue;
+
+  // ===== 種族ごとの集計（2026-10-05 確定、eval_v5。docs/design-notes.md 2.7）=====
+  //
+  // 基本14種族は母星色の惑星を候補に、種族ごとの開始建物の数・跳躍表・入植コスト
+  // （reachCost.ts の BASIC_REACH_PROFILES）で開始地点を選ぶ。LF4種族は原始・小惑星から開始1ヶ所。
+  // 色の値（planetTypeTotals）は、その色の2種族のうち total の大きい方＝代表種族の値（案A）。
+  // 検索の偏り項と色優遇はこの代表値で従来どおり7色で測り、内訳表は種族の行を出す。
+  const byFaction: Record<string, FactionStart> = {};
+  const representative: Record<string, string> = {};
+  const planFor = (
+    id: string,
+    color: string,
+    members: PlanetAcc[],
+    stoneCost: Parameters<typeof planStarts>[0]["stoneCost"],
+    startCount: number,
+    hop?: Parameters<typeof planStarts>[0]["hopCost"]
+  ): FactionStart | null => {
+    if (members.length === 0) return null;
     const plan = planStarts({
       nodes,
       candidates: members.map((e) => ({ key: e.key, value: planetValue(e) })),
-      stoneCost: stoneCostForColor(t),
-      startCount: START_COUNT_STANDARD,
+      stoneCost,
+      startCount,
+      ...(hop ? { hopCost: hop } : {}),
     });
-    if (!plan) continue;
+    if (!plan) return null;
     const ax = weightedAxes(plan, members);
-    aggOuter[t] = ax.outer;
-    aggTouch[t] = ax.touch;
-    aggScout[t] = ax.scout;
-    aggCore[t] = ax.core;
-    aggGaia[t] = ax.gaia;
-    aggCluster[t] = ax.cluster;
-    startByColor[t] = { starts: plan.starts, planets: planetRows(plan, members) };
-  }
-  // LF4種族（開始1ヶ所、種族ごとの入植コスト。端の罰点も入る＝eval_v4）
-  type LfStart = NonNullable<NonNullable<SoftBreakdown["audit"]["startAccess"]>["lf"]>[string];
-  type ExtraStart = NonNullable<SoftBreakdown["audit"]["extraStart"]>[string];
-  const startLf: Record<string, LfStart> = {};
-  const extraStart: Record<string, ExtraStart> = {};
-  for (const f of LF_FACTION_ORDER) {
-    const home = LF_REACH_PROFILES[f].home;
-    const members = allPlanets.filter((e) => e.kind === home);
-    if (members.length === 0) continue;
-    const plan = planStarts({
-      nodes,
-      candidates: members.map((e) => ({ key: e.key, value: planetValue(e) })),
-      stoneCost: stoneCostForLfFaction(f),
-      startCount: START_COUNT_LF,
-    });
-    if (!plan) continue;
-    const ax = weightedAxes(plan, members);
-    const total = ax.scout + ax.core + ax.gaia + ax.cluster + ax.outer + ax.touch;
-    startLf[f] = {
-      kind: home,
-      start: plan.starts[0],
+    const entry: FactionStart = {
+      color,
+      starts: plan.starts,
       scout: ax.scout,
       core: ax.core,
       gaia: ax.gaia,
       cluster: ax.cluster,
       outer: ax.outer,
       touch: ax.touch,
-      total,
+      total: ax.scout + ax.core + ax.gaia + ax.cluster + ax.outer + ax.touch,
       planets: planetRows(plan, members),
     };
+    byFaction[id] = entry;
+    return entry;
+  };
+  for (const f of BASIC_FACTION_ORDER) {
+    const p = BASIC_REACH_PROFILES[f];
+    const entry = planFor(
+      f,
+      p.color,
+      allPlanets.filter((e) => e.type === p.color),
+      stoneCostForBasicFaction(f),
+      p.startCount,
+      hopCostForBasicFaction(f)
+    );
+    if (!entry) continue;
+    // 同点は FACTIONS の順で先の種族（決定的にする）
+    const cur = representative[p.color];
+    if (!cur || entry.total > byFaction[cur].total) representative[p.color] = f;
+  }
+  for (const t of PLANET_TYPES) {
+    const rep = representative[t];
+    if (!rep) continue;
+    const e = byFaction[rep];
+    aggOuter[t] = e.outer;
+    aggTouch[t] = e.touch;
+    aggScout[t] = e.scout;
+    aggCore[t] = e.core;
+    aggGaia[t] = e.gaia;
+    aggCluster[t] = e.cluster;
+    startByColor[t] = { starts: e.starts, planets: e.planets };
+  }
+  // LF4種族（開始1ヶ所、種族ごとの入植コスト。端の罰点も入る＝eval_v4）。
+  // 原始・小惑星の行の値（extraStart）はその種別を母星にする2種族のうち大きい方（案A）。
+  type ExtraStart = NonNullable<SoftBreakdown["audit"]["extraStart"]>[string];
+  const extraStart: Record<string, ExtraStart> = {};
+  for (const f of LF_FACTION_ORDER) {
+    const home = LF_REACH_PROFILES[f].home;
+    const entry = planFor(f, home, allPlanets.filter((e) => e.kind === home), stoneCostForLfFaction(f), START_COUNT_LF);
+    if (!entry) continue;
     const cur = extraStart[home];
-    if (!cur || total > cur.total) {
+    if (!cur || entry.total > cur.total) {
       extraStart[home] = {
         factionId: f,
-        cellKey: plan.starts[0],
-        scout: ax.scout,
-        core: ax.core,
-        gaia: ax.gaia,
-        cluster: ax.cluster,
-        outer: ax.outer,
-        touch: ax.touch,
-        total,
+        cellKey: entry.starts[0],
+        scout: entry.scout,
+        core: entry.core,
+        gaia: entry.gaia,
+        cluster: entry.cluster,
+        outer: entry.outer,
+        touch: entry.touch,
+        total: entry.total,
       };
+      representative[home] = f;
     }
   }
   const startAccess: NonNullable<SoftBreakdown["audit"]["startAccess"]> = {
@@ -1117,7 +1164,8 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
     decay: REACH_DECAY,
     freeCost: REACH_FREE_COST,
     byColor: startByColor,
-    ...(Object.keys(startLf).length > 0 ? { lf: startLf } : {}),
+    byFaction,
+    representative,
   };
 
   // totals & imbalance（軸ごとに丸めた値の和なので、内訳表の列の合計と評価が一致する）

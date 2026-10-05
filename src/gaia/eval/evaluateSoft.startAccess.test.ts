@@ -157,13 +157,15 @@ describe("原始・小惑星: LF4種族ごとに開始1ヶ所、係数なし", (
     expect(st.total).toBe(11);
     expect(st.scout).toBe(11);
     expect(["moweyds", "spaceGiants"]).toContain(st.factionId);
-    const lf = auditOf(r).startAccess.lf;
-    expect(lf.moweyds.start).toBe("1,0");
-    expect(lf.spaceGiants.start).toBe("1,0");
-    expect(lf.moweyds.planets.find((p: any) => p.cellKey === "3,0").cost).toBe(4);
+    const bf = auditOf(r).startAccess.byFaction;
+    expect(bf.moweyds.starts).toEqual(["1,0"]);
+    expect(bf.spaceGiants.starts).toEqual(["1,0"]);
+    expect(bf.moweyds.color).toBe("PROTO");
+    expect(bf.moweyds.planets.find((p: any) => p.cellKey === "3,0").cost).toBe(4);
     // 小惑星の種族は原始惑星を持たない
-    expect(lf.tinkerroids).toBeUndefined();
-    expect(lf.darkanians).toBeUndefined();
+    expect(bf.tinkerroids).toBeUndefined();
+    expect(bf.darkanians).toBeUndefined();
+    expect(["moweyds", "spaceGiants"]).toContain(auditOf(r).startAccess.representative.PROTO);
   });
 
   it("評価値に小数を出さない（軸ごとに丸め、評価はその合計）", () => {
@@ -212,18 +214,20 @@ describe("原始・小惑星: LF4種族ごとに開始1ヶ所、係数なし", (
     expect(st.outer).toBe(-3);
     expect(st.touch).toBe(-1);
     expect(st.total).toBe(-4);
-    expect(auditOf(r).startAccess.lf.moweyds.total).toBe(-4);
-    expect(auditOf(r).startAccess.lf.moweyds.planets[0].value).toBe(-4);
+    expect(auditOf(r).startAccess.byFaction.moweyds.total).toBe(-4);
+    expect(auditOf(r).startAccess.byFaction.moweyds.planets[0].value).toBe(-4);
     // 監査の種別ごとの単純合算も同じ罰点
     expect(auditOf(r).outerExtraByKind?.PROTO).toBe(-3);
     expect(auditOf(r).touchExtraByKind?.PROTO).toBe(-1);
   });
 
-  it("原始・小惑星が無い盤面では extraStart も lf も出さない", () => {
+  it("原始・小惑星が無い盤面では extraStart も LF4種族の行も出さない", () => {
     const e = extractedOf([cell({ q: 0, r: 0, color: "RED" })], [scout(1, 0, "twilight")]);
     const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 10 });
     expect(auditOf(r).extraStart).toBeUndefined();
     expect(auditOf(r).startAccess.lf).toBeUndefined();
+    expect(auditOf(r).startAccess.byFaction.moweyds).toBeUndefined();
+    expect(auditOf(r).startAccess.byFaction.hadschHallas).toBeDefined();
     expect(auditOf(r).startAccess.byColor.RED).toBeDefined();
     expect(auditOf(r).extraBest).toBeUndefined();
   });
@@ -295,23 +299,29 @@ describe("端の罰点「欠けマス × w」（2026-10-04 確定、eval_v4）",
     expect(ast.outer).toBe(0);
     expect(ast.touch).toBe(-5);
     expect(ast.total).toBe(-5);
-    expect(auditOf(r).startAccess.lf.tinkerroids.total).toBe(-5);
-    expect(auditOf(r).startAccess.lf.darkanians.touch).toBe(-5);
+    expect(auditOf(r).startAccess.byFaction.tinkerroids.total).toBe(-5);
+    expect(auditOf(r).startAccess.byFaction.darkanians.touch).toBe(-5);
     expect(auditOf(r).outerExtraByKind?.PROTO).toBe(-7);
     expect(auditOf(r).touchExtraByKind?.ASTEROID).toBe(-5);
   });
 
   it("下限は無い: 参考程度の惑星が負の値で色の値を引き下げる（開始地点の選び方にも効く）", () => {
-    // 赤 (0,0)=内側 0、(5,-2)=最外周の辺 −7（w=1）、(3,0)=内側 0。
+    // 白（ネヴラ人・イタル人とも開始2ヶ所）。(0,0)=内側 0、(5,-2)=最外周の辺 −7（w=1）、(3,0)=内側 0。
     // 開始は {0,0 / 3,0}（距離3＝コスト1.5 → 到達係数 0.71）、(5,-2) は (3,0) から距離2（コスト1 → 1.0）で −7 がそのまま足される
-    const e = boardOf(5, [cell({ q: 0, r: 0, color: "RED" }), cell({ q: 3, r: 0, color: "RED" }), cell({ q: 5, r: -2, color: "RED" })]);
+    const e = boardOf(5, [cell({ q: 0, r: 0, color: "WHITE" }), cell({ q: 3, r: 0, color: "WHITE" }), cell({ q: 5, r: -2, color: "WHITE" })]);
     const r = evaluateSoft(e, { ...BASE_SOFT, wRimGap: 1 });
-    const sa = auditOf(r).startAccess.byColor.RED;
+    const sa = auditOf(r).startAccess.byColor.WHITE;
     expect(sa.starts.slice().sort()).toEqual(["0,0", "3,0"]);
     const rim = sa.planets.find((p: any) => p.cellKey === "5,-2");
     expect(rim.value).toBe(-7);
     expect(rim.weight).toBe(1);
-    expect(r.breakdown.planetTypeTotals.RED).toBe(-7);
+    expect(r.breakdown.planetTypeTotals.WHITE).toBe(-7);
+    // 赤はダー・シュワーム人（開始1ヶ所）が代表になり、−7 の惑星を到達加重で薄める
+    const e2 = boardOf(5, [cell({ q: 0, r: 0, color: "RED" }), cell({ q: 3, r: 0, color: "RED" }), cell({ q: 5, r: -2, color: "RED" })]);
+    const r2 = evaluateSoft(e2, { ...BASE_SOFT, wRimGap: 1 });
+    expect(auditOf(r2).startAccess.representative.RED).toBe("ivits");
+    expect(auditOf(r2).startAccess.byFaction.hadschHallas.total).toBe(-7);
+    expect(r2.breakdown.planetTypeTotals.RED).toBeGreaterThan(-7);
   });
 
   it("wRimGap を省略（0）すれば罰点なし。記録（rimGap）も出さない", () => {
@@ -328,5 +338,99 @@ describe("端の罰点「欠けマス × w」（2026-10-04 確定、eval_v4）",
     const r = evaluateSoft(e, { ...BASE_SOFT, wRimGap: 1, wOuter: 3, wTouch: 1 });
     expect(r.breakdown.axesByType.outer.RED).toBe(-10); // −7 − 3
     expect(r.breakdown.axesByType.touch.BLUE).toBe(-6); // −5 − 1
+  });
+});
+
+describe("種族ごとの計算（2026-10-05 確定、eval_v5。docs/design-notes.md 2.7）", () => {
+  it("基本14種族それぞれに開始地点と値があり、色の値はその色の2種族の大きい方（案A）", () => {
+    // 青 (0,0) / (3,0) / (6,0)、船が (1,0)。地球人とランティダ人は定数が同じ（次元横断が無い）ので同値
+    const e = extractedOf(
+      [cell({ q: 0, r: 0, color: "BLUE" }), cell({ q: 3, r: 0, color: "BLUE" }), cell({ q: 6, r: 0, color: "BLUE" })],
+      [scout(1, 0, "twilight")]
+    );
+    const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 10 });
+    const sa = auditOf(r).startAccess;
+    expect(Object.keys(sa.byFaction).sort()).toEqual(["lantids", "terrans"]);
+    expect(sa.byFaction.terrans.color).toBe("BLUE");
+    expect(sa.byFaction.terrans.starts).toHaveLength(2);
+    expect(sa.byFaction.terrans.total).toBe(sa.byFaction.lantids.total);
+    expect(sa.representative.BLUE).toBe("terrans"); // 同点は FACTIONS の順で先
+    expect(r.breakdown.planetTypeTotals.BLUE).toBe(sa.byFaction.terrans.total);
+    expect(sa.byColor.BLUE.starts).toEqual(sa.byFaction.terrans.starts);
+  });
+
+  it("ゼノ族は開始3ヶ所、同色のグリーン人は2ヶ所。代表はゼノ族で、色の値はその値", () => {
+    // 黄 3つが互いに距離3。船接触で 10 / 10 / 9。ゼノ族は3つとも開始＝29。
+    // グリーン人は2ヶ所＋残り1つは距離3（コスト1.5 → 0.71）なので 20 + 9×0.71 ≈ 26
+    const e = extractedOf(
+      [cell({ q: 1, r: 0, color: "YELLOW" }), cell({ q: 4, r: 0, color: "YELLOW" }), cell({ q: 7, r: 0, color: "YELLOW" })],
+      [scout(0, 0, "twilight"), scout(5, 0, "eclipse")]
+    );
+    const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 10 });
+    const sa = auditOf(r).startAccess;
+    expect(sa.byFaction.xenos.starts).toHaveLength(3);
+    expect(sa.byFaction.gleens.starts).toHaveLength(2);
+    expect(sa.byFaction.xenos.total).toBe(29);
+    expect(sa.byFaction.gleens.total).toBe(Math.round(20 + 9 * Math.SQRT1_2));
+    expect(sa.representative.YELLOW).toBe("xenos");
+    expect(r.breakdown.planetTypeTotals.YELLOW).toBe(29);
+    expect(r.breakdown.axesByType.scout.YELLOW).toBe(29);
+  });
+
+  it("ダー・シュワーム人は開始1ヶ所。ハッシュ・ホラ人（2ヶ所）が代表になる", () => {
+    const e = extractedOf([cell({ q: 1, r: 0, color: "RED" }), cell({ q: 2, r: 0, color: "RED" })], [scout(0, 0, "twilight")]);
+    const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 10 });
+    const sa = auditOf(r).startAccess;
+    expect(sa.byFaction.ivits.starts).toHaveLength(1);
+    expect(sa.byFaction.hadschHallas.starts).toHaveLength(2);
+    expect(sa.byFaction.hadschHallas.total).toBe(19);
+    expect(sa.byFaction.ivits.total).toBe(10 + 9); // (2,0) は隣接でコスト0 → 係数1
+    expect(sa.representative.RED).toBe("hadschHallas"); // 同点は順で先
+  });
+
+  it("航行 Lv1 開始のアンバス人は距離2の同色がコスト0.5（割引なし）、タクロン族はコスト1", () => {
+    const e = extractedOf([cell({ q: 0, r: 0, color: "BROWN" }), cell({ q: 2, r: 0, color: "BROWN" }), cell({ q: 5, r: 0, color: "BROWN" })], [scout(1, 0, "twilight")]);
+    const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 10 });
+    const sa = auditOf(r).startAccess;
+    // 開始は {0,0 / 2,0}（値 10 と 10）。(5,0) は (2,0) から距離3 → 1.5 でどちらも同じ
+    const far = (f: string) => sa.byFaction[f].planets.find((p: any) => p.cellKey === "5,0");
+    expect(far("ambas").cost).toBe(1.5);
+    expect(far("taklons").cost).toBe(1.5);
+    // 距離2が効く形: 開始を1ヶ所に絞って比べる
+    const two = extractedOf([cell({ q: 0, r: 0, color: "BROWN" }), cell({ q: 2, r: 0, color: "BROWN" })], [scout(1, 0, "twilight")]);
+    const r2 = evaluateSoft(two, { ...BASE_SOFT, wScout: 10 });
+    expect(auditOf(r2).startAccess.byFaction.ambas.total).toBe(auditOf(r2).startAccess.byFaction.taklons.total); // 2ヶ所とも開始なので同じ
+  });
+
+  it("バルタック人は距離2の跳躍が 1.5、地球人は次元横断の踏み台が 0.5、グリーン人はガイア惑星が 0.5、ジオデン人は改造 × 2/3", () => {
+    // 橙 (0,0) と (2,0): バルタック人の1ヶ所開始なら (2,0) へコスト1.5。ジオデン人は赤(1歩)の踏み台が 0.67
+    const orange = extractedOf([cell({ q: 0, r: 0, color: "ORANGE" }), cell({ q: 2, r: 0, color: "ORANGE" }), cell({ q: 6, r: 0, color: "ORANGE" }), cell({ q: 4, r: 0, color: "RED" })]);
+    const r = evaluateSoft(orange, { ...BASE_SOFT, wClusterSize: 1 });
+    const sa = auditOf(r).startAccess;
+    // (6,0) へ: 直接は距離4 → 2 / 赤(4,0)経由: (2,0)→(4,0) 距離2(1)＋改造1歩 → (6,0) 距離2(1) ＝ 3。ジオデン人は 1+0.67+1 = 2.67 → 直接の2が最小
+    expect(sa.byFaction.geodens.planets.find((p: any) => p.cellKey === "6,0").cost).toBe(2);
+    // 青 (0,0) / (6,0) と次元横断 (3,0): 地球人は 1.5(距離3)＋0.5 → (6,0) 距離3 1.5 ＝ 3.5 より直接の距離6は不可 → 3.5。ランティダ人は 4
+    const blue = extractedOf([cell({ q: 0, r: 0, color: "BLUE" }), cell({ q: 6, r: 0, color: "BLUE" }), cell({ q: 3, r: 0, kind: "TRANSDIM" })]);
+    const r2 = evaluateSoft(blue, { ...BASE_SOFT, wClusterSize: 1 });
+    const one = (f: string) => auditOf(r2).startAccess.byFaction[f];
+    // 2ヶ所とも開始になるので planets の cost は 0。開始1ヶ所の LF と違い、ここでは到達コストの差を reachCost 側のテストで確認している
+    expect(one("terrans").starts).toHaveLength(2);
+    expect(one("lantids").starts).toHaveLength(2);
+    // 黄 (0,0) / (6,0) とガイア (3,0)、グリーン人はガイアの踏み台 0.5
+    const yellow = extractedOf([cell({ q: 0, r: 0, color: "YELLOW" }), cell({ q: 6, r: 0, color: "YELLOW" }), cell({ q: 3, r: 0, kind: "GAIA" }), cell({ q: 12, r: 0, color: "YELLOW" })]);
+    const r3 = evaluateSoft(yellow, { ...BASE_SOFT, wGaiaDist3: 1 });
+    expect(auditOf(r3).startAccess.byFaction.gleens.starts).toHaveLength(2);
+    expect(auditOf(r3).startAccess.byFaction.xenos.starts).toHaveLength(3);
+  });
+
+  it("LF4種族も byFaction に入り、PROTO / ASTEROID の代表（extraStart）と一致する", () => {
+    const e = extractedOf([cell({ q: 1, r: 0, kind: "PROTO" }), cell({ q: 2, r: 0, kind: "ASTEROID" })], [scout(0, 0, "twilight")]);
+    const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 10 });
+    const sa = auditOf(r).startAccess;
+    expect(sa.byFaction.moweyds.color).toBe("PROTO");
+    expect(sa.byFaction.tinkerroids.color).toBe("ASTEROID");
+    expect(sa.representative.PROTO).toBe(extraStartOf(r, "PROTO").factionId);
+    expect(sa.representative.ASTEROID).toBe(extraStartOf(r, "ASTEROID").factionId);
+    expect(sa.byFaction[sa.representative.PROTO].total).toBe(extraStartOf(r, "PROTO").total);
   });
 });

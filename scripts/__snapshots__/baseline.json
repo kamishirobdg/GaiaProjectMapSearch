@@ -155,8 +155,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1096.5623464225994,
-          "value": 10.965623464225994
+          "score": -1320.6368284479504,
+          "value": 13.206368284479504
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -169,31 +169,31 @@
         },
         "planetTypeTotals": {
           "BLACK": 27,
-          "BLUE": 52,
+          "BLUE": 54,
           "BROWN": 37,
           "ORANGE": 33,
           "RED": 23,
           "WHITE": 22,
-          "YELLOW": 48
+          "YELLOW": 57
         },
-        "score": -1096.562346,
+        "score": -1320.636828,
         "scoutByType": {
           "BLACK": 10,
-          "BLUE": 23,
+          "BLUE": 24,
           "BROWN": 17,
           "ORANGE": 11,
           "RED": 6,
           "WHITE": 8,
-          "YELLOW": 15
+          "YELLOW": 20
         },
         "scoutCoreByType": {
           "BLACK": 21,
-          "BLUE": 29,
+          "BLUE": 30,
           "BROWN": 20,
           "ORANGE": 23,
           "RED": 19,
           "WHITE": 16,
-          "YELLOW": 33
+          "YELLOW": 37
         },
         "scoutCoreHitsCount": 105,
         "scoutCoreHitsValueSum": 235,
@@ -362,8 +362,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -834.4618209434419,
-          "value": 8.344618209434419
+          "score": -844.1878115825233,
+          "value": 8.441878115825233
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -381,9 +381,9 @@
           "ORANGE": 48,
           "RED": 32,
           "WHITE": 56,
-          "YELLOW": 43
+          "YELLOW": 47
         },
-        "score": -834.461821,
+        "score": -844.187812,
         "scoutByType": {
           "BLACK": 16,
           "BLUE": 8,
@@ -391,7 +391,7 @@
           "ORANGE": 16,
           "RED": 10,
           "WHITE": 19,
-          "YELLOW": 15
+          "YELLOW": 19
         },
         "scoutCoreByType": {
           "BLACK": 30,
@@ -569,8 +569,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -942.2075684480657,
-          "value": 9.422075684480657
+          "score": -836.6600265340755,
+          "value": 8.366600265340756
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -588,9 +588,9 @@
           "ORANGE": 28,
           "RED": 52,
           "WHITE": 36,
-          "YELLOW": 22
+          "YELLOW": 27
         },
-        "score": -942.207568,
+        "score": -836.660027,
         "scoutByType": {
           "BLACK": 15,
           "BLUE": 18,
@@ -598,7 +598,7 @@
           "ORANGE": 14,
           "RED": 17,
           "WHITE": 15,
-          "YELLOW": 11
+          "YELLOW": 16
         },
         "scoutCoreByType": {
           "BLACK": 26,
@@ -786,8 +786,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -871.7797887081348,
-          "value": 8.717797887081348
+          "score": -1019.4035871377871,
+          "value": 10.19403587137787
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -805,9 +805,9 @@
           "ORANGE": 55,
           "RED": 36,
           "WHITE": 43,
-          "YELLOW": 42
+          "YELLOW": 54
         },
-        "score": -871.779789,
+        "score": -1019.403587,
         "scoutByType": {
           "BLACK": 5,
           "BLUE": 17,
@@ -815,7 +815,7 @@
           "ORANGE": 22,
           "RED": 11,
           "WHITE": 17,
-          "YELLOW": 18
+          "YELLOW": 22
         },
         "scoutCoreByType": {
           "BLACK": 20,
@@ -824,7 +824,7 @@
           "ORANGE": 33,
           "RED": 25,
           "WHITE": 26,
-          "YELLOW": 24
+          "YELLOW": 32
         },
         "scoutCoreHitsCount": 97,
         "scoutCoreHitsValueSum": 221,
@@ -1003,8 +1003,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -828.0786712108251,
-          "value": 8.28078671210825
+          "score": -846.601850858803,
+          "value": 8.46601850858803
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -1017,14 +1017,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 43,
-          "BLUE": 24,
+          "BLUE": 25,
           "BROWN": 40,
           "ORANGE": 18,
           "RED": 29,
           "WHITE": 33,
-          "YELLOW": 37
+          "YELLOW": 40
         },
-        "score": -828.078671,
+        "score": -846.601851,
         "scoutByType": {
           "BLACK": 14,
           "BLUE": 9,
@@ -1032,11 +1032,11 @@
           "ORANGE": 10,
           "RED": 12,
           "WHITE": 10,
-          "YELLOW": 13
+          "YELLOW": 17
         },
         "scoutCoreByType": {
           "BLACK": 29,
-          "BLUE": 18,
+          "BLUE": 19,
           "BROWN": 26,
           "ORANGE": 9,
           "RED": 17,
@@ -1225,8 +1225,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1659.481108967622,
-          "value": 16.59481108967622
+          "score": -1645.649800323909,
+          "value": 16.45649800323909
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -1244,9 +1244,9 @@
           "ORANGE": 72,
           "RED": 27,
           "WHITE": 35,
-          "YELLOW": 21
+          "YELLOW": 22
         },
-        "score": -1659.481109,
+        "score": -1645.6498,
         "scoutByType": {
           "BLACK": 14,
           "BLUE": 14,
@@ -1254,7 +1254,7 @@
           "ORANGE": 24,
           "RED": 13,
           "WHITE": 16,
-          "YELLOW": 8
+          "YELLOW": 10
         },
         "scoutCoreByType": {
           "BLACK": 23,
@@ -1437,8 +1437,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1059.2642806809502,
-          "value": 10.592642806809502
+          "score": -1177.6836483157115,
+          "value": 11.776836483157114
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -1456,9 +1456,9 @@
           "ORANGE": 42,
           "RED": 32,
           "WHITE": 64,
-          "YELLOW": 50
+          "YELLOW": 61
         },
-        "score": -1059.264281,
+        "score": -1177.683648,
         "scoutByType": {
           "BLACK": 19,
           "BLUE": 17,
@@ -1466,7 +1466,7 @@
           "ORANGE": 17,
           "RED": 13,
           "WHITE": 23,
-          "YELLOW": 18
+          "YELLOW": 21
         },
         "scoutCoreByType": {
           "BLACK": 32,
@@ -1475,7 +1475,7 @@
           "ORANGE": 26,
           "RED": 20,
           "WHITE": 41,
-          "YELLOW": 33
+          "YELLOW": 41
         },
         "scoutCoreHitsCount": 117,
         "scoutCoreHitsValueSum": 273,
@@ -1866,8 +1866,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1084.5858797772746,
-          "value": 10.845858797772745
+          "score": -1100.4637241469004,
+          "value": 11.004637241469004
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -1885,9 +1885,9 @@
           "ORANGE": 44,
           "RED": 48,
           "WHITE": 67,
-          "YELLOW": 45
+          "YELLOW": 50
         },
-        "score": -1084.58588,
+        "score": -1100.463724,
         "scoutByType": {
           "BLACK": 16,
           "BLUE": 12,
@@ -1895,7 +1895,7 @@
           "ORANGE": 17,
           "RED": 15,
           "WHITE": 21,
-          "YELLOW": 18
+          "YELLOW": 21
         },
         "scoutCoreByType": {
           "BLACK": 24,
@@ -1904,7 +1904,7 @@
           "ORANGE": 27,
           "RED": 34,
           "WHITE": 47,
-          "YELLOW": 27
+          "YELLOW": 30
         },
         "scoutCoreHitsCount": 125,
         "scoutCoreHitsValueSum": 290,
@@ -2083,8 +2083,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1045.300464567241,
-          "value": 10.45300464567241
+          "score": -1014.7886077244594,
+          "value": 10.147886077244594
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -2102,9 +2102,9 @@
           "ORANGE": 66,
           "RED": 58,
           "WHITE": 48,
-          "YELLOW": 50
+          "YELLOW": 57
         },
-        "score": -1045.300465,
+        "score": -1014.788608,
         "scoutByType": {
           "BLACK": 14,
           "BLUE": 19,
@@ -2112,7 +2112,7 @@
           "ORANGE": 18,
           "RED": 17,
           "WHITE": 13,
-          "YELLOW": 16
+          "YELLOW": 20
         },
         "scoutCoreByType": {
           "BLACK": 27,
@@ -2121,7 +2121,7 @@
           "ORANGE": 49,
           "RED": 44,
           "WHITE": 35,
-          "YELLOW": 34
+          "YELLOW": 38
         },
         "scoutCoreHitsCount": 156,
         "scoutCoreHitsValueSum": 369,
@@ -2290,8 +2290,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1224.4115621266355,
-          "value": 12.244115621266356
+          "score": -1356.3155373049053,
+          "value": 13.563155373049053
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -2309,9 +2309,9 @@
           "ORANGE": 35,
           "RED": 33,
           "WHITE": 35,
-          "YELLOW": 49
+          "YELLOW": 55
         },
-        "score": -1224.411562,
+        "score": -1356.315537,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 11,
@@ -2319,7 +2319,7 @@
           "ORANGE": 12,
           "RED": 12,
           "WHITE": 18,
-          "YELLOW": 18
+          "YELLOW": 20
         },
         "scoutCoreByType": {
           "BLACK": 11,
@@ -2328,7 +2328,7 @@
           "ORANGE": 24,
           "RED": 23,
           "WHITE": 18,
-          "YELLOW": 31
+          "YELLOW": 35
         },
         "scoutCoreHitsCount": 87,
         "scoutCoreHitsValueSum": 198,
@@ -2724,8 +2724,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1093.76712814577,
-          "value": 10.937671281457698
+          "score": -1053.4685179763783,
+          "value": 10.534685179763784
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -2738,22 +2738,22 @@
         },
         "planetTypeTotals": {
           "BLACK": 54,
-          "BLUE": 33,
+          "BLUE": 34,
           "BROWN": 55,
           "ORANGE": 64,
           "RED": 36,
           "WHITE": 38,
-          "YELLOW": 40
+          "YELLOW": 49
         },
-        "score": -1093.767128,
+        "score": -1053.468518,
         "scoutByType": {
           "BLACK": 18,
-          "BLUE": 11,
+          "BLUE": 12,
           "BROWN": 20,
           "ORANGE": 21,
           "RED": 9,
           "WHITE": 13,
-          "YELLOW": 12
+          "YELLOW": 17
         },
         "scoutCoreByType": {
           "BLACK": 36,
@@ -2762,7 +2762,7 @@
           "ORANGE": 43,
           "RED": 28,
           "WHITE": 26,
-          "YELLOW": 28
+          "YELLOW": 34
         },
         "scoutCoreHitsCount": 129,
         "scoutCoreHitsValueSum": 300,
@@ -3153,8 +3153,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1283.3311246557546,
-          "value": 12.833311246557546
+          "score": -1280.6248474865697,
+          "value": 12.806248474865697
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -3168,17 +3168,17 @@
         "planetTypeTotals": {
           "BLACK": 48,
           "BLUE": 63,
-          "BROWN": 38,
+          "BROWN": 39,
           "ORANGE": 30,
           "RED": 29,
           "WHITE": 26,
           "YELLOW": 52
         },
-        "score": -1283.331125,
+        "score": -1280.624847,
         "scoutByType": {
           "BLACK": 22,
           "BLUE": 18,
-          "BROWN": 10,
+          "BROWN": 11,
           "ORANGE": 14,
           "RED": 11,
           "WHITE": 13,
@@ -3399,7 +3399,7 @@
           "ORANGE": 14,
           "RED": 18,
           "WHITE": 17,
-          "YELLOW": 13
+          "YELLOW": 14
         },
         "scoutCoreByType": {
           "BLACK": 19,
@@ -3587,8 +3587,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -2175.4661710135806,
-          "value": 21.754661710135807
+          "score": -2145.9976986122283,
+          "value": 21.45997698612228
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -3606,9 +3606,9 @@
           "ORANGE": 31,
           "RED": 95,
           "WHITE": 29,
-          "YELLOW": 34
+          "YELLOW": 37
         },
-        "score": -2175.466171,
+        "score": -2145.997699,
         "scoutByType": {
           "BLACK": 19,
           "BLUE": 17,
@@ -3616,7 +3616,7 @@
           "ORANGE": 13,
           "RED": 27,
           "WHITE": 12,
-          "YELLOW": 12
+          "YELLOW": 13
         },
         "scoutCoreByType": {
           "BLACK": 46,
@@ -3625,7 +3625,7 @@
           "ORANGE": 19,
           "RED": 68,
           "WHITE": 18,
-          "YELLOW": 24
+          "YELLOW": 26
         },
         "scoutCoreHitsCount": 134,
         "scoutCoreHitsValueSum": 309,
@@ -3852,7 +3852,7 @@
           "ORANGE": 24,
           "RED": 37,
           "WHITE": 12,
-          "YELLOW": 38
+          "YELLOW": 42
         },
         "scoutCoreHitsCount": 96,
         "scoutCoreHitsValueSum": 218,
@@ -4211,8 +4211,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -437.05881545081013,
-          "value": 4.370588154508101
+          "score": -517.4505793221381,
+          "value": 5.174505793221381
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -4227,29 +4227,29 @@
           "BLACK": 33,
           "BLUE": 38,
           "BROWN": 36,
-          "ORANGE": 37,
+          "ORANGE": 36,
           "RED": 47,
           "WHITE": 33,
-          "YELLOW": 38
+          "YELLOW": 45
         },
-        "score": -437.058815,
+        "score": -517.450579,
         "scoutByType": {
           "BLACK": 12,
           "BLUE": 15,
           "BROWN": 15,
-          "ORANGE": 13,
+          "ORANGE": 14,
           "RED": 18,
           "WHITE": 14,
-          "YELLOW": 14
+          "YELLOW": 16
         },
         "scoutCoreByType": {
           "BLACK": 22,
           "BLUE": 23,
           "BROWN": 22,
-          "ORANGE": 26,
+          "ORANGE": 24,
           "RED": 30,
           "WHITE": 21,
-          "YELLOW": 24
+          "YELLOW": 29
         },
         "scoutCoreHitsCount": 103,
         "scoutCoreHitsValueSum": 230,
@@ -4428,8 +4428,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -997.7525765848128,
-          "value": 9.977525765848128
+          "score": -971.6386327503973,
+          "value": 9.716386327503972
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -4447,9 +4447,9 @@
           "ORANGE": 44,
           "RED": 52,
           "WHITE": 30,
-          "YELLOW": 39
+          "YELLOW": 48
         },
-        "score": -997.752577,
+        "score": -971.638633,
         "scoutByType": {
           "BLACK": 16,
           "BLUE": 18,
@@ -4457,7 +4457,7 @@
           "ORANGE": 17,
           "RED": 19,
           "WHITE": 11,
-          "YELLOW": 15
+          "YELLOW": 19
         },
         "scoutCoreByType": {
           "BLACK": 22,
@@ -4466,7 +4466,7 @@
           "ORANGE": 28,
           "RED": 33,
           "WHITE": 21,
-          "YELLOW": 25
+          "YELLOW": 30
         },
         "scoutCoreHitsCount": 126,
         "scoutCoreHitsValueSum": 291,
@@ -4645,8 +4645,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1400.4372495031394,
-          "value": 14.004372495031394
+          "score": -1408.8640669644724,
+          "value": 14.088640669644724
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -4664,9 +4664,9 @@
           "ORANGE": 54,
           "RED": 58,
           "WHITE": 76,
-          "YELLOW": 59
+          "YELLOW": 60
         },
-        "score": -1400.43725,
+        "score": -1408.864067,
         "scoutByType": {
           "BLACK": 11,
           "BLUE": 15,
@@ -4674,7 +4674,7 @@
           "ORANGE": 20,
           "RED": 17,
           "WHITE": 28,
-          "YELLOW": 20
+          "YELLOW": 24
         },
         "scoutCoreByType": {
           "BLACK": 32,
@@ -5054,8 +5054,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1151.3966674062792,
-          "value": 11.513966674062791
+          "score": -1022.601723895616,
+          "value": 10.22601723895616
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -5073,9 +5073,9 @@
           "ORANGE": 53,
           "RED": 54,
           "WHITE": 41,
-          "YELLOW": 21
+          "YELLOW": 28
         },
-        "score": -1151.396667,
+        "score": -1022.601724,
         "scoutByType": {
           "BLACK": 18,
           "BLUE": 15,
@@ -5083,7 +5083,7 @@
           "ORANGE": 19,
           "RED": 18,
           "WHITE": 18,
-          "YELLOW": 11
+          "YELLOW": 15
         },
         "scoutCoreByType": {
           "BLACK": 21,
@@ -5092,7 +5092,7 @@
           "ORANGE": 34,
           "RED": 36,
           "WHITE": 23,
-          "YELLOW": 10
+          "YELLOW": 14
         },
         "scoutCoreHitsCount": 85,
         "scoutCoreHitsValueSum": 202,
@@ -5266,8 +5266,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -746.1465632686054,
-          "value": 7.461465632686054
+          "score": -824.1260058203405,
+          "value": 8.241260058203405
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -5285,9 +5285,9 @@
           "ORANGE": 44,
           "RED": 22,
           "WHITE": 39,
-          "YELLOW": 44
+          "YELLOW": 49
         },
-        "score": -746.146563,
+        "score": -824.126006,
         "scoutByType": {
           "BLACK": 18,
           "BLUE": 13,
@@ -5295,7 +5295,7 @@
           "ORANGE": 15,
           "RED": 8,
           "WHITE": 16,
-          "YELLOW": 17
+          "YELLOW": 21
         },
         "scoutCoreByType": {
           "BLACK": 26,
@@ -5304,7 +5304,7 @@
           "ORANGE": 29,
           "RED": 18,
           "WHITE": 24,
-          "YELLOW": 27
+          "YELLOW": 31
         },
         "scoutCoreHitsCount": 110,
         "scoutCoreHitsValueSum": 246,
@@ -5488,8 +5488,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -991.1856433543803,
-          "value": 9.911856433543804
+          "score": -1155.9959042367948,
+          "value": 11.559959042367948
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -5504,12 +5504,12 @@
           "BLACK": 44,
           "BLUE": 39,
           "BROWN": 42,
-          "ORANGE": 44,
+          "ORANGE": 43,
           "RED": 28,
           "WHITE": 18,
-          "YELLOW": 48
+          "YELLOW": 57
         },
-        "score": -991.185643,
+        "score": -1155.995904,
         "scoutByType": {
           "BLACK": 17,
           "BLUE": 18,
@@ -5526,7 +5526,7 @@
           "ORANGE": 27,
           "RED": 18,
           "WHITE": 16,
-          "YELLOW": 33
+          "YELLOW": 42
         },
         "scoutCoreHitsCount": 101,
         "scoutCoreHitsValueSum": 226,
@@ -5907,8 +5907,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -695.759752107767,
-          "value": 6.95759752107767
+          "score": -699.8542122237652,
+          "value": 6.998542122237652
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -5926,9 +5926,9 @@
           "ORANGE": 28,
           "RED": 30,
           "WHITE": 19,
-          "YELLOW": 32
+          "YELLOW": 34
         },
-        "score": -695.759752,
+        "score": -699.854212,
         "scoutByType": {
           "BLACK": 11,
           "BLUE": 17,
@@ -5945,7 +5945,7 @@
           "ORANGE": 19,
           "RED": 18,
           "WHITE": 9,
-          "YELLOW": 17
+          "YELLOW": 21
         },
         "scoutCoreHitsCount": 80,
         "scoutCoreHitsValueSum": 181,
@@ -6119,8 +6119,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1556.290723588151,
-          "value": 15.562907235881509
+          "score": -1680.0145771962327,
+          "value": 16.800145771962328
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -6138,9 +6138,9 @@
           "ORANGE": 35,
           "RED": 40,
           "WHITE": 39,
-          "YELLOW": 60
+          "YELLOW": 69
         },
-        "score": -1556.290724,
+        "score": -1680.014577,
         "scoutByType": {
           "BLACK": 14,
           "BLUE": 23,
@@ -6148,7 +6148,7 @@
           "ORANGE": 12,
           "RED": 14,
           "WHITE": 15,
-          "YELLOW": 21
+          "YELLOW": 23
         },
         "scoutCoreByType": {
           "BLACK": 21,
@@ -6157,7 +6157,7 @@
           "ORANGE": 24,
           "RED": 27,
           "WHITE": 24,
-          "YELLOW": 40
+          "YELLOW": 47
         },
         "scoutCoreHitsCount": 136,
         "scoutCoreHitsValueSum": 315,
@@ -6336,8 +6336,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1232.5516920070281,
-          "value": 12.325516920070282
+          "score": -1289.201619734683,
+          "value": 12.89201619734683
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -6355,9 +6355,9 @@
           "ORANGE": 45,
           "RED": 43,
           "WHITE": 74,
-          "YELLOW": 50
+          "YELLOW": 60
         },
-        "score": -1232.551692,
+        "score": -1289.20162,
         "scoutByType": {
           "BLACK": 18,
           "BLUE": 18,
@@ -6365,7 +6365,7 @@
           "ORANGE": 12,
           "RED": 15,
           "WHITE": 26,
-          "YELLOW": 16
+          "YELLOW": 20
         },
         "scoutCoreByType": {
           "BLACK": 25,
@@ -6374,7 +6374,7 @@
           "ORANGE": 33,
           "RED": 29,
           "WHITE": 49,
-          "YELLOW": 34
+          "YELLOW": 40
         },
         "scoutCoreHitsCount": 125,
         "scoutCoreHitsValueSum": 295,
@@ -6573,8 +6573,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1120.4955172072903,
-          "value": 11.204955172072902
+          "score": -1349.8299212591678,
+          "value": 13.498299212591677
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -6588,13 +6588,13 @@
         "planetTypeTotals": {
           "BLACK": 25,
           "BLUE": 49,
-          "BROWN": 30,
+          "BROWN": 31,
           "ORANGE": 42,
           "RED": 26,
           "WHITE": 36,
-          "YELLOW": 57
+          "YELLOW": 66
         },
-        "score": -1120.495517,
+        "score": -1349.829921,
         "scoutByType": {
           "BLACK": 9,
           "BLUE": 16,
@@ -6602,16 +6602,16 @@
           "ORANGE": 16,
           "RED": 9,
           "WHITE": 11,
-          "YELLOW": 21
+          "YELLOW": 25
         },
         "scoutCoreByType": {
           "BLACK": 18,
           "BLUE": 33,
-          "BROWN": 16,
+          "BROWN": 17,
           "ORANGE": 26,
           "RED": 19,
           "WHITE": 25,
-          "YELLOW": 36
+          "YELLOW": 41
         },
         "scoutCoreHitsCount": 123,
         "scoutCoreHitsValueSum": 277,
@@ -6815,8 +6815,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -927.141756547883,
-          "value": 9.27141756547883
+          "score": -1012.3724409443756,
+          "value": 10.123724409443756
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -6834,9 +6834,9 @@
           "ORANGE": 48,
           "RED": 31,
           "WHITE": 45,
-          "YELLOW": 49
+          "YELLOW": 58
         },
-        "score": -927.141757,
+        "score": -1012.372441,
         "scoutByType": {
           "BLACK": 19,
           "BLUE": 14,
@@ -6844,7 +6844,7 @@
           "ORANGE": 15,
           "RED": 14,
           "WHITE": 13,
-          "YELLOW": 19
+          "YELLOW": 23
         },
         "scoutCoreByType": {
           "BLACK": 45,
@@ -6853,7 +6853,7 @@
           "ORANGE": 33,
           "RED": 19,
           "WHITE": 33,
-          "YELLOW": 31
+          "YELLOW": 36
         },
         "scoutCoreHitsCount": 124,
         "scoutCoreHitsValueSum": 292,
@@ -7284,8 +7284,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1620.1536838163452,
-          "value": 16.201536838163452
+          "score": -1826.6731217920603,
+          "value": 18.266731217920604
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -7303,9 +7303,9 @@
           "ORANGE": 34,
           "RED": 36,
           "WHITE": 27,
-          "YELLOW": 70
+          "YELLOW": 78
         },
-        "score": -1620.153684,
+        "score": -1826.673122,
         "scoutByType": {
           "BLACK": 8,
           "BLUE": 21,
@@ -7322,7 +7322,7 @@
           "ORANGE": 24,
           "RED": 25,
           "WHITE": 19,
-          "YELLOW": 49
+          "YELLOW": 58
         },
         "scoutCoreHitsCount": 126,
         "scoutCoreHitsValueSum": 294,
@@ -7506,8 +7506,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1112.0857403444895,
-          "value": 11.120857403444894
+          "score": -1125.9463140136018,
+          "value": 11.259463140136019
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -7520,14 +7520,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 55,
-          "BLUE": 58,
+          "BLUE": 59,
           "BROWN": 35,
           "ORANGE": 50,
           "RED": 30,
           "WHITE": 62,
-          "YELLOW": 43
+          "YELLOW": 54
         },
-        "score": -1112.08574,
+        "score": -1125.946314,
         "scoutByType": {
           "BLACK": 15,
           "BLUE": 19,
@@ -7539,12 +7539,12 @@
         },
         "scoutCoreByType": {
           "BLACK": 41,
-          "BLUE": 39,
+          "BLUE": 40,
           "BROWN": 21,
           "ORANGE": 37,
           "RED": 21,
           "WHITE": 42,
-          "YELLOW": 32
+          "YELLOW": 43
         },
         "scoutCoreHitsCount": 155,
         "scoutCoreHitsValueSum": 364,
@@ -7738,8 +7738,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -939.3875555870626,
-          "value": 9.393875555870626
+          "score": -973.5271449943326,
+          "value": 9.735271449943326
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -7757,9 +7757,9 @@
           "ORANGE": 33,
           "RED": 16,
           "WHITE": 48,
-          "YELLOW": 29
+          "YELLOW": 37
         },
-        "score": -939.387556,
+        "score": -973.527145,
         "scoutByType": {
           "BLACK": 15,
           "BLUE": 8,
@@ -7767,7 +7767,7 @@
           "ORANGE": 14,
           "RED": 13,
           "WHITE": 14,
-          "YELLOW": 12
+          "YELLOW": 17
         },
         "scoutCoreByType": {
           "BLACK": 19,
@@ -7776,7 +7776,7 @@
           "ORANGE": 19,
           "RED": 4,
           "WHITE": 34,
-          "YELLOW": 17
+          "YELLOW": 22
         },
         "scoutCoreHitsCount": 87,
         "scoutCoreHitsValueSum": 195,
@@ -7980,8 +7980,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1260.385428577873,
-          "value": 12.60385428577873
+          "score": -1388.7301496588273,
+          "value": 13.887301496588272
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -7999,9 +7999,9 @@
           "ORANGE": 38,
           "RED": 43,
           "WHITE": 44,
-          "YELLOW": 65
+          "YELLOW": 72
         },
-        "score": -1260.385429,
+        "score": -1388.73015,
         "scoutByType": {
           "BLACK": 12,
           "BLUE": 21,
@@ -8009,7 +8009,7 @@
           "ORANGE": 12,
           "RED": 17,
           "WHITE": 16,
-          "YELLOW": 20
+          "YELLOW": 23
         },
         "scoutCoreByType": {
           "BLACK": 32,
@@ -8018,7 +8018,7 @@
           "ORANGE": 27,
           "RED": 26,
           "WHITE": 29,
-          "YELLOW": 45
+          "YELLOW": 49
         },
         "scoutCoreHitsCount": 142,
         "scoutCoreHitsValueSum": 327,
@@ -8207,8 +8207,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1262.4886340163257,
-          "value": 12.624886340163258
+          "score": -1354.2073515604648,
+          "value": 13.542073515604647
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -8226,9 +8226,9 @@
           "ORANGE": 25,
           "RED": 29,
           "WHITE": 32,
-          "YELLOW": 48
+          "YELLOW": 54
         },
-        "score": -1262.488634,
+        "score": -1354.207352,
         "scoutByType": {
           "BLACK": 21,
           "BLUE": 4,
@@ -8236,7 +8236,7 @@
           "ORANGE": 10,
           "RED": 12,
           "WHITE": 11,
-          "YELLOW": 15
+          "YELLOW": 17
         },
         "scoutCoreByType": {
           "BLACK": 19,
@@ -8245,7 +8245,7 @@
           "ORANGE": 15,
           "RED": 18,
           "WHITE": 21,
-          "YELLOW": 33
+          "YELLOW": 37
         },
         "scoutCoreHitsCount": 103,
         "scoutCoreHitsValueSum": 237,
@@ -8439,8 +8439,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1191.2949565365363,
-          "value": 11.912949565365363
+          "score": -1184.078044862977,
+          "value": 11.84078044862977
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -8458,9 +8458,9 @@
           "ORANGE": 63,
           "RED": 41,
           "WHITE": 35,
-          "YELLOW": 37
+          "YELLOW": 40
         },
-        "score": -1191.294957,
+        "score": -1184.078045,
         "scoutByType": {
           "BLACK": 16,
           "BLUE": 11,
@@ -8468,7 +8468,7 @@
           "ORANGE": 20,
           "RED": 19,
           "WHITE": 15,
-          "YELLOW": 12
+          "YELLOW": 17
         },
         "scoutCoreByType": {
           "BLACK": 33,
@@ -8671,8 +8671,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -2027.464486716835,
-          "value": 20.274644867168348
+          "score": -2153.9711782506965,
+          "value": 21.539711782506966
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -8690,9 +8690,9 @@
           "ORANGE": 57,
           "RED": 30,
           "WHITE": 48,
-          "YELLOW": 60
+          "YELLOW": 72
         },
-        "score": -2027.464487,
+        "score": -2153.971178,
         "scoutByType": {
           "BLACK": 31,
           "BLUE": 12,
@@ -8700,7 +8700,7 @@
           "ORANGE": 20,
           "RED": 9,
           "WHITE": 18,
-          "YELLOW": 18
+          "YELLOW": 23
         },
         "scoutCoreByType": {
           "BLACK": 59,
@@ -8709,7 +8709,7 @@
           "ORANGE": 37,
           "RED": 22,
           "WHITE": 31,
-          "YELLOW": 42
+          "YELLOW": 49
         },
         "scoutCoreHitsCount": 156,
         "scoutCoreHitsValueSum": 361,
@@ -9115,8 +9115,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -667.3126122358093,
-          "value": 6.673126122358093
+          "score": -774.3331561638659,
+          "value": 7.743331561638659
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -9134,9 +9134,9 @@
           "ORANGE": 25,
           "RED": 42,
           "WHITE": 42,
-          "YELLOW": 43
+          "YELLOW": 49
         },
-        "score": -667.312612,
+        "score": -774.333156,
         "scoutByType": {
           "BLACK": 15,
           "BLUE": 13,
@@ -9144,7 +9144,7 @@
           "ORANGE": 4,
           "RED": 17,
           "WHITE": 18,
-          "YELLOW": 15
+          "YELLOW": 19
         },
         "scoutCoreByType": {
           "BLACK": 24,
@@ -9153,7 +9153,7 @@
           "ORANGE": 21,
           "RED": 25,
           "WHITE": 24,
-          "YELLOW": 28
+          "YELLOW": 31
         },
         "scoutCoreHitsCount": 121,
         "scoutCoreHitsValueSum": 274,
@@ -9362,8 +9362,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -925.3791280400941,
-          "value": 9.253791280400941
+          "score": -999.1833400026122,
+          "value": 9.991833400026122
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -9381,9 +9381,9 @@
           "ORANGE": 54,
           "RED": 43,
           "WHITE": 53,
-          "YELLOW": 63
+          "YELLOW": 66
         },
-        "score": -925.379128,
+        "score": -999.18334,
         "scoutByType": {
           "BLACK": 13,
           "BLUE": 14,
@@ -9391,7 +9391,7 @@
           "ORANGE": 18,
           "RED": 17,
           "WHITE": 18,
-          "YELLOW": 26
+          "YELLOW": 29
         },
         "scoutCoreByType": {
           "BLACK": 22,
@@ -9594,8 +9594,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1101.5758656375428,
-          "value": 11.015758656375429
+          "score": -1105.0902631893553,
+          "value": 11.050902631893551
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -9609,13 +9609,13 @@
         "planetTypeTotals": {
           "BLACK": 36,
           "BLUE": 47,
-          "BROWN": 41,
+          "BROWN": 42,
           "ORANGE": 28,
           "RED": 55,
           "WHITE": 19,
-          "YELLOW": 35
+          "YELLOW": 40
         },
-        "score": -1101.575866,
+        "score": -1105.090263,
         "scoutByType": {
           "BLACK": 16,
           "BLUE": 18,
@@ -9623,16 +9623,16 @@
           "ORANGE": 11,
           "RED": 20,
           "WHITE": 8,
-          "YELLOW": 14
+          "YELLOW": 18
         },
         "scoutCoreByType": {
           "BLACK": 20,
           "BLUE": 31,
-          "BROWN": 28,
+          "BROWN": 29,
           "ORANGE": 18,
           "RED": 35,
           "WHITE": 11,
-          "YELLOW": 21
+          "YELLOW": 25
         },
         "scoutCoreHitsCount": 110,
         "scoutCoreHitsValueSum": 261,
@@ -9836,8 +9836,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1275.9950099064347,
-          "value": 12.759950099064346
+          "score": -1364.8652471424214,
+          "value": 13.648652471424214
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -9852,29 +9852,29 @@
           "BLACK": 55,
           "BLUE": 43,
           "BROWN": 44,
-          "ORANGE": 24,
+          "ORANGE": 25,
           "RED": 58,
           "WHITE": 24,
-          "YELLOW": 50
+          "YELLOW": 59
         },
-        "score": -1275.99501,
+        "score": -1364.865247,
         "scoutByType": {
           "BLACK": 20,
-          "BLUE": 10,
+          "BLUE": 11,
           "BROWN": 13,
           "ORANGE": 9,
           "RED": 20,
           "WHITE": 9,
-          "YELLOW": 18
+          "YELLOW": 22
         },
         "scoutCoreByType": {
           "BLACK": 35,
           "BLUE": 33,
           "BROWN": 31,
-          "ORANGE": 17,
+          "ORANGE": 18,
           "RED": 38,
           "WHITE": 17,
-          "YELLOW": 32
+          "YELLOW": 39
         },
         "scoutCoreHitsCount": 133,
         "scoutCoreHitsValueSum": 294,
@@ -10305,8 +10305,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1577.9087167410373,
-          "value": 15.779087167410372
+          "score": -1782.3396684912648,
+          "value": 17.823396684912648
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -10324,9 +10324,9 @@
           "ORANGE": 36,
           "RED": 27,
           "WHITE": 33,
-          "YELLOW": 62
+          "YELLOW": 73
         },
-        "score": -1577.908717,
+        "score": -1782.339668,
         "scoutByType": {
           "BLACK": 11,
           "BLUE": 22,
@@ -10334,7 +10334,7 @@
           "ORANGE": 9,
           "RED": 7,
           "WHITE": 11,
-          "YELLOW": 17
+          "YELLOW": 21
         },
         "scoutCoreByType": {
           "BLACK": 19,
@@ -10343,7 +10343,7 @@
           "ORANGE": 28,
           "RED": 22,
           "WHITE": 24,
-          "YELLOW": 45
+          "YELLOW": 52
         },
         "scoutCoreHitsCount": 131,
         "scoutCoreHitsValueSum": 298,
@@ -10774,8 +10774,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1382.544238506881,
-          "value": 13.82544238506881
+          "score": -1488.8702743615881,
+          "value": 14.888702743615882
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -10793,9 +10793,9 @@
           "ORANGE": 48,
           "RED": 30,
           "WHITE": 48,
-          "YELLOW": 73
+          "YELLOW": 77
         },
-        "score": -1382.544239,
+        "score": -1488.870274,
         "scoutByType": {
           "BLACK": 23,
           "BLUE": 19,
@@ -10803,7 +10803,7 @@
           "ORANGE": 14,
           "RED": 8,
           "WHITE": 18,
-          "YELLOW": 19
+          "YELLOW": 21
         },
         "scoutCoreByType": {
           "BLACK": 26,
@@ -10812,7 +10812,7 @@
           "ORANGE": 36,
           "RED": 22,
           "WHITE": 31,
-          "YELLOW": 54
+          "YELLOW": 56
         },
         "scoutCoreHitsCount": 134,
         "scoutCoreHitsValueSum": 322,
@@ -11001,8 +11001,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1019.8039027185569,
-          "value": 10.198039027185569
+          "score": -951.4757603055264,
+          "value": 9.514757603055264
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -11020,9 +11020,9 @@
           "ORANGE": 66,
           "RED": 45,
           "WHITE": 54,
-          "YELLOW": 37
+          "YELLOW": 48
         },
-        "score": -1019.803903,
+        "score": -951.47576,
         "scoutByType": {
           "BLACK": 19,
           "BLUE": 11,
@@ -11030,7 +11030,7 @@
           "ORANGE": 23,
           "RED": 11,
           "WHITE": 21,
-          "YELLOW": 13
+          "YELLOW": 17
         },
         "scoutCoreByType": {
           "BLACK": 26,
@@ -11039,7 +11039,7 @@
           "ORANGE": 43,
           "RED": 34,
           "WHITE": 34,
-          "YELLOW": 24
+          "YELLOW": 31
         },
         "scoutCoreHitsCount": 144,
         "scoutCoreHitsValueSum": 328,
@@ -11233,8 +11233,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1200.5100956659708,
-          "value": 12.005100956659708
+          "score": -1414.0692475033513,
+          "value": 14.140692475033513
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -11252,9 +11252,9 @@
           "ORANGE": 43,
           "RED": 55,
           "WHITE": 25,
-          "YELLOW": 63
+          "YELLOW": 72
         },
-        "score": -1200.510096,
+        "score": -1414.069248,
         "scoutByType": {
           "BLACK": 12,
           "BLUE": 22,
@@ -11262,7 +11262,7 @@
           "ORANGE": 17,
           "RED": 15,
           "WHITE": 9,
-          "YELLOW": 18
+          "YELLOW": 22
         },
         "scoutCoreByType": {
           "BLACK": 27,
@@ -11271,7 +11271,7 @@
           "ORANGE": 27,
           "RED": 40,
           "WHITE": 18,
-          "YELLOW": 45
+          "YELLOW": 52
         },
         "scoutCoreHitsCount": 131,
         "scoutCoreHitsValueSum": 299,
@@ -11465,8 +11465,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -820.15429110899,
-          "value": 8.2015429110899
+          "score": -1033.3223611442927,
+          "value": 10.333223611442927
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -11484,9 +11484,9 @@
           "ORANGE": 37,
           "RED": 42,
           "WHITE": 37,
-          "YELLOW": 44
+          "YELLOW": 55
         },
-        "score": -820.154291,
+        "score": -1033.322361,
         "scoutByType": {
           "BLACK": 14,
           "BLUE": 10,
@@ -11494,7 +11494,7 @@
           "ORANGE": 16,
           "RED": 13,
           "WHITE": 16,
-          "YELLOW": 15
+          "YELLOW": 20
         },
         "scoutCoreByType": {
           "BLACK": 19,
@@ -11503,7 +11503,7 @@
           "ORANGE": 22,
           "RED": 30,
           "WHITE": 22,
-          "YELLOW": 30
+          "YELLOW": 36
         },
         "scoutCoreHitsCount": 107,
         "scoutCoreHitsValueSum": 248,
@@ -11712,8 +11712,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -996.9340755638802,
-          "value": 9.969340755638802
+          "score": -975.2027523357722,
+          "value": 9.752027523357722
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -11731,9 +11731,9 @@
           "ORANGE": 42,
           "RED": 21,
           "WHITE": 31,
-          "YELLOW": 18
+          "YELLOW": 19
         },
-        "score": -996.934076,
+        "score": -975.202752,
         "scoutByType": {
           "BLACK": 11,
           "BLUE": 18,
@@ -11741,7 +11741,7 @@
           "ORANGE": 15,
           "RED": 13,
           "WHITE": 12,
-          "YELLOW": 9
+          "YELLOW": 12
         },
         "scoutCoreByType": {
           "BLACK": 23,
@@ -11939,8 +11939,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -851.4093957572193,
-          "value": 8.514093957572193
+          "score": -915.6240205121179,
+          "value": 9.156240205121179
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -11955,12 +11955,12 @@
           "BLACK": 28,
           "BLUE": 40,
           "BROWN": 30,
-          "ORANGE": 52,
+          "ORANGE": 53,
           "RED": 45,
           "WHITE": 49,
-          "YELLOW": 45
+          "YELLOW": 50
         },
-        "score": -851.409396,
+        "score": -915.624021,
         "scoutByType": {
           "BLACK": 9,
           "BLUE": 13,
@@ -11968,16 +11968,16 @@
           "ORANGE": 18,
           "RED": 19,
           "WHITE": 17,
-          "YELLOW": 22
+          "YELLOW": 25
         },
         "scoutCoreByType": {
           "BLACK": 21,
           "BLUE": 28,
           "BROWN": 22,
-          "ORANGE": 34,
+          "ORANGE": 35,
           "RED": 27,
           "WHITE": 33,
-          "YELLOW": 24
+          "YELLOW": 26
         },
         "scoutCoreHitsCount": 133,
         "scoutCoreHitsValueSum": 309,
@@ -12166,8 +12166,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -695.7597521077669,
-          "value": 6.957597521077669
+          "score": -763.4508123364221,
+          "value": 7.634508123364221
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -12182,17 +12182,17 @@
           "BLACK": 39,
           "BLUE": 35,
           "BROWN": 33,
-          "ORANGE": 34,
+          "ORANGE": 36,
           "RED": 50,
           "WHITE": 26,
-          "YELLOW": 41
+          "YELLOW": 47
         },
-        "score": -695.759752,
+        "score": -763.450812,
         "scoutByType": {
           "BLACK": 15,
           "BLUE": 13,
           "BROWN": 14,
-          "ORANGE": 14,
+          "ORANGE": 15,
           "RED": 20,
           "WHITE": 10,
           "YELLOW": 15
@@ -12201,10 +12201,10 @@
           "BLACK": 25,
           "BLUE": 23,
           "BROWN": 20,
-          "ORANGE": 21,
+          "ORANGE": 22,
           "RED": 32,
           "WHITE": 17,
-          "YELLOW": 29
+          "YELLOW": 35
         },
         "scoutCoreHitsCount": 111,
         "scoutCoreHitsValueSum": 260,
@@ -12388,8 +12388,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1366.3596801392393,
-          "value": 13.663596801392393
+          "score": -1459.3820330425294,
+          "value": 14.593820330425295
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -12407,9 +12407,9 @@
           "ORANGE": 35,
           "RED": 29,
           "WHITE": 43,
-          "YELLOW": 54
+          "YELLOW": 61
         },
-        "score": -1366.35968,
+        "score": -1459.382033,
         "scoutByType": {
           "BLACK": 25,
           "BLUE": 10,
@@ -12417,7 +12417,7 @@
           "ORANGE": 14,
           "RED": 10,
           "WHITE": 18,
-          "YELLOW": 16
+          "YELLOW": 19
         },
         "scoutCoreByType": {
           "BLACK": 47,
@@ -12426,7 +12426,7 @@
           "ORANGE": 25,
           "RED": 19,
           "WHITE": 26,
-          "YELLOW": 38
+          "YELLOW": 42
         },
         "scoutCoreHitsCount": 127,
         "scoutCoreHitsValueSum": 303,
@@ -12615,8 +12615,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -517.4505793221381,
-          "value": 5.174505793221381
+          "score": -554.0205551332948,
+          "value": 5.540205551332948
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -12634,9 +12634,9 @@
           "ORANGE": 36,
           "RED": 36,
           "WHITE": 37,
-          "YELLOW": 39
+          "YELLOW": 45
         },
-        "score": -517.450579,
+        "score": -554.020555,
         "scoutByType": {
           "BLACK": 17,
           "BLUE": 15,
@@ -12644,7 +12644,7 @@
           "ORANGE": 12,
           "RED": 11,
           "WHITE": 11,
-          "YELLOW": 16
+          "YELLOW": 20
         },
         "scoutCoreByType": {
           "BLACK": 29,
@@ -12653,7 +12653,7 @@
           "ORANGE": 24,
           "RED": 25,
           "WHITE": 26,
-          "YELLOW": 23
+          "YELLOW": 27
         },
         "scoutCoreHitsCount": 118,
         "scoutCoreHitsValueSum": 276,
@@ -12842,8 +12842,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1435.127811985641,
-          "value": 14.351278119856412
+          "score": -1494.7527268032377,
+          "value": 14.947527268032376
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -12861,9 +12861,9 @@
           "ORANGE": 56,
           "RED": 24,
           "WHITE": 18,
-          "YELLOW": 51
+          "YELLOW": 55
         },
-        "score": -1435.127812,
+        "score": -1494.752727,
         "scoutByType": {
           "BLACK": 14,
           "BLUE": 16,
@@ -12880,7 +12880,7 @@
           "ORANGE": 41,
           "RED": 13,
           "WHITE": 13,
-          "YELLOW": 36
+          "YELLOW": 40
         },
         "scoutCoreHitsCount": 114,
         "scoutCoreHitsValueSum": 267,
@@ -13074,8 +13074,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1405.5284429998678,
-          "value": 14.055284429998679
+          "score": -1333.0952168329377,
+          "value": 13.330952168329377
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -13093,9 +13093,9 @@
           "ORANGE": 49,
           "RED": 46,
           "WHITE": 75,
-          "YELLOW": 33
+          "YELLOW": 39
         },
-        "score": -1405.528443,
+        "score": -1333.095217,
         "scoutByType": {
           "BLACK": 11,
           "BLUE": 22,
@@ -13103,7 +13103,7 @@
           "ORANGE": 14,
           "RED": 9,
           "WHITE": 21,
-          "YELLOW": 12
+          "YELLOW": 15
         },
         "scoutCoreByType": {
           "BLACK": 20,
@@ -13112,7 +13112,7 @@
           "ORANGE": 35,
           "RED": 38,
           "WHITE": 54,
-          "YELLOW": 22
+          "YELLOW": 25
         },
         "scoutCoreHitsCount": 146,
         "scoutCoreHitsValueSum": 335,
@@ -13306,8 +13306,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -1157.2310372044935,
-          "value": 11.572310372044935
+          "score": -1388.1422029137375,
+          "value": 13.881422029137374
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -13325,9 +13325,9 @@
           "ORANGE": 36,
           "RED": 20,
           "WHITE": 21,
-          "YELLOW": 52
+          "YELLOW": 62
         },
-        "score": -1157.231037,
+        "score": -1388.142203,
         "scoutByType": {
           "BLACK": 18,
           "BLUE": 13,
@@ -13335,7 +13335,7 @@
           "ORANGE": 15,
           "RED": 9,
           "WHITE": 10,
-          "YELLOW": 19
+          "YELLOW": 21
         },
         "scoutCoreByType": {
           "BLACK": 22,
@@ -13344,7 +13344,7 @@
           "ORANGE": 22,
           "RED": 13,
           "WHITE": 11,
-          "YELLOW": 33
+          "YELLOW": 41
         },
         "scoutCoreHitsCount": 101,
         "scoutCoreHitsValueSum": 231,
@@ -13464,8 +13464,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -589.7076411585798,
-          "value": 5.8970764115857985
+          "score": -602.3762469230862,
+          "value": 6.023762469230862
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -13478,14 +13478,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 28,
-          "BLUE": 12,
+          "BLUE": 13,
           "BROWN": 10,
-          "ORANGE": 19,
+          "ORANGE": 20,
           "RED": 12,
           "WHITE": 21,
-          "YELLOW": 19
+          "YELLOW": 22
         },
-        "score": -589.707641,
+        "score": -602.376247,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -13795,8 +13795,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -918.7391537607731,
-          "value": 9.18739153760773
+          "score": -919.1833109797379,
+          "value": 9.191833109797379
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -13814,9 +13814,9 @@
           "ORANGE": 13,
           "RED": 10,
           "WHITE": 39,
-          "YELLOW": 19
+          "YELLOW": 20
         },
-        "score": -918.739154,
+        "score": -919.183311,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -13943,8 +13943,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -302.3715784073818,
-          "value": 3.0237157840738176
+          "score": -328.2607226593159,
+          "value": 3.282607226593159
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -13962,9 +13962,9 @@
           "ORANGE": 22,
           "RED": 14,
           "WHITE": 20,
-          "YELLOW": 19
+          "YELLOW": 21
         },
-        "score": -302.371578,
+        "score": -328.260723,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -14106,8 +14106,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -370.32803990902056,
-          "value": 3.7032803990902057
+          "score": -369.2242280948596,
+          "value": 3.6922422809485957
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -14121,13 +14121,13 @@
         "planetTypeTotals": {
           "BLACK": 20,
           "BLUE": 13,
-          "BROWN": 14,
+          "BROWN": 15,
           "ORANGE": 8,
           "RED": 16,
           "WHITE": 19,
-          "YELLOW": 15
+          "YELLOW": 16
         },
-        "score": -370.32804,
+        "score": -369.224228,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -14254,8 +14254,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -589.0150893739515,
-          "value": 5.890150893739515
+          "score": -590.0536122303823,
+          "value": 5.900536122303824
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -14273,9 +14273,9 @@
           "ORANGE": 12,
           "RED": 23,
           "WHITE": 26,
-          "YELLOW": 17
+          "YELLOW": 20
         },
-        "score": -589.015089,
+        "score": -590.053612,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -14422,8 +14422,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -837.3914794144482,
-          "value": 8.373914794144483
+          "score": -892.5999629607604,
+          "value": 8.925999629607604
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -14441,9 +14441,9 @@
           "ORANGE": 16,
           "RED": 25,
           "WHITE": 24,
-          "YELLOW": 36
+          "YELLOW": 38
         },
-        "score": -837.391479,
+        "score": -892.599963,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -14590,8 +14590,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -734.8469228349535,
-          "value": 7.3484692283495345
+          "score": -729.8308442539886,
+          "value": 7.298308442539886
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -14609,9 +14609,9 @@
           "ORANGE": 11,
           "RED": 17,
           "WHITE": 22,
-          "YELLOW": 16
+          "YELLOW": 17
         },
-        "score": -734.846923,
+        "score": -729.830844,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -14733,8 +14733,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -420.883424647321,
-          "value": 4.20883424647321
+          "score": -430.4719763805532,
+          "value": 4.304719763805532
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -14752,9 +14752,9 @@
           "ORANGE": 9,
           "RED": 24,
           "WHITE": 16,
-          "YELLOW": 14
+          "YELLOW": 18
         },
-        "score": -420.883425,
+        "score": -430.471976,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -14886,8 +14886,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -387.03477668983044,
-          "value": 3.8703477668983046
+          "score": -394.34782119549317,
+          "value": 3.9434782119549316
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -14905,9 +14905,9 @@
           "ORANGE": 8,
           "RED": 16,
           "WHITE": 18,
-          "YELLOW": 15
+          "YELLOW": 17
         },
-        "score": -387.034777,
+        "score": -394.347821,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -15044,8 +15044,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -494.8716593053935,
-          "value": 4.948716593053935
+          "score": -522.1619109284876,
+          "value": 5.221619109284876
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -15058,14 +15058,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 17,
-          "BLUE": 23,
+          "BLUE": 24,
           "BROWN": 7,
           "ORANGE": 12,
           "RED": 20,
           "WHITE": 19,
-          "YELLOW": 16
+          "YELLOW": 19
         },
-        "score": -494.871659,
+        "score": -522.161911,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -15207,8 +15207,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -384.9198167230708,
-          "value": 3.8491981672307083
+          "score": -380.65464555640654,
+          "value": 3.806546455564065
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -15223,12 +15223,12 @@
           "BLACK": 17,
           "BLUE": 17,
           "BROWN": 13,
-          "ORANGE": 16,
+          "ORANGE": 17,
           "RED": 14,
           "WHITE": 25,
           "YELLOW": 21
         },
-        "score": -384.919817,
+        "score": -380.654646,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -15355,8 +15355,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -344.0455593940656,
-          "value": 3.440455593940656
+          "score": -423.78277069118076,
+          "value": 4.2378277069118075
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -15374,9 +15374,9 @@
           "ORANGE": 17,
           "RED": 15,
           "WHITE": 17,
-          "YELLOW": 22
+          "YELLOW": 25
         },
-        "score": -344.045559,
+        "score": -423.782771,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -15513,8 +15513,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -498.1598792617913,
-          "value": 4.981598792617913
+          "score": -488.2287854467161,
+          "value": 4.882287854467161
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -15527,14 +15527,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 23,
-          "BLUE": 12,
+          "BLUE": 13,
           "BROWN": 16,
           "ORANGE": 6,
           "RED": 16,
           "WHITE": 11,
-          "YELLOW": 11
+          "YELLOW": 12
         },
-        "score": -498.159879,
+        "score": -488.228785,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -15666,8 +15666,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -631.8098396427423,
-          "value": 6.318098396427423
+          "score": -715.1423434733615,
+          "value": 7.151423434733616
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -15685,9 +15685,9 @@
           "ORANGE": 20,
           "RED": 12,
           "WHITE": 17,
-          "YELLOW": 25
+          "YELLOW": 30
         },
-        "score": -631.80984,
+        "score": -715.142343,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -15829,8 +15829,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -621.0590034081188,
-          "value": 6.2105900340811875
+          "score": -660.5501726683939,
+          "value": 6.605501726683939
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -15848,9 +15848,9 @@
           "ORANGE": 11,
           "RED": 12,
           "WHITE": 20,
-          "YELLOW": 26
+          "YELLOW": 28
         },
-        "score": -621.059003,
+        "score": -660.550173,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -15982,8 +15982,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -634.0668863192042,
-          "value": 6.340668863192042
+          "score": -637.9175303361745,
+          "value": 6.3791753033617455
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -16001,9 +16001,9 @@
           "ORANGE": 11,
           "RED": 21,
           "WHITE": 28,
-          "YELLOW": 16
+          "YELLOW": 19
         },
-        "score": -634.066886,
+        "score": -637.91753,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -16140,8 +16140,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -301.0186786529354,
-          "value": 3.010186786529354
+          "score": -353.40905362437087,
+          "value": 3.534090536243709
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -16159,9 +16159,9 @@
           "ORANGE": 15,
           "RED": 19,
           "WHITE": 10,
-          "YELLOW": 19
+          "YELLOW": 22
         },
-        "score": -301.018679,
+        "score": -353.409054,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -16303,8 +16303,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -831.5218406202998,
-          "value": 8.315218406202998
+          "score": -844.1878115825231,
+          "value": 8.441878115825231
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -16319,12 +16319,12 @@
           "BLACK": 8,
           "BLUE": 24,
           "BROWN": 16,
-          "ORANGE": 12,
+          "ORANGE": 11,
           "RED": 31,
           "WHITE": 29,
           "YELLOW": 13
         },
-        "score": -831.521841,
+        "score": -844.187812,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -16471,8 +16471,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -613.7871731125953,
-          "value": 6.137871731125952
+          "score": -612.7888739864918,
+          "value": 6.127888739864918
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -16490,9 +16490,9 @@
           "ORANGE": 17,
           "RED": 28,
           "WHITE": 15,
-          "YELLOW": 16
+          "YELLOW": 19
         },
-        "score": -613.787173,
+        "score": -612.788874,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -16639,8 +16639,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -668.5347975312908,
-          "value": 6.685347975312908
+          "score": -706.5293153644708,
+          "value": 7.065293153644708
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -16655,12 +16655,12 @@
           "BLACK": 30,
           "BLUE": 24,
           "BROWN": 8,
-          "ORANGE": 17,
+          "ORANGE": 18,
           "RED": 18,
           "WHITE": 18,
-          "YELLOW": 26
+          "YELLOW": 29
         },
-        "score": -668.534798,
+        "score": -706.529315,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -16797,8 +16797,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -254.75077857324297,
-          "value": 2.5475077857324298
+          "score": -284.9991049037144,
+          "value": 2.849991049037144
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -16816,9 +16816,9 @@
           "ORANGE": 20,
           "RED": 14,
           "WHITE": 16,
-          "YELLOW": 16
+          "YELLOW": 20
         },
-        "score": -254.750779,
+        "score": -284.999105,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -16945,8 +16945,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -364.2156795423418,
-          "value": 3.6421567954234177
+          "score": -503.4574339058885,
+          "value": 5.034574339058885
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -16961,12 +16961,12 @@
           "BLACK": 14,
           "BLUE": 20,
           "BROWN": 13,
-          "ORANGE": 14,
+          "ORANGE": 13,
           "RED": 14,
           "WHITE": 10,
-          "YELLOW": 21
+          "YELLOW": 26
         },
-        "score": -364.21568,
+        "score": -503.457434,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -17103,8 +17103,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -511.10125199995196,
-          "value": 5.1110125199995196
+          "score": -468.60627048162075,
+          "value": 4.686062704816208
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -17122,9 +17122,9 @@
           "ORANGE": 13,
           "RED": 18,
           "WHITE": 15,
-          "YELLOW": 9
+          "YELLOW": 12
         },
-        "score": -511.101252,
+        "score": -468.60627,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -17261,8 +17261,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -813.1571126147261,
-          "value": 8.13157112614726
+          "score": -864.7283400240889,
+          "value": 8.64728340024089
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -17275,14 +17275,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 29,
-          "BLUE": 20,
+          "BLUE": 21,
           "BROWN": 11,
-          "ORANGE": 21,
+          "ORANGE": 22,
           "RED": 18,
           "WHITE": 13,
-          "YELLOW": 36
+          "YELLOW": 38
         },
-        "score": -813.157113,
+        "score": -864.72834,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -17577,8 +17577,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -369.77654587270814,
-          "value": 3.697765458727081
+          "score": -390.7084094622098,
+          "value": 3.907084094622098
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -17596,9 +17596,9 @@
           "ORANGE": 14,
           "RED": 25,
           "WHITE": 13,
-          "YELLOW": 19
+          "YELLOW": 22
         },
-        "score": -369.776546,
+        "score": -390.708409,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -17750,8 +17750,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -536.4280958719597,
-          "value": 5.364280958719597
+          "score": -528.3783431116266,
+          "value": 5.283783431116266
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -17764,14 +17764,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 25,
-          "BLUE": 9,
+          "BLUE": 10,
           "BROWN": 11,
           "ORANGE": 8,
           "RED": 16,
           "WHITE": 11,
-          "YELLOW": 13
+          "YELLOW": 15
         },
-        "score": -536.428096,
+        "score": -528.378343,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -17898,8 +17898,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -517.4505793221381,
-          "value": 5.174505793221381
+          "score": -477.6643856371567,
+          "value": 4.776643856371567
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -17912,14 +17912,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 26,
-          "BLUE": 19,
+          "BLUE": 20,
           "BROWN": 14,
-          "ORANGE": 12,
+          "ORANGE": 13,
           "RED": 26,
           "WHITE": 19,
-          "YELLOW": 15
+          "YELLOW": 18
         },
-        "score": -517.450579,
+        "score": -477.664386,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -18056,8 +18056,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -264.1891715558133,
-          "value": 2.641891715558133
+          "score": -301.0186786529354,
+          "value": 3.010186786529354
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -18072,12 +18072,12 @@
           "BLACK": 18,
           "BLUE": 17,
           "BROWN": 15,
-          "ORANGE": 10,
+          "ORANGE": 11,
           "RED": 14,
           "WHITE": 14,
-          "YELLOW": 18
+          "YELLOW": 21
         },
-        "score": -264.189172,
+        "score": -301.018679,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -18229,8 +18229,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -592.4697529522206,
-          "value": 5.924697529522206
+          "score": -579.2324266489512,
+          "value": 5.792324266489512
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -18245,12 +18245,12 @@
           "BLACK": 9,
           "BLUE": 20,
           "BROWN": 12,
-          "ORANGE": 12,
+          "ORANGE": 11,
           "RED": 27,
           "WHITE": 18,
-          "YELLOW": 11
+          "YELLOW": 14
         },
-        "score": -592.469753,
+        "score": -579.232427,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -18387,8 +18387,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -539.0846361175203,
-          "value": 5.390846361175202
+          "score": -602.0373573058708,
+          "value": 6.020373573058708
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -18406,9 +18406,9 @@
           "ORANGE": 17,
           "RED": 14,
           "WHITE": 15,
-          "YELLOW": 30
+          "YELLOW": 32
         },
-        "score": -539.084636,
+        "score": -602.037357,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -18555,8 +18555,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -381.19040183218095,
-          "value": 3.8119040183218096
+          "score": -368.1171064778607,
+          "value": 3.6811710647786073
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -18574,9 +18574,9 @@
           "ORANGE": 19,
           "RED": 20,
           "WHITE": 18,
-          "YELLOW": 14
+          "YELLOW": 17
         },
-        "score": -381.190402,
+        "score": -368.117106,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -18861,8 +18861,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -406.0762972443398,
-          "value": 4.060762972443398
+          "score": -511.10125199995184,
+          "value": 5.111012519999519
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -18880,9 +18880,9 @@
           "ORANGE": 11,
           "RED": 16,
           "WHITE": 12,
-          "YELLOW": 22
+          "YELLOW": 26
         },
-        "score": -406.076297,
+        "score": -511.101252,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -19004,8 +19004,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -531.4592925068079,
-          "value": 5.314592925068078
+          "score": -545.1081150953975,
+          "value": 5.451081150953975
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -19023,9 +19023,9 @@
           "ORANGE": 28,
           "RED": 25,
           "WHITE": 21,
-          "YELLOW": 21
+          "YELLOW": 24
         },
-        "score": -531.459293,
+        "score": -545.108115,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -19167,8 +19167,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -438.9226141639205,
-          "value": 4.389226141639205
+          "score": -449.9433070863892,
+          "value": 4.499433070863892
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -19186,9 +19186,9 @@
           "ORANGE": 14,
           "RED": 22,
           "WHITE": 14,
-          "YELLOW": 19
+          "YELLOW": 23
         },
-        "score": -438.922614,
+        "score": -449.943307,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -19320,8 +19320,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -294.8538205792899,
-          "value": 2.9485382057928993
+          "score": -349.9271061118826,
+          "value": 3.499271061118826
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -19339,9 +19339,9 @@
           "ORANGE": 19,
           "RED": 15,
           "WHITE": 20,
-          "YELLOW": 19
+          "YELLOW": 22
         },
-        "score": -294.853821,
+        "score": -349.927106,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -19483,8 +19483,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -446.2999814803803,
-          "value": 4.462999814803803
+          "score": -433.7778985911137,
+          "value": 4.337778985911137
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -19502,9 +19502,9 @@
           "ORANGE": 22,
           "RED": 25,
           "WHITE": 11,
-          "YELLOW": 14
+          "YELLOW": 15
         },
-        "score": -446.299981,
+        "score": -433.777899,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -19626,8 +19626,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -652.1549834579043,
-          "value": 6.5215498345790435
+          "score": -670.6682625317429,
+          "value": 6.70668262531743
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -19645,9 +19645,9 @@
           "ORANGE": 20,
           "RED": 27,
           "WHITE": 22,
-          "YELLOW": 21
+          "YELLOW": 26
         },
-        "score": -652.154983,
+        "score": -670.668263,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -19774,8 +19774,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -602.0373573058707,
-          "value": 6.020373573058707
+          "score": -622.044030202207,
+          "value": 6.2204403020220695
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -19788,14 +19788,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 17,
-          "BLUE": 22,
+          "BLUE": 23,
           "BROWN": 16,
           "ORANGE": 11,
           "RED": 31,
           "WHITE": 14,
-          "YELLOW": 18
+          "YELLOW": 22
         },
-        "score": -602.037357,
+        "score": -622.04403,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -19937,8 +19937,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -315.5817433482074,
-          "value": 3.155817433482074
+          "score": -282.842712474619,
+          "value": 2.8284271247461903
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -19956,9 +19956,9 @@
           "ORANGE": 19,
           "RED": 16,
           "WHITE": 12,
-          "YELLOW": 11
+          "YELLOW": 14
         },
-        "score": -315.581743,
+        "score": -282.842712,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -20080,8 +20080,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -501.0193690500052,
-          "value": 5.010193690500052
+          "score": -496.9293465978882,
+          "value": 4.969293465978882
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -20099,9 +20099,9 @@
           "ORANGE": 13,
           "RED": 19,
           "WHITE": 9,
-          "YELLOW": 13
+          "YELLOW": 15
         },
-        "score": -501.019369,
+        "score": -496.929347,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -20396,8 +20396,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -442.1653583012046,
-          "value": 4.421653583012046
+          "score": -399.48947011741603,
+          "value": 3.9948947011741605
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -20415,9 +20415,9 @@
           "ORANGE": 19,
           "RED": 21,
           "WHITE": 17,
-          "YELLOW": 11
+          "YELLOW": 15
         },
-        "score": -442.165358,
+        "score": -399.48947,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -20554,8 +20554,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -329.5017884191656,
-          "value": 3.295017884191656
+          "score": -292.0721185751553,
+          "value": 2.920721185751553
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -20568,14 +20568,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 19,
-          "BLUE": 12,
+          "BLUE": 13,
           "BROWN": 12,
           "ORANGE": 13,
           "RED": 17,
           "WHITE": 20,
-          "YELLOW": 12
+          "YELLOW": 15
         },
-        "score": -329.501788,
+        "score": -292.072119,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -20702,8 +20702,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -383.32593899996397,
-          "value": 3.8332593899996397
+          "score": -458.92509726311454,
+          "value": 4.589250972631145
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -20721,9 +20721,9 @@
           "ORANGE": 16,
           "RED": 18,
           "WHITE": 18,
-          "YELLOW": 23
+          "YELLOW": 26
         },
-        "score": -383.325939,
+        "score": -458.925097,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -20845,8 +20845,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -336.85217493004563,
-          "value": 3.3685217493004562
+          "score": -349.92710611188255,
+          "value": 3.4992710611188254
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -20864,9 +20864,9 @@
           "ORANGE": 19,
           "RED": 17,
           "WHITE": 20,
-          "YELLOW": 16
+          "YELLOW": 18
         },
-        "score": -336.852175,
+        "score": -349.927106,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -20998,8 +20998,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -623.3549779791837,
-          "value": 6.233549779791836
+          "score": -582.7450872677468,
+          "value": 5.827450872677468
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -21017,9 +21017,9 @@
           "ORANGE": 10,
           "RED": 25,
           "WHITE": 13,
-          "YELLOW": 10
+          "YELLOW": 13
         },
-        "score": -623.354978,
+        "score": -582.745087,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -21156,8 +21156,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -361.9674131234265,
-          "value": 3.619674131234265
+          "score": -405.0699108216522,
+          "value": 4.050699108216522
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -21175,9 +21175,9 @@
           "ORANGE": 19,
           "RED": 24,
           "WHITE": 16,
-          "YELLOW": 22
+          "YELLOW": 25
         },
-        "score": -361.967413,
+        "score": -405.069911,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -21309,8 +21309,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -465.109159888563,
-          "value": 4.65109159888563
+          "score": -458.0348440537542,
+          "value": 4.580348440537542
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -21325,12 +21325,12 @@
           "BLACK": 13,
           "BLUE": 22,
           "BROWN": 14,
-          "ORANGE": 15,
+          "ORANGE": 16,
           "RED": 23,
           "WHITE": 13,
           "YELLOW": 24
         },
-        "score": -465.10916,
+        "score": -458.034844,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -21472,8 +21472,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -506.6899385990913,
-          "value": 5.066899385990913
+          "score": -551.4359733033938,
+          "value": 5.514359733033938
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -21491,9 +21491,9 @@
           "ORANGE": 14,
           "RED": 11,
           "WHITE": 14,
-          "YELLOW": 23
+          "YELLOW": 25
         },
-        "score": -506.689939,
+        "score": -551.435973,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -21625,8 +21625,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -542.1047417431507,
-          "value": 5.421047417431507
+          "score": -531.4592925068079,
+          "value": 5.314592925068078
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -21644,9 +21644,9 @@
           "ORANGE": 20,
           "RED": 28,
           "WHITE": 11,
-          "YELLOW": 13
+          "YELLOW": 14
         },
-        "score": -542.104742,
+        "score": -531.459293,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -21768,8 +21768,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -781.4168189244195,
-          "value": 7.814168189244196
+          "score": -774.0695533796609,
+          "value": 7.740695533796609
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -21782,14 +21782,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 36,
-          "BLUE": 19,
+          "BLUE": 21,
           "BROWN": 16,
           "ORANGE": 17,
           "RED": 24,
           "WHITE": 9,
-          "YELLOW": 17
+          "YELLOW": 19
         },
-        "score": -781.416819,
+        "score": -774.069553,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -21916,8 +21916,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -282.1202522590214,
-          "value": 2.821202522590214
+          "score": -243.27694808466288,
+          "value": 2.4327694808466287
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -21935,9 +21935,9 @@
           "ORANGE": 13,
           "RED": 19,
           "WHITE": 12,
-          "YELLOW": 9
+          "YELLOW": 11
         },
-        "score": -282.120252,
+        "score": -243.276948,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -22074,8 +22074,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -482.3412290324038,
-          "value": 4.823412290324038
+          "score": -486.55389616932575,
+          "value": 4.865538961693257
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -22093,9 +22093,9 @@
           "ORANGE": 15,
           "RED": 17,
           "WHITE": 28,
-          "YELLOW": 17
+          "YELLOW": 19
         },
-        "score": -482.341229,
+        "score": -486.553896,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -22222,8 +22222,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -306.39443699324596,
-          "value": 3.0639443699324596
+          "score": -356.2846832382836,
+          "value": 3.562846832382836
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -22241,9 +22241,9 @@
           "ORANGE": 12,
           "RED": 16,
           "WHITE": 16,
-          "YELLOW": 17
+          "YELLOW": 20
         },
-        "score": -306.394437,
+        "score": -356.284683,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -22390,8 +22390,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -571.7856027482715,
-          "value": 5.717856027482714
+          "score": -551.4359733033938,
+          "value": 5.514359733033938
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -22409,9 +22409,9 @@
           "ORANGE": 17,
           "RED": 22,
           "WHITE": 27,
-          "YELLOW": 15
+          "YELLOW": 17
         },
-        "score": -571.785603,
+        "score": -551.435973,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -22548,8 +22548,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -511.10125199995184,
-          "value": 5.111012519999519
+          "score": -483.18670072250757,
+          "value": 4.831867007225076
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -22562,14 +22562,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 22,
-          "BLUE": 6,
+          "BLUE": 7,
           "BROWN": 9,
           "ORANGE": 15,
           "RED": 14,
           "WHITE": 19,
-          "YELLOW": 12
+          "YELLOW": 14
         },
-        "score": -511.101252,
+        "score": -483.186701,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -22701,8 +22701,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -539.0846361175202,
-          "value": 5.3908463611752016
+          "score": -589.0150893739515,
+          "value": 5.890150893739515
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -22720,9 +22720,9 @@
           "ORANGE": 22,
           "RED": 27,
           "WHITE": 14,
-          "YELLOW": 24
+          "YELLOW": 27
         },
-        "score": -539.084636,
+        "score": -589.015089,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -22859,8 +22859,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -391.7516914514883,
-          "value": 3.917516914514883
+          "score": -462.02747510846376,
+          "value": 4.620274751084637
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -22878,9 +22878,9 @@
           "ORANGE": 18,
           "RED": 24,
           "WHITE": 13,
-          "YELLOW": 26
+          "YELLOW": 29
         },
-        "score": -391.751691,
+        "score": -462.027475,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -23037,8 +23037,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -373.61990944634346,
-          "value": 3.7361990944634345
+          "score": -346.41016151377545,
+          "value": 3.4641016151377544
         },
         "outerCountByType": {
           "BLACK": 4,
@@ -23056,9 +23056,9 @@
           "ORANGE": 22,
           "RED": 15,
           "WHITE": 22,
-          "YELLOW": 13
+          "YELLOW": 17
         },
-        "score": -373.619909,
+        "score": -346.410162,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -23363,8 +23363,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -442.1653583012046,
-          "value": 4.421653583012046
+          "score": -427.14046822074437,
+          "value": 4.271404682207444
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -23382,9 +23382,9 @@
           "ORANGE": 12,
           "RED": 14,
           "WHITE": 20,
-          "YELLOW": 10
+          "YELLOW": 12
         },
-        "score": -442.165358,
+        "score": -427.140468,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -23516,8 +23516,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -456.24912636203743,
-          "value": 4.562491263620374
+          "score": -507.09255283710996,
+          "value": 5.0709255283711
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -23535,9 +23535,9 @@
           "ORANGE": 18,
           "RED": 17,
           "WHITE": 27,
-          "YELLOW": 22
+          "YELLOW": 26
         },
-        "score": -456.249126,
+        "score": -507.092553,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -23674,8 +23674,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -219.46130708196026,
-          "value": 2.1946130708196026
+          "score": -180.70158058105022,
+          "value": 1.8070158058105024
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -23690,12 +23690,12 @@
           "BLACK": 11,
           "BLUE": 12,
           "BROWN": 15,
-          "ORANGE": 10,
+          "ORANGE": 11,
           "RED": 16,
           "WHITE": 13,
-          "YELLOW": 10
+          "YELLOW": 12
         },
-        "score": -219.461307,
+        "score": -180.701581,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -23847,8 +23847,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -606.4281507654607,
-          "value": 6.0642815076546075
+          "score": -627.2713828600042,
+          "value": 6.272713828600042
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -23866,9 +23866,9 @@
           "ORANGE": 15,
           "RED": 32,
           "WHITE": 16,
-          "YELLOW": 20
+          "YELLOW": 23
         },
-        "score": -606.428151,
+        "score": -627.271383,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -24000,8 +24000,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -653.405521487387,
-          "value": 6.534055214873869
+          "score": -777.2268862134539,
+          "value": 7.772268862134539
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -24019,9 +24019,9 @@
           "ORANGE": 16,
           "RED": 15,
           "WHITE": 30,
-          "YELLOW": 23
+          "YELLOW": 30
         },
-        "score": -653.405521,
+        "score": -777.226886,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -24173,8 +24173,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -730.669248716824,
-          "value": 7.30669248716824
+          "score": -723.934826246853,
+          "value": 7.23934826246853
         },
         "outerCountByType": {
           "BLACK": 0,
@@ -24192,9 +24192,9 @@
           "ORANGE": 7,
           "RED": 24,
           "WHITE": 14,
-          "YELLOW": 14
+          "YELLOW": 17
         },
-        "score": -730.669249,
+        "score": -723.934826,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -24331,8 +24331,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -643.0158534243942,
-          "value": 6.430158534243942
+          "score": -652.1549834579043,
+          "value": 6.5215498345790435
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -24350,9 +24350,9 @@
           "ORANGE": 16,
           "RED": 26,
           "WHITE": 33,
-          "YELLOW": 26
+          "YELLOW": 27
         },
-        "score": -643.015853,
+        "score": -652.154983,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -24672,8 +24672,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -569.9982098074287,
-          "value": 5.699982098074287
+          "score": -666.3945022680343,
+          "value": 6.663945022680344
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -24691,9 +24691,9 @@
           "ORANGE": 9,
           "RED": 12,
           "WHITE": 20,
-          "YELLOW": 27
+          "YELLOW": 31
         },
-        "score": -569.99821,
+        "score": -666.394502,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -24825,8 +24825,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -723.934826246853,
-          "value": 7.23934826246853
+          "score": -792.5675146674398,
+          "value": 7.925675146674398
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -24844,9 +24844,9 @@
           "ORANGE": 20,
           "RED": 22,
           "WHITE": 13,
-          "YELLOW": 30
+          "YELLOW": 33
         },
-        "score": -723.934826,
+        "score": -792.567515,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -24978,8 +24978,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -395.8973274443148,
-          "value": 3.958973274443148
+          "score": -376.88302737922623,
+          "value": 3.7688302737922625
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -24994,12 +24994,12 @@
           "BLACK": 19,
           "BLUE": 11,
           "BROWN": 14,
-          "ORANGE": 16,
+          "ORANGE": 17,
           "RED": 20,
           "WHITE": 19,
-          "YELLOW": 9
+          "YELLOW": 10
         },
-        "score": -395.897327,
+        "score": -376.883027,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -25131,8 +25131,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -258.72528966106904,
-          "value": 2.5872528966106905
+          "score": -195.8758457257441,
+          "value": 1.9587584572574412
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -25150,9 +25150,9 @@
           "ORANGE": 22,
           "RED": 19,
           "WHITE": 17,
-          "YELLOW": 14
+          "YELLOW": 19
         },
-        "score": -258.72529,
+        "score": -195.875846,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -25284,8 +25284,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -294.8538205792899,
-          "value": 2.9485382057928993
+          "score": -296.9229955832361,
+          "value": 2.969229955832361
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -25303,9 +25303,9 @@
           "ORANGE": 13,
           "RED": 19,
           "WHITE": 11,
-          "YELLOW": 14
+          "YELLOW": 17
         },
-        "score": -294.853821,
+        "score": -296.922996,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -25437,8 +25437,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -649.6466857658328,
-          "value": 6.496466857658327
+          "score": -700.4371812646436,
+          "value": 7.004371812646436
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -25451,14 +25451,14 @@
         },
         "planetTypeTotals": {
           "BLACK": 22,
-          "BLUE": 24,
+          "BLUE": 26,
           "BROWN": 15,
-          "ORANGE": 18,
+          "ORANGE": 19,
           "RED": 33,
           "WHITE": 12,
-          "YELLOW": 25
+          "YELLOW": 29
         },
-        "score": -649.646686,
+        "score": -700.437181,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -25600,8 +25600,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -597.2727131533392,
-          "value": 5.972727131533392
+          "score": -582.3947745897002,
+          "value": 5.823947745897002
         },
         "outerCountByType": {
           "BLACK": 3,
@@ -25619,9 +25619,9 @@
           "ORANGE": 20,
           "RED": 23,
           "WHITE": 16,
-          "YELLOW": 23
+          "YELLOW": 22
         },
-        "score": -597.272713,
+        "score": -582.394775,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -25758,8 +25758,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -374.16573867739413,
-          "value": 3.7416573867739413
+          "score": -399.4894701174161,
+          "value": 3.994894701174161
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -25777,9 +25777,9 @@
           "ORANGE": 19,
           "RED": 16,
           "WHITE": 16,
-          "YELLOW": 14
+          "YELLOW": 18
         },
-        "score": -374.165739,
+        "score": -399.48947,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -25906,8 +25906,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -271.05237087157536,
-          "value": 2.710523708715754
+          "score": -315.58174334820745,
+          "value": 3.1558174334820746
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -25925,9 +25925,9 @@
           "ORANGE": 11,
           "RED": 15,
           "WHITE": 16,
-          "YELLOW": 19
+          "YELLOW": 21
         },
-        "score": -271.052371,
+        "score": -315.581743,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -26059,8 +26059,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -430.4719763805532,
-          "value": 4.304719763805532
+          "score": -390.7084094622098,
+          "value": 3.907084094622098
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -26074,13 +26074,13 @@
         "planetTypeTotals": {
           "BLACK": 21,
           "BLUE": 22,
-          "BROWN": 16,
+          "BROWN": 17,
           "ORANGE": 11,
           "RED": 16,
           "WHITE": 19,
-          "YELLOW": 10
+          "YELLOW": 12
         },
-        "score": -430.471976,
+        "score": -390.708409,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -26217,8 +26217,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -540.9741779646139,
-          "value": 5.409741779646139
+          "score": -517.8448274397673,
+          "value": 5.178448274397673
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -26232,13 +26232,13 @@
         "planetTypeTotals": {
           "BLACK": 13,
           "BLUE": 24,
-          "BROWN": 12,
+          "BROWN": 13,
           "ORANGE": 6,
           "RED": 16,
           "WHITE": 18,
-          "YELLOW": 10
+          "YELLOW": 12
         },
-        "score": -540.974178,
+        "score": -517.844827,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -26365,8 +26365,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -348.17307448439834,
-          "value": 3.481730744843983
+          "score": -345.8205267688629,
+          "value": 3.4582052676886295
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -26384,9 +26384,9 @@
           "ORANGE": 18,
           "RED": 19,
           "WHITE": 15,
-          "YELLOW": 16
+          "YELLOW": 18
         },
-        "score": -348.173074,
+        "score": -345.820527,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -26518,8 +26518,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -443.5478484645721,
-          "value": 4.435478484645721
+          "score": -491.14609821917384,
+          "value": 4.9114609821917385
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -26534,12 +26534,12 @@
           "BLACK": 21,
           "BLUE": 11,
           "BROWN": 17,
-          "ORANGE": 26,
+          "ORANGE": 27,
           "RED": 18,
           "WHITE": 20,
-          "YELLOW": 23
+          "YELLOW": 25
         },
-        "score": -443.547848,
+        "score": -491.146098,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -26666,8 +26666,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -577.8213833187624,
-          "value": 5.778213833187624
+          "score": -579.9366608624125,
+          "value": 5.799366608624125
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -26685,9 +26685,9 @@
           "ORANGE": 20,
           "RED": 29,
           "WHITE": 13,
-          "YELLOW": 17
+          "YELLOW": 19
         },
-        "score": -577.821383,
+        "score": -579.936661,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -26834,8 +26834,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -636.6365701473483,
-          "value": 6.366365701473483
+          "score": -654.6536707079771,
+          "value": 6.546536707079771
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -26853,9 +26853,9 @@
           "ORANGE": 13,
           "RED": 30,
           "WHITE": 9,
-          "YELLOW": 21
+          "YELLOW": 24
         },
-        "score": -636.63657,
+        "score": -654.653671,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -26987,8 +26987,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -345.8205267688629,
-          "value": 3.4582052676886295
+          "score": -339.8679215248663,
+          "value": 3.398679215248663
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -27006,9 +27006,9 @@
           "ORANGE": 9,
           "RED": 12,
           "WHITE": 20,
-          "YELLOW": 13
+          "YELLOW": 15
         },
-        "score": -345.820527,
+        "score": -339.867922,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -27150,8 +27150,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -384.3892584878203,
-          "value": 3.843892584878203
+          "score": -357.99897388976194,
+          "value": 3.5799897388976194
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -27169,9 +27169,9 @@
           "ORANGE": 12,
           "RED": 17,
           "WHITE": 18,
-          "YELLOW": 11
+          "YELLOW": 13
         },
-        "score": -384.389258,
+        "score": -357.998974,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -27308,8 +27308,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -590.3993805649092,
-          "value": 5.903993805649092
+          "score": -584.1442371503107,
+          "value": 5.841442371503107
         },
         "outerCountByType": {
           "BLACK": 2,
@@ -27323,13 +27323,13 @@
         "planetTypeTotals": {
           "BLACK": 17,
           "BLUE": 16,
-          "BROWN": 11,
-          "ORANGE": 10,
+          "BROWN": 12,
+          "ORANGE": 11,
           "RED": 28,
           "WHITE": 13,
-          "YELLOW": 10
+          "YELLOW": 9
         },
-        "score": -590.399381,
+        "score": -584.144237,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,
@@ -27466,8 +27466,8 @@
       "soft": {
         "imbalance": {
           "metric": "std",
-          "score": -580.6400409400451,
-          "value": 5.80640040940045
+          "score": -579.9366608624126,
+          "value": 5.799366608624126
         },
         "outerCountByType": {
           "BLACK": 1,
@@ -27485,9 +27485,9 @@
           "ORANGE": 8,
           "RED": 22,
           "WHITE": 21,
-          "YELLOW": 15
+          "YELLOW": 17
         },
-        "score": -580.640041,
+        "score": -579.936661,
         "scoutByType": {
           "BLACK": 0,
           "BLUE": 0,

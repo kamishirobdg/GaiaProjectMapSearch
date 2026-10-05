@@ -64,22 +64,27 @@ export function mapFactionScores(templateId: string, placement: any[]): FactionS
  * 「Map と Setup の合計スコア」を掛け先にするので、Setup 側（種族ごと 100 前後）と
  * 桁が揃うこちらを使う。
  *
- * breakdown は保存済み候補が持っている評価内訳。原始・小惑星は軸を持たないので、
- * LF4種族は種族ごとの値（`audit.startAccess.lf`。開始1ヶ所＋到達加重、2026-10-03）を読む。
- * それが無い古い内訳では 内訳表の追加行と同じ値（extraStart、さらに古ければ extraBest）へ
- * フォールバックする。内訳が無い／読めないときは全種族0（優遇が効かないだけで壊れない）。
+ * breakdown は保存済み候補が持っている評価内訳。eval_v5（2026-10-05）からは18種族それぞれの値
+ * （`audit.startAccess.byFaction`。種族ごとの開始地点＋到達加重）を読む。それが無い古い内訳では
+ * 基本14種族は母星色の値、LF4種族は `startAccess.lf` → extraStart → extraBest の順でフォールバック
+ * する。内訳が無い／読めないときは全種族0（優遇が効かないだけで壊れない）。
  */
 export function mapValueByFaction(breakdown: any): FactionScores {
   const out = {} as FactionScores;
   const totals = breakdown?.planetTypeTotals ?? null;
   const audit = breakdown?.audit ?? null;
+  const byFaction = audit?.startAccess?.byFaction ?? null;
   const lf = audit?.startAccess?.lf ?? null;
   const extraStart = audit?.extraStart ?? null;
   const extraBest = audit?.extraBest ?? null;
   for (const f of FACTIONS) {
-    const v = LF_HOME_COLORS.has(f.color)
-      ? Number(lf?.[f.id]?.total ?? extraStart?.[f.color]?.total ?? extraBest?.[f.color]?.total ?? 0)
-      : Number(totals?.[f.color] ?? 0);
+    const own = byFaction?.[f.id]?.total;
+    const v =
+      own != null
+        ? Number(own)
+        : LF_HOME_COLORS.has(f.color)
+          ? Number(lf?.[f.id]?.total ?? extraStart?.[f.color]?.total ?? extraBest?.[f.color]?.total ?? 0)
+          : Number(totals?.[f.color] ?? 0);
     out[f.id] = Number.isFinite(v) ? v : 0;
   }
   return out;
