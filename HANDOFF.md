@@ -10,6 +10,10 @@
   端の罰点「欠けマス × w」＝eval_v4（`7046233..` の10コミット）。次に本番へ出すときは
   `package.json` の version を上げ、release/v1.01 を作業ブランチまで早送りして
   `git push origin release/v1.01:main`（実行前に必ずユーザー確認）、その後に同じ番号のタグを打つ。
+  **タグはクラウドの作業環境から push できない**（2026-10-05 実測: `git push origin v1.2.1` も
+  `gh api .../git/refs` も 403。ブランチの push だけ許可）。タグはユーザーが手元の PC で打つ:
+  `git fetch origin && git tag -a v1.2 8700f89 -m "eval_v4" && git tag -a v1.2.1 7cf8dc8 -m "v1.2.1"
+  && git push origin v1.2 v1.2.1`。**v1.2 / v1.2.1 は未タグ**（ユーザー作業待ち）。
 - **版の運用を決めた**（2026-10-05 ユーザー確定、案B）。それまで番号はブランチ名 `release/v1.01` に
   しか無く（2026-07-30 から16回のデプロイで不変、タグ無し、`package.json` 0.1.0、画面に表示無し）。
   以後は `package.json` の version が正本で、本番へ出すたびに同じ番号のタグを `main` に打ち、
