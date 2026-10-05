@@ -1914,9 +1914,10 @@ const displayBreakdown = React.useMemo(() => {
     (a.scout?.scoutHits?.length ?? 0) > 0 && a.scout.scoutHits[0]?.scoutId === undefined;
   const needsCoreShip =
     (a.scoutCore?.coreHits?.length ?? 0) > 0 && a.scoutCore.coreHits[0]?.scoutId === undefined;
-  // eval_v2 までの保存結果は「開始地点＋到達加重」の集計（2026-10-03）を持たないので、
-  // 表示だけ現バージョンの評価で作り直す（スコア・順位はそのまま）。
-  const needsStart = !a.startAccess;
+  // eval_v2 までの保存結果は「開始地点＋到達加重」の集計（2026-10-03）を持たず、eval_v4 までは
+  // 種族ごとの集計（2026-10-05）を持たないので、表示だけ現バージョンの評価で作り直す
+  // （スコア・順位はそのまま）。
+  const needsStart = !a.startAccess?.byFaction;
   if (!needsGaia && !needsCluster && !needsShipId && !needsCoreShip && !needsStart) return b;
   const placement = (displayResult as any)?.placement ?? placementBase;
   if (!Array.isArray(placement) || placement.length === 0) return b;
@@ -3325,12 +3326,12 @@ const handleDeleteUsed = React.useCallback(
                   <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.85 }}>
                     {isBase
                       ? lang === "ja"
-                        ? "色別の内訳（outer/touch/gaia/cluster/total）"
-                        : "By color (outer/touch/gaia/cluster/total)"
+                        ? "種族別の内訳（outer/touch/gaia/cluster/total）"
+                        : "By faction (outer/touch/gaia/cluster/total)"
                       // LF: サマリ文言は固定（拡張軸トグルで幅が変わらないように。2026-07-24）
                       : lang === "ja"
-                        ? "色別の内訳（outer/touch/scout/total）"
-                        : "By color (outer/touch/scout/total)"}
+                        ? "種族別の内訳（outer/touch/scout/total）"
+                        : "By faction (outer/touch/scout/total)"}
                   </summary>
                   <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
                       <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.85 }}>

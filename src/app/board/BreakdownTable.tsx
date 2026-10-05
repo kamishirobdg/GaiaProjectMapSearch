@@ -4,6 +4,7 @@
 
 import React from "react";
 import type { Lang } from "./uiText";
+import { FACTIONS } from "@/gaia/eval/factionWeights";
 
 export const PLANET_ORDER = ["BLACK", "BLUE", "BROWN", "ORANGE", "RED", "WHITE", "YELLOW"] as const;
 export type PlanetTypeKey = (typeof PLANET_ORDER)[number];
@@ -243,7 +244,9 @@ const cellMark = (
   /** 原始・小惑星の追加行だけ: 開始地点の1惑星に絞る（2026-07-31） */
   onlyCellKey?: string,
   /** 基本色の評価セルだけ: 開始地点の惑星に絞る（2026-10-03） */
-  onlyCellKeys?: ReadonlySet<string>
+  onlyCellKeys?: ReadonlySet<string>,
+  /** マーカーを絞る色（省略時は k）。種族の行では k＝種族ID、色＝母星色（2026-10-05） */
+  colorKey: string = k
 ): React.HTMLAttributes<HTMLTableCellElement> => {
   if (!onMark) return {};
   const id = `${axis}:${k}`;
@@ -262,7 +265,7 @@ const cellMark = (
         axisMarkers(
           audit,
           axis,
-          k,
+          colorKey,
           lang,
           onlyCellKey || onlyCellKeys
             ? { ...(onlyCellKey ? { onlyCellKey } : {}), ...(onlyCellKeys ? { onlyCellKeys } : {}) }
@@ -421,6 +424,64 @@ return undefined;
 // sort base 7 colors by total desc (PROTO/ASTEROID stay at the end)
 const sortedKeys = [...PLANET_ORDER].sort((a, b) => axisGet(totals, b) - axisGet(totals, a));
 
+/**
+ * 種族の行（2026-10-05、eval_v5）。audit.startAccess.byFaction があれば、7色の行の代わりに
+ * 種族ごと（基本版 14 / LF 18）の行を評価の降順で出す。同じ色の2種族は性能が違うので色では
+ * まとめない（ユーザー確定）。母星色はマーカーのリング色と対応する薄い地色で示すだけ。
+ * 古い保存結果（byFaction が無い）は従来どおり色の行＋原始・小惑星の行。
+ */
+const byFaction: Record<string, any> | null = audit?.startAccess?.byFaction ?? null;
+const factionRows = byFaction
+  ? FACTIONS.filter((f) => byFaction[f.id])
+      .map((f) => ({ id: f.id, color: f.color, label: lang === "ja" ? f.labelJa : f.labelEn, e: byFaction[f.id] }))
+      .sort((a, b) => (Number(b.e.total) || 0) - (Number(a.e.total) || 0))
+  : [];
+const basicFactionIds = factionRows.filter((r) => (PLANET_ORDER as readonly string[]).includes(r.color)).map((r) => r.id);
+const fAxis = (id: string, ax: string): number => Number(byFaction?.[id]?.[ax] ?? 0) || 0;
+const fx = {
+  total: computeExtremes(basicFactionIds, (id) => fAxis(id, "total")),
+  scout: computeExtremes(basicFactionIds, (id) => fAxis(id, "scout")),
+  scoutCore: computeExtremes(basicFactionIds, (id) => fAxis(id, "core")),
+  gaia: computeExtremes(basicFactionIds, (id) => fAxis(id, "gaia")),
+  cluster: computeExtremes(basicFactionIds, (id) => fAxis(id, "cluster")),
+  rim: computeExtremes(basicFactionIds, (id) => fAxis(id, "outer") + fAxis(id, "touch")),
+};
+const factionNote = (row: { label: string; color: string; e: any }): string => {
+  const n = Array.isArray(row.e.starts) ? row.e.starts.length : 0;
+  const isExtra = row.color === "PROTO" || row.color === "ASTEROID";
+  return lang === "ja"
+    ? `${row.label}: 開始地点 ${n} ヶ所の値 ＋ 残りの同${isExtra ? "種別" : "色"}の惑星の値 × 到達係数。` +
+        `到達コストは種族ごと（開始建物の数・航行・改造・ガイアの初期研究）。` +
+        (isExtra ? `原始・小惑星は LF の種族ごとに開始1ヶ所。` : ``)
+    : `${row.label}: value of the ${n} starting planet(s) + remaining same-${isExtra ? "kind" : "colour"} planets weighted by reachability ` +
+        `(reach cost is per faction: starting structures, navigation / terraforming / gaia research).`;
+};
+const renderFactionCell = (colKey: keyof typeof cols, row: { id: string; color: string; e: any }) => {
+  if (!cols[colKey]) return null;
+  const starts = new Set<string>((row.e.starts ?? []).map((x: any) => String(x)));
+  const isExtra = row.color === "PROTO" || row.color === "ASTEROID";
+  const cell = (axis: MarkAxis, v: number, ex?: { maxKeys: Set<string>; minKeys: Set<string> }, bold?: boolean, join?: "left" | "right", only?: ReadonlySet<string>) => {
+    const m = cellMark(axis, row.id, join, undefined, only, row.color);
+    return (
+      <td onClick={m.onClick} title={m.title} style={{ ...tdStyle, ...(bold ? { fontWeight: 800 } : {}), color: ex ? colorFor(ex.maxKeys, ex.minKeys, row.id) : undefined, ...m.style }}>
+        {v}
+      </td>
+    );
+  };
+  if (colKey === "total") return cell("total", fAxis(row.id, "total"), fx.total, true, "right", starts);
+  if (colKey === "scout") return cell("scout", fAxis(row.id, "scout"), fx.scout);
+  if (colKey === "scoutCore") return cell("scoutCore", fAxis(row.id, "core"), fx.scoutCore);
+  if (colKey === "gaia") return cell("gaia", fAxis(row.id, "gaia"), fx.gaia);
+  if (colKey === "cluster") return cell("cluster", fAxis(row.id, "cluster"), fx.cluster);
+  if (colKey === "outer") return cell("outer", fAxis(row.id, "outer"), fx.rim);
+  if (colKey === "touch") return cell("touch", fAxis(row.id, "touch"), fx.rim);
+  if (colKey === "cntOuter")
+    return hasCounts ? <td style={tdStyle}>{isExtra ? Number(audit?.outerCountExtraByKind?.[row.color] ?? 0) : axisGet(outerCnt, row.color as any)}</td> : null;
+  if (colKey === "cntTouch")
+    return hasCounts ? <td style={tdStyle}>{isExtra ? Number(audit?.touchCountExtraByKind?.[row.color] ?? 0) : axisGet(touchCnt, row.color as any)}</td> : null;
+  return null;
+};
+
 const renderCell = (colKey: keyof typeof cols, k: string) => {
   if (!cols[colKey]) return null;
 
@@ -478,12 +539,14 @@ return (
             const headTip =
               String(ck) === "total"
                 ? lang === "ja"
-                  ? "色の値 ＝ 開始地点2ヶ所の値 ＋ 残りの同色惑星の値 × 到達係数。到達係数は 0.5 の（到達コスト−1）乗で、" +
-                    "到達コストは跳躍（距離2=1 / 3=1.5 / 4=2 / 5=3）と踏み台の入植の歩数の和。開始地点は合計が最大になる組を総当たりで選ぶ。" +
-                    "原始・小惑星は LF4種族ごとに開始1ヶ所で、行は大きい方の種族の値。各列は同じ重みで足して軸ごとに丸めてある。"
-                  : "Colour value = the two starting planets + the remaining same-colour planets weighted by reachability " +
-                    "(0.5^(cost−1); cost = hop cost by distance 2=1 / 3=1.5 / 4=2 / 5=3 plus terraforming steps of stepping stones). " +
-                    "The starting pair is chosen by brute force. Proto/asteroid rows use one start per Lost Fleet faction."
+                  ? "種族の値 ＝ 開始地点の値 ＋ 残りの同色惑星の値 × 到達係数（開始地点は 2 ヶ所。ゼノ族 3、ダー・シュワーム人と LF の種族は 1）。" +
+                    "到達係数は 0.5 の（到達コスト−1）乗で、到達コストは跳躍（距離2=1 / 3=1.5 / 4=2 / 5=3）と踏み台の入植の歩数の和。" +
+                    "種族の性質（航行・改造・ガイアの初期研究）で跳躍と入植の一部が変わる。開始地点は合計が最大になる組を総当たりで選ぶ。" +
+                    "各列は同じ重みで足して軸ごとに丸めてある。検索の偏り項は色ごとに2種族の大きい方で測る。"
+                  : "Faction value = starting planets + the remaining same-colour planets weighted by reachability " +
+                    "(0.5^(cost−1); cost = hop cost by distance 2=1 / 3=1.5 / 4=2 / 5=3 plus terraforming steps of stepping stones; " +
+                    "some hops/steps differ per faction). Starts: 2 (Xenos 3, Ivits and Lost Fleet factions 1), chosen by brute force. " +
+                    "The search balance term uses the larger of the two factions per colour."
                 : undefined;
             return (
               <th key={String(ck)} style={thStyle} title={headTip}>
@@ -513,7 +576,21 @@ return (
       </thead>
 
       <tbody>
-        {sortedKeys.map((k) => {
+        {factionRows.map((row) => {
+          const m = cellMark("total", row.id, "left", undefined, new Set<string>((row.e.starts ?? []).map((x: any) => String(x))), row.color);
+          const title = [factionNote(row), m.title].filter(Boolean).join("\n");
+          return (
+            <tr key={`F_${row.id}`} style={rowStyleFor(row.color)}>
+              <td onClick={m.onClick} title={title || undefined} style={{ ...tdLeftStyle, ...m.style }}>
+                {row.label}
+              </td>
+              {COL_ORDER.map((ck) => (
+                <React.Fragment key={`F_${row.id}_${String(ck)}`}>{renderFactionCell(ck, row)}</React.Fragment>
+              ))}
+            </tr>
+          );
+        })}
+        {!byFaction && sortedKeys.map((k) => {
           const colorLabel = lang === "ja" ? `${PLANET_LABEL_JA[k]}` : k;
 
           return (
@@ -537,8 +614,9 @@ return (
 
         {/* Extras (PROTO/ASTEROID): keep at the end, and follow the same column toggles.
             軸（planetTypeTotals）には入らない表示専用の行だが、値の意味と
-            マーカーのクリックは基本7色の行とまったく同じにしてある（2026-07-30）。 */}
-        {(() => {
+            マーカーのクリックは基本7色の行とまったく同じにしてある（2026-07-30）。
+            eval_v5 からは種族の行（上）に含まれるので、byFaction が無い古い結果だけ出す。 */}
+        {!byFaction && (() => {
           const a = breakdown?.audit ?? null;
           const ex = (o: any, k: string) => Number(o?.[k] ?? 0) || 0;
           const kinds = ["PROTO", "ASTEROID"] as const;
