@@ -222,8 +222,8 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     tipH5IncludeScouts: "Scout cells also join clusters for the check above",
     tipCenterMode: "Restricts which tile may occupy the center slot",
     tipWRimGap:
-      "Penalty per missing cell: for each planet, count the cells within distance 2 (the normal reach, 18 cells) that are off the board and subtract that many times this weight. " +
-      "Inner planets lose nothing; one ring inside the edge about 3; an edge planet 7 (side) to 10 (corner). Applies to proto/asteroid planets too. 0 = off.",
+      "Penalty for a planet in the outermost corner (10 of the 18 cells within distance 2 are off the board). Each planet loses this value x (missing cells / 10): " +
+      "inner planets lose nothing, one ring inside the edge about 3 missing, an edge planet 7 (side) to 10 (corner). Applies to proto/asteroid planets too. 0 = off.",
     tipWOuter: "Weight per planet on the outermost ring (added to that color's total)",
     tipWTouch: "Weight per planet one ring inside the outermost",
     tipWScoutShip: "Weight per planet within the scout radius of this ship",
@@ -460,9 +460,9 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     tipH5IncludeScouts: "上の連結判定に探査船セルも含めます",
     tipCenterMode: "中央スロットに入るタイルを制限します",
     tipWRimGap:
-      "惑星から距離2以内の18マス（通常の到達範囲）のうち盤面に無いマス1つにつき、この値を引きます。" +
+      "最外周の角の惑星1つの罰点（距離2以内の18マスのうち10マスが盤面の外）。各惑星は「この値 × 欠けマス数 ÷ 10」を引かれます。" +
       "端の開始地点は将来の広がり先（鉱山を置く惑星・同盟の衛星・パワーの授受）をそのぶん失う、という意図。" +
-      "内側の惑星は0、外周（最外周の1つ内側）は3前後、最外周は辺7〜角10マス欠けます。原始・小惑星にも掛かります。0で無効",
+      "内側の惑星は欠け0、外周（最外周の1つ内側）は3前後、最外周は辺7〜角10マス欠けます（既定 5 なら 0 / 1.5 / 3.5 / 5）。原始・小惑星にも掛かります。0で無効",
     tipWOuter: "最外周（一番外の列）の惑星1個あたりの重み（その色の合計に加算）",
     tipWTouch: "外周（最外周の1つ内側）の惑星1個あたりの重み",
     tipWScoutShip: "この船の接触半径内にある惑星1個あたりの重み",

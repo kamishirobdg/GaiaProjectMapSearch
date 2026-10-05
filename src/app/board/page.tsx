@@ -151,6 +151,17 @@ function sumCounts(obj: any): number {
 import { runSearchOffThread } from "./searchRunner";
 
 /**
+ * 欠けマス罰点の入力欄の単位（2026-10-05 ユーザー要望: 微調整のとき小数を避けたい）。
+ * 内部値 wRimGap は「欠けマス1つあたり」（既定 0.5）で、評価・検索キー・保存はこのまま。
+ * 画面ではその10倍＝「欠けマス10個あたり」＝最外周の角（欠け10）の惑星1つぶんの罰点を
+ * 整数で見せる（既定 5。辺（欠け7）は 3.5、外周（欠け3前後）は 1.5 に相当）。
+ * 整数 n を n / 10 にするだけなので、0.1〜0.9 は JS の数値として一意で、キーの揺れは出ない。
+ */
+const RIM_GAP_INPUT_SCALE = 10;
+const rimGapToInput = (w: number): number => Math.round((Number(w) || 0) * RIM_GAP_INPUT_SCALE);
+const rimGapFromInput = (n: unknown): number => Math.max(0, Math.round(Number(n) || 0)) / RIM_GAP_INPUT_SCALE;
+
+/**
  * 検索条件の既定値（SSOT）。useState の初期値と「既定値で新規」で共用する。
  * ここだけを直せば両方に効く（片方だけ古い値が残る事故を防ぐ）。2026-07-30。
  */
@@ -174,6 +185,7 @@ const DEFAULT_CONDITIONS = {
   // 惑星から距離2以内の18マスのうち盤面に無いマス1つにつき w 点を引く。旧の −3/−1 は
   // w ≈ 0.4 に相当し、0.5 は現行よりわずかに強く角が辺より重い（設計ノート 2.8 の実測:
   // 影響は基本版 9.9% ≫ LF 1.0%、並びの相関 0.999 / 0.975）。
+  // 入力欄は RIM_GAP_INPUT_SCALE 倍の整数で見せる（下）。内部値と保存キーはこの値のまま。
   wRimGap: 0.5,
   wScout: 10,
   wScoutCore: 4,
@@ -3020,7 +3032,7 @@ const handleDeleteUsed = React.useCallback(
                 // 端の罰点: eval_v4 からは欠けマス罰点1つ、eval_v3 までは最外周/外周の2つ
                 const rimSummary =
                   params?.soft?.wRimGap != null || (params?.soft?.wOuter == null && params?.soft?.wTouch == null)
-                    ? `${t("wRimGap")}=${String(params?.soft?.wRimGap ?? 0)}`
+                    ? `${t("wRimGap")}=${String(rimGapToInput(Number(params?.soft?.wRimGap ?? 0)))}`
                     : `${t("wOuter")}=${String(params?.soft?.wOuter ?? "-")}, ${t("wTouch")}=${String(params?.soft?.wTouch ?? "-")}`;
                 const softSummary = hasParams
                   ? `${t("soft")}: ${rimSummary}, ` +
@@ -3471,16 +3483,17 @@ const handleDeleteUsed = React.useCallback(
                   <Hint label={t("soft")} tip={t("tipSoft")} />
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
-                  {/* 欠けマス罰点（eval_v4）。クリックで最外周・外周の両方の惑星をマークする */}
+                  {/* 欠けマス罰点（eval_v4）。入力は10倍の整数（＝角の惑星1つぶん）。
+                      クリックで最外周・外周の両方の惑星をマークする */}
                   <label {...evalCellProps("rim:*", "rim")}>
                     <Hint label={t("wRimGap")} tip={t("tipWRimGap")} />
                     <input
                       type="number"
-                      value={wRimGap}
+                      value={rimGapToInput(wRimGap)}
                       min={0}
-                      max={5}
-                      step={0.1}
-                      onChange={(e) => setWRimGap(Math.max(0, Number(e.target.value) || 0))}
+                      max={50}
+                      step={1}
+                      onChange={(e) => setWRimGap(rimGapFromInput(e.target.value))}
                       style={{ width: 60 }}
                     />
                   </label>
