@@ -10,12 +10,23 @@
 import React from "react";
 import TabNav, { type TabKey } from "@/components/TabNav";
 import type { Expansion } from "@/lib/sharedSettings";
+import { APP_VERSION_LABEL } from "@/lib/appVersion";
 
 type Lang = "ja" | "en";
 
 const L = {
-  ja: { players: "人数", base: "基本版", lf: "Lost Fleet" },
-  en: { players: "Players", base: "Base game", lf: "Lost Fleet" },
+  ja: {
+    players: "人数",
+    base: "基本版",
+    lf: "Lost Fleet",
+    versionTip: "アプリの版と、Map 評価のバージョン（評価の意味が変わると上がる。検索結果はバージョンごとに別に貯まる）",
+  },
+  en: {
+    players: "Players",
+    base: "Base game",
+    lf: "Lost Fleet",
+    versionTip: "App version and the map-evaluation version (bumped whenever the meaning of the evaluation changes; results are stored per version)",
+  },
 } as const;
 
 export default function GlobalBar({
@@ -88,6 +99,14 @@ export default function GlobalBar({
           <input type="radio" name="globalLang" checked={lang === "ja"} onChange={() => onLang("ja")} />
           日本語
         </label>
+        {/* 版の表示（2026-10-05）。本番にどの版が出ているかを画面で判定できるようにする */}
+        <span
+          data-app-version={APP_VERSION_LABEL}
+          title={t.versionTip}
+          style={{ marginLeft: 8, fontSize: 11, opacity: 0.55, whiteSpace: "nowrap", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+        >
+          {APP_VERSION_LABEL}
+        </span>
       </div>
     </div>
   );
