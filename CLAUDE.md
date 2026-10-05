@@ -11,6 +11,11 @@
 - 毎コミット: `npm run typecheck`（0件）/ `npm run lint`（エラー0）/ `npm test`（全緑）。
 - `git push` は Vercelデプロイを意味する。**指示があるまで push しない**。
 - 挙動が変わる仕様は、実装前に選択肢を提示して確定してから着手。
+- **版**（2026-10-05 ユーザー確定、案B）: 本番へ出すときは `package.json` の version を上げる
+  （評価の意味が変わる・機能追加は2桁目、表示やドキュメントだけなら3桁目）。FF push 後に同じ番号の
+  タグを `main` に打つ（`git tag vX.Y.Z <hash> && git push origin vX.Y.Z`）。画面の共通バー右端に
+  「vX.Y.Z · eval_vN」が出る（`src/lib/appVersion.ts`）。本番のビルド完了はこの表示で判定できる。
+  ブランチ名 `release/v1.01` は版とは独立（変えない）。
 
 ## 重みテーブル（2026-08-04）
 
