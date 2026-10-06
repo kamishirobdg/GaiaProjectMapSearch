@@ -29,6 +29,7 @@ import {
   RIM_GAP_RING_CELLS,
   START_COUNT_LF,
   hopCostForBasicFaction,
+  hopCostForLfFaction,
   missingCellsWithin,
   planStarts,
   stoneCostForBasicFaction,
@@ -1232,7 +1233,7 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
   const extraStart: Record<string, ExtraStart> = {};
   for (const f of LF_FACTION_ORDER) {
     const home = LF_REACH_PROFILES[f].home;
-    const entry = planFor(f, home, allPlanets.filter((e) => e.kind === home), stoneCostForLfFaction(f), START_COUNT_LF);
+    const entry = planFor(f, home, allPlanets.filter((e) => e.kind === home), stoneCostForLfFaction(f), START_COUNT_LF, hopCostForLfFaction(f));
     if (!entry) continue;
     const cur = extraStart[home];
     if (!cur || entry.total > cur.total) {

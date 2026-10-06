@@ -18,6 +18,7 @@ import {
   TERRAFORM_WHEEL,
   hopCost,
   hopCostForBasicFaction,
+  hopCostForLfFaction,
   missingCellsWithin,
   planStarts,
   reachCostsFrom,
@@ -58,7 +59,13 @@ describe("改造の輪と入植コスト", () => {
   });
 
   it("LF4種族の視点: 母星種別が無いので同じ種別にも原始3・小惑星2を払う", () => {
-    expect(LF_REACH_PROFILES.darkanians).toEqual({ home: "ASTEROID", standard: 1, gaia: 2, transdim: 2 });
+    // 航行 Lv1 開始のスペースジャイアント・ダルカニア人は距離2の跳躍 0.5（2026-10-06 ユーザー確定。基本種族の 1-2 と同じ）
+    expect(LF_REACH_PROFILES.darkanians).toEqual({ home: "ASTEROID", standard: 1, gaia: 2, transdim: 2, hop2: 0.5 });
+    expect(LF_REACH_PROFILES.spaceGiants).toEqual({ home: "PROTO", standard: 2, gaia: 2, transdim: 2, hop2: 0.5 });
+    expect(LF_REACH_PROFILES.tinkerroids.hop2).toBeUndefined();
+    expect(hopCostForLfFaction("darkanians")(2)).toBe(0.5);
+    expect(hopCostForLfFaction("darkanians")(3)).toBe(1.5);
+    expect(hopCostForLfFaction("tinkerroids")(2)).toBe(1);
     // ガイア Lv1 開始のモウェイド人は次元横断 1（2026-10-05 に 0.5 → 2026-10-06 に 1。通常は 2）。ガイア惑星は 1 のまま
     expect(LF_REACH_PROFILES.moweyds).toEqual({ home: "PROTO", standard: 1, gaia: 1, transdim: 1 });
     expect(stoneCostForLfFaction("moweyds")("TRANSDIM")).toBe(1);

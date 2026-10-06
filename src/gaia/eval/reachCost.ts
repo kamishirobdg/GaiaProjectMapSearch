@@ -44,7 +44,8 @@
 //       アンバス人 航行1 / ハッシュ・ホラ人 経済1 / ジオデン人 改造1 / バルタック人 ガイア1 /
 //       ネヴラ人 科学1 / ランティダ人・タクロン族・ダー・シュワーム人・フィラク族・マッドアンドロイド・
 //       イタル人 なし / モウェイド人 ガイア1 / スペースジャイアント 航行1 / ティンカーロイド 科学1 /
-//       ダルカニア人 経済1＋航行1。
+//       ダルカニア人 経済1＋航行1。スペースジャイアント・ダルカニア人の航行 Lv1 も基本種族と同じく
+//       距離2の跳躍 0.5（LF_REACH_PROFILES.hop2。2026-10-06 ユーザー確定）。
 //   検索の偏り項と色優遇は、色の代表値（その色の2種族のうち大きい方）で従来どおり7色で測る（案A）。
 //
 // 実測と経緯は docs/design-notes.md 2.6 / 2.7 / 2.8 節、調査は scripts/_probe_map_aggregation.ts と
@@ -125,15 +126,24 @@ export type LfReachProfile = {
   gaia: number;
   /** 次元横断惑星の歩数相当。ガイア Lv1 開始のモウェイド人は 1（2026-10-06。それまで 0.5）、他は 2 */
   transdim: number;
+  /** 距離2の跳躍コスト（既定 1。航行 Lv1 開始のスペースジャイアント・ダルカニア人は 0.5。2026-10-06 ユーザー確定） */
+  hop2?: number;
 };
 
 /** LF4種族の入植コスト（LF ルール p13。ティンカーロイド・モウェイド人の標準惑星は相手次第なので既定1） */
 export const LF_REACH_PROFILES: Record<LfFactionId, LfReachProfile> = {
   moweyds: { home: "PROTO", standard: 1, gaia: 1, transdim: 1 },
-  spaceGiants: { home: "PROTO", standard: 2, gaia: 2, transdim: 2 },
+  spaceGiants: { home: "PROTO", standard: 2, gaia: 2, transdim: 2, hop2: 0.5 },
   tinkerroids: { home: "ASTEROID", standard: 1, gaia: 2, transdim: 2 },
-  darkanians: { home: "ASTEROID", standard: 1, gaia: 2, transdim: 2 },
+  darkanians: { home: "ASTEROID", standard: 1, gaia: 2, transdim: 2, hop2: 0.5 },
 };
+
+/** LF4種族の跳躍コスト関数（距離2だけ種族で変わる。基本種族の hopCostForBasicFaction と同じ形） */
+export function hopCostForLfFaction(id: LfFactionId): HopCostFn {
+  const h2 = LF_REACH_PROFILES[id].hop2;
+  if (h2 == null) return hopCost;
+  return (d) => (d === 2 ? h2 : hopCost(d));
+}
 
 /** LF4種族の視点。母星種別は無いので、同じ種別の惑星にも原始3・小惑星2を払う。 */
 export function stoneCostForLfFaction(id: LfFactionId): StoneCostFn {
