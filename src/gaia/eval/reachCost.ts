@@ -303,7 +303,9 @@ export type StartPlan = {
 
 /**
  * 開始地点を総当たりで選び、残りの重みを決める。
- * candidates は同色（同種別）の惑星。nodes は踏み台に使える全惑星（candidates を含む）。
+ * candidates は入植先の惑星（同色（同種別）の惑星。eval_v6 からはガイア・次元横断も）。
+ * nodes は踏み台に使える全惑星（candidates を含む）。
+ * startKeys を渡すと開始地点はその中（母星色の惑星）からだけ選ぶ（eval_v6。省略時は candidates 全部）。
  */
 export function planStarts(args: {
   nodes: readonly PlanetNode[];
@@ -312,14 +314,17 @@ export function planStarts(args: {
   startCount: number;
   /** 跳躍コスト関数（省略時は色の表） */
   hopCost?: HopCostFn;
+  /** 開始地点に使える候補のキー（省略時は candidates 全部） */
+  startKeys?: ReadonlySet<string>;
 }): StartPlan | null {
   const { nodes, candidates, stoneCost } = args;
   const hop = args.hopCost ?? hopCost;
-  if (candidates.length === 0) return null;
+  const startable = args.startKeys ? candidates.filter((c) => args.startKeys!.has(c.key)) : candidates;
+  if (candidates.length === 0 || startable.length === 0) return null;
   const index = new Map<string, number>();
   nodes.forEach((n, i) => index.set(n.key, i));
   const costFrom = new Map<string, number[]>();
-  for (const c of candidates) {
+  for (const c of startable) {
     const i = index.get(c.key);
     costFrom.set(c.key, i == null ? [] : reachCostsFrom(nodes, i, stoneCost, hop));
   }
@@ -329,8 +334,9 @@ export function planStarts(args: {
     return i == null || !row || row.length === 0 ? Infinity : row[i];
   };
 
-  const k = Math.max(1, Math.min(args.startCount, candidates.length));
+  const k = Math.max(1, Math.min(args.startCount, startable.length));
   const sorted = candidates.slice().sort((a, b) => a.key.localeCompare(b.key));
+  const sortedStartable = startable.slice().sort((a, b) => a.key.localeCompare(b.key));
   let best: StartPlan | null = null;
   const consider = (starts: StartCandidate[]) => {
     const weights = new Map<string, number>();
@@ -355,15 +361,15 @@ export function planStarts(args: {
       best = { starts: starts.map((s) => s.key), weights, costs, total };
     }
   };
-  // k 個の組み合わせを座標順で総当たり（k=1 は単体、2 は対、3 はゼノ族の鉱山3つ）
+  // k 個の組み合わせを座標順で総当たり（k=1 は単体、2 は対、3 はゼノ族の鉱山3つ）。開始地点は startable から
   const pick: StartCandidate[] = [];
   const walk = (from: number) => {
     if (pick.length === k) {
       consider(pick.slice());
       return;
     }
-    for (let i = from; i <= sorted.length - (k - pick.length); i++) {
-      pick.push(sorted[i]);
+    for (let i = from; i <= sortedStartable.length - (k - pick.length); i++) {
+      pick.push(sortedStartable[i]);
       walk(i + 1);
       pick.pop();
     }

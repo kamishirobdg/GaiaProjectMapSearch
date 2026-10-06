@@ -108,6 +108,8 @@ export type SoftParams = {
 /** 開始地点＋到達加重の集計での、惑星1つぶんの記録（マーカーと説明用） */
 export type StartAccessPlanet = {
   cellKey: string;
+  /** 惑星の種別（基本7色 / GAIA / TRANSDIM / PROTO / ASTEROID）。eval_v6 から（それ以前の記録には無い） */
+  kind?: string;
   /** 開始地点からの到達コスト（開始地点は 0、到達不能は Infinity） */
   cost: number;
   /** 値に掛けた重み（開始地点は 1、残りは到達係数） */
@@ -129,7 +131,7 @@ export type FactionStart = {
   outer: number;
   touch: number;
   total: number;
-  /** 同色（同種別）の全惑星の到達コスト・重み・値 */
+  /** 入植先の全惑星（同色（同種別）＋ eval_v6 からはガイア・次元横断）の到達コスト・重み・値 */
   planets: StartAccessPlanet[];
 };
 
@@ -546,6 +548,8 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
    * 船接触・船星系・ガイア・星系・最外周・外周を惑星単位で持つ。
    * 色ごとの値は、この惑星ごとの値を「開始地点＋到達加重」で足して作る（下の集計を参照）。
    * 星系は「その惑星が属する星系の大きさ」なので、同じ星系の同色2つはどちらも同じ値を持つ。
+   * eval_v6（2026-10-06）からはガイア・次元横断の惑星も持つ（船接触・船星系・星系・端の罰点。
+   * ガイア近接は自分には付けない）。各種族の入植先として到達加重で足される（開始地点にはならない）。
    */
   type PlanetAcc = {
     key: string;
@@ -564,6 +568,14 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
     const kind = type ?? (String((p as any).planetKind ?? "").toUpperCase() || "UNKNOWN");
     if (!type && kind !== "PROTO" && kind !== "ASTEROID") continue;
     perPlanet.set(p.key, { key: p.key, kind, type, scout: 0, core: 0, gaia: 0, cluster: 0, outer: 0, touch: 0 });
+  }
+  // ガイア・次元横断（planetCells からは除外されている）。eval_v6 から入植先として惑星ごとの値を持つ。
+  // 船接触惑星（船星系の起点）・ガイア近接の対象・軸の色ごとの合算（byType / extraByKind）には入れない。
+  const excludedPlanetCells = (extracted.cells ?? []).filter((c) => (c as any).isPlanet && (c as any).isExcludedPlanet);
+  for (const p of excludedPlanetCells) {
+    const kind = String((p as any).planetKind ?? "").toUpperCase();
+    if (kind !== "GAIA" && kind !== "TRANSDIM") continue;
+    perPlanet.set(p.key, { key: p.key, kind, type: null, scout: 0, core: 0, gaia: 0, cluster: 0, outer: 0, touch: 0 });
   }
   const addPlanetAxis = (cellKey: string, axis: "scout" | "core" | "gaia" | "cluster" | "outer" | "touch", v: number) => {
     const e = perPlanet.get(cellKey);
@@ -664,6 +676,30 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
       touchHits.push({ ...hit, value: pen.touch });
     } else if (!extracted.outerCells.has(p.key) && pen.touch !== 0) {
       touchExtraByKind[kindU] = (touchExtraByKind[kindU] ?? 0) + pen.touch;
+      addPlanetAxis(p.key, "touch", pen.touch);
+      touchHits.push({ ...hit, value: pen.touch });
+    }
+  }
+
+  // ガイア・次元横断の端の罰点（eval_v6）。惑星ごとの値とマーカー用のヒットだけで、種別ごとの合算・枚数には入れない。
+  for (const p of excludedPlanetCells) {
+    if (!perPlanet.has(p.key)) continue;
+    const kindU = String((p as any).planetKind ?? "").toUpperCase();
+    const pen = rimPenaltyOf(p as any);
+    const hit = {
+      cellKey: p.key,
+      planetType: kindU,
+      kind: (p as any).kind,
+      slotId: (p as any).slotId,
+      sectorId: (p as any).sectorId,
+      tags: (p as any).tags ?? [],
+      missing: pen.missing,
+    };
+    if (extracted.outerCells.has(p.key)) {
+      addPlanetAxis(p.key, "outer", pen.outer);
+      outerHits.push({ ...hit, value: pen.outer });
+    }
+    if (extracted.touchCells.has(p.key) || (!extracted.outerCells.has(p.key) && pen.touch !== 0)) {
       addPlanetAxis(p.key, "touch", pen.touch);
       touchHits.push({ ...hit, value: pen.touch });
     }
@@ -775,6 +811,38 @@ for (const s of extracted.scoutCells) {
     });
   }
 
+  // ガイア・次元横断への船接触（eval_v6）。惑星ごとの値とマーカー用のヒットだけ。船接触惑星（船星系の起点）には
+  // しない（「ガイア惑星と次元横断惑星は船接触惑星に数えない」はそのまま）し、色ごとの合算にも入れない。
+  for (const p of excludedPlanetCells) {
+    if (!perPlanet.has(p.key)) continue;
+    const d = axialDistance(s.q, s.r, p.q, p.r);
+    const contrib = scoutValue(d, wScoutEff, scoutRadius);
+    if (contrib <= 0) continue;
+    addPlanetAxis(p.key, "scout", contrib);
+    scoutHits.push({
+      scoutKey: s.key,
+      scoutId: (s as any).scoutId ?? "",
+      scoutWeight: wScoutEff,
+      planetKey: p.key,
+      planetType: String((p as any).planetKind ?? "").toUpperCase(),
+      distance: d,
+      value: contrib,
+      planet: {
+        kind: (p as any).kind,
+        planetKind: (p as any).planetKind,
+        slotId: (p as any).slotId,
+        sectorId: (p as any).sectorId,
+        tags: (p as any).tags ?? [],
+      },
+      scout: {
+        kind: (s as any).kind,
+        slotId: (s as any).slotId,
+        sectorId: (s as any).sectorId,
+        tags: (s as any).tags ?? [],
+      },
+    });
+  }
+
   perScout.push({ scoutKey: s.key, byType, total });
 }
 
@@ -811,11 +879,13 @@ if (scoutCoreAttributionMode === "best") {
    * 価値が低いため除外する、というユーザーの意図と一致する）。
    */
   const MIN_SCOUT_PLANETS_FOR_CORE = 2;
+  // 船星系の加点を受ける側（eval_v6 からガイア・次元横断も。起点の集合は planetCells のまま）
+  const coreRecipients = [...extracted.planetCells, ...excludedPlanetCells.filter((p) => perPlanet.has(p.key))];
   const scoutPlanetsNearPlanet = new Map<string, Set<string>>();
   for (const spKey of scoutPlanetKeySet) {
     const sp = scoutPlanetByKey.get(spKey);
     if (!sp) continue;
-    for (const p of extracted.planetCells) {
+    for (const p of coreRecipients) {
       if (p.key === sp.key) continue;
       const d0 = axialDistance(sp.q, sp.r, p.q, p.r);
       if (d0 !== 1 && d0 !== 2) continue;
@@ -850,7 +920,7 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
       const extraByKind: Record<string, number> = {};
       let total = 0;
 
-      for (const p of extracted.planetCells) {
+      for (const p of coreRecipients) {
         if (p.key === sp.key) continue; // ★自己除外（確定仕様）
 
         const d0 = axialDistance(sp.q, sp.r, p.q, p.r);
@@ -873,6 +943,20 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
           continue;
         }
         addPlanetAxis(p.key, "core", contrib);
+
+        // ガイア・次元横断（eval_v6）: 惑星ごとの値とマーカー用のヒットだけ。色ごとの合算・集計には入れない
+        if (kindU === "GAIA" || kindU === "TRANSDIM") {
+          scoutCoreHits.push({
+            scoutKey,
+            scoutId: String((scoutCellByKey.get(scoutKey) as any)?.scoutId ?? ""),
+            scoutPlanetKey: sp.key,
+            corePlanetKey: p.key,
+            corePlanetType: kindU,
+            distance: d0 as 1 | 2,
+            value: contrib,
+          });
+          continue;
+        }
 
         if (t) {
           byType[t] += contrib;
@@ -1052,6 +1136,7 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
     members
       .map((e) => ({
         cellKey: e.key,
+        kind: e.kind,
         cost: plan.costs.get(e.key) ?? Infinity,
         weight: plan.weights.get(e.key) ?? 0,
         value: planetValue(e),
@@ -1075,6 +1160,10 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
   // 検索の偏り項と色優遇はこの代表値で従来どおり7色で測り、内訳表は種族の行を出す。
   const byFaction: Record<string, FactionStart> = {};
   const representative: Record<string, string> = {};
+  // ガイア・次元横断は全種族の入植先（eval_v6、2026-10-06 ユーザー確定 案B）。開始地点は母星色（母星種別）
+  // の惑星からだけ選び、ガイア・次元横断は到着時の入植コスト（ガイア 1、次元横断 2 / ガイア Lv1 開始 1 /
+  // イタル人 1.5、LF は種族の表）込みの到達係数で足す。docs/design-notes.md 2.7。
+  const destinationExtras = allPlanets.filter((e) => e.kind === "GAIA" || e.kind === "TRANSDIM");
   const planFor = (
     id: string,
     color: string,
@@ -1084,15 +1173,17 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
     hop?: Parameters<typeof planStarts>[0]["hopCost"]
   ): FactionStart | null => {
     if (members.length === 0) return null;
+    const destinations = [...members, ...destinationExtras];
     const plan = planStarts({
       nodes,
-      candidates: members.map((e) => ({ key: e.key, value: planetValue(e) })),
+      candidates: destinations.map((e) => ({ key: e.key, value: planetValue(e) })),
       stoneCost,
       startCount,
+      startKeys: new Set(members.map((e) => e.key)),
       ...(hop ? { hopCost: hop } : {}),
     });
     if (!plan) return null;
-    const ax = weightedAxes(plan, members);
+    const ax = weightedAxes(plan, destinations);
     const entry: FactionStart = {
       color,
       starts: plan.starts,
@@ -1103,7 +1194,7 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
       outer: ax.outer,
       touch: ax.touch,
       total: ax.scout + ax.core + ax.gaia + ax.cluster + ax.outer + ax.touch,
-      planets: planetRows(plan, members),
+      planets: planetRows(plan, destinations),
     };
     byFaction[id] = entry;
     return entry;

@@ -128,6 +128,11 @@ export function axisMarkers(
      * 評価は「開始地点2ヶ所＋到達加重」なので、評価セルのマークは開始地点の惑星にする。
      */
     onlyCellKeys?: ReadonlySet<string>;
+    /**
+     * 色が違ってもマークするセル（種族の行用、eval_v6）。種族の値にはガイア・次元横断の惑星が
+     * 到達加重で入るので、その種族が到達できるガイア・次元横断は母星色でなくてもマークに含める。
+     */
+    alsoCellKeys?: ReadonlySet<string>;
   }
 ): BreakdownMarker[] {
   if (!audit) return [];
@@ -135,7 +140,7 @@ export function axisMarkers(
   const push = (key: any, pt: any, extra: string) => {
     const k = String(key ?? "");
     const p = String(pt ?? "");
-    if (!k || (colorKey && p !== colorKey)) return;
+    if (!k || (colorKey && p !== colorKey && !opts?.alsoCellKeys?.has(k))) return;
     if (opts?.onlyCellKey != null && k !== opts.onlyCellKey) return;
     if (opts?.onlyCellKeys && !opts.onlyCellKeys.has(k)) return;
     out.push({ key: k, color: RING_COLOR[p] ?? "#666666", label: `${markerColorLabel(p, lang)}${extra}` });
@@ -246,7 +251,9 @@ const cellMark = (
   /** 基本色の評価セルだけ: 開始地点の惑星に絞る（2026-10-03） */
   onlyCellKeys?: ReadonlySet<string>,
   /** マーカーを絞る色（省略時は k）。種族の行では k＝種族ID、色＝母星色（2026-10-05） */
-  colorKey: string = k
+  colorKey: string = k,
+  /** 種族の行だけ: 母星色でなくてもマークするセル（到達できるガイア・次元横断。eval_v6） */
+  alsoCellKeys?: ReadonlySet<string>
 ): React.HTMLAttributes<HTMLTableCellElement> => {
   if (!onMark) return {};
   const id = `${axis}:${k}`;
@@ -267,8 +274,12 @@ const cellMark = (
           axis,
           colorKey,
           lang,
-          onlyCellKey || onlyCellKeys
-            ? { ...(onlyCellKey ? { onlyCellKey } : {}), ...(onlyCellKeys ? { onlyCellKeys } : {}) }
+          onlyCellKey || onlyCellKeys || alsoCellKeys
+            ? {
+                ...(onlyCellKey ? { onlyCellKey } : {}),
+                ...(onlyCellKeys ? { onlyCellKeys } : {}),
+                ...(alsoCellKeys && alsoCellKeys.size > 0 ? { alsoCellKeys } : {}),
+              }
             : undefined
         ),
         e.ctrlKey || e.metaKey
@@ -450,18 +461,27 @@ const factionNote = (row: { label: string; color: string; e: any }): string => {
   const n = Array.isArray(row.e.starts) ? row.e.starts.length : 0;
   const isExtra = row.color === "PROTO" || row.color === "ASTEROID";
   return lang === "ja"
-    ? `${row.label}: 開始地点 ${n} ヶ所の値 ＋ 残りの同${isExtra ? "種別" : "色"}の惑星の値 × 到達係数。` +
-        `到達コストは種族ごと（開始建物の数・航行・改造・ガイアの初期研究）。` +
+    ? `${row.label}: 開始地点 ${n} ヶ所の値 ＋ 残りの同${isExtra ? "種別" : "色"}の惑星とガイア・次元横断の惑星の値 × 到達係数。` +
+        `到達コストは種族ごと（開始建物の数・航行・改造・ガイアの初期研究。到着した惑星の入植コスト込み）。` +
         (isExtra ? `原始・小惑星は LF の種族ごとに開始1ヶ所。` : ``)
-    : `${row.label}: value of the ${n} starting planet(s) + remaining same-${isExtra ? "kind" : "colour"} planets weighted by reachability ` +
-        `(reach cost is per faction: starting structures, navigation / terraforming / gaia research).`;
+    : `${row.label}: value of the ${n} starting planet(s) + remaining same-${isExtra ? "kind" : "colour"} planets and gaia / transdim planets weighted by reachability ` +
+        `(reach cost is per faction: starting structures, navigation / terraforming / gaia research, settlement cost on arrival).`;
 };
+/** その種族が到達できるガイア・次元横断のセル（軸のセルのマークに含める。eval_v6） */
+const reachableExtrasOf = (e: any): ReadonlySet<string> =>
+  new Set<string>(
+    (Array.isArray(e?.planets) ? e.planets : [])
+      .filter((p: any) => (p?.kind === "GAIA" || p?.kind === "TRANSDIM") && Number(p?.weight) > 0)
+      .map((p: any) => String(p.cellKey))
+  );
 const renderFactionCell = (colKey: keyof typeof cols, row: { id: string; color: string; e: any }) => {
   if (!cols[colKey]) return null;
   const starts = new Set<string>((row.e.starts ?? []).map((x: any) => String(x)));
   const isExtra = row.color === "PROTO" || row.color === "ASTEROID";
+  const extras = reachableExtrasOf(row.e);
   const cell = (axis: MarkAxis, v: number, ex?: { maxKeys: Set<string>; minKeys: Set<string> }, bold?: boolean, join?: "left" | "right", only?: ReadonlySet<string>) => {
-    const m = cellMark(axis, row.id, join, undefined, only, row.color);
+    // 評価セル（only＝開始地点）はガイア・次元横断を含めない。軸のセルは到達できるガイア・次元横断も光らせる
+    const m = cellMark(axis, row.id, join, undefined, only, row.color, only ? undefined : extras);
     return (
       <td onClick={m.onClick} title={m.title} style={{ ...tdStyle, ...(bold ? { fontWeight: 800 } : {}), color: ex ? colorFor(ex.maxKeys, ex.minKeys, row.id) : undefined, ...m.style }}>
         {v}
@@ -539,13 +559,15 @@ return (
             const headTip =
               String(ck) === "total"
                 ? lang === "ja"
-                  ? "種族の値 ＝ 開始地点の値 ＋ 残りの同色惑星の値 × 到達係数（開始地点は 2 ヶ所。ゼノ族 3、ダー・シュワーム人と LF の種族は 1）。" +
-                    "到達係数は 0.5 の（到達コスト−1）乗で、到達コストは跳躍（距離2=1 / 3=1.5 / 4=2 / 5=3）と踏み台の入植の歩数の和。" +
+                  ? "種族の値 ＝ 開始地点の値 ＋ 残りの同色惑星とガイア・次元横断の惑星の値 × 到達係数（開始地点は母星色から 2 ヶ所。ゼノ族 3、ダー・シュワーム人と LF の種族は 1）。" +
+                    "到達係数は 0.5 の（到達コスト−1）乗で、到達コストは跳躍（距離2=1 / 3=1.5 / 4=2 / 5=3）と、踏み台と到着した惑星の入植の歩数の和" +
+                    "（ガイア 1、次元横断 2。ガイア Lv1 開始は 1、イタル人 1.5）。" +
                     "種族の性質（航行・改造・ガイアの初期研究）で跳躍と入植の一部が変わる。開始地点は合計が最大になる組を総当たりで選ぶ。" +
                     "各列は同じ重みで足して軸ごとに丸めてある。検索の偏り項は色ごとに2種族の大きい方で測る。"
-                  : "Faction value = starting planets + the remaining same-colour planets weighted by reachability " +
-                    "(0.5^(cost−1); cost = hop cost by distance 2=1 / 3=1.5 / 4=2 / 5=3 plus terraforming steps of stepping stones; " +
-                    "some hops/steps differ per faction). Starts: 2 (Xenos 3, Ivits and Lost Fleet factions 1), chosen by brute force. " +
+                  : "Faction value = starting planets + the remaining same-colour planets and gaia / transdim planets weighted by reachability " +
+                    "(0.5^(cost−1); cost = hop cost by distance 2=1 / 3=1.5 / 4=2 / 5=3 plus settlement steps of stepping stones and of the destination: " +
+                    "gaia 1, transdim 2 (1 with gaia research Lv1, Itars 1.5); some hops/steps differ per faction). " +
+                    "Starts: 2 home-colour planets (Xenos 3, Ivits and Lost Fleet factions 1), chosen by brute force. " +
                     "The search balance term uses the larger of the two factions per colour."
                 : undefined;
             return (

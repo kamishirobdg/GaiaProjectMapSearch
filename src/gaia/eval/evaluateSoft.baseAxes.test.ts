@@ -121,14 +121,16 @@ describe("cluster axis (base)", () => {
     expect(r.breakdown.audit.cluster?.clusters).toEqual([{ size: 3, weightedSize: 3, colors: ["BLUE", "RED"] }]);
   });
 
-  it("gaia/transdim join clusters for size but earn no colour points (H5と同じ連結定義)", () => {
-    // RED-GAIA の2連結: サイズ2、色はREDのみ => RED+2
+  it("gaia/transdim join clusters for size（H5と同じ連結定義）。eval_v6 からは入植先として到達加重で色の値にも入る", () => {
+    // RED-GAIA の2連結: サイズ2、色はREDのみ。惑星ごとの星系の値は RED 2 / GAIA 2。
+    // 色ごとに1回の合算（監査）は RED 2 のまま。色の値は RED 2 ＋ GAIA 2 × 到達係数（隣接 0 ＋ ガイア 1 ＝ 1 → 1.0）＝ 4
     const e = extractedOf([
       cell({ q: 0, r: 0, color: "RED" }),
       cell({ q: 1, r: 0, kind: "GAIA" }),
     ]);
     const r = evaluateSoft(e, { ...BASE_SOFT, wClusterSize: 1 });
-    expect(r.breakdown.axesByType.cluster!.RED).toBe(2);
+    expect(r.breakdown.audit.cluster?.byType.RED).toBe(2);
+    expect(r.breakdown.axesByType.cluster!.RED).toBe(4);
     expect(r.breakdown.audit.cluster?.clusters).toEqual([{ size: 2, weightedSize: 2, colors: ["RED"] }]);
   });
 
@@ -149,7 +151,9 @@ describe("cluster axis (base)", () => {
   });
 
   it("軸の丸めは色ごとの合計に効く（0.5が2つあれば打ち消し合う）", () => {
-    // RED-TRANSDIM が2組（それぞれ 1.5）。合計3で丸め不要になる。
+    // RED-TRANSDIM が2組（それぞれ 1.5）。赤2つの 1.5 + 1.5 ＝ 3 に、eval_v6 からは次元横断2つ
+    // （各 1.5 × 到達係数 0.5。隣接 0 ＋ 次元横断 2 ＝ コスト 2）＝ 1.5 が乗り、合計 4.5 を丸めて 5。
+    // 監査の色ごとに1回の合算は 3 のまま。
     const e = extractedOf([
       cell({ q: 0, r: 0, color: "RED" }),
       cell({ q: 1, r: 0, kind: "TRANSDIM" }),
@@ -157,7 +161,8 @@ describe("cluster axis (base)", () => {
       cell({ q: 6, r: 0, kind: "TRANSDIM" }),
     ]);
     const r = evaluateSoft(e, { ...BASE_SOFT, wClusterSize: 1 });
-    expect(r.breakdown.axesByType.cluster!.RED).toBe(3); // 1.5 + 1.5
+    expect(r.breakdown.audit.cluster?.byType.RED).toBe(3); // 1.5 + 1.5
+    expect(r.breakdown.axesByType.cluster!.RED).toBe(5); // 3 + 0.75 + 0.75 = 4.5 → 5
   });
 
   it("星系の軸に小数を出さない", () => {
@@ -181,7 +186,8 @@ describe("cluster axis (base)", () => {
       cell({ q: 1, r: 0, kind: "GAIA" }),
     ]);
     const r = evaluateSoft(e, { ...BASE_SOFT, wClusterSize: 1 });
-    expect(r.breakdown.axesByType.cluster!.RED).toBe(2);
+    expect(r.breakdown.audit.cluster?.clusters).toEqual([{ size: 2, weightedSize: 2, colors: ["RED"] }]);
+    expect(r.breakdown.axesByType.cluster!.RED).toBe(4); // RED 2 ＋ GAIA 2 × 1.0（eval_v6）
   });
 
   it("weight multiplies the size bonus", () => {
