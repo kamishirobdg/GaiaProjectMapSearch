@@ -8,10 +8,12 @@
 // 開始地点は「残りの到達加重まで含めた合計が最大になる組」を総当たりで選ぶ。
 //
 // 到達コスト ＝ 開始地点から目的の惑星まで、惑星を踏み台にして進む経路の最小コスト。
-//   跳躍: 距離1=0 / 2=1（航法1で届く通常の範囲）/ 3=1.5（初期状態から QIC 1つ）/
-//         4=2（航法1＋QIC か QIC 2つ）/ 5=3（+3射程のブースター・船アクション）/ それ以上は不可
+//   跳躍: 距離1=0 / 2=1（航行 Lv2 ＝ 研究2歩で届く通常の範囲）/ 3=1.5（初期状態から QIC 1つ）/
+//         4=2（航行 Lv2＋QIC か QIC 2つ）/ 5=3（+3射程のブースター・船アクション）/ それ以上は不可
 //   入植: 到着した惑星ごとに、その惑星を入植するのに要る改造の歩数を払う。
-//         同色0、改造の輪で隣1・2つ先2・反対3、ガイア1、次元横断1、原始3、小惑星2。
+//         同色0、改造の輪で隣1・2つ先2・反対3、ガイア1、次元横断2（ガイア Lv1 開始は 1、イタル人 1.5）、
+//         原始3、小惑星2。次元横断は 2026-10-06（eval_v6）に 1 → 2: それまでの 1 はガイア種族の
+//         視点の値で、通常種族はガイアフォーマーを得る研究1歩が要る（ユーザー指摘、2-1 案A）。
 //         LF4種族に母星種別は無く、他の原始惑星は3歩・小惑星はガイアフォーマー消費（2歩相当）。
 //         標準惑星は種族で違う（ダルカニア人1 / スペースジャイアント2 / ティンカーロイドと
 //         モウェイド人は相手次第で1か3 → Map 探索では相手が不明なので既定1）。
@@ -28,13 +30,21 @@
 //   色ではなく種族ごとに開始地点と到達加重を計算する。基本14種族は上の色の定数を基準に、
 //   種族の性質で違うところだけを変える（BASIC_REACH_PROFILES）:
 //     開始建物の数: ゼノ族 3 / ダー・シュワーム人 1（惑星首府）/ 他 2
-//     航行 Lv1 開始（グリーン人・アンバス人）: 距離2の跳躍 1 → 0.5（初手から研究なしで届く）
+//     航行 Lv1 開始（グリーン人・アンバス人）: 距離2の跳躍 1 → 0.5（距離2には航行 Lv2 が要る。
+//       残り1歩で届く。他の種族は2歩。2026-10-06 に前提を確認）
 //     航行を伸ばせない（バルタック人、首府まで Lv0）: 距離2の跳躍 1 → 1.5（QIC 1つの距離3と同じ）
 //     改造 Lv1 開始（ジオデン人）: 改造の歩数 × 2/3（鉱石 3 → 2 の比）
-//     ガイア Lv1 開始（地球人・バルタック人・モウェイド人）: 次元横断 1 → 0.5（ガイアフォーマーを
-//       最初から持つ。ガイア惑星は誰でも QIC 1つなので 1 のまま）
-//     ガイア惑星に鉱石で入植（グリーン人）: ガイア惑星 1 → 0.5（次元横断は 1 のまま）
+//     ガイア Lv1 開始（地球人・バルタック人・モウェイド人）: 次元横断 2 → 1（ガイアフォーマーを
+//       最初から持つ。他は研究1歩が要るので 2。ガイア惑星は誰でも QIC 1つなので 1 のまま）
+//     イタル人（初期研究なし。ガイア域に捨てたパワートークンが技術タイルになり次元横断と相性が良い）:
+//       次元横断 1.5（通常 2 とガイア Lv1 の 1 の中間。2026-10-06 ユーザー確定、案 B-2）
+//     ガイア惑星に鉱石で入植（グリーン人）: ガイア惑星 1 → 0.5（次元横断は 2 のまま）
 //     ランティダ人の「他家の惑星に鉱山」、経済・科学・AI の初期研究は到達に無関係なので扱わない。
+//     初期研究の一覧（2026-10-06 ユーザー確認）: 地球人 ガイア1 / ゼノ族 AI1 / グリーン人 航行1 /
+//       アンバス人 航行1 / ハッシュ・ホラ人 経済1 / ジオデン人 改造1 / バルタック人 ガイア1 /
+//       ネヴラ人 科学1 / ランティダ人・タクロン族・ダー・シュワーム人・フィラク族・マッドアンドロイド・
+//       イタル人 なし / モウェイド人 ガイア1 / スペースジャイアント 航行1 / ティンカーロイド 科学1 /
+//       ダルカニア人 経済1＋航行1。
 //   検索の偏り項と色優遇は、色の代表値（その色の2種族のうち大きい方）で従来どおり7色で測る（案A）。
 //
 // 実測と経緯は docs/design-notes.md 2.6 / 2.7 / 2.8 節、調査は scripts/_probe_map_aggregation.ts と
@@ -80,7 +90,8 @@ export function reachFactor(cost: number): number {
 }
 
 export const STONE_COST_GAIA = 1;
-export const STONE_COST_TRANSDIM = 1;
+/** 次元横断（通常種族の視点。ガイアフォーマーを得る研究1歩 ＋ ガイア計画）。2026-10-06 に 1 → 2（eval_v6） */
+export const STONE_COST_TRANSDIM = 2;
 export const STONE_COST_PROTO = 3;
 export const STONE_COST_ASTEROID = 2;
 
@@ -112,13 +123,13 @@ export type LfReachProfile = {
   standard: number;
   /** ガイア惑星の歩数相当（QIC 2 の種族は 2） */
   gaia: number;
-  /** 次元横断惑星の歩数相当。ガイア Lv1 開始のモウェイド人は 0.5（2026-10-05）、他はガイア惑星と同じ */
+  /** 次元横断惑星の歩数相当。ガイア Lv1 開始のモウェイド人は 1（2026-10-06。それまで 0.5）、他は 2 */
   transdim: number;
 };
 
 /** LF4種族の入植コスト（LF ルール p13。ティンカーロイド・モウェイド人の標準惑星は相手次第なので既定1） */
 export const LF_REACH_PROFILES: Record<LfFactionId, LfReachProfile> = {
-  moweyds: { home: "PROTO", standard: 1, gaia: 1, transdim: 0.5 },
+  moweyds: { home: "PROTO", standard: 1, gaia: 1, transdim: 1 },
   spaceGiants: { home: "PROTO", standard: 2, gaia: 2, transdim: 2 },
   tinkerroids: { home: "ASTEROID", standard: 1, gaia: 2, transdim: 2 },
   darkanians: { home: "ASTEROID", standard: 1, gaia: 2, transdim: 2 },
@@ -166,7 +177,7 @@ export type BasicReachProfile = {
   terraformScale?: number;
   /** ガイア惑星の入植コスト（既定 1。鉱石で入植するグリーン人は 0.5） */
   gaia?: number;
-  /** 次元横断惑星の入植コスト（既定 1。ガイア Lv1 開始の地球人・バルタック人は 0.5） */
+  /** 次元横断惑星の入植コスト（既定 2。ガイア Lv1 開始の地球人・バルタック人は 1、イタル人は 1.5） */
   transdim?: number;
 };
 
@@ -176,7 +187,7 @@ export const BASIC_FACTION_ORDER: readonly BasicFactionId[] = [
 ];
 
 export const BASIC_REACH_PROFILES: Record<BasicFactionId, BasicReachProfile> = {
-  terrans: { color: "BLUE", startCount: 2, transdim: 0.5 },
+  terrans: { color: "BLUE", startCount: 2, transdim: 1 },
   lantids: { color: "BLUE", startCount: 2 },
   xenos: { color: "YELLOW", startCount: 3 },
   gleens: { color: "YELLOW", startCount: 2, hop2: 0.5, gaia: 0.5 },
@@ -185,11 +196,12 @@ export const BASIC_REACH_PROFILES: Record<BasicFactionId, BasicReachProfile> = {
   hadschHallas: { color: "RED", startCount: 2 },
   ivits: { color: "RED", startCount: 1 },
   geodens: { color: "ORANGE", startCount: 2, terraformScale: 2 / 3 },
-  balTaks: { color: "ORANGE", startCount: 2, hop2: 1.5, transdim: 0.5 },
+  balTaks: { color: "ORANGE", startCount: 2, hop2: 1.5, transdim: 1 },
   firaks: { color: "BLACK", startCount: 2 },
   bescods: { color: "BLACK", startCount: 2 },
   nevlas: { color: "WHITE", startCount: 2 },
-  itars: { color: "WHITE", startCount: 2 },
+  // 初期研究なしだが次元横断と相性が良い（ガイア域のパワートークン → 技術タイル）。中間の 1.5（案 B-2）
+  itars: { color: "WHITE", startCount: 2, transdim: 1.5 },
 };
 
 /** 跳躍コスト関数（距離 → コスト）。種族ごとに距離2だけ変わる。 */

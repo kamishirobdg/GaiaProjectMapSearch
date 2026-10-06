@@ -38,7 +38,9 @@ export const SEARCH_ALGO_VERSION = "search_v1";
 // 航行・改造・ガイアの初期研究で到達コストが変わる。reachCost.ts の BASIC_REACH_PROFILES）。色の値は
 // その色の2種族のうち大きい方（案A）で、検索の偏り項と色優遇は従来どおり7色で測る。内訳表は種族の行。
 // docs/design-notes.md 2.7。
-export const EVAL_VERSION = "eval_v5";
+// eval_v6 (2026-10-06): 次元横断の入植コストを通常種族 2（ガイア Lv1 開始は 1、イタル人 1.5）に。
+// ガイア・次元横断の惑星を各種族の入植先に計上する（開始地点は母星色のみ。docs/design-notes.md 2.7）。
+export const EVAL_VERSION = "eval_v6";
 
 export type PersistedCandidate = {
   id: string; // `${searchKey}:${placementHash}`

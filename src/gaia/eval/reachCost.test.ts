@@ -47,21 +47,21 @@ describe("改造の輪と入植コスト", () => {
     expect(terraformSteps("YELLOW", "BLUE")).toBe(3);
   });
 
-  it("基本色の視点: 同色0・ガイア1・次元横断1・原始3・小惑星2", () => {
+  it("基本色の視点: 同色0・ガイア1・次元横断2（2026-10-06 に 1 → 2）・原始3・小惑星2", () => {
     const c = stoneCostForColor("RED");
     expect(c("RED")).toBe(0);
     expect(c("BLUE")).toBe(1);
     expect(c("GAIA")).toBe(1);
-    expect(c("TRANSDIM")).toBe(1);
+    expect(c("TRANSDIM")).toBe(2);
     expect(c("PROTO")).toBe(3);
     expect(c("ASTEROID")).toBe(2);
   });
 
   it("LF4種族の視点: 母星種別が無いので同じ種別にも原始3・小惑星2を払う", () => {
     expect(LF_REACH_PROFILES.darkanians).toEqual({ home: "ASTEROID", standard: 1, gaia: 2, transdim: 2 });
-    // ガイア Lv1 開始のモウェイド人は次元横断 0.5（2026-10-05 ユーザー確定）。ガイア惑星は 1 のまま
-    expect(LF_REACH_PROFILES.moweyds).toEqual({ home: "PROTO", standard: 1, gaia: 1, transdim: 0.5 });
-    expect(stoneCostForLfFaction("moweyds")("TRANSDIM")).toBe(0.5);
+    // ガイア Lv1 開始のモウェイド人は次元横断 1（2026-10-05 に 0.5 → 2026-10-06 に 1。通常は 2）。ガイア惑星は 1 のまま
+    expect(LF_REACH_PROFILES.moweyds).toEqual({ home: "PROTO", standard: 1, gaia: 1, transdim: 1 });
+    expect(stoneCostForLfFaction("moweyds")("TRANSDIM")).toBe(1);
     expect(stoneCostForLfFaction("moweyds")("GAIA")).toBe(1);
     expect(stoneCostForLfFaction("spaceGiants")("TRANSDIM")).toBe(2);
     expect(LF_REACH_PROFILES.tinkerroids.standard).toBe(1); // 相手次第で1か3。Map 探索では既定1
@@ -117,20 +117,23 @@ describe("基本14種族の到達プロファイル（2026-10-05 ユーザー確
     }
   });
 
-  it("ガイア Lv1 開始の地球人・バルタック人は次元横断 0.5（ガイア惑星は 1）、グリーン人はガイア惑星 0.5（次元横断は 1）", () => {
-    expect(stoneCostForBasicFaction("terrans")("TRANSDIM")).toBe(0.5);
+  it("次元横断は通常 2。ガイア Lv1 開始の地球人・バルタック人は 1、イタル人は 1.5（ガイア惑星は 1）、グリーン人はガイア惑星 0.5", () => {
+    expect(stoneCostForBasicFaction("terrans")("TRANSDIM")).toBe(1);
     expect(stoneCostForBasicFaction("terrans")("GAIA")).toBe(1);
-    expect(stoneCostForBasicFaction("balTaks")("TRANSDIM")).toBe(0.5);
+    expect(stoneCostForBasicFaction("balTaks")("TRANSDIM")).toBe(1);
     expect(stoneCostForBasicFaction("balTaks")("GAIA")).toBe(1);
+    expect(stoneCostForBasicFaction("itars")("TRANSDIM")).toBe(1.5);
+    expect(stoneCostForBasicFaction("itars")("GAIA")).toBe(1);
     expect(stoneCostForBasicFaction("gleens")("GAIA")).toBe(0.5);
-    expect(stoneCostForBasicFaction("gleens")("TRANSDIM")).toBe(1);
+    expect(stoneCostForBasicFaction("gleens")("TRANSDIM")).toBe(2);
     expect(stoneCostForBasicFaction("lantids")("GAIA")).toBe(1);
-    expect(stoneCostForBasicFaction("lantids")("TRANSDIM")).toBe(1);
+    expect(stoneCostForBasicFaction("lantids")("TRANSDIM")).toBe(2);
+    expect(stoneCostForBasicFaction("nevlas")("TRANSDIM")).toBe(2);
   });
 
   it("プロファイルの表そのもの（変えるときはユーザー判断）", () => {
     expect(BASIC_REACH_PROFILES).toEqual({
-      terrans: { color: "BLUE", startCount: 2, transdim: 0.5 },
+      terrans: { color: "BLUE", startCount: 2, transdim: 1 },
       lantids: { color: "BLUE", startCount: 2 },
       xenos: { color: "YELLOW", startCount: 3 },
       gleens: { color: "YELLOW", startCount: 2, hop2: 0.5, gaia: 0.5 },
@@ -139,11 +142,11 @@ describe("基本14種族の到達プロファイル（2026-10-05 ユーザー確
       hadschHallas: { color: "RED", startCount: 2 },
       ivits: { color: "RED", startCount: 1 },
       geodens: { color: "ORANGE", startCount: 2, terraformScale: 2 / 3 },
-      balTaks: { color: "ORANGE", startCount: 2, hop2: 1.5, transdim: 0.5 },
+      balTaks: { color: "ORANGE", startCount: 2, hop2: 1.5, transdim: 1 },
       firaks: { color: "BLACK", startCount: 2 },
       bescods: { color: "BLACK", startCount: 2 },
       nevlas: { color: "WHITE", startCount: 2 },
-      itars: { color: "WHITE", startCount: 2 },
+      itars: { color: "WHITE", startCount: 2, transdim: 1.5 },
     });
   });
 });
@@ -244,11 +247,11 @@ describe("到達コストの経路探索", () => {
     expect(noRedStone[2]).toBe(4);
   });
 
-  it("ガイアと次元横断も踏み台になる（1歩）、原始は3歩、小惑星は2歩", () => {
+  it("ガイア（1歩）と次元横断（2歩）も踏み台になる、原始は3歩、小惑星は2歩", () => {
     const base = [node(0, 0, "RED"), node(6, 0, "RED")];
     const via = (kind: string) => reachCostsFrom([...base, node(1, 0, kind)], 0, stoneCostForColor("RED"))[1];
     expect(via("GAIA")).toBe(4);
-    expect(via("TRANSDIM")).toBe(4);
+    expect(via("TRANSDIM")).toBe(5);
     expect(via("PROTO")).toBe(6);
     expect(via("ASTEROID")).toBe(5);
   });

@@ -402,14 +402,14 @@ describe("種族ごとの計算（2026-10-05 確定、eval_v5。docs/design-note
     expect(auditOf(r2).startAccess.byFaction.ambas.total).toBe(auditOf(r2).startAccess.byFaction.taklons.total); // 2ヶ所とも開始なので同じ
   });
 
-  it("バルタック人は距離2の跳躍が 1.5、地球人は次元横断の踏み台が 0.5、グリーン人はガイア惑星が 0.5、ジオデン人は改造 × 2/3", () => {
+  it("バルタック人は距離2の跳躍が 1.5、地球人は次元横断の踏み台が 1（通常 2）、グリーン人はガイア惑星が 0.5、ジオデン人は改造 × 2/3", () => {
     // 橙 (0,0) と (2,0): バルタック人の1ヶ所開始なら (2,0) へコスト1.5。ジオデン人は赤(1歩)の踏み台が 0.67
     const orange = extractedOf([cell({ q: 0, r: 0, color: "ORANGE" }), cell({ q: 2, r: 0, color: "ORANGE" }), cell({ q: 6, r: 0, color: "ORANGE" }), cell({ q: 4, r: 0, color: "RED" })]);
     const r = evaluateSoft(orange, { ...BASE_SOFT, wClusterSize: 1 });
     const sa = auditOf(r).startAccess;
     // (6,0) へ: 直接は距離4 → 2 / 赤(4,0)経由: (2,0)→(4,0) 距離2(1)＋改造1歩 → (6,0) 距離2(1) ＝ 3。ジオデン人は 1+0.67+1 = 2.67 → 直接の2が最小
     expect(sa.byFaction.geodens.planets.find((p: any) => p.cellKey === "6,0").cost).toBe(2);
-    // 青 (0,0) / (6,0) と次元横断 (3,0): 地球人は 1.5(距離3)＋0.5 → (6,0) 距離3 1.5 ＝ 3.5 より直接の距離6は不可 → 3.5。ランティダ人は 4
+    // 青 (0,0) / (6,0) と次元横断 (3,0): 地球人は 1.5(距離3)＋1 → (6,0) 距離3 1.5 ＝ 4（直接の距離6は不可）。ランティダ人は 5
     const blue = extractedOf([cell({ q: 0, r: 0, color: "BLUE" }), cell({ q: 6, r: 0, color: "BLUE" }), cell({ q: 3, r: 0, kind: "TRANSDIM" })]);
     const r2 = evaluateSoft(blue, { ...BASE_SOFT, wClusterSize: 1 });
     const one = (f: string) => auditOf(r2).startAccess.byFaction[f];
