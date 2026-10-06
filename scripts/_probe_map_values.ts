@@ -60,6 +60,8 @@ for (const [templateId, outerCap] of [["4p_lostFleet", 1], ["3p_lostFleet", 1], 
   const lfVals: Record<string, number[]> = {};
   const facVals: Record<string, number[]> = {};
   const pairDiff: Record<string, number[]> = {};
+  const extraShare: Record<string, number[]> = {};
+  const transShare: Record<string, number[]> = {};
   let seed = 0;
   let boards = 0;
   const t0 = Date.now();
@@ -90,6 +92,18 @@ for (const [templateId, outerCap] of [["4p_lostFleet", 1], ["3p_lostFleet", 1], 
     for (const f of BASIC_FACTION_ORDER) {
       const v = sa?.byFaction?.[f]?.total;
       if (typeof v === "number") (facVals[f] ??= []).push(v);
+    }
+    // eval_v6: ガイア・次元横断（入植先）の寄与（Σ 値 × 重み）が種族の値に占める割合
+    for (const f of [...BASIC_FACTION_ORDER, ...LF_FACTION_ORDER]) {
+      const e = sa?.byFaction?.[f];
+      if (!e || !(e.total > 0) || !Array.isArray(e.planets)) continue;
+      let gaia = 0, trans = 0;
+      for (const p of e.planets) {
+        if (p.kind === "GAIA") gaia += p.weight * p.value;
+        else if (p.kind === "TRANSDIM") trans += p.weight * p.value;
+      }
+      (extraShare[f] ??= []).push((gaia + trans) / e.total);
+      (transShare[f] ??= []).push(trans / e.total);
     }
     for (const c of BASIC) {
       const pair = BASIC_FACTION_ORDER.filter((f) => BASIC_REACH_PROFILES[f].color === c);
@@ -124,5 +138,11 @@ for (const [templateId, outerCap] of [["4p_lostFleet", 1], ["3p_lostFleet", 1], 
     const pair = BASIC_FACTION_ORDER.filter((f) => BASIC_REACH_PROFILES[f].color === c);
     const s = stat(xs);
     console.log(`    ${c.padEnd(6)} ${pair[0]} − ${pair[1]}: ${f1(s.mean).padStart(6)}  (${f1(s.p10)}〜${f1(s.p90)})`);
+  }
+  console.log(`  ガイア＋次元横断（入植先、eval_v6）の寄与が種族の値に占める割合の平均（うち次元横断）:`);
+  for (const f of [...BASIC_FACTION_ORDER, ...LF_FACTION_ORDER]) {
+    const xs = extraShare[f];
+    if (!xs || xs.length === 0) continue;
+    console.log(`    ${f.padEnd(12)} ${pct(stat(xs).mean).padStart(6)}  (次元横断 ${pct(stat(transShare[f]).mean)})`);
   }
 }
