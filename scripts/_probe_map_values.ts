@@ -14,10 +14,14 @@ import { buildLogicalMapFromPlacement } from "../src/gaia/logicalMap/buildLogica
 import { extractForEval } from "../src/gaia/eval/extractForEval";
 import { evaluateSoft } from "../src/gaia/eval/evaluateSoft";
 import { checkHardConstraints } from "../src/gaia/constraints";
-import { BASIC_FACTION_ORDER, BASIC_REACH_PROFILES, LF_FACTION_ORDER } from "../src/gaia/eval/reachCost";
+import { BASIC_FACTION_ORDER, BASIC_REACH_PROFILES, DESTINATION_VALUE_SCALE, LF_FACTION_ORDER } from "../src/gaia/eval/reachCost";
 
 const N = Number(process.argv[2] ?? 60) || 60;
 const BASE_OUTER_CAP = Number(process.argv[3] ?? 3) || 3;
+// 入植先としてのガイア・次元横断の係数を比べるとき: SCALE_GAIA=0.25 SCALE_TRANSDIM=0.5 npx tsx ... （既定はコードの定数）
+if (process.env.SCALE_GAIA) DESTINATION_VALUE_SCALE.GAIA = Number(process.env.SCALE_GAIA);
+if (process.env.SCALE_TRANSDIM) DESTINATION_VALUE_SCALE.TRANSDIM = Number(process.env.SCALE_TRANSDIM);
+console.log(`入植先の係数: ガイア ${DESTINATION_VALUE_SCALE.GAIA} / 次元横断 ${DESTINATION_VALUE_SCALE.TRANSDIM}`);
 
 const soft = {
   // 端の罰点は 2026-10-04（eval_v4）から「欠けマス × wRimGap」（それまでは wOuter 3 / wTouch 1）

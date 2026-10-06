@@ -28,6 +28,7 @@ import {
   RIM_GAP_RANGE,
   RIM_GAP_RING_CELLS,
   START_COUNT_LF,
+  DESTINATION_VALUE_SCALE,
   hopCostForBasicFaction,
   hopCostForLfFaction,
   missingCellsWithin,
@@ -115,8 +116,10 @@ export type StartAccessPlanet = {
   cost: number;
   /** 値に掛けた重み（開始地点は 1、残りは到達係数） */
   weight: number;
-  /** 重みを掛ける前の惑星の値（基本色は最外周/外周込み） */
+  /** 重みを掛ける前の惑星の値（基本色は最外周/外周込み。ガイア・次元横断は入植先の係数を掛けた後） */
   value: number;
+  /** ガイア・次元横断だけ: 入植先としての値に掛けた係数（DESTINATION_VALUE_SCALE。1 のときは省略） */
+  scale?: number;
 };
 
 /** 種族1つぶんの「開始地点＋到達加重」の集計（eval_v5） */
@@ -1133,7 +1136,7 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
     for (const ax of AXES) rounded[ax] = Math.round(sums[ax]);
     return rounded;
   };
-  const planetRows = (plan: StartPlan, members: PlanetAcc[]): StartAccessPlanet[] =>
+  const planetRows = (plan: StartPlan, members: Array<PlanetAcc & { scale?: number }>): StartAccessPlanet[] =>
     members
       .map((e) => ({
         cellKey: e.key,
@@ -1141,6 +1144,7 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
         cost: plan.costs.get(e.key) ?? Infinity,
         weight: plan.weights.get(e.key) ?? 0,
         value: planetValue(e),
+        ...(e.scale != null && e.scale !== 1 ? { scale: e.scale } : {}),
       }))
       .sort((a, b) => b.weight - a.weight || a.cellKey.localeCompare(b.cellKey));
 
@@ -1164,7 +1168,14 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
   // ガイア・次元横断は全種族の入植先（eval_v6、2026-10-06 ユーザー確定 案B）。開始地点は母星色（母星種別）
   // の惑星からだけ選び、ガイア・次元横断は到着時の入植コスト（ガイア 1、次元横断 2 / ガイア Lv1 開始 1 /
   // イタル人 1.5、LF は種族の表）込みの到達係数で足す。docs/design-notes.md 2.7。
-  const destinationExtras = allPlanets.filter((e) => e.kind === "GAIA" || e.kind === "TRANSDIM");
+  // 入植先としての値には種別ごとの係数（DESTINATION_VALUE_SCALE。取り合いで自分の取り分になる割合）を掛ける。
+  // 到達係数（自分のコスト）とは別。惑星ごとの素の値（マーカーのヒット）は変えず、ここで掛けた写しを使う。
+  const destinationExtras = allPlanets
+    .filter((e) => e.kind === "GAIA" || e.kind === "TRANSDIM")
+    .map((e) => {
+      const s = DESTINATION_VALUE_SCALE[e.kind as "GAIA" | "TRANSDIM"] ?? 1;
+      return { ...e, scale: s, scout: e.scout * s, core: e.core * s, gaia: e.gaia * s, cluster: e.cluster * s, outer: e.outer * s, touch: e.touch * s };
+    });
   const planFor = (
     id: string,
     color: string,

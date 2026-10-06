@@ -145,6 +145,17 @@ export function hopCostForLfFaction(id: LfFactionId): HopCostFn {
   return (d) => (d === 2 ? h2 : hopCost(d));
 }
 
+/**
+ * 入植先としてのガイア・次元横断の値に掛ける係数（2026-10-06 ユーザー確定の方針: ガイア・次元横断の
+ * 寄与 36〜50% は大きすぎる。全種族が狙うガイアは小さく、狙う種族が限られる次元横断は大きく）。
+ * 到達係数（自分のコスト）とは別の「取り合いで自分の取り分になる割合」。値はユーザー判断で、
+ * 変えるときは `_probe_map_values.ts` で寄与の割合を測り直す。
+ */
+export const DESTINATION_VALUE_SCALE: Record<"GAIA" | "TRANSDIM", number> = {
+  GAIA: 1,
+  TRANSDIM: 1,
+};
+
 /** LF4種族の視点。母星種別は無いので、同じ種別の惑星にも原始3・小惑星2を払う。 */
 export function stoneCostForLfFaction(id: LfFactionId): StoneCostFn {
   const p = LF_REACH_PROFILES[id];
