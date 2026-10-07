@@ -40,7 +40,10 @@ export const SEARCH_ALGO_VERSION = "search_v1";
 // docs/design-notes.md 2.7。
 // eval_v6 (2026-10-06): 次元横断の入植コストを通常種族 2（ガイア Lv1 開始は 1、イタル人 1.5）に。
 // ガイア・次元横断の惑星を各種族の入植先に計上する（開始地点は母星色のみ。docs/design-notes.md 2.7）。
-export const EVAL_VERSION = "eval_v6";
+// eval_v7 (2026-10-07): 全惑星を同一の式で評価する一本化。種族の値 ＝ Σ 全惑星 係数(種別) ×
+// (固有値 10 ＋ 船接触 ＋ 船星系 ＋ 端の罰点) × 到達係数。ガイア近接・星系の軸と評価指数（wGaiaDist1〜3 /
+// wClusterSize）を廃止、内訳表は種別ごとの列。eval_v5 / v6 は本番に出していない（docs/design-notes.md 2.10）。
+export const EVAL_VERSION = "eval_v7";
 
 export type PersistedCandidate = {
   id: string; // `${searchKey}:${placementHash}`
