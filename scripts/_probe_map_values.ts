@@ -9,7 +9,7 @@
 // 集め、実装そのもの（evaluateSoft）の出力から次を出す:
 //   色の代表値・盤面ごとの最上位（桁）、種別ごとの寄与（母星色 / 他色 / ガイア / 次元横断 / 原始・小惑星）、
 //   固有値の寄与、開始地点以外（到達加重）の寄与、種族ごとの平均、同色2種族の差、
-//   開始地点の中心性との相関（負ほど中心が有利）、開始地点が最外周 / 外周にある割合。
+//   端・中心性の診断（種族の平均を引いた 値 × 開始地点の欠けマス数 / 距離2以内の惑星数）、開始地点が最外周 / 外周にある割合。
 // 端の罰点 w を複数与えると（W=0.5,1,2）、w ごとの比較表も出す（基本版の w を決め直すための材料。設計ノート 2.10）。
 //
 // 環境変数で定数を差し替えて比べる（既定は reachCost.ts の UNIFIED_VALUE / 種族の型）:
@@ -32,8 +32,10 @@ import {
   LF_FACTION_ORDER,
   TERRAFORM_FACTIONS,
   UNIFIED_VALUE,
+  missingCellsWithin,
   type DestinationKind,
 } from "../src/gaia/eval/reachCost";
+import { axialDistance } from "../src/gaia/hex";
 
 const N = Number(process.argv[2] ?? 60) || 60;
 const BASE_OUTER_CAP = Number(process.argv[3] ?? 3) || 3;
@@ -141,25 +143,53 @@ for (const [templateId, outerCap] of [["4p_lostFleet", 1], ["3p_lostFleet", 1], 
     repVals: number[]; tops: number[]; topColor: string[]; imb: number[];
     facVals: Record<string, number[]>; pairDiff: Record<string, number[]>;
     kindShare: Record<DestinationKind, number[]>; baseShare: number[]; restShare: number[];
-    cent: number[]; centTotals: number[]; rimStarts: number; startsN: number;
-    centBasic: number[]; centBasicTotals: number[];
+    rimStarts: number; startsN: number;
+    /**
+     * 中心性の診断（2026-10-07 に測り方を直した）。種族の値 × 「開始地点の欠けマス数（端の度合い）」と
+     * 「開始地点から距離 2 以内の惑星数」の相関を、**種族の平均を引いてから**（種族内で）取る。
+     * 以前の「重心からの距離」を全種族まとめて取る測り方は、開始地点の数が多い種族ほど値が高く重心からも
+     * 遠い（3 ヶ所が散る）という合成で +0.23 が出ており、端が有利という意味ではなかった。
+     */
+    rows: Array<{ f: string; total: number; missing: number; near2: number; cent: number }>;
+  };
+  /** 種族の平均を引いた相関（種族内の相関。種族ごとの水準差を除く） */
+  const demeaned = (rows: Run["rows"], key: "missing" | "near2" | "cent", basicOnly: boolean) => {
+    const groups = new Map<string, Run["rows"]>();
+    for (const r of rows) {
+      if (basicOnly && !(BASIC_FACTION_ORDER as readonly string[]).includes(r.f)) continue;
+      (groups.get(r.f) ?? groups.set(r.f, []).get(r.f)!).push(r);
+    }
+    const xs: number[] = [], ys: number[] = [];
+    for (const rs of groups.values()) {
+      const mt = rs.reduce((a, r) => a + r.total, 0) / rs.length;
+      const mk = rs.reduce((a, r) => a + r[key], 0) / rs.length;
+      for (const r of rs) { xs.push(r.total - mt); ys.push(r[key] - mk); }
+    }
+    return pearson(xs, ys);
   };
   const runFor = (w: number): Run => {
     const R: Run = {
       repVals: [], tops: [], topColor: [], imb: [], facVals: {}, pairDiff: {},
       kindShare: { own: [], other: [], gaia: [], transdim: [], extra: [] }, baseShare: [], restShare: [],
-      cent: [], centTotals: [], rimStarts: 0, startsN: 0, centBasic: [], centBasicTotals: [],
+      rimStarts: 0, startsN: 0, rows: [],
     };
     const soft = softFor(w);
     for (const b of boards) {
       const { breakdown } = evaluateSoft(b.extracted, soft);
       const sa: any = (breakdown.audit as any).startAccess;
       const totals = breakdown.planetTypeTotals as Record<string, number>;
-      const nodeByKey = new Map<string, any>(b.cells.filter((c) => c.isPlanet).map((c) => [String(c.key), c]));
+      const planets = b.cells.filter((c) => c.isPlanet);
+      const onBoard = new Set<string>(b.cells.map((c) => String(c.key)));
+      const nodeByKey = new Map<string, any>(planets.map((c) => [String(c.key), c]));
       const distToCenter = (key: string) => {
         const n = nodeByKey.get(key);
         if (!n) return NaN;
         return Math.hypot(n.q + n.r / 2 - b.cx, (n.r * Math.sqrt(3)) / 2 - b.cy);
+      };
+      const missingOf = (key: string) => { const n = nodeByKey.get(key); return n ? missingCellsWithin(onBoard, n.q, n.r) : NaN; };
+      const near2Of = (key: string) => {
+        const n = nodeByKey.get(key);
+        return n ? planets.filter((p) => p.key !== n.key && axialDistance(n.q, n.r, p.q, p.r) <= 2).length : NaN;
       };
       for (const f of ALL_FACTIONS) {
         const e = sa?.byFaction?.[f];
@@ -177,9 +207,8 @@ for (const [templateId, outerCap] of [["4p_lostFleet", 1], ["3p_lostFleet", 1], 
           R.startsN++;
           if (b.extracted.outerCells.has(s) || b.extracted.touchCells.has(s)) R.rimStarts++;
         }
-        const c = starts.map(distToCenter).reduce((x, y) => x + y, 0) / Math.max(1, starts.length);
-        R.cent.push(c); R.centTotals.push(e.total);
-        if ((BASIC_FACTION_ORDER as readonly string[]).includes(f)) { R.centBasic.push(c); R.centBasicTotals.push(e.total); }
+        const avg = (fn: (k: string) => number) => starts.map(fn).reduce((x, y) => x + y, 0) / Math.max(1, starts.length);
+        R.rows.push({ f, total: e.total, missing: avg(missingOf), near2: avg(near2Of), cent: avg(distToCenter) });
       }
       const rep = BASIC.map((c) => totals[c] ?? 0);
       R.repVals.push(...rep);
@@ -203,7 +232,12 @@ for (const [templateId, outerCap] of [["4p_lostFleet", 1], ["3p_lostFleet", 1], 
   console.log(`  盤面ごとの最上位: 中央値 ${f1(ts.med)}  10%〜90% ${f1(ts.p10)}〜${f1(ts.p90)}`);
   console.log(`  種別ごとの寄与（全種族の平均）: 母星色 ${pct(stat(main.kindShare.own).mean)} / 他色 ${pct(stat(main.kindShare.other).mean)} / ガイア ${pct(stat(main.kindShare.gaia).mean)} / 次元横断 ${pct(stat(main.kindShare.transdim).mean)} / 原始・小惑星 ${pct(stat(main.kindShare.extra).mean)}`);
   console.log(`  固有値の寄与 ${pct(stat(main.baseShare).mean)} / 開始地点以外（到達加重）の寄与 ${pct(stat(main.restShare).mean)}`);
-  console.log(`  開始地点が最外周 / 外周にある割合 ${pct(main.rimStarts / Math.max(1, main.startsN))} / 開始地点の中心性との相関（種族の値 × 重心からの距離。負ほど中心が有利）: 全種族 ${f2(pearson(main.centTotals, main.cent))} / 基本14種族 ${f2(pearson(main.centBasicTotals, main.centBasic))}`);
+  console.log(`  開始地点が最外周 / 外周にある割合 ${pct(main.rimStarts / Math.max(1, main.startsN))}`);
+  console.log(
+    `  端・中心性の診断（基本14種族、種族の平均を引いた相関）: 値 × 開始地点の欠けマス数 ${f2(demeaned(main.rows, "missing", true))}（負ほど端が不利） / ` +
+      `値 × 距離2以内の惑星数 ${f2(demeaned(main.rows, "near2", true))}（正ほど密集が有利） / 値 × 重心からの距離 ${f2(demeaned(main.rows, "cent", true))}` +
+      `（参考: 全種族まとめた重心距離の相関 ${f2(pearson(main.rows.map((r) => r.total), main.rows.map((r) => r.cent)))} は開始地点の数の違いが混ざる）`
+  );
   console.log(`  種族ごと: 平均 / 中央 / 色の代表値の平均との比`);
   for (const f of ALL_FACTIONS) {
     const xs = main.facVals[f];
@@ -223,8 +257,8 @@ for (const [templateId, outerCap] of [["4p_lostFleet", 1], ["3p_lostFleet", 1], 
 
   if (W_LIST.length > 1) {
     const none = runFor(0);
-    console.log(`\n  端の罰点 w の比較（罰点なしとの差。中心性は基本14種族 / 全種族。並びの相関は主 w ${W_MAIN} の色の代表値との Spearman）`);
-    console.log(`    w      最上位中央値  色の代表値平均  罰点の影響(全体)  開始地点が最外周/外周  中心性 基本 / 全   並びの相関   最上位色が変わる盤面`);
+    console.log(`\n  端の罰点 w の比較（罰点なしとの差。端の相関 ＝ 基本14種族で種族の平均を引いた 値 × 開始地点の欠けマス数（負ほど端が不利）。並びの相関は主 w ${W_MAIN} の色の代表値との Spearman）`);
+    console.log(`    w      最上位中央値  色の代表値平均  罰点の影響(全体)  開始地点が最外周/外周  端の相関   並びの相関   最上位色が変わる盤面`);
     for (const w of W_LIST) {
       const R = w === W_MAIN ? main : runFor(w);
       const delta = R.repVals.map((v, i) => none.repVals[i] - v);
@@ -233,7 +267,7 @@ for (const [templateId, outerCap] of [["4p_lostFleet", 1], ["3p_lostFleet", 1], 
       for (let i = 0; i < R.topColor.length; i++) if (R.topColor[i] !== main.topColor[i]) topChanged++;
       console.log(
         `    ${String(w).padEnd(6)} ${f1(stat(R.tops).med).padStart(9)}     ${f1(stat(R.repVals).mean).padStart(9)}        ${pct(stat(delta).mean / noneMean).padStart(6)}            ${pct(R.rimStarts / Math.max(1, R.startsN)).padStart(6)}          ` +
-          `${f2(pearson(R.centBasicTotals, R.centBasic))} / ${f2(pearson(R.centTotals, R.cent))}      ${f2(spearman(R.repVals, main.repVals))}         ${pct(topChanged / boards.length)}`
+          `${f2(demeaned(R.rows, "missing", true)).padStart(6)}      ${f2(spearman(R.repVals, main.repVals))}         ${pct(topChanged / boards.length)}`
       );
     }
   }
