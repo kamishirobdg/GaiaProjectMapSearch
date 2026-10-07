@@ -9,13 +9,19 @@ import { axialDistance } from "../hex";
 import {
   BASIC_FACTION_ORDER,
   BASIC_REACH_PROFILES,
+  DESTINATION_KINDS,
+  GAIA_FACTIONS,
   HOP_COST_BY_DISTANCE,
   LF_REACH_PROFILES,
   RIM_GAP_RANGE,
   RIM_GAP_RING_CELLS,
   START_COUNT_LF,
   START_COUNT_STANDARD,
+  TERRAFORM_FACTIONS,
   TERRAFORM_WHEEL,
+  UNIFIED_VALUE,
+  destinationCoef,
+  destinationKind,
   hopCost,
   hopCostForBasicFaction,
   hopCostForLfFaction,
@@ -374,5 +380,58 @@ describe("開始地点の総当たり", () => {
     expect(plan.starts).toEqual(["0,0"]);
     expect(plan.weights.get("20,0")).toBe(0);
     expect(plan.costs.get("20,0")).toBe(Infinity);
+  });
+});
+
+describe("一本化の係数（2026-10-07 ユーザー確定、eval_v7。docs/design-notes.md 2.10）", () => {
+  it("定数の表そのもの（調整必須のマジックナンバー。変えるときはユーザー判断＋実測＋EVAL_VERSION）", () => {
+    expect(UNIFIED_VALUE).toEqual({
+      BASE: 10,
+      OWN: 1,
+      OTHER: 0.25,
+      GAIA: 0.5,
+      TRANSDIM: 0.25,
+      GAIA_FACTION_TRANSDIM: 0.5,
+      EXTRA: 0.1,
+      TERRA_BOOST: 1.2,
+    });
+    expect(DESTINATION_KINDS).toEqual(["own", "other", "gaia", "transdim", "extra"]);
+  });
+
+  it("種族の型: ガイア種族はガイア Lv1 開始の3種族＋イタル人、改造種族は暫定でジオデン人・タクロン族・ネヴラ人", () => {
+    expect([...GAIA_FACTIONS].sort()).toEqual(["balTaks", "itars", "moweyds", "terrans"]);
+    expect([...TERRAFORM_FACTIONS].sort()).toEqual(["geodens", "nevlas", "taklons"]);
+    for (const f of [...GAIA_FACTIONS, ...TERRAFORM_FACTIONS]) expect(FACTIONS.some((d) => d.id === f)).toBe(true);
+  });
+
+  it("入植先の種別: 母星色 own、他の基本色 other、ガイア、次元横断、残り（原始・小惑星）は extra", () => {
+    expect(destinationKind("RED", "RED")).toBe("own");
+    expect(destinationKind("BLUE", "RED")).toBe("other");
+    expect(destinationKind("GAIA", "RED")).toBe("gaia");
+    expect(destinationKind("TRANSDIM", "RED")).toBe("transdim");
+    expect(destinationKind("PROTO", "RED")).toBe("extra");
+    expect(destinationKind("ASTEROID", "RED")).toBe("extra");
+    // LF: 母星種別が own、基本色は other、他方の種別は extra
+    expect(destinationKind("PROTO", "PROTO")).toBe("own");
+    expect(destinationKind("ASTEROID", "PROTO")).toBe("extra");
+    expect(destinationKind("BLUE", "PROTO")).toBe("other");
+  });
+
+  it("係数: 母星色 1 / 他色 0.25（改造種族 0.3）/ ガイア 0.5 / 次元横断 0.25（ガイア種族 0.5）/ 原始・小惑星 0.1", () => {
+    expect(destinationCoef("hadschHallas", "RED", "RED")).toBe(1);
+    expect(destinationCoef("hadschHallas", "BLUE", "RED")).toBe(0.25);
+    expect(destinationCoef("geodens", "RED", "ORANGE")).toBeCloseTo(0.3, 10);
+    expect(destinationCoef("taklons", "RED", "BROWN")).toBeCloseTo(0.3, 10);
+    expect(destinationCoef("nevlas", "RED", "WHITE")).toBeCloseTo(0.3, 10);
+    expect(destinationCoef("hadschHallas", "GAIA", "RED")).toBe(0.5);
+    expect(destinationCoef("hadschHallas", "TRANSDIM", "RED")).toBe(0.25);
+    expect(destinationCoef("terrans", "TRANSDIM", "BLUE")).toBe(0.5);
+    expect(destinationCoef("itars", "TRANSDIM", "WHITE")).toBe(0.5);
+    expect(destinationCoef("moweyds", "TRANSDIM", "PROTO")).toBe(0.5);
+    expect(destinationCoef("spaceGiants", "TRANSDIM", "PROTO")).toBe(0.25);
+    expect(destinationCoef("hadschHallas", "PROTO", "RED")).toBe(0.1);
+    expect(destinationCoef("moweyds", "ASTEROID", "PROTO")).toBe(0.1);
+    expect(destinationCoef("moweyds", "PROTO", "PROTO")).toBe(1);
+    expect(destinationCoef("moweyds", "BLUE", "PROTO")).toBe(0.25);
   });
 });

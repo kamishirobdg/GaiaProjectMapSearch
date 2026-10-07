@@ -162,6 +162,72 @@ export const DESTINATION_VALUE_SCALE: Record<"GAIA" | "TRANSDIM", number> = {
   TRANSDIM: 0.25,
 };
 
+// ===== 全惑星を同一の式で評価する一本化（2026-10-07 ユーザー確定、eval_v7。docs/design-notes.md 2.10）=====
+//
+// 種族 f の値 ＝ Σ_{盤面の全惑星 p} 係数_f(種別(p)) × (固有値 ＋ 状況の値(p)) × 到達係数_f(開始地点 → p)
+//   固有値    惑星が 1 つあること自体の値（種別によらず一定）。基本版（船なし）ではこれが本体
+//   状況の値  船接触 ＋ 船星系 ＋ 端の罰点（惑星ごと。ガイア近接と星系の軸は廃止）
+//   係数      母星色 1 / 他色 / ガイア / 次元横断 / 原始・小惑星。種族の型（ガイア種族・改造種族）で変える
+//   到達係数  上の reachFactor（コスト ＝ 跳躍 ＋ 到着した惑星の入植コスト）
+//   開始地点  母星色（LF は母星種別）の惑星から、合計が最大になる k 個（planStarts の startKeys）
+//
+// 値は **すべて実測で合わせた暫定値（調整必須のマジックナンバー）**。変えるときはユーザー判断で、
+// `scripts/_probe_map_values.ts`（環境変数で差し替え可）で寄与の割合と同色2種族の差を測り直し、
+// `EVAL_VERSION` を上げて設計ノート 2.10 に実測を追記する。`reachCost.test.ts` が値を固定している。
+
+/** 入植先の種別（係数の引き当て用）。own は母星色（LF は母星種別）、extra は原始・小惑星（LF どうしの他方の種別も） */
+export type DestinationKind = "own" | "other" | "gaia" | "transdim" | "extra";
+export const DESTINATION_KINDS: readonly DestinationKind[] = ["own", "other", "gaia", "transdim", "extra"];
+
+/**
+ * 一本化の定数（2026-10-07 ユーザー確定）。意味と調整の観点は設計ノート 2.10 の表。
+ *   BASE 固有値 10（船接触 10 と同じ桁。端の罰点（角 −5）との比で基本版の中心性が決まる）
+ *   OWN 母星色 1（基準。変えない）
+ *   OTHER 他色 0.25（改造して入植する惑星の取り分。改造の歩数は到達コストで別に効く。0.5 だと他色の寄与が母星色を超える）
+ *   GAIA 0.5 / TRANSDIM 0.25（eval_v6 の入植先の係数「盤面全体への影響度」から引き継ぎ）
+ *   GAIA_FACTION_TRANSDIM 0.5（ガイア種族は次元横断を上げる）
+ *   EXTRA 0.1（基本種族にとっての原始・小惑星。LF どうしの他方の種別も同じ）
+ *   TERRA_BOOST 1.2（改造種族の他色の倍率。1.5 だとジオデン人が突出する）
+ * 調査スクリプトが環境変数で差し替えるので const にはしていない（実行時に書き換えてよいのは調査だけ）。
+ */
+export const UNIFIED_VALUE: Record<"BASE" | "OWN" | "OTHER" | "GAIA" | "TRANSDIM" | "GAIA_FACTION_TRANSDIM" | "EXTRA" | "TERRA_BOOST", number> = {
+  BASE: 10,
+  OWN: 1,
+  OTHER: 0.25,
+  GAIA: 0.5,
+  TRANSDIM: 0.25,
+  GAIA_FACTION_TRANSDIM: 0.5,
+  EXTRA: 0.1,
+  TERRA_BOOST: 1.2,
+};
+
+/** ガイア種族（次元横断の係数を GAIA_FACTION_TRANSDIM に）。ガイア Lv1 開始の3種族 ＋ イタル人（B-2。2026-10-06 ユーザー確認） */
+export const GAIA_FACTIONS: ReadonlySet<string> = new Set(["terrans", "balTaks", "itars", "moweyds"]);
+/**
+ * 改造種族（他色の係数 × TERRA_BOOST）。**暫定の分類**（2026-10-07、私の案）: 改造・パワーが主の種族として
+ * ジオデン人（改造 Lv1 開始）・タクロン族（パワーの輪）・ネヴラ人（パワー変換）。本実装後の実測でユーザーが決め直す。
+ */
+export const TERRAFORM_FACTIONS: ReadonlySet<string> = new Set(["geodens", "taklons", "nevlas"]);
+
+/** 惑星の種別 → 入植先の種別。home は母星色（基本7色）か PROTO / ASTEROID。 */
+export function destinationKind(kind: string, home: string): DestinationKind {
+  if (kind === home) return "own";
+  if (BASIC_COLORS.has(kind)) return "other";
+  if (kind === "GAIA") return "gaia";
+  if (kind === "TRANSDIM") return "transdim";
+  return "extra";
+}
+
+/** 種族 factionId から見た、種別 kind の惑星に掛ける係数（一本化の式の「係数」）。 */
+export function destinationCoef(factionId: string, kind: string, home: string): number {
+  const d = destinationKind(kind, home);
+  if (d === "own") return UNIFIED_VALUE.OWN;
+  if (d === "other") return UNIFIED_VALUE.OTHER * (TERRAFORM_FACTIONS.has(factionId) ? UNIFIED_VALUE.TERRA_BOOST : 1);
+  if (d === "gaia") return UNIFIED_VALUE.GAIA;
+  if (d === "transdim") return GAIA_FACTIONS.has(factionId) ? UNIFIED_VALUE.GAIA_FACTION_TRANSDIM : UNIFIED_VALUE.TRANSDIM;
+  return UNIFIED_VALUE.EXTRA;
+}
+
 /** LF4種族の視点。母星種別は無いので、同じ種別の惑星にも原始3・小惑星2を払う。 */
 export function stoneCostForLfFaction(id: LfFactionId): StoneCostFn {
   const p = LF_REACH_PROFILES[id];
