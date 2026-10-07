@@ -170,15 +170,15 @@ describe("原始・小惑星: LF4種族ごとに開始1ヶ所、係数なし", (
 
   it("評価値に小数を出さない（軸ごとに丸め、評価はその合計）", () => {
     // 原始 (1,0): 船接触 100 ＋ ガイア近接 50 ＝ 150。eval_v6 からガイア (2,0) も入植先:
-    // 船接触 99（距離2）× 到達係数 1.0（隣接 0 ＋ モウェイド人のガイア 1 ＝ コスト 1）＝ 99 → 249
+    // 船接触 99（距離2）× 入植先の係数 0.5 × 到達係数 1.0（隣接 0 ＋ モウェイド人のガイア 1 ＝ コスト 1）＝ 49.5 → 199.5 → 200
     const e = extractedOf([cell({ q: 1, r: 0, kind: "PROTO" }), cell({ q: 2, r: 0, kind: "GAIA" })], [scout(0, 0, "twilight")]);
     const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 100, wGaiaDist1: 50, wGaiaDist2: 80 });
     const st = extraStartOf(r, "PROTO");
     for (const v of [st.scout, st.core, st.gaia, st.cluster, st.total]) expect(Number.isInteger(v)).toBe(true);
     expect(st.scout + st.core + st.gaia + st.cluster).toBe(st.total);
-    expect(st.total).toBe(249);
-    expect(st.factionId).toBe("moweyds"); // スペースジャイアントはガイア 2 → 99 × 0.5 で 200
-    expect(auditOf(r).startAccess.byFaction.spaceGiants.total).toBe(Math.round(150 + 99 * 0.5));
+    expect(st.total).toBe(200);
+    expect(st.factionId).toBe("moweyds"); // スペースジャイアントはガイア 2 → 到達係数 0.5 で 150 + 24.75 → 175
+    expect(auditOf(r).startAccess.byFaction.spaceGiants.total).toBe(Math.round(150 + 99 * 0.5 * 0.5));
   });
 
   it("種別ごとに別枠で、小惑星は小惑星の2種族、原始は原始の2種族で計算する", () => {
@@ -443,8 +443,9 @@ describe("ガイア・次元横断を入植先に計上（2026-10-06 ユーザ�
   it("開始地点は母星色からだけ選び、ガイア・次元横断は到着時の入植コスト込みの到達係数で足す", () => {
     // 船 (-1,0)。赤 (0,0)=10、次元横断 (-1,1)=10（船に隣接）、ガイア (2,0)=8、赤 (9,0)=0（遠い）。
     // ハッシュ・ホラ人の開始は赤2つ（次元横断の方が値が高くても開始地点にはならない）。
+    // 入植先の係数: ガイア 0.5 → 4、次元横断 0.25 → 2.5（2026-10-07 確定）。
     // ガイア: (0,0) から距離2 → 跳躍1 ＋ ガイア1 ＝ 2 → 0.5。次元横断: 隣接 0 ＋ 2 ＝ 2 → 0.5。
-    // 合計 10 + 0 + 8×0.5 + 10×0.5 = 19
+    // 合計 10 + 0 + 4×0.5 + 2.5×0.5 = 13.25 → 13
     const e = extractedOf(
       [cell({ q: 0, r: 0, color: "RED" }), cell({ q: 9, r: 0, color: "RED" }), cell({ q: -1, r: 1, kind: "TRANSDIM" }), cell({ q: 2, r: 0, kind: "GAIA" })],
       [scout(-1, 0, "twilight")]
@@ -453,13 +454,16 @@ describe("ガイア・次元横断を入植先に計上（2026-10-06 ユーザ�
     const sa = auditOf(r).startAccess;
     const hh = sa.byFaction.hadschHallas;
     expect(hh.starts.slice().sort()).toEqual(["0,0", "9,0"]);
-    expect(hh.total).toBe(19);
-    expect(r.breakdown.planetTypeTotals.RED).toBe(19);
-    expect(r.breakdown.axesByType.scout.RED).toBe(19);
+    expect(hh.total).toBe(13);
+    expect(r.breakdown.planetTypeTotals.RED).toBe(13);
+    expect(r.breakdown.axesByType.scout.RED).toBe(13);
     const row = (k: string) => hh.planets.find((p: any) => p.cellKey === k);
-    expect(row("-1,1")).toEqual({ cellKey: "-1,1", kind: "TRANSDIM", cost: 2, weight: 0.5, value: 10 });
-    expect(row("2,0")).toEqual({ cellKey: "2,0", kind: "GAIA", cost: 2, weight: 0.5, value: 8 });
+    expect(row("-1,1")).toEqual({ cellKey: "-1,1", kind: "TRANSDIM", cost: 2, weight: 0.5, value: 2.5, scale: 0.25 });
+    expect(row("2,0")).toEqual({ cellKey: "2,0", kind: "GAIA", cost: 2, weight: 0.5, value: 4, scale: 0.5 });
     expect(row("0,0").kind).toBe("RED");
+    expect(row("0,0").scale).toBeUndefined();
+    // マーカーのヒットは素の値のまま（係数は入植先の値にだけ掛かる）
+    expect(auditOf(r).scout.scoutHits.find((h: any) => h.planetKey === "-1,1").value).toBe(10);
     // 監査の色ごとの合算（船接触の byType）にはガイア・次元横断を入れない
     expect(auditOf(r).scout.byType.RED).toBe(10);
     expect(auditOf(r).scout.extraByKind.GAIA).toBeUndefined();
@@ -477,18 +481,19 @@ describe("ガイア・次元横断を入植先に計上（2026-10-06 ユーザ�
   });
 
   it("次元横断の入植コストは種族で違う: 地球人 1（係数 1.0）、ランティダ人 2（0.5）、イタル人 1.5（0.71）", () => {
+    // 次元横断 16 × 入植先の係数 0.25 ＝ 4。地球人 16 + 4、ランティダ人 16 + 4×0.5
     const blue = extractedOf([cell({ q: 0, r: 0, color: "BLUE" }), cell({ q: -1, r: 1, kind: "TRANSDIM" })], [scout(-1, 0, "twilight")]);
-    const r = evaluateSoft(blue, { ...BASE_SOFT, wScout: 10 });
+    const r = evaluateSoft(blue, { ...BASE_SOFT, wScout: 16 });
     const sa = auditOf(r).startAccess;
     expect(sa.byFaction.terrans.total).toBe(20);
-    expect(sa.byFaction.lantids.total).toBe(15);
+    expect(sa.byFaction.lantids.total).toBe(18);
     expect(sa.representative.BLUE).toBe("terrans");
     expect(r.breakdown.planetTypeTotals.BLUE).toBe(20);
     const white = extractedOf([cell({ q: 0, r: 0, color: "WHITE" }), cell({ q: -1, r: 1, kind: "TRANSDIM" })], [scout(-1, 0, "twilight")]);
-    const r2 = evaluateSoft(white, { ...BASE_SOFT, wScout: 10 });
+    const r2 = evaluateSoft(white, { ...BASE_SOFT, wScout: 16 });
     const sa2 = auditOf(r2).startAccess;
-    expect(sa2.byFaction.nevlas.total).toBe(15);
-    expect(sa2.byFaction.itars.total).toBe(Math.round(10 + 10 * Math.SQRT1_2)); // 17
+    expect(sa2.byFaction.nevlas.total).toBe(18);
+    expect(sa2.byFaction.itars.total).toBe(Math.round(16 + 4 * Math.SQRT1_2)); // 19
     expect(sa2.byFaction.itars.planets.find((p: any) => p.kind === "TRANSDIM").cost).toBe(1.5);
     expect(sa2.representative.WHITE).toBe("itars");
   });
@@ -513,12 +518,12 @@ describe("ガイア・次元横断を入植先に計上（2026-10-06 ユーザ�
     const e = extractedOf(cells);
     (e as any).outerCells = new Set(cells.filter((c) => axialDistance(0, 0, c.q, c.r) === 5).map((c) => c.key));
     (e as any).touchCells = new Set(cells.filter((c) => axialDistance(0, 0, c.q, c.r) === 4).map((c) => c.key));
-    const r = evaluateSoft(e, { ...BASE_SOFT, wRimGap: 1 });
-    // ガイア (5,-2) は最外周の辺（欠け7）→ −7。(0,0) から距離5 → 跳躍3 ＋ ガイア1 ＝ 4 → 0.125 → −0.875 → −1
+    const r = evaluateSoft(e, { ...BASE_SOFT, wRimGap: 2 });
+    // ガイア (5,-2) は最外周の辺（欠け7）→ −14、入植先の係数 0.5 → −7。(0,0) から距離5 → 跳躍3 ＋ ガイア1 ＝ 4 → 0.125 → −0.875 → −1
     const hh = auditOf(r).startAccess.byFaction.hadschHallas;
-    expect(hh.planets.find((p: any) => p.kind === "GAIA")).toEqual({ cellKey: "5,-2", kind: "GAIA", cost: 4, weight: 0.125, value: -7 });
+    expect(hh.planets.find((p: any) => p.kind === "GAIA")).toEqual({ cellKey: "5,-2", kind: "GAIA", cost: 4, weight: 0.125, value: -7, scale: 0.5 });
     expect(r.breakdown.axesByType.outer.RED).toBe(-1);
-    expect(auditOf(r).outerHits).toEqual([expect.objectContaining({ cellKey: "5,-2", planetType: "GAIA", missing: 7, value: -7 })]);
+    expect(auditOf(r).outerHits).toEqual([expect.objectContaining({ cellKey: "5,-2", planetType: "GAIA", missing: 7, value: -14 })]);
     // 枚数（最外周の通常惑星の数）には入れない
     expect(auditOf(r).outerCountByType.RED).toBe(0);
   });
@@ -529,13 +534,13 @@ describe("ガイア・次元横断を入植先に計上（2026-10-06 ユーザ�
       [cell({ q: 1, r: 0, color: "RED" }), cell({ q: 0, r: 1, color: "BLUE" }), cell({ q: 1, r: 1, kind: "GAIA" })],
       [scout(0, 0, "twilight")]
     );
-    const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 10, wScoutCore: 3 });
+    const r = evaluateSoft(e, { ...BASE_SOFT, wScout: 11, wScoutCore: 3 });
     const hh = auditOf(r).startAccess.byFaction.hadschHallas;
     const g = hh.planets.find((p: any) => p.kind === "GAIA");
-    // ガイアの値 ＝ 船接触 9（距離2）＋ 船星系 3×2 ＝ 15。コスト: 隣接 0 ＋ ガイア 1 ＝ 1 → 1.0
-    expect(g).toEqual({ cellKey: "1,1", kind: "GAIA", cost: 1, weight: 1, value: 15 });
-    // 赤自身は船接触 10 ＋ 船星系（青から距離2 … 船接触惑星が2つ以上必要なので 0）
-    expect(hh.total).toBe(10 + 15);
+    // ガイアの値 ＝ 船接触 10（距離2）＋ 船星系 3×2 ＝ 16、入植先の係数 0.5 → 8。コスト: 隣接 0 ＋ ガイア 1 ＝ 1 → 1.0
+    expect(g).toEqual({ cellKey: "1,1", kind: "GAIA", cost: 1, weight: 1, value: 8, scale: 0.5 });
+    // 赤自身は船接触 11 ＋ 船星系（青から距離1 … 船接触惑星が2つ以上必要なので 0）
+    expect(hh.total).toBe(11 + 8);
     expect(auditOf(r).scoutCore.coreHits.filter((h: any) => h.corePlanetType === "GAIA")).toHaveLength(2);
     expect(auditOf(r).scoutCore.byType.RED).toBe(0);
     expect(auditOf(r).scoutCore.scoutPlanetCount ?? auditOf(r).scout.scoutPlanetCount).toBe(2);
