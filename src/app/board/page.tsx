@@ -172,8 +172,9 @@ const DEFAULT_CONDITIONS = {
   maxConnectedPlanets: 0,
   h5IncludeScouts: false,
   // soft（各軸が全体に占める割合を実測して決めた。2026-07-30 ユーザー確定。
-  // 影響力の順は 船接触 > 船星系 > ガイア > 星系 > 最外周 > 外周。
-  // 実測 3p_lostFleet/24盤面: 31.2% / 27.0% / 23.4% / 13.9% / 3.3% / 1.2%）
+  // 当時の影響力の順は 船接触 > 船星系 > ガイア > 星系 > 最外周 > 外周。
+  // 実測 3p_lostFleet/24盤面: 31.2% / 27.0% / 23.4% / 13.9% / 3.3% / 1.2%。
+  // ガイア近接・星系は eval_v7 で廃止、船接触・船星系・端の罰点は「状況の値」として固有値 10 に足される）
   //
   // 2026-07-31: 評価値の桁をゲームの得点と揃える（色ごとの評価値が100前後、
   // Map と Setup を足して200前後）。小数は評価側で丸めて消してある —— 星系だけは
@@ -193,15 +194,9 @@ const DEFAULT_CONDITIONS = {
   wScoutCoreShips: [3, 3, 3, 3] as number[],
   scoutCoreAttribBest: false,
   scoutRadius: 3,
-  // ガイア距離1は現行仕様では発生しない（惑星どうしは隣接しない）ので入力欄は非表示
-  wGaiaD1: 5,
-  wGaiaD2: 8,
-  wGaiaD3: 3,
-  wClusterSize: 1,
-  // Lost Fleet でもガイア・星系を既定で評価する（2026-07-30 ユーザー確定で
-  // opt-in から変更）。LF の検索キーにこの2軸が入るので、以前の LF 保存結果とは
-  // 別バケットになる。
-  applyExtraAxesLF: true,
+  // eval_v6 までの「ガイア距離 1〜3（5 / 8 / 3）」「星系（1）」「LF でガイア・星系を有効化」は
+  // eval_v7（2026-10-07、全惑星を同一の式で）で廃止。固有値は定数（reachCost.ts の UNIFIED_VALUE）で
+  // 評価指数にはしない（桁の基準なので）。
   // 色優遇/冷遇。pref（色ごとの ±）に掛ける係数で、pref の目盛りの意味を決める。
   //
   // 2026-07-31: 3 → 25。実測（scripts/measure_color_pref.ts、4p_lostFleet 300盤面）で
@@ -1014,14 +1009,14 @@ return (savedProfiles ?? []).filter((p) => {
   }, [savedProfiles, profileQuery, profileTemplateFilter]);
 
   // breakdown table view config (render-only)
+  // 列は種別ごと（eval_v7）: 評価 / 母星色 / 他色 / ガイア / 次元横断 / 原始・小惑星
   const [breakdownCols, setBreakdownCols] = React.useState(() => ({
-    outer: true,
-    touch: true,
-    scout: true,
-    scoutCore: true,
-    gaia: true,
-    cluster: true,
     total: true,
+    own: true,
+    other: true,
+    gaia: true,
+    transdim: true,
+    extra: true,
     cntOuter: false,
     cntTouch: false,
   }));
@@ -1073,36 +1068,9 @@ return (savedProfiles ?? []).filter((p) => {
   // range で保存済みの条件は適用しても std のまま=別バケットになる点は許容済み）。
   const imbalanceMetric = "std" as const;
 
-  // 基本版専用の新評価軸（2026-07-23）: ガイア近接（距離1/2/3の全ガイア合算）と
-  // 星系クラスタ（サイズn>=2の各色に+n×重み）。LFではキー・実行時とも
-  // フィールドごと省略（evaluateSoft側もフィールド不在で完全スキップ）。
-  const [wGaiaD1, setWGaiaD1] = React.useState(DEFAULT_CONDITIONS.wGaiaD1);
-  const [wGaiaD2, setWGaiaD2] = React.useState(DEFAULT_CONDITIONS.wGaiaD2);
-  const [wGaiaD3, setWGaiaD3] = React.useState(DEFAULT_CONDITIONS.wGaiaD3);
-  const [wClusterSize, setWClusterSize] = React.useState(DEFAULT_CONDITIONS.wClusterSize);
-
-  // LF でガイア近接・星系軸を評価に含めるかどうか（Phase A, 2026-07-25 に opt-in で
-  // 導入 → 2026-07-30 に既定 ON へ変更、ユーザー確定）。
-  // OFF にするとキーからフィールドごと省略され、旧LFキー（2軸なし）に戻る。
-  // base では常時有効なのでこのフラグは無視される。
-  const [applyExtraAxesLF, setApplyExtraAxesLF] = React.useState(DEFAULT_CONDITIONS.applyExtraAxesLF);
-  React.useEffect(() => {
-    try {
-      // 既定が ON になったので、明示的に OFF にした人の "0" も復元する必要がある
-      // （以前は既定 OFF で "1" のときだけ ON にすればよかった。2026-07-30）。
-      const v = localStorage.getItem("gaia_lf_extra_axes");
-      if (v === "1") setApplyExtraAxesLF(true);
-      else if (v === "0") setApplyExtraAxesLF(false);
-    } catch {}
-  }, []);
-  const changeApplyExtraAxesLF = React.useCallback((on: boolean) => {
-    setApplyExtraAxesLF(on);
-    try {
-      localStorage.setItem("gaia_lf_extra_axes", on ? "1" : "0");
-    } catch {}
-  }, []);
-  // base か、LFでオプトインしているとき 2軸を評価・キーに含める
-  const extraAxesOn = isBase || applyExtraAxesLF;
+  // eval_v6 までのガイア近接・星系の評価指数（wGaiaD1〜3 / wClusterSize）と LF のオプトイン
+  // （applyExtraAxesLF、localStorage "gaia_lf_extra_axes"）は eval_v7 で廃止した。
+  // 検索キーにも入らないので、保存済みの条件プロファイルの該当フィールドは読まない。
 
   // Color preference (by planetTypeTotals)
   const [wColorPref, setWColorPref] = React.useState(DEFAULT_CONDITIONS.wColorPref);
@@ -1425,21 +1393,7 @@ try {
 } catch {}
 
         // imbalanceMetric は std 固定（ドロップダウン廃止に伴い復元もしない）
-        // ガイア近接・星系軸（フィールド不在の旧/OFFのLFプロファイルは既定値のまま）
-        if (params?.soft?.wGaiaDist1 != null) setWGaiaD1(Number(params.soft.wGaiaDist1) || 0);
-        if (params?.soft?.wGaiaDist2 != null) setWGaiaD2(Number(params.soft.wGaiaDist2) || 0);
-        if (params?.soft?.wGaiaDist3 != null) setWGaiaD3(Number(params.soft.wGaiaDist3) || 0);
-        if (params?.soft?.wClusterSize != null) setWClusterSize(Number(params.soft.wClusterSize) || 0);
-        // LFプロファイルにこの2軸フィールドがあれば、オプトインを ON にして復元
-        {
-          const tidR = String((params as any)?.templateId ?? p.templateId ?? "");
-          const hasExtra =
-            params?.soft?.wGaiaDist1 != null ||
-            params?.soft?.wGaiaDist2 != null ||
-            params?.soft?.wGaiaDist3 != null ||
-            params?.soft?.wClusterSize != null;
-          if (tidR !== "base_34p") changeApplyExtraAxesLF(hasExtra);
-        }
+        // ガイア近接・星系（wGaiaDist1〜3 / wClusterSize）は eval_v7 で廃止。旧プロファイルにあっても読まない
         if ((params as any)?.soft?.wColorPref != null) setWColorPref(Number((params as any).soft.wColorPref) || 0);
         try {
           const cp = (params as any)?.soft?.colorPrefByType ?? (params as any)?.soft?.colorBiasByType ?? null;
@@ -1469,7 +1423,7 @@ try {
 
       if (closePanel) setShowSavedConditions(false);
     },
-    [setWhich, setOuterSameColorMax, setCenterMode, setMaxConnectedPlanets, setH5IncludeScouts, setWRimGap, setWScout, setWScoutCore, setScoutRadius, setWColorPref, setPrefBLACK, setPrefBLUE, setPrefBROWN, setPrefORANGE, setPrefRED, setPrefWHITE, setPrefYELLOW, setKeepTop, setShowSavedConditions, changeApplyExtraAxesLF]
+    [setWhich, setOuterSameColorMax, setCenterMode, setMaxConnectedPlanets, setH5IncludeScouts, setWRimGap, setWScout, setWScoutCore, setScoutRadius, setWColorPref, setPrefBLACK, setPrefBLUE, setPrefBROWN, setPrefORANGE, setPrefRED, setPrefWHITE, setPrefYELLOW, setKeepTop, setShowSavedConditions]
   );
 
   /**
@@ -1503,12 +1457,6 @@ try {
     setScoutCoreAttribBest(D.scoutCoreAttribBest);
     setScoutRadius(D.scoutRadius);
 
-    setWGaiaD1(D.wGaiaD1);
-    setWGaiaD2(D.wGaiaD2);
-    setWGaiaD3(D.wGaiaD3);
-    setWClusterSize(D.wClusterSize);
-    changeApplyExtraAxesLF(D.applyExtraAxesLF);
-
     setWColorPref(D.wColorPref);
     setPrefBLACK(D.pref);
     setPrefBLUE(D.pref);
@@ -1527,7 +1475,7 @@ try {
     } catch {
       // ignore
     }
-  }, [changeApplyExtraAxesLF]);
+  }, []);
 
 
   const refreshProfiles = React.useCallback(async () => {
@@ -1560,11 +1508,7 @@ try {
   }, [isBase, outerSameColorMax, centerMode, maxConnectedPlanets, h5IncludeScouts]);
 
   const keySoft = React.useMemo(() => {
-    // ガイア近接・星系軸: base は常時、LF はオプトイン時のみキーに含める
-    // （OFF のとき省略＝既存LFキーがバイト不変）。
-    const extraAxes = extraAxesOn
-      ? { wGaiaDist1: wGaiaD1, wGaiaDist2: wGaiaD2, wGaiaDist3: wGaiaD3, wClusterSize }
-      : {};
+    // ガイア近接・星系（wGaiaDist1〜3 / wClusterSize）は eval_v7 で廃止（新バケツなので互換の問題なし）。
     // 欠けマス罰点（eval_v4）: 0 のときはフィールドごと省く（互換の鉄則）。
     const rimGap = wRimGap > 0 ? { wRimGap } : {};
     return isBase
@@ -1572,7 +1516,6 @@ try {
           ...rimGap,
           wImbalance,
           imbalanceMetric,
-          ...extraAxes,
           wColorPref,
           colorPrefByType,
         }
@@ -1586,11 +1529,10 @@ try {
           wScoutByScoutKey: { twilight: wScoutS1, eclipse: wScoutS2, rebellion: wScoutS3, tfmars: wScoutS4 },
           wScoutCoreByScoutKey: { twilight: wScoutCoreS1, eclipse: wScoutCoreS2, rebellion: wScoutCoreS3, tfmars: wScoutCoreS4 },
           scoutCoreAttributionMode: scoutCoreAttribBest ? "best" : "all",
-          ...extraAxes,
           wColorPref,
           colorPrefByType,
         };
-  }, [isBase, extraAxesOn, wRimGap, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wGaiaD1, wGaiaD2, wGaiaD3, wClusterSize, wColorPref, colorPrefByType]);
+  }, [isBase, wRimGap, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wColorPref, colorPrefByType]);
 
   const searchKeyParams = React.useMemo(() => {
     return {
@@ -1898,9 +1840,9 @@ const displayResult = currentResult ?? lastShownResultRef.current;
 
 /**
  * 表示用の breakdown。保存済みの検索結果は「検索したときの監査データ」を
- * そのまま持っているので、あとから増えたマーカー用の座標付きヒット
- * （ガイア/星系/船別）を持っていない。数値は保存されているので表には出るのに
- * マーカーだけ出ない、という状態になる（2026-07-30 報告）。
+ * そのまま持っているので、あとから増えたマーカー用の座標付きヒット（船別）を
+ * 持っていない。数値は保存されているので表には出るのにマーカーだけ出ない、
+ * という状態になる（2026-07-30 報告）。
  * 足りないときだけ、表示中の盤面から評価をやり直して監査データを作り直す。
  * スコアやランキングには触れない（表示用の breakdown だけを差し替える）。
  */
@@ -1908,17 +1850,15 @@ const displayBreakdown = React.useMemo(() => {
   const b: any = getBreakdown(displayResult);
   if (!b) return null;
   const a = b.audit ?? {};
-  const needsGaia = !!b.axesByType?.gaia && !a.gaiaProximity?.gaiaHits;
-  const needsCluster = !!b.axesByType?.cluster && !a.cluster?.clusterHits;
   const needsShipId =
     (a.scout?.scoutHits?.length ?? 0) > 0 && a.scout.scoutHits[0]?.scoutId === undefined;
   const needsCoreShip =
     (a.scoutCore?.coreHits?.length ?? 0) > 0 && a.scoutCore.coreHits[0]?.scoutId === undefined;
-  // eval_v2 までの保存結果は「開始地点＋到達加重」の集計（2026-10-03）を持たず、eval_v4 までは
-  // 種族ごとの集計（2026-10-05）を持たないので、表示だけ現バージョンの評価で作り直す
-  // （スコア・順位はそのまま）。
-  const needsStart = !a.startAccess?.byFaction;
-  if (!needsGaia && !needsCluster && !needsShipId && !needsCoreShip && !needsStart) return b;
+  // eval_v6 までの保存結果は種別ごとの列（byFaction[*].byKind、2026-10-07 eval_v7）を持たない
+  // （eval_v4 までは種族ごとの集計も無い）ので、表示だけ現バージョンの評価で作り直す（スコア・順位はそのまま）。
+  const bf = a.startAccess?.byFaction;
+  const needsStart = !bf || !Object.values(bf).some((e: any) => e && typeof e.byKind === "object");
+  if (!needsShipId && !needsCoreShip && !needsStart) return b;
   const placement = (displayResult as any)?.placement ?? placementBase;
   if (!Array.isArray(placement) || placement.length === 0) return b;
   try {
@@ -1962,7 +1902,7 @@ const evalCellMark = React.useCallback(
   (
     sourceId: string,
     axis: MarkAxis,
-    opts?: { gaiaDistance?: number; scoutId?: string },
+    opts?: { scoutId?: string },
     extraTip?: string
   ): React.HTMLAttributes<HTMLLabelElement> => ({
     onClick: (e) => {
@@ -1990,7 +1930,7 @@ const evalCellProps = React.useCallback(
   (
     sourceId: string,
     axis: MarkAxis,
-    opts?: { gaiaDistance?: number; scoutId?: string },
+    opts?: { scoutId?: string },
     extraTip?: string
   ) => {
     const p = evalCellMark(sourceId, axis, opts, extraTip);
@@ -2208,11 +2148,6 @@ async function handleGenerateRank() {
         scoutCoreAttributionMode: scoutCoreAttribBest ? "best" : "all",
         wColorPref,
         colorPrefByType,
-        // ガイア近接・星系軸: base は常時、LF はオプトイン時のみ（キーと一致）。
-        // OFF の LF ではフィールド省略＝evaluateSoft が完全スキップ（既存挙動不変）。
-        ...(extraAxesOn
-          ? { wGaiaDist1: wGaiaD1, wGaiaDist2: wGaiaD2, wGaiaDist3: wGaiaD3, wClusterSize }
-          : {}),
       },
     };
 
@@ -3324,45 +3259,35 @@ const handleDeleteUsed = React.useCallback(
                 // 空になっても直近結果を保持してパネルが縮まない（位置不変）。2026-07-24。
                 <details open suppressHydrationWarning style={{ marginTop: 10 }}>
                   <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.85 }}>
+                    {/* 列は種別ごと（eval_v7）。基本版は原始・小惑星の列を出さない */}
                     {isBase
                       ? lang === "ja"
-                        ? "種族別の内訳（outer/touch/gaia/cluster/total）"
-                        : "By faction (outer/touch/gaia/cluster/total)"
-                      // LF: サマリ文言は固定（拡張軸トグルで幅が変わらないように。2026-07-24）
+                        ? "種族別の内訳（母星色 / 他色 / ガイア / 次元横断 / 評価）"
+                        : "By faction (home / other / gaia / transdim / total)"
                       : lang === "ja"
-                        ? "種族別の内訳（outer/touch/scout/total）"
-                        : "By faction (outer/touch/scout/total)"}
+                        ? "種族別の内訳（母星色 / 他色 / ガイア / 次元横断 / 原始・小惑星 / 評価）"
+                        : "By faction (home / other / gaia / transdim / proto・asteroid / total)"}
                   </summary>
                   <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
                       <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.85 }}>
                         {lang === "ja" ? "詳細表表示" : "Table columns"}
                       </span>
 
-                      {/* 列セレクタは拡張軸トグルで増減させない（レイアウト不変）。
-                          LF では gaia/cluster を常時表示し、無効時は disable する。2026-07-24 */}
-                      {(isBase
-                        ? ([
-                            ["total", "評価", "total", t("tipTotalCol"), false],
-                            ["gaia", "ガイア", "gaia", t("wGaiaTip"), false],
-                            ["cluster", "星系", "cluster", t("wClusterTip"), false],
-                            ["outer", "最外周", "outer", t("tipOuterCnt"), false],
-                            ["touch", "外周", "touch", t("tipTouchCnt"), false],
-                          ] as const)
-                        : ([
-                            ["total", "評価", "total", t("tipTotalCol"), false],
-                            ["scout", "船接触", "scout", t("tipWScoutShip"), false],
-                            ["scoutCore", "船星系", "scoutCore", t("tipWScoutCoreShip"), false],
-                            ["gaia", "ガイア", "gaia", t("wGaiaTip"), !applyExtraAxesLF],
-                            ["cluster", "星系", "cluster", t("wClusterTip"), !applyExtraAxesLF],
-                            ["outer", "最外周", "outer", t("tipOuterCnt"), false],
-                            ["touch", "外周", "touch", t("tipTouchCnt"), false],
-                          ] as const)
-                      ).map(([k, ja, en, tip, disabled]) => (
-                        <label key={k} style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 12, opacity: disabled ? 0.4 : 1 }}>
+                      {/* 列セレクタ: 種別ごとの列（eval_v7）。原始・小惑星は LF だけ */}
+                      {(
+                        [
+                          ["total", "評価", "total", t("tipTotalCol")],
+                          ["own", "母星色", "home", t("tipColOwn")],
+                          ["other", "他色", "other", t("tipColOther")],
+                          ["gaia", "ガイア", "gaia", t("tipColGaia")],
+                          ["transdim", "次元横断", "transdim", t("tipColTransdim")],
+                          ...(isBase ? [] : [["extra", "原始・小惑星", "proto/asteroid", t("tipColExtra")] as const]),
+                        ] as ReadonlyArray<readonly [string, string, string, string]>
+                      ).map(([k, ja, en, tip]) => (
+                        <label key={k} style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 12 }}>
                           <input
                             type="checkbox"
                             checked={(breakdownCols as any)[k]}
-                            disabled={disabled}
                             onChange={(e) =>
                               setBreakdownCols((prev) => ({ ...prev, [k]: e.target.checked }))
                             }
@@ -3514,43 +3439,8 @@ const handleDeleteUsed = React.useCallback(
                 </div>
               </div>
 
-              {/* --- 拡張軸: ガイア・星系。枠を常時確保し、無効時は入力を disable する
-                     （チェックのON/OFFでレイアウトが動かない。2026-07-24 ユーザー要望）。 --- */}
-              <div style={{ borderTop: "1px dashed #ddd", paddingTop: 8, opacity: extraAxesOn ? 1 : 0.6 }}>
-                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 6 }}>
-                  {!isBase ? (
-                    <label style={{ display: "flex", gap: 6, alignItems: "center", fontWeight: 700, fontSize: 12 }} title={t("tipExtraAxesLF")}>
-                      <input
-                        type="checkbox"
-                        checked={applyExtraAxesLF}
-                        onChange={(e) => changeApplyExtraAxesLF(e.target.checked)}
-                      />
-                      <Hint label={t("extraAxesLF")} tip={t("tipExtraAxesLF")} />
-                    </label>
-                  ) : (
-                    <div style={{ fontWeight: 700, fontSize: 12 }}>
-                      <Hint label={t("extraAxesLF")} tip={t("tipExtraAxesLF")} />
-                    </div>
-                  )}
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
-                  {/* ガイア距離1 は現行仕様では発生しない（盤面上、惑星どうしは隣接しない）
-                      ため入力欄を出さない。将来の拡張で発生し得るので計算・状態は残す
-                      （2026-07-30 ユーザー判断）。 */}
-                  <label {...evalCellProps("gaia:d2", "gaia", { gaiaDistance: 2 }, t("wGaiaTip"))}>
-                    <span>{t("wGaiaD2")}</span>
-                    <input type="number" value={wGaiaD2} min={0} max={20} disabled={!extraAxesOn} onChange={(e) => setWGaiaD2(Number(e.target.value) || 0)} style={{ width: 60, background: extraAxesOn ? undefined : "#e6e6e6" }} />
-                  </label>
-                  <label {...evalCellProps("gaia:d3", "gaia", { gaiaDistance: 3 }, t("wGaiaTip"))}>
-                    <span>{t("wGaiaD3")}</span>
-                    <input type="number" value={wGaiaD3} min={0} max={20} disabled={!extraAxesOn} onChange={(e) => setWGaiaD3(Number(e.target.value) || 0)} style={{ width: 60, background: extraAxesOn ? undefined : "#e6e6e6" }} />
-                  </label>
-                  <label {...evalCellProps("cluster:*", "cluster", undefined, t("wClusterTip"))}>
-                    <span>{t("wClusterSize")}</span>
-                    <input type="number" value={wClusterSize} min={0} max={20} disabled={!extraAxesOn} onChange={(e) => setWClusterSize(Number(e.target.value) || 0)} style={{ width: 60, background: extraAxesOn ? undefined : "#e6e6e6" }} />
-                  </label>
-                </div>
-              </div>
+              {/* eval_v6 までの「ガイア・星系を有効化」とガイア距離 2 / 3・星系の入力欄は eval_v7 で廃止。
+                  固有値（10）と種別の係数は定数（reachCost.ts の UNIFIED_VALUE。内訳表の列ヘッダのホバーに説明）。 */}
 
               {/* --- スカウト重み（LFのみ）: 4列×2段。列=船（トワイライト/エクリプス/
                      リベリオン/TFマーズ）、上段=船接触・下段=船星系で同じ船が縦に並ぶ。2026-07-24 --- */}

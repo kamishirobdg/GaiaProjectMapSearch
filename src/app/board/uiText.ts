@@ -22,14 +22,14 @@ export const UI_TEXT = {
     method3: "Method 3 (swap all 10 tiles)",
     placementMethodTip:
       "Rulebook p.19: Method 1 keeps sectors 01-04 in their first-game positions and shuffles 05-10; Method 2 also shuffles 01-04 within the inner slots; Method 3 shuffles all 10 tiles. All tiles rotate freely in every method.",
-    wGaiaD1: "Gaia dist 1",
-    wGaiaD2: "Gaia dist 2",
-    wGaiaD3: "Gaia dist 3",
-    wGaiaTip:
-      "For each coloured planet, every gaia planet at distance 1/2/3 adds this weight to that colour (all gaia summed).",
-    wClusterSize: "Cluster weight",
-    wClusterTip:
-      "For each connected planet cluster of size n>=2 (gaia/transdim join clusters), every colour in it gains +n x this weight (once per colour).",
+    // 内訳表の種別の列（eval_v7、2026-10-07）。固有値と係数は定数（reachCost.ts の UNIFIED_VALUE）
+    tipColOwn: "Home-colour planets (coefficient 1): the starting planets plus the rest weighted by reachability.",
+    tipColOther:
+      "Planets of the other six basic colours (coefficient 0.25; terraforming factions x1.2). The terraform steps go into the reach cost, so a planet one step away counts far more than one three steps away.",
+    tipColGaia: "Gaia planets (coefficient 0.5). Settlement cost 1 (Gleens 0.5, three Lost Fleet factions 2) goes into the reach cost.",
+    tipColTransdim:
+      "Transdimensional planets (coefficient 0.25; gaia factions Terrans / Bal T'aks / Itars / Moweyds 0.5). Settlement cost 2 (gaia research Lv1 1, Itars 1.5) goes into the reach cost.",
+    tipColExtra: "Proto and asteroid planets as seen by this faction (coefficient 0.1; settlement cost 3 / 2). Only on Lost Fleet boards.",
     seed: "Seed",
     randomSeed: "Random Seed",
     seedMode: "Seed mode",
@@ -241,10 +241,7 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     tipResultsUsed: "Maps you marked as used (kept out of the top list)",
     tipPin: "Pinned maps appear in the List tab and are protected from capacity trimming",
     tipMarkUsed: "Move to the Used list (e.g. already played)",
-    tipTotalCol: "Sum of all evaluation axes for that color",
-    extraAxesLF: "Gaia proximity / cluster axes",
-    tipExtraAxesLF:
-      "Use the base-game gaia-proximity and star-cluster axes for Lost Fleet too. On by default. Turning it off drops both axes from the key and returns to the older Lost Fleet result bucket (old maps stay available to copy).",
+    tipTotalCol: "Sum of the kind columns for that faction: every planet counted as coefficient(kind) x (base 10 + scout + core + rim penalty) x reach factor",
   },
   ja: {
     title: "ボード表示（確認用）",
@@ -262,14 +259,14 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     method3: "方法3（全10タイル入替）",
     placementMethodTip:
       "ルールブックp19: 方法1は01-04を最初のゲームの位置に固定し05-10を入替。方法2は01-04も内側4スロット内で入替。方法3は全10タイルを入替。回転はどの方法でも全タイル自由。",
-    wGaiaD1: "ガイア距離1",
-    wGaiaD2: "ガイア距離2",
-    wGaiaD3: "ガイア距離3",
-    wGaiaTip:
-      "各色惑星から距離1/2/3にあるガイア惑星1個ごとに、この重みをその色に加点（全ガイア合算）。",
-    wClusterSize: "星系評価",
-    wClusterTip:
-      "サイズn≧2の連結惑星クラスタ（ガイア/次元横断も連結に含む）に含まれる各色に +n×この重み を加点（色ごとに1回）。",
+    // 内訳表の種別の列（eval_v7、2026-10-07）。固有値と係数は定数（reachCost.ts の UNIFIED_VALUE）
+    tipColOwn: "母星色の惑星（係数 1）。開始地点の値 ＋ 残りの同色惑星の値 × 到達係数。",
+    tipColOther:
+      "他の基本6色の惑星（係数 0.25。改造種族 ジオデン人・タクロン族・ネヴラ人は ×1.2）。改造の歩数は到達コストに入るので、1歩の色は3歩の色よりずっと大きく数える。",
+    tipColGaia: "ガイア惑星（係数 0.5）。入植コスト 1（グリーン人 0.5、LF の3種族 2）が到達コストに入る。",
+    tipColTransdim:
+      "次元横断惑星（係数 0.25。ガイア種族 地球人・バルタック人・イタル人・モウェイド人は 0.5）。入植コスト 2（ガイア Lv1 開始 1、イタル人 1.5）が到達コストに入る。",
+    tipColExtra: "その種族から見た原始・小惑星（係数 0.1。入植コスト 原始 3 / 小惑星 2）。Lost Fleet の盤面だけ。",
     seed: "シード",
     randomSeed: "ランダムシード",
     seedMode: "シード指定",
@@ -480,10 +477,7 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     tipResultsUsed: "「使用済み」にしたマップ（上位一覧には出ません）",
     tipPin: "Listタブに集約されます。保存上限による自動削除からも保護されます",
     tipMarkUsed: "使用済み一覧へ移動します（プレイ済みマップの記録用）",
-    tipTotalCol: "その色の全評価軸の合計",
-    extraAxesLF: "ガイア・星系を有効化",
-    tipExtraAxesLF:
-      "基本版のガイア近接・星系クラスタ軸を Lost Fleet でも使う。既定は ON です。OFF にするとこの2軸がキーから外れ、以前のLF結果バケットに戻ります（旧マップはコピーで引き継ぎ可能）。",
+    tipTotalCol: "その種族の種別ごとの列の合計。全惑星を 係数（種別）× (固有値 10 ＋ 船接触 ＋ 船星系 ＋ 端の罰点) × 到達係数 で数える",
   },
 } as const;
 
