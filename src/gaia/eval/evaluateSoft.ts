@@ -1,10 +1,14 @@
 // src/gaia/eval/evaluateSoft.ts
 //
 // SSOT (soft):
-// - 惑星ごとに outer/touch/scout/scoutCore/gaia/cluster の値を持ち（perPlanet）、
-//   色ごとの値は「開始地点＋到達加重」で足す（reachCost.ts、2026-10-03）
+// - 惑星ごとに outer/touch/scout/scoutCore の値（状況の値）を持ち（perPlanet）、
+//   種族ごとの値は「全惑星を同一の式で」足す（reachCost.ts、2026-10-07、eval_v7。docs/design-notes.md 2.10）:
+//     種族の値 ＝ Σ_{全惑星} 係数(種別) × (固有値 ＋ 状況の値) × 到達係数(開始地点 → 惑星)
+//   開始地点は母星色（LF は母星種別）から k 個を総当たり。係数と固有値は reachCost.ts の UNIFIED_VALUE。
 // - outer/touch は端の罰点「欠けマス × wRimGap」（2026-10-04、eval_v4）
-// - planetTypeTotals = outer + touch + scout + scoutCore (+ gaia + cluster)
+// - ガイア近接・星系の軸は eval_v7 で廃止（ガイア近接 5 / 8 / 3 の「距離 2 最大」は 2026-07-30 の
+//   割合合わせの副産物で価値判断ではなかった。星系は到達コスト 0 の隣接で既に報われる）
+// - planetTypeTotals = 色の代表種族の値（種別ごとの列 母星色 + 他色 + ガイア + 次元横断 + 原始・小惑星）
 // - map score は planetTypeTotals の乖離（imbalance）のみ
 //
 // ScoutCore (確定仕様):
@@ -16,10 +20,11 @@
 //
 import type { AxialKey, ExtractedForEval, PlanetKind } from "./extractForEval";
 import { axialDistance } from "../hex";
-import { connectedComponents } from "../logicalMap/buildLogicalMap";
 import {
   BASIC_FACTION_ORDER,
   BASIC_REACH_PROFILES,
+  DESTINATION_KINDS,
+  GAIA_FACTIONS,
   HOP_COST_BY_DISTANCE,
   LF_FACTION_ORDER,
   LF_REACH_PROFILES,
@@ -28,15 +33,18 @@ import {
   RIM_GAP_RANGE,
   RIM_GAP_RING_CELLS,
   START_COUNT_LF,
-  DESTINATION_VALUE_SCALE,
+  TERRAFORM_FACTIONS,
+  UNIFIED_VALUE,
+  destinationCoef,
+  destinationKind,
   hopCostForBasicFaction,
   hopCostForLfFaction,
   missingCellsWithin,
   planStarts,
   stoneCostForBasicFaction,
   stoneCostForLfFaction,
+  type DestinationKind,
   type PlanetNode,
-  type StartPlan,
 } from "./reachCost";
 
 export type PlanetType =
@@ -92,64 +100,64 @@ export type SoftParams = {
   wColorPref?: number;
   colorPrefByType?: Partial<Record<PlanetType, number>>;
 
-  // ===== 基本版専用の新評価軸（2026-07-23、フィールド省略でLF挙動・キー不変） =====
-  // ガイア近接: 各通常惑星(基本7色)から距離1/2/3にある「全ガイア惑星」を合算加点
-  // （TRANSDIMは対象外、最近傍のみではなく合算＝ユーザー確定）。
-  // 例: 距離1にガイア2個 => その惑星の色に wGaiaDist1×2。
-  wGaiaDist1?: number;
-  wGaiaDist2?: number;
-  wGaiaDist3?: number;
-
-  // 星系(密集クラスタ): kind==="planet" の全セル（ガイア/次元横断含む=H5と同じ連結定義）を
-  // 6方向隣接で連結し、サイズn>=2の各クラスタについて「含まれる各基本色」に
-  // +n×wClusterSize を加点（同色が複数あっても色ごとに1回＝ユーザー確定）。
-  wClusterSize?: number;
+  // eval_v6 までの基本版の軸「ガイア近接（wGaiaDist1〜3）」「星系（wClusterSize）」は eval_v7 で廃止した。
+  // 検索キーにも入らない（新バケツなので互換の問題なし）。古い保存結果の表示は page.tsx が再評価する。
 };
 
 
-/** 開始地点＋到達加重の集計での、惑星1つぶんの記録（マーカーと説明用） */
+/** 種族の集計での、惑星1つぶんの記録（マーカーと説明用）。eval_v7 からは盤面の全惑星が載る。 */
 export type StartAccessPlanet = {
   cellKey: string;
   /** 惑星の種別（基本7色 / GAIA / TRANSDIM / PROTO / ASTEROID）。eval_v6 から（それ以前の記録には無い） */
   kind?: string;
+  /** その種族から見た入植先の種別（母星色 / 他色 / ガイア / 次元横断 / 原始・小惑星）。eval_v7 から */
+  dest?: DestinationKind;
   /** 開始地点からの到達コスト（開始地点は 0、到達不能は Infinity） */
   cost: number;
-  /** 値に掛けた重み（開始地点は 1、残りは到達係数） */
+  /** 値に掛けた重み（開始地点は 1、残りは到達係数。到達不能は 0） */
   weight: number;
-  /** 重みを掛ける前の惑星の値（基本色は最外周/外周込み。ガイア・次元横断は入植先の係数を掛けた後） */
+  /** 重みを掛ける前の惑星の値 ＝ 係数 × (固有値 ＋ 状況の値)。eval_v6 までは状況の値（× 入植先の係数） */
   value: number;
-  /** ガイア・次元横断だけ: 入植先としての値に掛けた係数（DESTINATION_VALUE_SCALE。1 のときは省略） */
+  /** 掛けた係数（destinationCoef。1 のときは省略）。eval_v7 から */
+  coef?: number;
+  /** eval_v6 だけ: ガイア・次元横断の入植先の係数（DESTINATION_VALUE_SCALE）。古い保存結果の読み出し用 */
   scale?: number;
 };
 
-/** 種族1つぶんの「開始地点＋到達加重」の集計（eval_v5） */
+/** 種別ごとの値（内訳表の列。eval_v7） */
+export type ValueByKind = Record<DestinationKind, number>;
+
+/** 種族1つぶんの集計（eval_v5 から種族ごと、eval_v7 から全惑星を同一の式で） */
 export type FactionStart = {
   /** 母星色（基本7色）か PROTO / ASTEROID */
   color: string;
   /** 開始地点のセル座標（ゼノ族 3・ダー・シュワーム人 1・LF4種族 1・他 2） */
   starts: string[];
+  /**
+   * 種別ごとの重み付き和（Σ 係数 × (固有値 ＋ 状況の値) × 到達係数）を種別ごとに丸めたもの。
+   * total はその合計（内訳表の列の合計と評価が一致する）。eval_v7 から
+   */
+  byKind: ValueByKind;
+  total: number;
+  /**
+   * 固有値と状況の値の内訳（丸める前。係数と到達係数込み）。base ＋ scout ＋ core ＋ outer ＋ touch が
+   * 丸める前の total。eval_v6 までは scout/core/outer/touch が軸の列（丸めた値）で、gaia/cluster もあった。
+   */
+  base?: number;
   scout: number;
   core: number;
-  gaia: number;
-  cluster: number;
   outer: number;
   touch: number;
-  total: number;
-  /** 入植先の全惑星（同色（同種別）＋ eval_v6 からはガイア・次元横断）の到達コスト・重み・値 */
+  /** 盤面の全惑星（eval_v7。eval_v6 までは同色（同種別）とガイア・次元横断）の到達コスト・重み・値 */
   planets: StartAccessPlanet[];
 };
 
 export type SoftBreakdown = {
-  axesByType: {
-    outer: AxisByType;
-    touch: AxisByType;
-    scout: AxisByType;
-    scoutCore: AxisByType;
-    /** 基本版のみ（wGaiaDist1..3 のいずれかが非0のときだけ存在） */
-    gaia?: AxisByType;
-    /** 基本版のみ（wClusterSize が非0のときだけ存在） */
-    cluster?: AxisByType;
-  };
+  /**
+   * 色ごとの種別別の値（代表種族の byKind。eval_v7）。planetTypeTotals はこの5つの和。
+   * eval_v6 までは軸ごと（outer / touch / scout / scoutCore / gaia / cluster）だった。
+   */
+  axesByType: Record<DestinationKind, AxisByType>;
 
   planetTypeTotals: AxisByType;
 
@@ -250,23 +258,27 @@ export type SoftBreakdown = {
        * eval_v4 までの LF4種族の記録（byFaction に統合した。古い保存結果の読み出し用に型だけ残す）。
        */
       lf?: Record<string, FactionStart & { kind: string; start: string }>;
+      /**
+       * 一本化の定数の記録（eval_v7。当時の値を保存結果に残す）。固有値・係数・種族の型。
+       */
+      unified?: {
+        base: number;
+        coef: Record<string, number>;
+        gaiaFactions: string[];
+        terraformFactions: string[];
+      };
     };
     /**
      * 原始・小惑星の行の値（extraBest の後継、2026-10-03）。その種別を母星にする2種族のうち
-     * 値の大きい方（案A）。係数は掛けない（LF4種族は開始建物が1つなので、その実態のまま）。
-     * outer/touch は eval_v4 から（端の罰点を原始・小惑星にも掛ける）。
+     * 値の大きい方（案A）。色優遇の掛け先と、byFaction を持たない読み手のフォールバック。
+     * eval_v7 からは byKind（種別ごとの列）。eval_v6 までは scout / core / gaia / cluster / outer / touch。
      */
     extraStart?: Record<
       string,
       {
         factionId: string;
         cellKey: string;
-        scout: number;
-        core: number;
-        gaia: number;
-        cluster: number;
-        outer?: number;
-        touch?: number;
+        byKind?: ValueByKind;
         total: number;
       }
     >;
@@ -366,29 +378,7 @@ scoutCore: {
   }>;
 };
 
-    /** 基本版のみ（ガイア近接軸が有効なときだけ存在） */
-    gaiaProximity?: {
-      byType: AxisByType;
-      hitCount: number;
-      gaiaCellCount: number;
-      weights: { d1: number; d2: number; d3: number };
-      /** PROTO/ASTEROID 分（軸には入らない表示用） */
-      extraByKind?: Record<string, number>;
-      /** マーカー用の座標付きヒット（得点した惑星側） */
-      gaiaHits?: Array<{ cellKey: string; planetType: string; distance: number; value: number }>;
-    };
-
-    /** 基本版のみ（星系クラスタ軸が有効なときだけ存在） */
-    cluster?: {
-      byType: AxisByType;
-      weight: number;
-      /** size=素の個数、weightedSize=次元横断を0.5で数えた重み付きの大きさ（得点はこちら） */
-      clusters: Array<{ size: number; weightedSize?: number; colors: string[] }>;
-      /** PROTO/ASTEROID 分（軸には入らない表示用） */
-      extraByKind?: Record<string, number>;
-      /** マーカー用の座標付きヒット（クラスタ構成セルすべて） */
-      clusterHits?: Array<{ cellKey: string; planetType: string; size: number }>;
-    };
+    // eval_v6 までの gaiaProximity / cluster（ガイア近接・星系の監査）は eval_v7 で廃止。
   };
 
   debug?: any;
@@ -403,9 +393,6 @@ const PLANET_TYPES: PlanetType[] = ["BLACK", "BLUE", "BROWN", "ORANGE", "RED", "
 
 /** 基本7色に入らないが色優遇/冷遇の対象にする惑星種別（2026-07-31）。 */
 export const EXTRA_PREF_KINDS = ["PROTO", "ASTEROID"] as const;
-
-/** 星系の大きさを数えるときの次元横断惑星の価値（他の惑星の半分。2026-07-30 ユーザー確定） */
-export const CLUSTER_TRANSDIM_WEIGHT = 0.5;
 
 /**
  * 【2026-10-03 に廃止】原始・小惑星の「最良の1つ」に掛けていた補正値。評価は
@@ -548,12 +535,10 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
   const scoutRadius = clampInt(params.scoutRadius, 3, 0, 12);
 
   /**
-   * 惑星ごとの軸の値（2026-10-03）。基本7色と原始・小惑星の全惑星について、
-   * 船接触・船星系・ガイア・星系・最外周・外周を惑星単位で持つ。
-   * 色ごとの値は、この惑星ごとの値を「開始地点＋到達加重」で足して作る（下の集計を参照）。
-   * 星系は「その惑星が属する星系の大きさ」なので、同じ星系の同色2つはどちらも同じ値を持つ。
-   * eval_v6（2026-10-06）からはガイア・次元横断の惑星も持つ（船接触・船星系・星系・端の罰点。
-   * ガイア近接は自分には付けない）。各種族の入植先として到達加重で足される（開始地点にはならない）。
+   * 惑星ごとの「状況の値」（2026-10-03 に惑星単位へ、2026-10-07 eval_v7 で一本化）。盤面の全惑星
+   * （基本7色・原始・小惑星・ガイア・次元横断）について、船接触・船星系・最外周・外周を惑星単位で持つ。
+   * 種族ごとの値は、この状況の値に固有値を足し、種別の係数と到達係数を掛けて全惑星で合計する（下の集計）。
+   * eval_v6 までのガイア近接・星系の軸は eval_v7 で廃止。
    */
   type PlanetAcc = {
     key: string;
@@ -561,8 +546,6 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
     type: PlanetType | null;
     scout: number;
     core: number;
-    gaia: number;
-    cluster: number;
     outer: number;
     touch: number;
   };
@@ -571,17 +554,17 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
     const type = toPlanetType((p as any).planetKind as any, (p as any).colorKey);
     const kind = type ?? (String((p as any).planetKind ?? "").toUpperCase() || "UNKNOWN");
     if (!type && kind !== "PROTO" && kind !== "ASTEROID") continue;
-    perPlanet.set(p.key, { key: p.key, kind, type, scout: 0, core: 0, gaia: 0, cluster: 0, outer: 0, touch: 0 });
+    perPlanet.set(p.key, { key: p.key, kind, type, scout: 0, core: 0, outer: 0, touch: 0 });
   }
-  // ガイア・次元横断（planetCells からは除外されている）。eval_v6 から入植先として惑星ごとの値を持つ。
-  // 船接触惑星（船星系の起点）・ガイア近接の対象・軸の色ごとの合算（byType / extraByKind）には入れない。
+  // ガイア・次元横断（planetCells からは除外されている）。eval_v6 から惑星ごとの値を持つ。
+  // 船接触惑星（船星系の起点）・軸の色ごとの合算（byType / extraByKind）には入れない。
   const excludedPlanetCells = (extracted.cells ?? []).filter((c) => (c as any).isPlanet && (c as any).isExcludedPlanet);
   for (const p of excludedPlanetCells) {
     const kind = String((p as any).planetKind ?? "").toUpperCase();
     if (kind !== "GAIA" && kind !== "TRANSDIM") continue;
-    perPlanet.set(p.key, { key: p.key, kind, type: null, scout: 0, core: 0, gaia: 0, cluster: 0, outer: 0, touch: 0 });
+    perPlanet.set(p.key, { key: p.key, kind, type: null, scout: 0, core: 0, outer: 0, touch: 0 });
   }
-  const addPlanetAxis = (cellKey: string, axis: "scout" | "core" | "gaia" | "cluster" | "outer" | "touch", v: number) => {
+  const addPlanetAxis = (cellKey: string, axis: "scout" | "core" | "outer" | "touch", v: number) => {
     const e = perPlanet.get(cellKey);
     if (e) e[axis] += v;
   };
@@ -1010,110 +993,17 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
     return String(a.corePlanetKey).localeCompare(String(b.corePlanetKey));
   });
 
-  // ===== gaia proximity (基本版専用; フィールド省略時は完全スキップ=LF不変) =====
-  const wGaia1 = num((params as any).wGaiaDist1, 0);
-  const wGaia2 = num((params as any).wGaiaDist2, 0);
-  const wGaia3 = num((params as any).wGaiaDist3, 0);
-  const gaiaEnabled = wGaia1 !== 0 || wGaia2 !== 0 || wGaia3 !== 0;
-
-  const gaiaAxis = zeroAxis();
-  const gaiaExtraByKind: Record<string, number> = {};
-  // マーカー用の座標付きヒット。得点した惑星側にマークする（outer/touch/scout と同じ作法）。
-  const gaiaHits: Array<{ cellKey: string; planetType: string; distance: number; value: number }> = [];
-  let gaiaHitCount = 0;
-  let gaiaCellCount = 0;
-  if (gaiaEnabled) {
-    const gaiaCells = (extracted.cells ?? []).filter(
-      (c) => (c as any).isPlanet && String((c as any).planetKind ?? "").toUpperCase() === "GAIA"
-    );
-    gaiaCellCount = gaiaCells.length;
-    // PROTO/ASTEROID も拾うため planetCells を回す。軸へ足すのは基本7色だけなので
-    // gaiaAxis / gaiaHitCount は従来と同値（スコア不変）。
-    for (const p of extracted.planetCells) {
-      const t = toPlanetType((p as any).planetKind as any, (p as any).colorKey);
-      const kindU = String((p as any).planetKind ?? "").toUpperCase() || "UNKNOWN";
-      for (const g of gaiaCells) {
-        const d = axialDistance(p.q, p.r, (g as any).q, (g as any).r);
-        const w = d === 1 ? wGaia1 : d === 2 ? wGaia2 : d === 3 ? wGaia3 : 0;
-        if (w === 0) continue;
-        addPlanetAxis(p.key, "gaia", w);
-        if (t) {
-          gaiaAxis[t] += w;
-          gaiaHitCount += 1;
-        } else {
-          gaiaExtraByKind[kindU] = (gaiaExtraByKind[kindU] ?? 0) + w;
-        }
-        gaiaHits.push({ cellKey: p.key, planetType: t ?? kindU, distance: d, value: w });
-      }
-    }
-    gaiaHits.sort((a, b) => String(a.cellKey).localeCompare(String(b.cellKey)) || a.distance - b.distance);
-  }
-
-  // ===== cluster / 星系 (基本版専用; フィールド省略時は完全スキップ=LF不変) =====
-  // 連結対象は kind==="planet" の全セル（ガイア/次元横断含む＝H5と同じ定義）。
-  // サイズn>=2の各クラスタについて「含まれる各基本色」に +n×wClusterSize（色ごとに1回）。
-  const wCluster = num((params as any).wClusterSize, 0);
-  const clusterEnabled = wCluster !== 0;
-
-  const clusterAxis = zeroAxis();
-  const clusterExtraByKind: Record<string, number> = {};
-  // マーカー用の座標付きヒット。クラスタを構成するセルすべてを対象にする
-  // （軸へ効くのは基本7色だけだが、◎で軸全体を出したときに星系の形が見えるように）。
-  const clusterHits: Array<{ cellKey: string; planetType: string; size: number }> = [];
-  const clusterList: Array<{ size: number; weightedSize: number; colors: string[] }> = [];
-  if (clusterEnabled) {
-    const planetPts = (extracted.cells ?? []).filter((c) => (c as any).isPlanet);
-    const cellByKey = new Map(planetPts.map((c) => [`${c.q},${c.r}`, c]));
-    const comps = connectedComponents(planetPts.map((c) => ({ q: c.q, r: c.r })));
-    for (const comp of comps) {
-      if (comp.length < 2) continue;
-      const colorSet = new Set<PlanetType>();
-      const extraSet = new Set<string>();
-      // クラスタの「大きさ」は素の個数ではなく重み付き（2026-07-30 ユーザー確定）。
-      // 次元横断惑星は1ラウンド目に入植できないので他の惑星の半分で数える。
-      let weightedSize = 0;
-      // weightedSize が確定してから惑星ごとの寄与へ配るので、セルをいったん覚えておく。
-      const cellKeysInComp: string[] = [];
-      for (const pos of comp) {
-        const c = cellByKey.get(`${pos.q},${pos.r}`);
-        if (!c) continue;
-        const t = toPlanetType((c as any).planetKind as any, (c as any).colorKey);
-        const kindU = String((c as any).planetKind ?? "").toUpperCase() || "UNKNOWN";
-        weightedSize += kindU === "TRANSDIM" ? CLUSTER_TRANSDIM_WEIGHT : 1;
-        if (t) colorSet.add(t);
-        else extraSet.add(kindU);
-        cellKeysInComp.push(String((c as any).key));
-        clusterHits.push({ cellKey: (c as any).key, planetType: t ?? kindU, size: comp.length });
-      }
-      // 監査用の「色ごとに1回」の合算（旧 axesByType の定義。cluster.byType に残す）
-      for (const t of colorSet) clusterAxis[t] += wCluster * weightedSize;
-      for (const k of extraSet) clusterExtraByKind[k] = (clusterExtraByKind[k] ?? 0) + wCluster * weightedSize;
-      // 惑星ごとの方は「その惑星が属するクラスタの大きさ」なので、同じクラスタに
-      // 同色が2つあればどちらも同じ値を持つ（色ごとの合算とは意図的に違う。2026-10-03 から
-      // 評価の軸はこちらを使う）。
-      for (const cellKey of cellKeysInComp) addPlanetAxis(cellKey, "cluster", wCluster * weightedSize);
-      clusterList.push({ size: comp.length, weightedSize, colors: [...colorSet].sort() });
-    }
-    clusterHits.sort((a, b) => String(a.cellKey).localeCompare(String(b.cellKey)));
-    // deterministic ordering for audit
-    clusterList.sort((a, b) => b.size - a.size || a.colors.join(",").localeCompare(b.colors.join(",")));
-
-    // 星系の大きさは次元横断を 0.5 で数えるので、色ごとの合計に 0.5 が残ることがある。
-    // 評価値に小数を出さないため、ここで丸める（2026-07-31）。クラスタ1つずつ丸めるより
-    // 誤差が小さい —— 0.5 が2つあれば合計の時点で打ち消し合う。
-    for (const t of PLANET_TYPES) clusterAxis[t] = Math.round(clusterAxis[t]);
-    for (const k of Object.keys(clusterExtraByKind)) {
-      clusterExtraByKind[k] = Math.round(clusterExtraByKind[k]);
-    }
-  }
-
-  // ===== 開始地点＋到達加重の集計（2026-10-03 確定。docs/design-notes.md 2.6）=====
+  // ===== 一本化: 全惑星を同一の式で（2026-10-07 ユーザー確定、eval_v7。docs/design-notes.md 2.10）=====
   //
-  // 色ごとの値 ＝ 開始地点2ヶ所の値 ＋ Σ 残りの同色惑星の値 × 到達係数。開始地点は残りの
-  // 到達加重まで含めて総当たりで選ぶ（reachCost.ts）。軸の列も同じ重みで足し、軸ごとに丸めて
-  // 評価はその合計にする（列の合計と評価が一致したまま小数が消える。2026-07-31 の方針を踏襲）。
-  // 原始・小惑星は LF4種族ごとに開始1ヶ所・種族ごとの入植コストで計算し、行の値は2種族のうち
-  // 大きい方（案A）。係数は掛けない。最外周/外周は原始・小惑星の評価に入れない（2026-07-30 確定）。
+  // 種族 f の値 ＝ Σ_{盤面の全惑星 p} 係数_f(種別(p)) × (固有値 ＋ 状況の値(p)) × 到達係数_f(開始地点 → p)
+  //   状況の値 ＝ 船接触 ＋ 船星系 ＋ 端の罰点（最外周 / 外周）。固有値と係数は reachCost.ts の UNIFIED_VALUE。
+  //   開始地点は母星色（LF は母星種別）の惑星から k 個（ゼノ族 3・ダー・シュワーム人 1・LF 1・他 2）を、
+  //   残りの到達加重まで含めた合計が最大になる組で総当たり（planStarts の startKeys）。
+  //   種別ごと（母星色 / 他色 / ガイア / 次元横断 / 原始・小惑星）に重み付き和を丸め、評価はその合計
+  //   （内訳表の列の合計と評価が一致したまま小数が消える。2026-07-31 の方針を踏襲）。
+  //   色の値（planetTypeTotals）はその色の2種族のうち total の大きい方＝代表種族の値（案A）。
+  //   検索の偏り項と色優遇はこの代表値で従来どおり7色で測り、内訳表は種族の行を出す。
+  //   原始・小惑星の行の値（extraStart）はその種別を母星にする LF 2種族のうち大きい方。
   const nodes: PlanetNode[] = (extracted.cells ?? extracted.planetCells)
     .filter((c: any) => c.isPlanet)
     .map((c: any) => ({
@@ -1122,143 +1012,96 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
       r: Number(c.r),
       kind: toPlanetType(c.planetKind as any, c.colorKey) ?? (String(c.planetKind ?? "").toUpperCase() || "UNKNOWN"),
     }));
-  const AXES = ["outer", "touch", "scout", "core", "gaia", "cluster"] as const;
-  type AxisKey = (typeof AXES)[number];
-  // 惑星の値は6軸の和。端の罰点（outer/touch）は基本7色も原始・小惑星も入れる（eval_v4）。
-  const planetValue = (e: PlanetAcc) => e.scout + e.core + e.gaia + e.cluster + e.outer + e.touch;
-  const weightedAxes = (plan: StartPlan, members: PlanetAcc[]): Record<AxisKey, number> => {
-    const sums: Record<AxisKey, number> = { outer: 0, touch: 0, scout: 0, core: 0, gaia: 0, cluster: 0 };
-    for (const e of members) {
-      const w = plan.weights.get(e.key) ?? 0;
-      for (const ax of AXES) sums[ax] += w * e[ax];
-    }
-    const rounded = {} as Record<AxisKey, number>;
-    for (const ax of AXES) rounded[ax] = Math.round(sums[ax]);
-    return rounded;
-  };
-  const planetRows = (plan: StartPlan, members: Array<PlanetAcc & { scale?: number }>): StartAccessPlanet[] =>
-    members
-      .map((e) => ({
-        cellKey: e.key,
-        kind: e.kind,
-        cost: plan.costs.get(e.key) ?? Infinity,
-        weight: plan.weights.get(e.key) ?? 0,
-        value: planetValue(e),
-        ...(e.scale != null && e.scale !== 1 ? { scale: e.scale } : {}),
-      }))
-      .sort((a, b) => b.weight - a.weight || a.cellKey.localeCompare(b.cellKey));
-
-  const aggOuter = zeroAxis();
-  const aggTouch = zeroAxis();
-  const aggScout = zeroAxis();
-  const aggCore = zeroAxis();
-  const aggGaia = zeroAxis();
-  const aggCluster = zeroAxis();
-  const startByColor: Record<string, { starts: string[]; planets: StartAccessPlanet[] }> = {};
+  const BASE = UNIFIED_VALUE.BASE;
+  const situationOf = (e: PlanetAcc) => e.scout + e.core + e.outer + e.touch;
+  const zeroKinds = (): ValueByKind => ({ own: 0, other: 0, gaia: 0, transdim: 0, extra: 0 });
   const allPlanets = [...perPlanet.values()];
 
-  // ===== 種族ごとの集計（2026-10-05 確定、eval_v5。docs/design-notes.md 2.7）=====
-  //
-  // 基本14種族は母星色の惑星を候補に、種族ごとの開始建物の数・跳躍表・入植コスト
-  // （reachCost.ts の BASIC_REACH_PROFILES）で開始地点を選ぶ。LF4種族は原始・小惑星から開始1ヶ所。
-  // 色の値（planetTypeTotals）は、その色の2種族のうち total の大きい方＝代表種族の値（案A）。
-  // 検索の偏り項と色優遇はこの代表値で従来どおり7色で測り、内訳表は種族の行を出す。
   const byFaction: Record<string, FactionStart> = {};
   const representative: Record<string, string> = {};
-  // ガイア・次元横断は全種族の入植先（eval_v6、2026-10-06 ユーザー確定 案B）。開始地点は母星色（母星種別）
-  // の惑星からだけ選び、ガイア・次元横断は到着時の入植コスト（ガイア 1、次元横断 2 / ガイア Lv1 開始 1 /
-  // イタル人 1.5、LF は種族の表）込みの到達係数で足す。docs/design-notes.md 2.7。
-  // 入植先としての値には種別ごとの係数（DESTINATION_VALUE_SCALE。取り合いで自分の取り分になる割合）を掛ける。
-  // 到達係数（自分のコスト）とは別。惑星ごとの素の値（マーカーのヒット）は変えず、ここで掛けた写しを使う。
-  const destinationExtras = allPlanets
-    .filter((e) => e.kind === "GAIA" || e.kind === "TRANSDIM")
-    .map((e) => {
-      const s = DESTINATION_VALUE_SCALE[e.kind as "GAIA" | "TRANSDIM"] ?? 1;
-      return { ...e, scale: s, scout: e.scout * s, core: e.core * s, gaia: e.gaia * s, cluster: e.cluster * s, outer: e.outer * s, touch: e.touch * s };
-    });
+  const startByColor: Record<string, { starts: string[]; planets: StartAccessPlanet[] }> = {};
   const planFor = (
     id: string,
-    color: string,
-    members: PlanetAcc[],
+    home: string,
     stoneCost: Parameters<typeof planStarts>[0]["stoneCost"],
     startCount: number,
-    hop?: Parameters<typeof planStarts>[0]["hopCost"]
+    hop: Parameters<typeof planStarts>[0]["hopCost"]
   ): FactionStart | null => {
-    if (members.length === 0) return null;
-    const destinations = [...members, ...destinationExtras];
+    const startKeys = new Set(allPlanets.filter((e) => e.kind === home).map((e) => e.key));
+    if (startKeys.size === 0) return null;
+    const coefOf = (e: PlanetAcc) => destinationCoef(id, e.kind, home);
+    const valueOf = (e: PlanetAcc) => coefOf(e) * (BASE + situationOf(e));
     const plan = planStarts({
       nodes,
-      candidates: destinations.map((e) => ({ key: e.key, value: planetValue(e) })),
+      candidates: allPlanets.map((e) => ({ key: e.key, value: valueOf(e) })),
       stoneCost,
       startCount,
-      startKeys: new Set(members.map((e) => e.key)),
-      ...(hop ? { hopCost: hop } : {}),
+      startKeys,
+      hopCost: hop,
     });
     if (!plan) return null;
-    const ax = weightedAxes(plan, destinations);
-    const entry: FactionStart = {
-      color,
-      starts: plan.starts,
-      scout: ax.scout,
-      core: ax.core,
-      gaia: ax.gaia,
-      cluster: ax.cluster,
-      outer: ax.outer,
-      touch: ax.touch,
-      total: ax.scout + ax.core + ax.gaia + ax.cluster + ax.outer + ax.touch,
-      planets: planetRows(plan, destinations),
-    };
+    const sums = zeroKinds();
+    let base = 0, scout = 0, core = 0, outer = 0, touch = 0;
+    const planets: StartAccessPlanet[] = [];
+    for (const e of allPlanets) {
+      const w = plan.weights.get(e.key) ?? 0;
+      const coef = coefOf(e);
+      const dest = destinationKind(e.kind, home);
+      const value = valueOf(e);
+      planets.push({
+        cellKey: e.key,
+        kind: e.kind,
+        dest,
+        cost: plan.costs.get(e.key) ?? Infinity,
+        weight: w,
+        value,
+        ...(coef !== 1 ? { coef } : {}),
+      });
+      if (w <= 0) continue;
+      sums[dest] += value * w;
+      base += coef * BASE * w;
+      scout += coef * e.scout * w;
+      core += coef * e.core * w;
+      outer += coef * e.outer * w;
+      touch += coef * e.touch * w;
+    }
+    const byKind = zeroKinds();
+    let total = 0;
+    for (const k of DESTINATION_KINDS) {
+      byKind[k] = Math.round(sums[k]);
+      total += byKind[k];
+    }
+    planets.sort((a, b) => b.weight - a.weight || a.cellKey.localeCompare(b.cellKey));
+    const entry: FactionStart = { color: home, starts: plan.starts, byKind, total, base, scout, core, outer, touch, planets };
     byFaction[id] = entry;
     return entry;
   };
   for (const f of BASIC_FACTION_ORDER) {
     const p = BASIC_REACH_PROFILES[f];
-    const entry = planFor(
-      f,
-      p.color,
-      allPlanets.filter((e) => e.type === p.color),
-      stoneCostForBasicFaction(f),
-      p.startCount,
-      hopCostForBasicFaction(f)
-    );
+    const entry = planFor(f, p.color, stoneCostForBasicFaction(f), p.startCount, hopCostForBasicFaction(f));
     if (!entry) continue;
     // 同点は FACTIONS の順で先の種族（決定的にする）
     const cur = representative[p.color];
     if (!cur || entry.total > byFaction[cur].total) representative[p.color] = f;
   }
+  const aggByKind: Record<DestinationKind, AxisByType> = { own: zeroAxis(), other: zeroAxis(), gaia: zeroAxis(), transdim: zeroAxis(), extra: zeroAxis() };
   for (const t of PLANET_TYPES) {
     const rep = representative[t];
     if (!rep) continue;
     const e = byFaction[rep];
-    aggOuter[t] = e.outer;
-    aggTouch[t] = e.touch;
-    aggScout[t] = e.scout;
-    aggCore[t] = e.core;
-    aggGaia[t] = e.gaia;
-    aggCluster[t] = e.cluster;
+    for (const k of DESTINATION_KINDS) aggByKind[k][t] = e.byKind[k];
     startByColor[t] = { starts: e.starts, planets: e.planets };
   }
-  // LF4種族（開始1ヶ所、種族ごとの入植コスト。端の罰点も入る＝eval_v4）。
-  // 原始・小惑星の行の値（extraStart）はその種別を母星にする2種族のうち大きい方（案A）。
+  // LF4種族（開始1ヶ所、種族ごとの入植コスト）。原始・小惑星の行の値（extraStart）は2種族のうち大きい方（案A）
   type ExtraStart = NonNullable<SoftBreakdown["audit"]["extraStart"]>[string];
   const extraStart: Record<string, ExtraStart> = {};
   for (const f of LF_FACTION_ORDER) {
     const home = LF_REACH_PROFILES[f].home;
-    const entry = planFor(f, home, allPlanets.filter((e) => e.kind === home), stoneCostForLfFaction(f), START_COUNT_LF, hopCostForLfFaction(f));
+    const entry = planFor(f, home, stoneCostForLfFaction(f), START_COUNT_LF, hopCostForLfFaction(f));
     if (!entry) continue;
     const cur = extraStart[home];
     if (!cur || entry.total > cur.total) {
-      extraStart[home] = {
-        factionId: f,
-        cellKey: entry.starts[0],
-        scout: entry.scout,
-        core: entry.core,
-        gaia: entry.gaia,
-        cluster: entry.cluster,
-        outer: entry.outer,
-        touch: entry.touch,
-        total: entry.total,
-      };
+      extraStart[home] = { factionId: f, cellKey: entry.starts[0], byKind: entry.byKind, total: entry.total };
       representative[home] = f;
     }
   }
@@ -1269,12 +1112,26 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
     byColor: startByColor,
     byFaction,
     representative,
+    unified: {
+      base: BASE,
+      coef: {
+        OWN: UNIFIED_VALUE.OWN,
+        OTHER: UNIFIED_VALUE.OTHER,
+        GAIA: UNIFIED_VALUE.GAIA,
+        TRANSDIM: UNIFIED_VALUE.TRANSDIM,
+        GAIA_FACTION_TRANSDIM: UNIFIED_VALUE.GAIA_FACTION_TRANSDIM,
+        EXTRA: UNIFIED_VALUE.EXTRA,
+        TERRA_BOOST: UNIFIED_VALUE.TERRA_BOOST,
+      },
+      gaiaFactions: [...GAIA_FACTIONS],
+      terraformFactions: [...TERRAFORM_FACTIONS],
+    },
   };
 
-  // totals & imbalance（軸ごとに丸めた値の和なので、内訳表の列の合計と評価が一致する）
+  // totals & imbalance（種別ごとに丸めた値の和なので、内訳表の列の合計と評価が一致する）
   const planetTypeTotals = addAxis(
-    addAxis(addAxis(aggOuter, aggTouch), addAxis(aggScout, aggCore)),
-    addAxis(aggGaia, aggCluster)
+    addAxis(addAxis(aggByKind.own, aggByKind.other), addAxis(aggByKind.gaia, aggByKind.transdim)),
+    aggByKind.extra
   );
 
   const values = axisValues(planetTypeTotals);
@@ -1320,16 +1177,9 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
   return {
     score: totalScore,
     breakdown: {
-      // 軸の列は「開始地点＋到達加重」の重み付き和（2026-10-03）。素の合算は audit の
-      // scout.byType / scoutCore.byType / gaiaProximity.byType / cluster.byType に残る。
-      axesByType: {
-        outer: aggOuter,
-        touch: aggTouch,
-        scout: aggScout,
-        scoutCore: aggCore,
-        ...(gaiaEnabled ? { gaia: aggGaia } : {}),
-        ...(clusterEnabled ? { cluster: aggCluster } : {}),
-      },
+      // 色ごとの種別別の値（代表種族の byKind、eval_v7）。船接触・船星系の素の合算は audit の
+      // scout.byType / scoutCore.byType に残る。
+      axesByType: aggByKind,
       planetTypeTotals,
       imbalance: { metric, value: imbalanceValue, score: imbalanceScore },
       colorPreference:
@@ -1387,29 +1237,6 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
           extraByKind: scoutCoreExtraByKind,
           coreHits: scoutCoreHits,
         },
-        ...(gaiaEnabled
-          ? {
-              gaiaProximity: {
-                byType: gaiaAxis,
-                hitCount: gaiaHitCount,
-                gaiaCellCount,
-                weights: { d1: wGaia1, d2: wGaia2, d3: wGaia3 },
-                extraByKind: gaiaExtraByKind,
-                gaiaHits,
-              },
-            }
-          : {}),
-        ...(clusterEnabled
-          ? {
-              cluster: {
-                byType: clusterAxis,
-                weight: wCluster,
-                clusters: clusterList,
-                extraByKind: clusterExtraByKind,
-                clusterHits,
-              },
-            }
-          : {}),
       },
       debug: (extracted as any).audit,
     },

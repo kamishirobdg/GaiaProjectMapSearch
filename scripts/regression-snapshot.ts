@@ -105,8 +105,11 @@ export type SnapshotEntry = {
     score: number;
     outerCountByType: Record<string, number>;
     touchCountByType: Record<string, number>;
+    /** 船接触・船星系の素の合算（audit.scout.byType / scoutCore.byType。eval_v6 までは到達加重の軸の列） */
     scoutByType: Record<string, number>;
     scoutCoreByType: Record<string, number>;
+    /** 色ごとの種別別の値（代表種族の byKind。eval_v7） */
+    axesByKind?: Record<string, Record<string, number>>;
     planetTypeTotals: Record<string, number>;
     imbalance: { metric: string; value: number; score: number };
 
@@ -163,12 +166,9 @@ function runOne(
     templateId === "base_34p"
       ? { ...HARD_PARAMS, banSameKindAdjacency: true }
       : HARD_PARAMS;
-  // base テンプレでは新評価軸（ガイア近接・星系クラスタ）をUI既定値で有効化。
-  // LF ランは SOFT_PARAMS のまま（フィールド不在= evaluateSoft が完全スキップ）。
-  const softParams: SoftParams =
-    templateId === "base_34p"
-      ? { ...SOFT_PARAMS, wGaiaDist1: 5, wGaiaDist2: 3, wGaiaDist3: 1, wClusterSize: 1 }
-      : SOFT_PARAMS;
+  // eval_v6 までは base テンプレにガイア近接・星系の軸（wGaiaDist1〜3 / wClusterSize）を足していたが、
+  // eval_v7（2026-10-07、全惑星を同一の式で）で廃止したので base も LF も SOFT_PARAMS のまま。
+  const softParams: SoftParams = SOFT_PARAMS;
   const methodField = placementMethod === undefined ? {} : { placementMethod };
 
   let logicalMap: ReturnType<typeof buildLogicalMap>;
@@ -233,8 +233,9 @@ function runOne(
       score: round(softResult.score),
       outerCountByType: softResult.breakdown.audit.outerCountByType,
       touchCountByType: softResult.breakdown.audit.touchCountByType,
-      scoutByType: softResult.breakdown.axesByType.scout,
-      scoutCoreByType: softResult.breakdown.axesByType.scoutCore,
+      scoutByType: softResult.breakdown.audit.scout.byType,
+      scoutCoreByType: softResult.breakdown.audit.scoutCore.byType,
+      axesByKind: softResult.breakdown.axesByType,
       planetTypeTotals: softResult.breakdown.planetTypeTotals,
       imbalance: softResult.breakdown.imbalance,
       scoutHitsCount: scoutHits.length,
