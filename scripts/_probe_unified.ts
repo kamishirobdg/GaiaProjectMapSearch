@@ -13,8 +13,9 @@
 //   到達係数: 現行どおり 0.5^(コスト−1)。コスト ＝ 跳躍 ＋ 到着した惑星の入植コスト（種族の表）
 //   開始地点: 母星色（LF は母星種別）の惑星から、合計が最大になる k 個（総当たり。現行の planStarts）
 //
-// 環境変数で値を差し替えて比べる（既定値は下の DEFAULTS）:
-//   BASE=10 OWN=1 OTHER=0.5 GAIA=0.5 TRANS=0.25 EXTRA=0.25 GAIA_FACTION_TRANS=0.5 TERRA_BOOST=1.5 npx tsx ...
+// 環境変数で値を差し替えて比べる（既定値は下の DEFAULTS ＝ 2026-10-07 ユーザー確定の値。調整必須の
+// マジックナンバー。設計ノート 2.10）:
+//   BASE=10 OWN=1 OTHER=0.25 GAIA=0.5 TRANS=0.25 EXTRA=0.1 GAIA_FACTION_TRANS=0.5 TERRA_BOOST=1.2 npx tsx ...
 //
 // 出力: 桁（色の代表値の平均・最上位の中央値）、種別ごとの寄与、固有値と状況の値の比、同色2種族の差、
 //       現行 eval_v6 との相関（色の値・検索の偏り項・開始地点の一致）、開始地点の中心性との相関。
@@ -41,7 +42,7 @@ import {
 const N = Number(process.argv[2] ?? 60) || 60;
 const BASE_OUTER_CAP = Number(process.argv[3] ?? 3) || 3;
 
-const DEFAULTS = { BASE: 10, OWN: 1, OTHER: 0.5, GAIA: 0.5, TRANS: 0.25, EXTRA: 0.25, GAIA_FACTION_TRANS: 0.5, TERRA_BOOST: 1.5 };
+const DEFAULTS = { BASE: 10, OWN: 1, OTHER: 0.25, GAIA: 0.5, TRANS: 0.25, EXTRA: 0.1, GAIA_FACTION_TRANS: 0.5, TERRA_BOOST: 1.2 };
 const P: Record<keyof typeof DEFAULTS, number> = { ...DEFAULTS };
 for (const k of Object.keys(DEFAULTS) as Array<keyof typeof DEFAULTS>) {
   if (process.env[k] != null && process.env[k] !== "") P[k] = Number(process.env[k]);
