@@ -145,22 +145,8 @@ export function hopCostForLfFaction(id: LfFactionId): HopCostFn {
   return (d) => (d === 2 ? h2 : hopCost(d));
 }
 
-/**
- * 入植先としてのガイア・次元横断の値に掛ける係数（2026-10-07 ユーザー確定: ガイア 0.5 / 次元横断 0.25）。
- *
- * 意味は「盤面全体への影響度」（案 B）: 全種族の入植先であるガイアは盤面の良し悪しに広く効くので半分を
- * 残し、ガイア種族にしか効かない次元横断は 1/4 まで削る。到達係数（自分のコスト。次元横断は通常 2 →
- * 0.5、ガイア Lv1 開始は 1 → 1.0）とは別に掛かる。
- * 退けた案 A「取り合いで自分の取り分になる割合」（全種族が狙うガイアを小さく、狙う種族が限られる
- * 次元横断を大きく残す）は、2026-10-06 に私がユーザーの指示「次元横断に大きく掛ける（＝大きく削る）」を
- * 逆に読んで一度提案したもの。経緯と候補の実測は docs/design-notes.md 2.7「入植先の係数」。
- * 値はユーザー判断で、変えるときは `_probe_map_values.ts`（SCALE_GAIA / SCALE_TRANSDIM）で寄与の割合を測り直す。
- * 課題: ガイア惑星の価値はガイア近接の軸（周りの通常惑星に 5 / 8 / 3）でも数えており二重計上（同 2.7）。
- */
-export const DESTINATION_VALUE_SCALE: Record<"GAIA" | "TRANSDIM", number> = {
-  GAIA: 0.5,
-  TRANSDIM: 0.25,
-};
+// eval_v6 の「入植先の係数」DESTINATION_VALUE_SCALE（ガイア 0.5 / 次元横断 0.25。意味は「盤面全体への影響度」、
+// 経緯と取り違えの記録は docs/design-notes.md 2.7）は、eval_v7 で下の UNIFIED_VALUE.GAIA / TRANSDIM に統合した。
 
 // ===== 全惑星を同一の式で評価する一本化（2026-10-07 ユーザー確定、eval_v7。docs/design-notes.md 2.10）=====
 //
