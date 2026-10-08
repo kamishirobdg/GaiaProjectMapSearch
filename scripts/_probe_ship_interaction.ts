@@ -1,6 +1,6 @@
 // scripts/_probe_ship_interaction.ts
 //
-// LF 船の中身とスカウトの位置の相互作用・段階 1（2026-10-08、案 (ii) 加重和）の実測。
+// LF 船の中身とスカウトの位置の相互作用・段階 1（2026-10-08、案 (ii) 加重和 → 掛け算＝α 1）の実測。
 //
 //   npx tsx scripts/_probe_ship_interaction.ts [盤面数=40] [セットアップ数=20]
 //   ALPHA=1 npx tsx ...   で α を差し替え（既定はコードの SHIP_INTERACTION_ALPHA）
@@ -69,7 +69,7 @@ for (const [templateId, players] of [["4p_lostFleet", 4], ["3p_lostFleet", 3]] a
   const bonusOverSetup: number[] = [];
   const bonusOverShip: number[] = [];
   const maxAbsBonusPerPair: number[] = [];
-  let pairs = 0, noInteraction = 0, totalTopChanged = 0, setupTopChanged = 0, totalTopColorSetChanged = 0;
+  let pairs = 0, noInteraction = 0, totalTopChanged = 0, setupTopChanged = 0, totalTopColorSetChanged = 0, shipsSeen = 0, zeroContact = 0;
   for (const bd of maps) {
     const mapScores = mapValueByFaction(bd);
     for (const s of setups) {
@@ -78,7 +78,7 @@ for (const [templateId, players] of [["4p_lostFleet", 4], ["3p_lostFleet", 3]] a
       const lfShip = setupFactionBreakdown(s).byCategory.lfShip;
       const si = shipInteractionOf(s, bd, undefined, ALPHA);
       if (!si) { noInteraction++; continue; }
-      for (const r of si.ships) rels.push(r.rel);
+      for (const r of si.ships) { rels.push(r.rel); shipsSeen++; if (!(r.contact > 0)) zeroContact++; }
       const adj = applyShipInteraction(raw, si);
       let maxAbs = 0;
       for (const f of ids) {
@@ -105,7 +105,7 @@ for (const [templateId, players] of [["4p_lostFleet", 4], ["3p_lostFleet", 3]] a
   }
   const r = stat(rels), ab = stat(absBonus), mx = stat(maxAbsBonusPerPair), bs = stat(bonusOverSetup), bh = stat(bonusOverShip);
   console.log(`\n################ ${templateId}  盤面 ${maps.length} × セットアップ ${setups.length} ＝ ${pairs} 組（相互作用なし ${noInteraction}）`);
-  console.log(`  船接触の相対値 (C_s − C̄)/C̄: 平均 ${f2(r.mean)}  10%〜90% ${f2(r.p10)}〜${f2(r.p90)}  最小 ${f2(r.min)} / 最大 ${f2(r.max)}`);
+  console.log(`  船接触の相対値 (C_s − C̄)/C̄: 平均 ${f2(r.mean)}  10%〜90% ${f2(r.p10)}〜${f2(r.p90)}  最小 ${f2(r.min)} / 最大 ${f2(r.max)}   船接触 0 の船 ${pct(zeroContact / Math.max(1, shipsSeen))}`);
   console.log(`  加点 |b_f|: 平均 ${f1(ab.mean)}  中央 ${f1(ab.med)}  90% ${f1(ab.p90)}  最大 ${f1(ab.max)}   組ごとの最大 |b|: 平均 ${f1(mx.mean)}  90% ${f1(mx.p90)}`);
   console.log(`  |b_f| / Setup の値: 平均 ${pct(bs.mean)}  90% ${pct(bs.p90)}   |b_f| / lfShip の列: 平均 ${pct(bh.mean)}  90% ${pct(bh.p90)}`);
   console.log(`  Setup 単独の上位 5 種族の並びが変わる組 ${pct(setupTopChanged / Math.max(1, pairs - noInteraction))}`);

@@ -1,6 +1,6 @@
 // src/gaia/eval/shipInteraction.test.ts
 //
-// LF 船の中身とスカウトの位置の相互作用・段階 1（2026-10-08、案 (ii) 加重和、α 0.5）。
+// LF 船の中身とスカウトの位置の相互作用・段階 1（2026-10-08、案 (ii) 加重和 α 0.5 → 同日 掛け算＝α 1）。
 // 式: 加点_f ＝ Σ_s α × (C_s − C̄) / C̄ × T_{s,f}。重みの値は見直しで動くので、期待値は表から組み立てる。
 
 import { describe, expect, it } from "vitest";

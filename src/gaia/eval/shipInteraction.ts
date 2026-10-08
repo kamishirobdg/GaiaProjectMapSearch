@@ -1,6 +1,7 @@
 // src/gaia/eval/shipInteraction.ts
 //
-// LF 船の中身とスカウトの位置の相互作用・段階 1（2026-10-08 ユーザー確定 案 (ii) 加重和、α 0.5）。
+// LF 船の中身とスカウトの位置の相互作用・段階 1（2026-10-08 ユーザー確定 案 (ii) 加重和 α 0.5 → 同日
+// 「加重和ではなく掛け算に」＝ 案 (i)。式は同じで α ＝ 1）。
 // docs/design-notes.md 2.10「船の相互作用（段階 1）」、TODO.md「LF船の中身と、スカウトの位置の相互作用」。
 //
 // 背景: 船に乗る基本技術・金枠同盟・アーティファクト（Setup 側の lfShip カテゴリ）はルール上その船へ
@@ -9,6 +10,9 @@
 // したときだけ、船 s に乗るタイルの種族別の値 T_{s,f} を船接触の相対値で増減する。
 //
 //   加点_f ＝ Σ_s α × (C_s − C̄) / C̄ × T_{s,f}      C̄ ＝ 使う船の平均の船接触
+//
+//   α ＝ 1 のとき 補正後の値 ＝ Σ_s (C_s / C̄) × T_{s,f}、つまり船 s のタイルの値を船接触の比 C_s / C̄ で
+//   掛け算したものになる（案 (i)）。船接触 0 の船のタイルは 0 になる。
 //
 //   - Σ_s (C_s − C̄) ＝ 0 なので、T が全船で同じなら加点は 0。合計の桁は現状のまま、近い船のタイルが
 //     重く、遠い船のタイルが軽くなるだけ。
@@ -24,8 +28,11 @@ import { shipTileCell, tileValueCell } from "./tileWeights";
 import { DEFAULT_SETUP_WEIGHTS, SETUP_SCORE_DIVISOR, type SetupWeights } from "./setupWeights";
 import { SHIP_IDS, type SetupResult, type ShipId } from "@/gaia/setup/types";
 
-/** 船接触の相対値に掛ける係数（案 (ii)。0 ＝ 無効、1 ＝ 船接触の比で再配分） */
-export const SHIP_INTERACTION_ALPHA = 0.5;
+/**
+ * 船接触の相対値に掛ける係数（0 ＝ 無効、1 ＝ 船接触の比 C_s / C̄ で掛け算＝案 (i)、0 < α < 1 ＝ 加重和＝案 (ii)）。
+ * 2026-10-08: 0.5（案 (ii)）で実測したところ効きがごく小さく、ユーザー指示で 1（掛け算）に。調整必須のマジックナンバー。
+ */
+export const SHIP_INTERACTION_ALPHA = 1;
 
 export type ShipContact = Partial<Record<ShipId, number>>;
 
