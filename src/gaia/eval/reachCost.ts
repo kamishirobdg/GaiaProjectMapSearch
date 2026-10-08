@@ -258,6 +258,12 @@ export type BasicReachProfile = {
   gaia?: number;
   /** 次元横断惑星の入植コスト（既定 2。ガイア Lv1 開始の地球人・バルタック人は 1、イタル人は 1.5） */
   transdim?: number;
+  /**
+   * 開始地点の値に掛ける倍率（既定 1）。ダー・シュワーム人 1.5: 開始建物が惑星首府で、全体の最後に
+   * 入植地を選べることを「首府 1 つ ＝ 鉱山 1.5 個ぶん」と見る（2026-10-08 ユーザー確定 案 (A)。
+   * 調整必須のマジックナンバー）。開始地点の選び方にも効く（値の高い 1 ヶ所をより強く選ぶ）。
+   */
+  startValueScale?: number;
 };
 
 export const BASIC_FACTION_ORDER: readonly BasicFactionId[] = [
@@ -273,7 +279,9 @@ export const BASIC_REACH_PROFILES: Record<BasicFactionId, BasicReachProfile> = {
   taklons: { color: "BROWN", startCount: 2 },
   ambas: { color: "BROWN", startCount: 2, hop2: 0.5 },
   hadschHallas: { color: "RED", startCount: 2 },
-  ivits: { color: "RED", startCount: 1 },
+  // 開始建物が惑星首府 1 つ。首府であること・全体の最後に入植地を選べることを、開始地点の値 × 1.5 で評価
+  // （2026-10-08 ユーザー確定 案 (A)。倍率は調整必須のマジックナンバー。docs/design-notes.md 2.10）
+  ivits: { color: "RED", startCount: 1, startValueScale: 1.5 },
   geodens: { color: "ORANGE", startCount: 2, terraformScale: 2 / 3 },
   balTaks: { color: "ORANGE", startCount: 2, hop2: 1.5, transdim: 1 },
   firaks: { color: "BLACK", startCount: 2 },
@@ -372,7 +380,7 @@ export type StartCandidate = { key: string; value: number };
 export type StartPlan = {
   /** 開始地点のセル座標（値の降順ではなく座標順） */
   starts: string[];
-  /** 候補ごとの重み。開始地点は 1、残りは到達係数（到達不能は 0） */
+  /** 候補ごとの重み。開始地点は 1（startValueScale があればその値）、残りは到達係数（到達不能は 0） */
   weights: Map<string, number>;
   /** 候補ごとの到達コスト。開始地点は 0 */
   costs: Map<string, number>;
@@ -395,9 +403,12 @@ export function planStarts(args: {
   hopCost?: HopCostFn;
   /** 開始地点に使える候補のキー（省略時は candidates 全部） */
   startKeys?: ReadonlySet<string>;
+  /** 開始地点の値に掛ける倍率（省略時 1。ダー・シュワーム人 1.5。開始地点の重みにそのまま入る） */
+  startValueScale?: number;
 }): StartPlan | null {
   const { nodes, candidates, stoneCost } = args;
   const hop = args.hopCost ?? hopCost;
+  const startScale = args.startValueScale != null && args.startValueScale > 0 ? args.startValueScale : 1;
   const startable = args.startKeys ? candidates.filter((c) => args.startKeys!.has(c.key)) : candidates;
   if (candidates.length === 0 || startable.length === 0) return null;
   const index = new Map<string, number>();
@@ -422,9 +433,9 @@ export function planStarts(args: {
     const costs = new Map<string, number>();
     let total = 0;
     for (const s of starts) {
-      weights.set(s.key, 1);
+      weights.set(s.key, startScale);
       costs.set(s.key, 0);
-      total += s.value;
+      total += s.value * startScale;
     }
     for (const c of sorted) {
       if (weights.has(c.key)) continue;

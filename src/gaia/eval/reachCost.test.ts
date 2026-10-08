@@ -153,7 +153,7 @@ describe("基本14種族の到達プロファイル（2026-10-05 ユーザー確
       taklons: { color: "BROWN", startCount: 2 },
       ambas: { color: "BROWN", startCount: 2, hop2: 0.5 },
       hadschHallas: { color: "RED", startCount: 2 },
-      ivits: { color: "RED", startCount: 1 },
+      ivits: { color: "RED", startCount: 1, startValueScale: 1.5 },
       geodens: { color: "ORANGE", startCount: 2, terraformScale: 2 / 3 },
       balTaks: { color: "ORANGE", startCount: 2, hop2: 1.5, transdim: 1 },
       firaks: { color: "BLACK", startCount: 2 },
@@ -350,6 +350,27 @@ describe("開始地点の総当たり", () => {
     expect(x.total).toBeCloseTo(60 + 5 * Math.SQRT1_2, 10);
     const iv = planStarts({ nodes, candidates: cands, stoneCost: stoneCostForBasicFaction("ivits"), startCount: BASIC_REACH_PROFILES.ivits.startCount })!;
     expect(iv.starts).toHaveLength(1);
+  });
+
+  it("開始地点の値の倍率（ダー・シュワーム人 1.5）は開始地点の重みに入り、選び方にも効く", () => {
+    // (0,0)=10 と (3,0)=12 が距離 3（コスト 1.5 → 0.71）。倍率なし: 開始 (3,0) ＝ 12 + 10×0.71 = 19.1
+    // 倍率 1.5: 開始 (3,0) ＝ 12×1.5 + 7.1 = 25.1（開始地点の値が大きい方がより有利になる）
+    const nodes = [node(0, 0, "RED"), node(3, 0, "RED")];
+    const cands = [
+      { key: "0,0", value: 10 },
+      { key: "3,0", value: 12 },
+    ];
+    const plain = planStarts({ nodes, candidates: cands, stoneCost: stoneCostForBasicFaction("ivits"), startCount: 1 })!;
+    expect(plain.starts).toEqual(["3,0"]);
+    expect(plain.weights.get("3,0")).toBe(1);
+    expect(plain.total).toBeCloseTo(12 + 10 * Math.SQRT1_2, 10);
+    const scaled = planStarts({ nodes, candidates: cands, stoneCost: stoneCostForBasicFaction("ivits"), startCount: 1, startValueScale: 1.5 })!;
+    expect(scaled.starts).toEqual(["3,0"]);
+    expect(scaled.weights.get("3,0")).toBe(1.5);
+    expect(scaled.costs.get("3,0")).toBe(0);
+    expect(scaled.total).toBeCloseTo(12 * 1.5 + 10 * Math.SQRT1_2, 10);
+    // 0 以下は無視して 1 扱い
+    expect(planStarts({ nodes, candidates: cands, stoneCost: stoneCostForBasicFaction("ivits"), startCount: 1, startValueScale: 0 })!.weights.get("3,0")).toBe(1);
   });
 
   it("種族ごとの跳躍表を渡せる（グリーン人は距離2が 0.5）", () => {

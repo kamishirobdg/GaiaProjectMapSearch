@@ -1025,7 +1025,8 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
     home: string,
     stoneCost: Parameters<typeof planStarts>[0]["stoneCost"],
     startCount: number,
-    hop: Parameters<typeof planStarts>[0]["hopCost"]
+    hop: Parameters<typeof planStarts>[0]["hopCost"],
+    startValueScale?: number
   ): FactionStart | null => {
     const startKeys = new Set(allPlanets.filter((e) => e.kind === home).map((e) => e.key));
     if (startKeys.size === 0) return null;
@@ -1038,6 +1039,8 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
       startCount,
       startKeys,
       hopCost: hop,
+      // 開始地点の値の倍率（ダー・シュワーム人 1.5。eval_v8）。開始地点の重みにそのまま入る
+      ...(startValueScale != null ? { startValueScale } : {}),
     });
     if (!plan) return null;
     const sums = zeroKinds();
@@ -1078,7 +1081,7 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
   };
   for (const f of BASIC_FACTION_ORDER) {
     const p = BASIC_REACH_PROFILES[f];
-    const entry = planFor(f, p.color, stoneCostForBasicFaction(f), p.startCount, hopCostForBasicFaction(f));
+    const entry = planFor(f, p.color, stoneCostForBasicFaction(f), p.startCount, hopCostForBasicFaction(f), p.startValueScale);
     if (!entry) continue;
     // 同点は FACTIONS の順で先の種族（決定的にする）
     const cur = representative[p.color];

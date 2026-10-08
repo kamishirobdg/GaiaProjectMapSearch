@@ -99,9 +99,11 @@ describe("固有値と係数: 全惑星を同一の式で（2026-10-07 確定、
     expect(hh.base).toBe(B);
     expect(hh.scout + hh.core + hh.outer + hh.touch).toBe(0);
     expect(hh.planets).toEqual([{ cellKey: "0,0", kind: "RED", dest: "own", cost: 0, weight: 1, value: B }]);
-    expect(factionOf(r, "ivits").total).toBe(B);
-    expect(auditOf(r).startAccess.representative.RED).toBe("hadschHallas"); // 同点は FACTIONS の順で先
-    expect(r.breakdown.planetTypeTotals.RED).toBe(B);
+    // ダー・シュワーム人は開始地点の値 × 1.5（惑星首府。eval_v8）。重みに 1.5 が入り、1 惑星なら代表になる
+    expect(factionOf(r, "ivits").total).toBe(B * 1.5);
+    expect(factionOf(r, "ivits").planets).toEqual([{ cellKey: "0,0", kind: "RED", dest: "own", cost: 0, weight: 1.5, value: B }]);
+    expect(auditOf(r).startAccess.representative.RED).toBe("ivits");
+    expect(r.breakdown.planetTypeTotals.RED).toBe(B * 1.5);
     expect(r.breakdown.planetTypeTotals.BLUE).toBe(0);
     expect(factionOf(r, "terrans")).toBeUndefined();
     expect(factionOf(r, "moweyds")).toBeUndefined();
@@ -267,7 +269,12 @@ describe("開始地点の選び方（eval_v3〜v6 の性質を保つ）", () => 
     expect(far.weight).toBeCloseTo(SQ, 10);
     expect(far.value).toBe(B);
     expect(hh.total).toBe(Math.round(39 + 10 * SQ));
-    expect(r.breakdown.planetTypeTotals.RED).toBe(hh.total);
+    // ダー・シュワーム人（開始 1 ヶ所 × 1.5）: 開始 (3,0) ＝ 19 × 1.5 ＋ 20 × 0.71 ＋ 10 × 0.71 ＝ 49.7 → 50 で赤の代表
+    const iv = factionOf(r, "ivits");
+    expect(iv.starts).toEqual(["3,0"]);
+    expect(iv.total).toBe(Math.round(19 * 1.5 + 30 * SQ));
+    expect(auditOf(r).startAccess.representative.RED).toBe("ivits");
+    expect(r.breakdown.planetTypeTotals.RED).toBe(iv.total);
   });
 
   it("開始地点は母星色からだけ選ぶ。ガイア・次元横断の方が値が高くても開始地点にならない", () => {
@@ -310,14 +317,20 @@ describe("開始地点の選び方（eval_v3〜v6 の性質を保つ）", () => 
     expect(r.breakdown.axesByType.own.YELLOW).toBe(59);
   });
 
-  it("ダー・シュワーム人は開始1ヶ所。隣接の同色はコスト0で割引なし。同点はハッシュ・ホラ人が代表", () => {
+  it("ダー・シュワーム人は開始1ヶ所（値 × 1.5）。隣接の同色はコスト0で割引なし", () => {
+    // 赤 (1,0)=20、(2,0)=19（船から距離 1 / 2）。ハッシュ・ホラ人は 2 ヶ所で 39。
+    // ダー・シュワーム人は (1,0) を開始地点（20 × 1.5 ＝ 30）に選び、(2,0) は隣接 → コスト 0 で 19 → 49
     const r = evaluateSoft(extractedOf([cell({ q: 1, r: 0, color: "RED" }), cell({ q: 2, r: 0, color: "RED" })], [scout(0, 0, "twilight")]), { ...BASE_SOFT, wScout: 10 });
-    expect(factionOf(r, "ivits").starts).toHaveLength(1);
+    expect(factionOf(r, "ivits").starts).toEqual(["1,0"]);
     expect(factionOf(r, "hadschHallas").starts).toHaveLength(2);
     expect(factionOf(r, "hadschHallas").total).toBe(39);
-    expect(factionOf(r, "ivits").total).toBe(20 + 19);
+    expect(factionOf(r, "ivits").total).toBe(20 * 1.5 + 19);
+    expect(rowOf(r, "ivits", "1,0").weight).toBe(1.5);
     expect(rowOf(r, "ivits", "2,0").cost).toBe(0);
-    expect(auditOf(r).startAccess.representative.RED).toBe("hadschHallas");
+    expect(rowOf(r, "ivits", "2,0").weight).toBe(1);
+    expect(auditOf(r).startAccess.representative.RED).toBe("ivits");
+    // 倍率の無い種族の開始地点の重みは 1 のまま
+    expect(rowOf(r, "hadschHallas", "1,0").weight).toBe(1);
   });
 
   it("航行 Lv1 開始のアンバス人は距離2の跳躍 0.5、タクロン族は 1（改造種族なので他色は × 1.2）", () => {
@@ -398,7 +411,9 @@ describe("端の罰点「欠けマス × w」（2026-10-04 確定、eval_v4。ev
     expect(hh.touch).toBe(0);
     expect(hh.base).toBe(B);
     expect(hh.total).toBe(Math.round(B - 3.5));
-    expect(red.breakdown.planetTypeTotals.RED).toBe(hh.total);
+    // 赤の代表はダー・シュワーム人（(B − 3.5) × 1.5 ＝ 9.75 → 10）。罰点も倍率の中に入る
+    expect(factionOf(red, "ivits").total).toBe(Math.round((B - 3.5) * 1.5));
+    expect(red.breakdown.planetTypeTotals.RED).toBe(Math.round((B - 3.5) * 1.5));
     const rg = auditOf(red).rimGap;
     expect(rg).toEqual({ w: 0.5, range: 2, ringCells: 18, missingByCell: { "5,-2": 7 } });
     expect(auditOf(red).outerHits).toEqual([expect.objectContaining({ cellKey: "5,-2", planetType: "RED", missing: 7, value: -3.5 })]);

@@ -57,6 +57,10 @@ const overrideSet = (set: ReadonlySet<string>, env: string | undefined) => {
 };
 overrideSet(TERRAFORM_FACTIONS, process.env.TERRA);
 overrideSet(GAIA_FACTIONS, process.env.GAIA_FACTIONS);
+// ダー・シュワーム人の開始地点の倍率（eval_v8。既定はコードの 1.5）: START_SCALE_IVITS=1.3 npx tsx ...
+if (process.env.START_SCALE_IVITS != null && process.env.START_SCALE_IVITS !== "") {
+  (BASIC_REACH_PROFILES.ivits as { startValueScale?: number }).startValueScale = Number(process.env.START_SCALE_IVITS);
+}
 
 console.log(
   `定数: 固有値 ${UNIFIED_VALUE.BASE} / 母星色 ${UNIFIED_VALUE.OWN} / 他色 ${UNIFIED_VALUE.OTHER}（改造種族 ×${UNIFIED_VALUE.TERRA_BOOST}）/ ガイア ${UNIFIED_VALUE.GAIA} / ` +
