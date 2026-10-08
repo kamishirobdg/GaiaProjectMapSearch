@@ -7,6 +7,7 @@
 import React from "react";
 import type { Lang } from "./uiText";
 import { FACTIONS } from "@/gaia/eval/factionWeights";
+import { SHIP_LABEL, type ShipId } from "@/gaia/setup/types";
 
 export const PLANET_ORDER = ["BLACK", "BLUE", "BROWN", "ORANGE", "RED", "WHITE", "YELLOW"] as const;
 export type PlanetTypeKey = (typeof PLANET_ORDER)[number];
@@ -153,17 +154,23 @@ export function axisMarkers(
   const doTouch = () =>
     (audit.touchHits ?? []).forEach((h: any) => push(h.cellKey, h.planetType, (lang === "ja" ? " / 外周" : " / touch") + rim(h)));
   const byShip = (h: any) => opts?.scoutId == null || String(h.scoutId ?? "") === opts.scoutId;
+  // どの船由来かはマーカーの色ではなくポップアップで示す（2026-10-08 ユーザー判断: 船別色は分かりやすくならない）
+  const ship = (h: any) => {
+    const id = String(h?.scoutId ?? "") as ShipId;
+    const l = SHIP_LABEL[id];
+    return l ? ` / ${lang === "ja" ? l.ja : l.en}` : "";
+  };
   const doScout = () =>
     (audit.scout?.scoutHits ?? [])
       .filter(byShip)
       .forEach((h: any) =>
-        push(h.planetKey, h.planetType, (lang === "ja" ? ` / 船接触 +${h.value}` : ` / scout +${h.value}`) + dist(h.distance))
+        push(h.planetKey, h.planetType, (lang === "ja" ? ` / 船接触 +${h.value}` : ` / scout +${h.value}`) + dist(h.distance) + ship(h))
       );
   const doScoutCore = () =>
     (audit.scoutCore?.coreHits ?? [])
       .filter(byShip)
       .forEach((h: any) =>
-        push(h.corePlanetKey, h.corePlanetType, (lang === "ja" ? ` / 船星系 +${h.value}` : ` / core +${h.value}`) + dist(h.distance))
+        push(h.corePlanetKey, h.corePlanetType, (lang === "ja" ? ` / 船星系 +${h.value}` : ` / core +${h.value}`) + dist(h.distance) + ship(h))
       );
   if (axis === "outer") doOuter();
   else if (axis === "touch") doTouch();
