@@ -18,11 +18,13 @@ import {
   topFactions,
   LIST_FACTION_PREF_W,
   type FactionPref,
+  type FactionScores,
   type RecommendCriterion,
   type Recommendation,
 } from "@/gaia/eval/factionEval";
 import type { FactionId } from "@/gaia/eval/factionWeights";
 import { mapFactionScores, mapValueByFaction } from "@/gaia/eval/mapFaction";
+import { applyShipInteraction, shipInteractionOf } from "@/gaia/eval/shipInteraction";
 import { isDefaultScoreBlend, type ScoreBlend } from "@/gaia/eval/scoreBlend";
 import type { FactionPrefByFaction, SetupWeights } from "@/gaia/eval/setupWeights";
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
@@ -201,7 +203,7 @@ function planSetupToMap(a: PairPlanInput): PairPlan {
 
   const settings = setupSettingsOf(src);
   const result = buildSetupFromSeed(src.input);
-  const setupScores = scoreSetupFactions(result, a.evalWeights);
+  const rawSetupScores = scoreSetupFactions(result, a.evalWeights);
   // 人数/拡張が一致するマップだけを対象にする。
   const cands = a.selectableMaps.filter((c) => {
     const tid = a.templateIdBySearchKey[c.searchKey] ?? "";
@@ -209,13 +211,16 @@ function planSetupToMap(a: PairPlanInput): PairPlan {
     const s = deriveSetupSettings(tid);
     return s.lf === settings.lf && (s.lf ? s.players === settings.players : true);
   });
-  const scored: Array<{ c: PersistedCandidate; score: number; top: MapTop }> = [];
+  const scored: Array<{ c: PersistedCandidate; score: number; top: MapTop; setupScores: FactionScores }> = [];
   for (const c of cands) {
     const top = mapTopOf(c, a.templateIdBySearchKey);
     if (!top) continue;
+    // 船の相互作用（段階 1、2026-10-08）: 組にするマップごとに船のタイルの値を船接触で増減する
+    const setupScores = applyShipInteraction(rawSetupScores, shipInteractionOf(result, breakdownOf(c), a.evalWeights));
     scored.push({
       c,
       top,
+      setupScores,
       score: criterionScore(a.criterion, setupScores, {
         playerCount: settings.players,
         lostFleet: settings.lf,
@@ -239,7 +244,7 @@ function planSetupToMap(a: PairPlanInput): PairPlan {
       rec: {
         input: src.input,
         result,
-        setupScores,
+        setupScores: x.setupScores,
         criterion: a.criterion,
         score: x.score,
         trials: cands.length,
@@ -314,7 +319,8 @@ function planSavedSetups(a: PairPlanInput, m: MapSide): PairPlan {
   });
   const scored = cands.map((r) => {
     const res = buildSetupFromSeed(r.input);
-    const scores = scoreSetupFactions(res, a.evalWeights);
+    // 船の相互作用（段階 1、2026-10-08）: 起点マップの船接触で船のタイルの値を増減する
+    const scores = applyShipInteraction(scoreSetupFactions(res, a.evalWeights), shipInteractionOf(res, breakdownOf(m.selected), a.evalWeights));
     return {
       r,
       res,
@@ -382,6 +388,8 @@ function planRandomSetups(a: PairPlanInput, m: MapSide): PairPlan {
     weights: a.evalWeights,
     factionPref: m.pref,
     topN: PAIR_TOP_N,
+    // 船の相互作用（段階 1、2026-10-08）: 起点マップの船接触で船のタイルの値を増減する
+    adjustSetupScores: (res, scores) => applyShipInteraction(scores, shipInteractionOf(res, breakdownOf(m.selected), a.evalWeights)),
   });
   return {
     ok: true,

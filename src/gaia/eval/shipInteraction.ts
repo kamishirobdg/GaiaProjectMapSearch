@@ -1,0 +1,128 @@
+// src/gaia/eval/shipInteraction.ts
+//
+// LF 船の中身とスカウトの位置の相互作用・段階 1（2026-10-08 ユーザー確定 案 (ii) 加重和、α 0.5）。
+// docs/design-notes.md 2.10「船の相互作用（段階 1）」、TODO.md「LF船の中身と、スカウトの位置の相互作用」。
+//
+// 背景: 船に乗る基本技術・金枠同盟・アーティファクト（Setup 側の lfShip カテゴリ）はルール上その船へ
+// 到達しないと取れないが、Setup の採点は船の位置に関係なく足していた。Map 側には船ごとの船接触
+// （船 s から距離 R 以内の惑星の値の合計 C_s）があるので、List / Total でマップとセットアップを組に
+// したときだけ、船 s に乗るタイルの種族別の値 T_{s,f} を船接触の相対値で増減する。
+//
+//   加点_f ＝ Σ_s α × (C_s − C̄) / C̄ × T_{s,f}      C̄ ＝ 使う船の平均の船接触
+//
+//   - Σ_s (C_s − C̄) ＝ 0 なので、T が全船で同じなら加点は 0。合計の桁は現状のまま、近い船のタイルが
+//     重く、遠い船のタイルが軽くなるだけ。
+//   - α 0 で現状どおり、α 1 で「船接触の比で再配分」（掛け算。ユーザーの懸念どおり極端）。
+//     α ≦ 1 なら係数 (1 ＋ α × rel) ≧ 1 − α ≧ 0 で、届かない船のタイルも (1 − α) は残る。
+//   - 検索（Map の評価）には入れない。船ごとの内訳（scoutHits の scoutId）を持たない古い候補や
+//     基本版（船なし）は加点 0 ＝ 現状どおり。
+//   - α は調整必須のマジックナンバー（実測は scripts/_probe_ship_interaction.ts）。
+
+import { FACTION_IDS, type FactionId } from "./factionWeights";
+import type { FactionScores } from "./factionEval";
+import { shipTileCell, tileValueCell } from "./tileWeights";
+import { DEFAULT_SETUP_WEIGHTS, SETUP_SCORE_DIVISOR, type SetupWeights } from "./setupWeights";
+import { SHIP_IDS, type SetupResult, type ShipId } from "@/gaia/setup/types";
+
+/** 船接触の相対値に掛ける係数（案 (ii)。0 ＝ 無効、1 ＝ 船接触の比で再配分） */
+export const SHIP_INTERACTION_ALPHA = 0.5;
+
+export type ShipContact = Partial<Record<ShipId, number>>;
+
+function zeroScores(): FactionScores {
+  const out = {} as FactionScores;
+  for (const f of FACTION_IDS) out[f] = 0;
+  return out;
+}
+
+const isShipId = (s: string): s is ShipId => (SHIP_IDS as readonly string[]).includes(s);
+
+/**
+ * Map の評価内訳から、船ごとの船接触の合計 C_s（その船から距離 R 以内の惑星の船接触の値の和）。
+ * `audit.scout.scoutHits` の scoutId で集計する。ヒットが無い（基本版、または scoutId を持たない
+ * 古い候補）なら null ＝ 相互作用なし。
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function shipContactOf(mapBreakdown: any): ShipContact | null {
+  const hits = mapBreakdown?.audit?.scout?.scoutHits;
+  if (!Array.isArray(hits) || hits.length === 0) return null;
+  const out: ShipContact = {};
+  let any = false;
+  for (const h of hits) {
+    const id = String(h?.scoutId ?? "");
+    if (!isShipId(id)) continue;
+    const v = Number(h?.value) || 0;
+    out[id] = (out[id] ?? 0) + v;
+    any = true;
+  }
+  return any ? out : null;
+}
+
+/**
+ * 船 s に乗るタイルの種族別の値 T_{s,f}。船の基本技術・金枠同盟はその船、アーティファクトは
+ * トワイライト（アーティファクト枠を持つ船）。lfShip の係数と SETUP_SCORE_DIVISOR を掛けて
+ * `setupFactionBreakdown` の lfShip と同じ桁にする（全船の和 ＝ lfShip の列）。
+ */
+export function shipTileValuesByShip(result: SetupResult, weights?: SetupWeights): Partial<Record<ShipId, FactionScores>> {
+  const out: Partial<Record<ShipId, FactionScores>> = {};
+  if (result.mode !== "lostFleet") return out;
+  const w = weights ?? DEFAULT_SETUP_WEIGHTS;
+  const scale = w.lfShip / SETUP_SCORE_DIVISOR;
+  const add = (ship: ShipId, cell: Partial<Record<FactionId, number>> | undefined) => {
+    if (!cell) return;
+    const row = (out[ship] ??= zeroScores());
+    for (const [f, v] of Object.entries(cell)) row[f as FactionId] += (v ?? 0) * scale;
+  };
+  for (const [ship, id] of Object.entries(result.shipTech ?? {})) if (id && isShipId(ship)) add(ship, shipTileCell(id, ship, true));
+  for (const [ship, id] of Object.entries(result.goldFederations ?? {})) if (id && isShipId(ship)) add(ship, shipTileCell(id, ship, true));
+  for (const id of result.artifacts ?? []) add("twilight", tileValueCell(id, true));
+  return out;
+}
+
+export type ShipInteraction = {
+  alpha: number;
+  /** 使った船と、その船接触・相対値 (C_s − C̄) / C̄ */
+  ships: Array<{ ship: ShipId; contact: number; rel: number }>;
+  /** 平均の船接触 C̄ */
+  mean: number;
+  /** 種族ごとの加点（Setup の値に足す。桁は Setup の評価値と同じ） */
+  bonus: FactionScores;
+};
+
+/**
+ * 加点を計算する。材料（船接触・船のタイル）が無い、または船接触の平均が 0 なら null。
+ * 使う船は result.ships（無ければ 4 隻）。船接触の無い船は C_s ＝ 0 として平均に入れる。
+ */
+export function shipInteractionOf(
+  result: SetupResult,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mapBreakdown: any,
+  weights?: SetupWeights,
+  alpha: number = SHIP_INTERACTION_ALPHA
+): ShipInteraction | null {
+  if (!(alpha > 0) || result.mode !== "lostFleet") return null;
+  const contact = shipContactOf(mapBreakdown);
+  if (!contact) return null;
+  const tiles = shipTileValuesByShip(result, weights);
+  const ships = (result.ships && result.ships.length > 0 ? result.ships : SHIP_IDS).filter(isShipId);
+  if (ships.length === 0) return null;
+  const mean = ships.reduce((a, s) => a + (contact[s] ?? 0), 0) / ships.length;
+  if (!(mean > 0)) return null;
+  const rows = ships.map((s) => ({ ship: s, contact: contact[s] ?? 0, rel: ((contact[s] ?? 0) - mean) / mean }));
+  const bonus = zeroScores();
+  for (const r of rows) {
+    const t = tiles[r.ship];
+    if (!t) continue;
+    const k = alpha * r.rel;
+    for (const f of FACTION_IDS) bonus[f] += k * (t[f] ?? 0);
+  }
+  return { alpha, ships: rows, mean, bonus };
+}
+
+/** Setup の評価値に加点を足した写し（加点が無ければそのまま返す）。 */
+export function applyShipInteraction(setupScores: FactionScores, si: ShipInteraction | null): FactionScores {
+  if (!si) return setupScores;
+  const out = { ...setupScores };
+  for (const f of FACTION_IDS) out[f] = (out[f] ?? 0) + (si.bonus[f] ?? 0);
+  return out;
+}

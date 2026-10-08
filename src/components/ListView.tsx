@@ -44,6 +44,7 @@ import {
   type FactionScores,
   type RecommendCriterion,
 } from "@/gaia/eval/factionEval";
+import { applyShipInteraction, shipInteractionOf } from "@/gaia/eval/shipInteraction";
 import { FACTIONS, FACTION_IDS, type FactionId } from "@/gaia/eval/factionWeights";
 import { mapValueByFaction } from "@/gaia/eval/mapFaction";
 import { blendScores, isDefaultScoreBlend, type ScoreBlend } from "@/gaia/eval/scoreBlend";
@@ -831,6 +832,9 @@ export default function ListView() {
           ? (selectableMaps.find((c) => String(c.placementHash ?? "") === o.mapHash) ?? null)
           : null;
         const result = buildSetupFromSeed(o.input);
+        // 船の相互作用（段階 1、2026-10-08）: 提案時（pairPlan）と同じく、組にしたマップの船接触で船のタイルの値を増減
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mapBreakdown = (map as any)?.evaluation?.breakdown ?? null;
         return {
           key: `log:${e.id}:${i}`,
           mapId: map?.id ?? "",
@@ -838,7 +842,7 @@ export default function ListView() {
           rec: {
             input: o.input,
             result,
-            setupScores: scoreSetupFactions(result, evalWeights),
+            setupScores: applyShipInteraction(scoreSetupFactions(result, evalWeights), shipInteractionOf(result, mapBreakdown, evalWeights)),
             criterion: e.criterion,
             score: o.score,
             trials: e.count,

@@ -524,6 +524,11 @@ export function recommendSetups(args: {
   colorPref?: SetupColorPref;
   /** 種族優遇/冷遇（List 用。2026-07-31）。 */
   factionPref?: FactionPref;
+  /**
+   * 採点前に Setup の値を書き換えるフック（List の船の相互作用・段階 1、2026-10-08。
+   * 組にしたマップの船接触で船のタイルの値を増減する）。返した値が基準の採点と Recommendation.setupScores に入る。
+   */
+  adjustSetupScores?: (result: SetupResult, scores: FactionScores) => FactionScores;
 }): Recommendation[] {
   const {
     criterion,
@@ -537,6 +542,7 @@ export function recommendSetups(args: {
     baseInput,
     colorPref,
     factionPref,
+    adjustSetupScores,
   } = args;
   if (topN <= 0) return [];
   const all: Recommendation[] = [];
@@ -549,7 +555,8 @@ export function recommendSetups(args: {
           ...(lostFleet ? { mode: "lostFleet" as const } : {}),
         };
     const result = buildSetupFromSeed(input);
-    const setupScores = scoreSetupFactions(result, weights);
+    const raw = scoreSetupFactions(result, weights);
+    const setupScores = adjustSetupScores ? adjustSetupScores(result, raw) : raw;
     const score = criterionScore(criterion, setupScores, {
       playerCount,
       mapTop3,

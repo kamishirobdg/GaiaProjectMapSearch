@@ -29,6 +29,7 @@ import { buildMapPool } from "@/lib/mapCandidates";
 import { deriveSetupSettings, setupSettingsOf } from "@/lib/pairPlan";
 import { mapValueByFaction } from "@/gaia/eval/mapFaction";
 import { scoreSetupFactions, type FactionScores } from "@/gaia/eval/factionEval";
+import { applyShipInteraction, shipInteractionOf } from "@/gaia/eval/shipInteraction";
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
 import { factionsForMode, type FactionId } from "@/gaia/eval/factionWeights";
 import { factionHomeBg, useScoreBlend, useSetupWeights } from "@/components/FactionEvalPanel";
@@ -362,7 +363,10 @@ export default function TotalView() {
     if (!selectedMap || !setupInput) return null;
     const bd = breakdownOf(selectedMap);
     const mapScores: FactionScores = mapValueByFaction(bd);
-    const setupScores = scoreSetupFactions(buildSetupFromSeed(setupInput), evalWeights);
+    // 船の相互作用（段階 1、2026-10-08）: 船に乗るタイルの値を、このマップの船接触の相対値で増減する。
+    // List の「合計の上位」と同じ経路（pairPlan / ListView も applyShipInteraction を通す）。
+    const setupResult = buildSetupFromSeed(setupInput);
+    const setupScores = applyShipInteraction(scoreSetupFactions(setupResult, evalWeights), shipInteractionOf(setupResult, bd, evalWeights));
     return factionsForMode(lf)
       .map((f) => ({
         id: f.id as FactionId,
