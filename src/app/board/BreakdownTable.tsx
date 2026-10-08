@@ -190,9 +190,11 @@ export function axisMarkers(
 
 /**
  * 種族の行の planets（全惑星の到達コスト・重み・値。eval_v7）から、種別 dest の列のマーカーを作る。
- * 到達できる惑星（重み > 0）だけ。ラベルは「種別 / 列 値 × 到達係数 ＝ 寄与（コスト c）」。
- * dest=null は全種別（開始地点も含む）。
+ * **到達コスト ≦ MARKER_MAX_REACH_COST（到達係数 ≧ 0.5）の惑星だけ**（2026-10-08 ユーザー確定 案 (a)。
+ * 重み > 0 の全惑星だとほぼ全部が光ってマーカーの意味が無かった）。開始地点は常に出す。
+ * ラベルは「種別 / 列 値 × 到達係数 ＝ 寄与（コスト c）」。dest=null は全種別（開始地点も含む）。
  */
+export const MARKER_MAX_REACH_COST = 2;
 export function factionKindMarkers(entry: any, dest: KindColumn | null, lang: Lang): BreakdownMarker[] {
   const planets: any[] = Array.isArray(entry?.planets) ? entry.planets : [];
   const out: BreakdownMarker[] = [];
@@ -205,8 +207,10 @@ export function factionKindMarkers(entry: any, dest: KindColumn | null, lang: La
     const kind = String(p?.kind ?? "");
     const value = Number(p?.value) || 0;
     const cost = Number(p?.cost);
+    // 開始地点はコスト 0（重みは 1。開始地点の値に倍率のある種族＝ダー・シュワーム人はその倍率）
+    const isStart = cost === 0;
+    if (!isStart && !(cost <= MARKER_MAX_REACH_COST)) continue;
     const col = p?.dest ? (lang === "ja" ? KIND_LABEL[p.dest as KindColumn]?.ja : KIND_LABEL[p.dest as KindColumn]?.en) ?? String(p.dest) : "";
-    const isStart = w === 1 && cost === 0;
     const label =
       lang === "ja"
         ? `${markerColorLabel(kind, lang)} / ${col} ${round2(value)} × ${round2(w)} ＝ ${round2(value * w)}` +
@@ -430,7 +434,7 @@ export function ColorBreakdownTable({
               : k === "transdim"
                 ? `次元横断惑星（係数 ${c("TRANSDIM")}、ガイア種族 ${c("GAIA_FACTION_TRANSDIM")}。入植コスト 2、ガイア Lv1 開始 1、イタル人 1.5）`
                 : `原始・小惑星（係数 ${c("EXTRA")}。入植コスト 原始 3 / 小惑星 2）`;
-      return `${row.label} の ${what} の寄与の合計。クリックで到達できる惑星を地図にマーク（Ctrlで複数選択）`;
+      return `${row.label} の ${what} の寄与の合計。クリックで到達コスト ${MARKER_MAX_REACH_COST} 以内（到達係数 0.5 以上）の惑星を地図にマーク（Ctrlで複数選択）`;
     }
     const what =
       k === "own"
@@ -442,7 +446,7 @@ export function ColorBreakdownTable({
             : k === "transdim"
               ? `transdim planets (coef ${c("TRANSDIM")}, gaia factions ${c("GAIA_FACTION_TRANSDIM")}; settlement cost 2, gaia Lv1 1, Itars 1.5)`
               : `proto / asteroid planets (coef ${c("EXTRA")}; settlement cost 3 / 2)`;
-    return `${row.label}: contribution of ${what}. Click to mark the reachable planets (Ctrl = multi-select)`;
+    return `${row.label}: contribution of ${what}. Click to mark the planets within reach cost ${MARKER_MAX_REACH_COST} (reach factor ≥ 0.5) (Ctrl = multi-select)`;
   };
 
   const renderFactionCell = (colKey: (typeof COL_ORDER)[number], row: { id: string; color: string; label: string; e: any }) => {
