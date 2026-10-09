@@ -190,11 +190,15 @@ export function axisMarkers(
 
 /**
  * 種族の行の planets（全惑星の到達コスト・重み・値。eval_v7）から、種別 dest の列のマーカーを作る。
- * **到達コスト ≦ MARKER_MAX_REACH_COST（到達係数 ≧ 0.5）の惑星だけ**（2026-10-08 ユーザー確定 案 (a)。
- * 重み > 0 の全惑星だとほぼ全部が光ってマーカーの意味が無かった）。開始地点は常に出す。
+ * **到達コスト ≦ MARKER_MAX_REACH_COST の惑星だけ**（2026-10-08 ユーザー確定 案 (a)、上限 2＝到達係数 0.5 以上。
+ * 重み > 0 の全惑星だとほぼ全部が光ってマーカーの意味が無かった。2026-10-09 ユーザー指示で上限 3＝到達係数 0.25 以上に。
+ * 種族平均のマーカー数は 他色 3 → 9〜10 個、ガイア 1 → 3〜4、次元横断 1 → 2〜3、原始・小惑星 0〜1 → 1。
+ * 調整の第一候補の定数。docs/tuning-guide.md）。開始地点は常に出す。
  * ラベルは「種別 / 列 値 × 到達係数 ＝ 寄与（コスト c）」。dest=null は全種別（開始地点も含む）。
  */
-export const MARKER_MAX_REACH_COST = 2;
+export const MARKER_MAX_REACH_COST = 3;
+/** 上限コストに対応する到達係数（0.5^(コスト−1)。表示用） */
+export const MARKER_MIN_REACH_FACTOR = Math.pow(0.5, MARKER_MAX_REACH_COST - 1);
 export function factionKindMarkers(entry: any, dest: KindColumn | null, lang: Lang): BreakdownMarker[] {
   const planets: any[] = Array.isArray(entry?.planets) ? entry.planets : [];
   const out: BreakdownMarker[] = [];
@@ -434,7 +438,7 @@ export function ColorBreakdownTable({
               : k === "transdim"
                 ? `次元横断惑星（係数 ${c("TRANSDIM")}、ガイア種族 ${c("GAIA_FACTION_TRANSDIM")}。入植コスト 2、ガイア Lv1 開始 1、イタル人 1.5）`
                 : `原始・小惑星（係数 ${c("EXTRA")}。入植コスト 原始 3 / 小惑星 2）`;
-      return `${row.label} の ${what} の寄与の合計。クリックで到達コスト ${MARKER_MAX_REACH_COST} 以内（到達係数 0.5 以上）の惑星を地図にマーク（Ctrlで複数選択）`;
+      return `${row.label} の ${what} の寄与の合計。クリックで到達コスト ${MARKER_MAX_REACH_COST} 以内（到達係数 ${MARKER_MIN_REACH_FACTOR} 以上）の惑星を地図にマーク（Ctrlで複数選択）`;
     }
     const what =
       k === "own"
@@ -446,7 +450,7 @@ export function ColorBreakdownTable({
             : k === "transdim"
               ? `transdim planets (coef ${c("TRANSDIM")}, gaia factions ${c("GAIA_FACTION_TRANSDIM")}; settlement cost 2, gaia Lv1 1, Itars 1.5)`
               : `proto / asteroid planets (coef ${c("EXTRA")}; settlement cost 3 / 2)`;
-    return `${row.label}: contribution of ${what}. Click to mark the planets within reach cost ${MARKER_MAX_REACH_COST} (reach factor ≥ 0.5) (Ctrl = multi-select)`;
+    return `${row.label}: contribution of ${what}. Click to mark the planets within reach cost ${MARKER_MAX_REACH_COST} (reach factor ≥ ${MARKER_MIN_REACH_FACTOR}) (Ctrl = multi-select)`;
   };
 
   const renderFactionCell = (colKey: (typeof COL_ORDER)[number], row: { id: string; color: string; label: string; e: any }) => {
