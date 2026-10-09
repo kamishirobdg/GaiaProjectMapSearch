@@ -7,7 +7,7 @@ export type Lang = "ja" | "en";
 
 export const UI_TEXT = {
   en: {
-    title: "Board Export",
+    title: "Board",
     language: "Language",
     ja: "日本語",
     en: "EN",
@@ -244,7 +244,7 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     tipTotalCol: "Sum of the kind columns for that faction: every planet counted as coefficient(kind) x (base 10 + scout + core + rim penalty) x reach factor",
   },
   ja: {
-    title: "ボード表示（確認用）",
+    title: "ボード表示",
     language: "言語",
     ja: "日本語",
     en: "EN",

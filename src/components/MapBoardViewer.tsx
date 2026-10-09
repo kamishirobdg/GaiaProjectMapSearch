@@ -934,7 +934,10 @@ export function MapBoardViewer(props: {
           height={exportSvgSize ? exportSvgSize.height : "100%"}
           viewBox={viewBox}
           preserveAspectRatio="xMinYMin meet"
-          style={{ background: bgColor, border: "none", borderRadius: 8, touchAction: "none",
+          // touch-action: パンを無効にした固定表示（Map / List）では "auto" にして、画像の上で指を
+          // 動かしてもページ全体のスクロールを妨げない（2026-10-09 Android で「画像をタップしてスクロール
+          // できない」要望）。パン有効のときだけ "none"（ブラウザのスクロールと取り合わないため）。
+          style={{ background: bgColor, border: "none", borderRadius: 8, touchAction: disablePan ? "auto" : "none",
     // 下へずらす分は rotate より先に適用する（画面座標でそのまま下方向に動く）。
     transform: `${nudgeYpx ? `translateY(${fmtNum(nudgeYpx, 2)}px) ` : ""}rotate(${viewAngleDeg}deg)`,
     transformOrigin: "50% 50%", }}
