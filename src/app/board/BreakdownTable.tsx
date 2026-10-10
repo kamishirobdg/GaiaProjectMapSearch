@@ -90,11 +90,13 @@ export const EXTRA_LABEL_JA: Record<string, string> = {
 export const KIND_COLUMNS = ["own", "other", "gaia", "transdim", "extra"] as const;
 export type KindColumn = (typeof KIND_COLUMNS)[number];
 
+// 画面の列名（2026-10-10 ユーザー指定: 母星色→母星、ガイア→緑、次元横断→紫。原始・小惑星は列見出しだけ「拡張星」）。
+// ドキュメントと設計ノートでは引き続き「母星色 / 他色 / ガイア / 次元横断 / 原始・小惑星」と呼ぶ
 export const KIND_LABEL: Record<KindColumn, { ja: string; en: string }> = {
-  own: { ja: "母星色", en: "home" },
+  own: { ja: "母星", en: "home" },
   other: { ja: "他色", en: "other" },
-  gaia: { ja: "ガイア", en: "gaia" },
-  transdim: { ja: "次元横断", en: "transdim" },
+  gaia: { ja: "緑", en: "gaia" },
+  transdim: { ja: "紫", en: "transdim" },
   extra: { ja: "原始・小惑星", en: "proto/asteroid" },
 };
 
@@ -486,21 +488,7 @@ export function ColorBreakdownTable({
     );
   };
 
-  // 列ヘッダの ◎: 種別がどの種族から見ても同じ列（ガイア・次元横断・原始・小惑星）は、最初の行の planets から
-  // その種別の惑星を全部マークする（到達できるかは種族で違うので、ここでは重みを見ない）。
-  const headerMarkers = (ck: string): BreakdownMarker[] => {
-    const first = factionRows[0]?.e;
-    const planets: any[] = Array.isArray(first?.planets) ? first.planets : [];
-    const kinds = ck === "gaia" ? ["GAIA"] : ck === "transdim" ? ["TRANSDIM"] : ck === "extra" ? ["PROTO", "ASTEROID"] : null;
-    if (!kinds) return [];
-    return planets
-      .filter((p) => kinds.includes(String(p?.kind ?? "")))
-      .map((p) => ({
-        key: String(p.cellKey),
-        color: RING_COLOR[String(p.kind)] ?? "#666666",
-        label: `${markerColorLabel(String(p.kind), lang)}`,
-      }));
-  };
+  // 列ヘッダの ◎（その種別の惑星を全部マーク）は 2026-10-10 に廃止（ユーザー要望。種族の行のセルから種別ごとにマークできる）
 
   // 評価の列には集計の仕組みをホバーで出す（設計意図を画面でも読めるようにする。2026-10-03、eval_v7 で式を更新）
   const headTip = (ck: string): string | undefined => {
@@ -535,24 +523,9 @@ export function ColorBreakdownTable({
             {COL_ORDER.map((ck) => {
               if (!cols[ck]) return null;
               const label = lang === "ja" ? COL_LABEL[ck].ja : COL_LABEL[ck].en;
-              const axisId = `${ck}:*`;
-              const canMark = !!onMark && hasKinds && (ck === "gaia" || ck === "transdim" || ck === "extra");
               return (
                 <th key={ck} style={thStyle} title={headTip(ck)}>
                   {label}
-                  {canMark ? (
-                    <span
-                      role="button"
-                      title={lang === "ja" ? "この種別の惑星を全部マーク（Ctrlで追加）" : "Mark every planet of this kind (Ctrl = add)"}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onMark!(axisId, headerMarkers(ck), e.ctrlKey || e.metaKey);
-                      }}
-                      style={{ cursor: "pointer", marginLeft: 4, fontSize: 12, color: isActiveSource(axisId) ? "#2b7fe0" : "#aaa" }}
-                    >
-                      ◎
-                    </span>
-                  ) : null}
                 </th>
               );
             })}

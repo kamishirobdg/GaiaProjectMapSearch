@@ -86,6 +86,7 @@ import {
 
 import { UI_TEXT, type Lang, type UiKey } from "./uiText";
 import { ColorBreakdownTable, PLANET_ORDER, PLANET_LABEL_JA, PLANET_INPUT_BG, EXTRA_INPUT_BG, fmt0, axisMarkers, type BreakdownMarker, type MarkAxis, type PlanetTypeKey } from "./BreakdownTable";
+import { SHIP_LABEL } from "@/gaia/setup/types";
 
 function parseSeedStart(seed: string): number {
   const n = parseInt(seed, 10);
@@ -2640,7 +2641,13 @@ const handleDeleteUsed = React.useCallback(
                 const s = String((r as any)?.seed ?? "0");
                 setSelectedSeedLabel(s);
                 setSeed(s);
-                if (isNarrow && narrowAutoDetail) selectNarrowTab("detail");
+                if (isNarrow && narrowAutoDetail) {
+                  // 詳細タブへ移り、最上部へ戻して盤面が見える位置に（2026-10-10 ユーザー要望）
+                  selectNarrowTab("detail");
+                  try {
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  } catch {}
+                }
               }}
               style={{
                 textAlign: "left",
@@ -3342,27 +3349,25 @@ const handleDeleteUsed = React.useCallback(
                   curScoutCore）は残してあるので、必要になったらここへ戻せる。 */}
 
               {displayResult ? (
-                // 既定で開く。表示は displayResult に基づき、条件変更で結果バケットが
-                // 空になっても直近結果を保持してパネルが縮まない（位置不変）。2026-07-24。
-                <details open suppressHydrationWarning style={{ marginTop: 10 }}>
-                  <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.85, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    {/* 列は種別ごと（eval_v7）。基本版は原始・小惑星（拡張星）の列を出さない */}
+                // 常に開いた状態（折りたたみは 2026-10-10 に廃止。閉じると何も残らないのでユーザー要望で不要）。
+                // 表示は displayResult に基づき、条件変更で結果バケットが空になっても直近結果を保持して
+                // パネルが縮まない（位置不変）。2026-07-24。
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ fontSize: 12, opacity: 0.85, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    {/* 列は種別ごと（eval_v7）。画面の列名は 母星 / 他色 / 緑 / 紫（/ 拡張星）。基本版は拡張星の列を出さない */}
                     <span>
                       {isBase
                         ? lang === "ja"
-                          ? "種族別の内訳（母星色 / 他色 / ガイア / 次元横断 / 評価）"
+                          ? "種族別の内訳（母星 / 他色 / 緑 / 紫 / 評価）"
                           : "By faction (home / other / gaia / transdim / total)"
                         : lang === "ja"
-                          ? "種族別の内訳（母星色 / 他色 / ガイア / 次元横断 / 拡張星 / 評価）"
+                          ? "種族別の内訳（母星 / 他色 / 緑 / 紫 / 拡張星 / 評価）"
                           : "By faction (home / other / gaia / transdim / ext. / total)"}
                     </span>
-                    {/* 列セレクタの開閉（2026-10-10 ユーザー確定 1-(a)。普段は使わないので畳んでおく）。
-                        summary の中なので details の開閉に伝播させない */}
+                    {/* 列セレクタの開閉（2026-10-10 ユーザー確定 1-(a)。普段は使わないので畳んでおく） */}
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
+                      onClick={() => {
                         setBreakdownColsOpen((v) => {
                           try {
                             localStorage.setItem("gaia_board_breakdown_cols_open", v ? "0" : "1");
@@ -3374,7 +3379,7 @@ const handleDeleteUsed = React.useCallback(
                     >
                       {lang === "ja" ? "列を選ぶ" : "Columns"}
                     </button>
-                  </summary>
+                  </div>
                   <div style={{ marginTop: 8, display: breakdownColsOpen ? "flex" : "none", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
                       <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.85 }}>
                         {lang === "ja" ? "詳細表表示" : "Table columns"}
@@ -3384,10 +3389,10 @@ const handleDeleteUsed = React.useCallback(
                       {(
                         [
                           ["total", "評価", "total", t("tipTotalCol")],
-                          ["own", "母星色", "home", t("tipColOwn")],
+                          ["own", "母星", "home", t("tipColOwn")],
                           ["other", "他色", "other", t("tipColOther")],
-                          ["gaia", "ガイア", "gaia", t("tipColGaia")],
-                          ["transdim", "次元横断", "transdim", t("tipColTransdim")],
+                          ["gaia", "緑（ガイア）", "gaia", t("tipColGaia")],
+                          ["transdim", "紫（次元横断）", "transdim", t("tipColTransdim")],
                           ...(isBase ? [] : [["extra", "拡張星（原始・小惑星）", "ext. (proto/asteroid)", t("tipColExtra")] as const]),
                         ] as ReadonlyArray<readonly [string, string, string, string]>
                       ).map(([k, ja, en, tip]) => (
@@ -3403,7 +3408,7 @@ const handleDeleteUsed = React.useCallback(
                     </div>
 
                     <div style={{ marginTop: 8 }}><ColorBreakdownTable breakdown={displayBreakdown} cols={breakdownCols} lang={lang} isBase={isBase} onMark={onMark} activeSources={activeSources} /></div>
-                </details>
+                </div>
               ) : null}
 
               {/* 生の breakdown(JSON) 詳細はユーザー向けでないため非表示（2026-07-24 ユーザー要望）。 */}
@@ -3550,50 +3555,32 @@ const handleDeleteUsed = React.useCallback(
               {/* eval_v6 までの「ガイア・星系を有効化」とガイア距離 2 / 3・星系の入力欄は eval_v7 で廃止。
                   固有値（10）と種別の係数は定数（reachCost.ts の UNIFIED_VALUE。内訳表の列ヘッダのホバーに説明）。 */}
 
-              {/* --- スカウト重み（LFのみ）: 4列×2段。列=船（トワイライト/エクリプス/
-                     リベリオン/TFマーズ）、上段=船接触・下段=船星系で同じ船が縦に並ぶ。2026-07-24 --- */}
+              {/* --- スカウト重み（LFのみ）: 船接触と船星系を見出しで分け、セルの名前は船名だけ
+                     （2026-10-10 ユーザー要望。「船接触(トワイライト)」だと狭い幅で 1 文字ずつ縦に折れていた）。
+                     列は広い幅 4・狭い幅 2。2026-07-24 の「同じ船が縦に並ぶ」配置から変更 --- */}
               {!isBase ? (
                 <div style={{ borderTop: "1px dashed #ddd", paddingTop: 8 }}>
-                  <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 6 }}>
-                    <Hint label={t("wScout")} tip={t("tipWScoutShip")} />
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8, alignItems: "start" }}>
-                    {/* 上段: 船接触（各船） */}
-                    <label {...evalCellProps("scout:twilight", "scout", { scoutId: "twilight" })}>
-                      <Hint label={t("wScoutS1")} tip={t("tipWScoutShip")} />
-                      <input type="number" value={wScoutS1} min={0} max={20} onChange={(e) => setWScoutS1(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
-                    </label>
-                    <label {...evalCellProps("scout:eclipse", "scout", { scoutId: "eclipse" })}>
-                      <Hint label={t("wScoutS2")} tip={t("tipWScoutShip")} />
-                      <input type="number" value={wScoutS2} min={0} max={20} onChange={(e) => setWScoutS2(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
-                    </label>
-                    <label {...evalCellProps("scout:rebellion", "scout", { scoutId: "rebellion" })}>
-                      <Hint label={t("wScoutS3")} tip={t("tipWScoutShip")} />
-                      <input type="number" value={wScoutS3} min={0} max={20} onChange={(e) => setWScoutS3(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
-                    </label>
-                    <label {...evalCellProps("scout:tfmars", "scout", { scoutId: "tfmars" })}>
-                      <Hint label={t("wScoutS4")} tip={t("tipWScoutShip")} />
-                      <input type="number" value={wScoutS4} min={0} max={20} onChange={(e) => setWScoutS4(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
-                    </label>
-
-                    {/* 下段: 船星系（各船） */}
-                    <label {...evalCellProps("scoutCore:twilight", "scoutCore", { scoutId: "twilight" })}>
-                      <Hint label={t("wScoutCoreS1")} tip={t("tipWScoutCoreShip")} />
-                      <input type="number" value={wScoutCoreS1} min={0} max={20} onChange={(e) => setWScoutCoreS1(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
-                    </label>
-                    <label {...evalCellProps("scoutCore:eclipse", "scoutCore", { scoutId: "eclipse" })}>
-                      <Hint label={t("wScoutCoreS2")} tip={t("tipWScoutCoreShip")} />
-                      <input type="number" value={wScoutCoreS2} min={0} max={20} onChange={(e) => setWScoutCoreS2(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
-                    </label>
-                    <label {...evalCellProps("scoutCore:rebellion", "scoutCore", { scoutId: "rebellion" })}>
-                      <Hint label={t("wScoutCoreS3")} tip={t("tipWScoutCoreShip")} />
-                      <input type="number" value={wScoutCoreS3} min={0} max={20} onChange={(e) => setWScoutCoreS3(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
-                    </label>
-                    <label {...evalCellProps("scoutCore:tfmars", "scoutCore", { scoutId: "tfmars" })}>
-                      <Hint label={t("wScoutCoreS4")} tip={t("tipWScoutCoreShip")} />
-                      <input type="number" value={wScoutCoreS4} min={0} max={20} onChange={(e) => setWScoutCoreS4(Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
-                    </label>
-
+                  {(
+                    [
+                      ["scout", t("wScout"), t("tipWScoutShip"), [wScoutS1, wScoutS2, wScoutS3, wScoutS4], [setWScoutS1, setWScoutS2, setWScoutS3, setWScoutS4]],
+                      ["scoutCore", t("wScoutCore"), t("tipWScoutCoreShip"), [wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4], [setWScoutCoreS1, setWScoutCoreS2, setWScoutCoreS3, setWScoutCoreS4]],
+                    ] as ReadonlyArray<readonly [MarkAxis, string, string, number[], Array<(v: number) => void>]>
+                  ).map(([axis, title, tip, values, setters]) => (
+                    <div key={axis} style={{ marginBottom: 8 }}>
+                      <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 6 }}>
+                        <Hint label={title} tip={tip} />
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: isNarrow ? "repeat(2, minmax(0, 1fr))" : "repeat(4, minmax(0, 1fr))", gap: 8, alignItems: "start" }}>
+                        {(["twilight", "eclipse", "rebellion", "tfmars"] as const).map((ship, i) => (
+                          <label key={ship} {...evalCellProps(`${axis}:${ship}`, axis, { scoutId: ship })}>
+                            <Hint label={lang === "ja" ? SHIP_LABEL[ship].ja : SHIP_LABEL[ship].en} tip={tip} />
+                            <input type="number" value={values[i]} min={0} max={20} onChange={(e) => setters[i](Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
                     <label style={{ display: "flex", gap: 8, alignItems: "center", gridColumn: "1 / -1", flexWrap: "wrap", marginTop: 2 }}>
                       <input type="checkbox" checked={scoutCoreAttribBest} onChange={(e) => setScoutCoreAttribBest(e.target.checked)} />
                       <Hint label={t("scoutCoreAttribBest")} tip={t("tipScoutCoreAttrib")} />
