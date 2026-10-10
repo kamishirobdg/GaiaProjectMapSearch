@@ -261,8 +261,14 @@ export function ColorBreakdownTable({
   isBase,
   onMark,
   activeSources,
+  compact = false,
 }: {
   breakdown: any;
+  /**
+   * 狭い幅の詰めた表示（2026-10-10 ユーザー確定 案 B）: 表幅を内容幅に（幅 100%・最小幅 620 をやめる）、
+   * 余白を 6/8 → 4/5px。375px で表が 620 → 283px になり横スクロールが消える。広い幅は従来どおり
+   */
+  compact?: boolean;
   /** 列の表示 ON/OFF（own / other / gaia / transdim / extra / total / cntOuter / cntTouch）。省略時は全部 */
   cols?: Partial<Record<KindColumn | "total" | "cntOuter" | "cntTouch", boolean>>;
   lang: Lang;
@@ -341,9 +347,10 @@ export function ColorBreakdownTable({
     ASTEROID: "#f2d7ec",
   };
 
+  const cellPad = compact ? "4px 5px" : "6px 8px";
   const thStyle: React.CSSProperties = {
     borderBottom: "1px solid #ddd",
-    padding: "6px 8px",
+    padding: cellPad,
     textAlign: "right",
     fontSize: 12,
     background: "#fafafa",
@@ -354,7 +361,7 @@ export function ColorBreakdownTable({
   };
   const tdStyle: React.CSSProperties = {
     borderBottom: "1px solid rgba(0,0,0,0.06)",
-    padding: "6px 8px",
+    padding: cellPad,
     textAlign: "right",
     fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
     fontSize: 12,
@@ -516,7 +523,7 @@ export function ColorBreakdownTable({
 
   return (
     <div style={{ overflowX: "auto", border: "1px solid #eee", borderRadius: 8 }}>
-      <table style={{ borderCollapse: "collapse", width: "100%", minWidth: hasCounts && (cols.cntOuter || cols.cntTouch) ? 760 : 620 }}>
+      <table style={compact ? { borderCollapse: "collapse", width: "auto" } : { borderCollapse: "collapse", width: "100%", minWidth: hasCounts && (cols.cntOuter || cols.cntTouch) ? 760 : 620 }}>
         <thead>
           <tr>
             <th style={{ ...thStyle, textAlign: "left" }}>{lang === "ja" ? "種族" : "Faction"}</th>
