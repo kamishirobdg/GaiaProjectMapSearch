@@ -431,6 +431,29 @@ React.useEffect(() => {
   const [showImportExport, setShowImportExport] = React.useState(false);
   // マップ調整ツールバーは不要になったため常時非表示（2026-07-24 ユーザー要望）。
   const [showSavedConditions, setShowSavedConditions] = React.useState(false);
+
+  /**
+   * 狭い幅の結果ペインのタブ（2026-10-10 ユーザー確定 5-(a)）: 候補 / 詳細 / 条件。縦に並べると詳細まで
+   * 何度もスクロールが要るので、盤面の下をタブにする。候補の行をタップすると詳細タブへ切り替える
+   * （narrowAutoDetail で止められる）。最後のタブと自動切替は localStorage に覚える（書込みは操作ハンドラのみ。
+   * 復元は起動時に 1 回。CLAUDE.md「互換の鉄則」）。広い幅のレイアウトは変えない。
+   */
+  const [narrowTab, setNarrowTab] = React.useState<"candidates" | "detail" | "conditions">("candidates");
+  const [narrowAutoDetail, setNarrowAutoDetail] = React.useState(true);
+  React.useEffect(() => {
+    try {
+      const tab = localStorage.getItem("gaia_board_narrow_tab");
+      if (tab === "candidates" || tab === "detail" || tab === "conditions") setNarrowTab(tab);
+      const auto = localStorage.getItem("gaia_board_narrow_auto_detail");
+      if (auto === "0") setNarrowAutoDetail(false);
+    } catch {}
+  }, []);
+  const selectNarrowTab = React.useCallback((tab: "candidates" | "detail" | "conditions") => {
+    setNarrowTab(tab);
+    try {
+      localStorage.setItem("gaia_board_narrow_tab", tab);
+    } catch {}
+  }, []);
   const [savedProfiles, setSavedProfiles] = React.useState<PersistedProfile[]>([]);
 
   // Saved-conditions UI
@@ -2595,6 +2618,7 @@ const handleDeleteUsed = React.useCallback(
                 const s = String((r as any)?.seed ?? "0");
                 setSelectedSeedLabel(s);
                 setSeed(s);
+                if (isNarrow && narrowAutoDetail) selectNarrowTab("detail");
               }}
               style={{
                 textAlign: "left",
@@ -2704,12 +2728,13 @@ const handleDeleteUsed = React.useCallback(
       />
 
       {/* --- header --- */}
-      <div style={{ padding: 12, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <div style={{ fontWeight: 700 }}>{t("title")}</div>
+      {/* 狭い幅では見出しを出さず（タブが Map なので自明）、ボタン 3 つを 1 行に収める（2026-10-10 ユーザー確定 3-(a)） */}
+      <div style={{ padding: isNarrow ? "8px 12px" : 12, display: "flex", gap: isNarrow ? 8 : 12, alignItems: "center", flexWrap: "wrap" }}>
+        {isNarrow ? null : <div style={{ fontWeight: 700 }}>{t("title")}</div>}
 
         {/* 人数/拡張は共通バー（GlobalBar）へ移動。配置方法は表示設定行の右端。 */}
 
-        <button onClick={handleGenerateRank} disabled={busy || !mapSupported} style={{ padding: "6px 10px", fontWeight: 700 }}>
+        <button onClick={handleGenerateRank} disabled={busy || !mapSupported} style={{ padding: isNarrow ? "6px 8px" : "6px 10px", fontWeight: 700 }}>
           {busy ? t("searching") : t("runSearch")}
         </button>
 
@@ -2717,14 +2742,14 @@ const handleDeleteUsed = React.useCallback(
           onClick={handleToggleContinuous}
           disabled={(busy && !continuousMode) || !mapSupported}
           title={t("tipContinuous")}
-          style={{ padding: "6px 10px", fontWeight: 700 }}
+          style={{ padding: isNarrow ? "6px 8px" : "6px 10px", fontWeight: 700 }}
         >
           {continuousMode ? t("stopSearch") : t("continuous")}
         </button>
 
           <button
             onClick={handleShareUrl}
-            style={{ padding: "6px 10px", fontWeight: 700 }}
+            style={{ padding: isNarrow ? "6px 8px" : "6px 10px", fontWeight: 700 }}
           >
             {t("shareUrl")}
           </button>
@@ -2816,24 +2841,23 @@ const handleDeleteUsed = React.useCallback(
       </div>
 */}
 
-      {/* 表示設定（表示のみ。検索/評価には影響しない） */}
-      <div style={{ display: "flex", gap: 11, alignItems: "center", flexWrap: "wrap", padding: "0px 0" }}>
-        <div style={{ fontSize: 12, fontWeight: 800, opacity: 0.85 }}>　{t("displaySettings")}</div>
-
-        <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
+      {/* 表示設定（表示のみ。検索/評価には影響しない）。
+          2026-10-10 ユーザー確定 4-(a): 見出し「表示設定」を外し、チェックは短い文言（入出力／保存条件）、
+          盤面表示は見出しなしのセレクトにして 375px で 1 行に収める。正式名はホバーに残す */}
+      <div style={{ display: "flex", gap: 11, alignItems: "center", flexWrap: "wrap", padding: "0 12px 4px" }}>
+        <label title={t("exportImportTitle")} style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
           <input type="checkbox" checked={showImportExport} onChange={(e) => setShowImportExport(e.target.checked)} />
-          <span>{t("exportImportTitle")}</span>
+          <span>{t("exportImportShort")}</span>
         </label>
 
-<label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
-  <input type="checkbox" checked={showSavedConditions} onChange={(e) => setShowSavedConditions(e.target.checked)} />
-  <span>{t("savedConditions")}</span>
-</label>
+        <label title={t("savedConditions")} style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
+          <input type="checkbox" checked={showSavedConditions} onChange={(e) => setShowSavedConditions(e.target.checked)} />
+          <span>{t("savedConditionsShort")}</span>
+        </label>
 
         {/* 盤面の表示モード: 画像／セクタ番号＋向きの模式表示（2026-07-25 要望）。
             表示のみで検索・評価には影響しない。List と同じ localStorage キーを共有。 */}
-        <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
-          <span>{t("tileModeLabel")}</span>
+        <label title={t("tileModeLabel")} style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
           <select
             value={tileMode}
             onChange={(e) => {
@@ -3161,8 +3185,9 @@ const handleDeleteUsed = React.useCallback(
             WebkitOverflowScrolling: isNarrow ? undefined : "touch",
             // Mobile: allow the browser to handle vertical pan gestures for page scrolling.
             touchAction: isNarrow ? "pan-y" : undefined,
-            height: isNarrow ? "60dvh" : "auto",
-            minHeight: isNarrow ? 320 : 0,
+            // 狭い幅: 50dvh（旧 60dvh）。下のタブの中身が初期表示で見えるように（2026-10-10）
+            height: isNarrow ? "50dvh" : "auto",
+            minHeight: isNarrow ? 300 : 0,
           }}
         >
           <div style={{ flex: 1, minHeight: 0, overflow: "visible" }}>
@@ -3241,12 +3266,52 @@ const handleDeleteUsed = React.useCallback(
               WebkitOverflowScrolling: isNarrow ? undefined : "touch",
             }}
           >
-            <div style={{ fontWeight: 700 }}>{t("logicalResults")}</div>
+            {isNarrow ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                {(["candidates", "detail", "conditions"] as const).map((tab) => {
+                  const on = narrowTab === tab;
+                  const label = tab === "candidates" ? t("narrowTabCandidates") : tab === "detail" ? t("narrowTabDetail") : t("narrowTabConditions");
+                  return (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => selectNarrowTab(tab)}
+                      style={{
+                        padding: "4px 12px",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        borderRadius: 8,
+                        border: "1px solid " + (on ? "#4453ff" : "#ccc"),
+                        background: on ? "#eef0ff" : "#fff",
+                        color: on ? "#2733cc" : "#333",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+                <label style={{ marginLeft: "auto", display: "flex", gap: 4, alignItems: "center", fontSize: 11, opacity: 0.8 }}>
+                  <input
+                    type="checkbox"
+                    checked={narrowAutoDetail}
+                    onChange={(e) => {
+                      setNarrowAutoDetail(e.target.checked);
+                      try {
+                        localStorage.setItem("gaia_board_narrow_auto_detail", e.target.checked ? "1" : "0");
+                      } catch {}
+                    }}
+                  />
+                  {t("narrowAutoDetail")}
+                </label>
+              </div>
+            ) : (
+              <div style={{ fontWeight: 700 }}>{t("logicalResults")}</div>
+            )}
 
-            {isNarrow ? topKSection : null}
+            {isNarrow && narrowTab === "candidates" ? topKSection : null}
 
-            {/* Current logical summary */}
-            <div style={{ padding: 10, border: "1px solid #ddd", borderRadius: 8 }}>
+            {/* Current logical summary（狭い幅では「詳細」タブ） */}
+            <div style={{ padding: 10, border: "1px solid #ddd", borderRadius: 8, display: isNarrow && narrowTab !== "detail" ? "none" : undefined }}>
               <div style={{ fontWeight: 700, marginBottom: 6 }}>{t("currentLogicalSummary")}</div>
 
               {/* 「詳細情報」（seed/placementHash・生スコア・偏り・各軸の素の合計）は
@@ -3309,6 +3374,9 @@ const handleDeleteUsed = React.useCallback(
 
             {/* 用語集パネルは各ラベルのホバーヒント（Hint）へ置換済み（⑤承認済み、2026-07-24） */}
 
+            {/* 条件（試行回数・表示件数・ハード制約・評価指数）。狭い幅では「条件」タブ。
+                display: none で隠すだけなので入力の状態は保たれる */}
+            <div style={{ display: isNarrow && narrowTab !== "conditions" ? "none" : "flex", flexDirection: "column", gap: 10 }}>
             {/* Controls */}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -3568,6 +3636,7 @@ const handleDeleteUsed = React.useCallback(
               </div>
             </div>
             </details>
+            </div>
 
             {isNarrow ? null : topKSection}
 
