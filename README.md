@@ -13,9 +13,9 @@ Next.js 16 / React 19 / TypeScript strict。
 `release/v1.01` を `main` へ push すると Vercel が自動でデプロイする
 （`git push origin release/v1.01:main`）。
 
-**版**（2026-10-05 から）: 正本は `package.json` の version。本番へ出すたびに同じ番号の git タグ
-（`v1.2.1` など）を `main` に打ち、画面の共通バー右端に「v1.2.1 · eval_v4」（アプリの版と
-Map 評価のバージョン）を出す。番号は、評価の意味が変わる変更（`EVAL_VERSION` が上がる）や
+**版**（2026-10-05 から）: 正本は `package.json` の version。本番へ出すたびに上げ（版の目印は
+「chore: vX.Y.Z」のコミット。git タグは打たない、2026-10-10 から）、画面の共通バー右端に「v1.2.1 · eval_v4」
+（アプリの版と Map 評価のバージョン）を出す。番号は、評価の意味が変わる変更（`EVAL_VERSION` が上がる）や
 機能追加で2桁目、表示やドキュメントだけなら3桁目を上げる。ブランチ名 `release/v1.01` は
 リリース用の線の名前で、版とは独立。
 
@@ -169,8 +169,8 @@ git diff scripts/__snapshots__/baseline.json   # 差分が意図どおりか必�
 2. コミットごとに `npm run typecheck`（0 件）、`npm run lint`（エラー 0）、`npm test`（全緑）を通す。
 3. 挙動が変わる仕様は、実装前に選択肢を出して決めてから着手する。
 4. `git push` は Vercel デプロイを意味するので、指示があるまでしない。
-5. 本番へ出すときは `package.json` の version を上げ（表示だけなら3桁目、評価や機能なら2桁目）、
-   FF push 後に同じ番号のタグを `main` に打つ（`git tag v1.2.1 <main のハッシュ> && git push origin v1.2.1`）。
+5. 本番へ出すときは `package.json` の version を上げる（表示だけなら3桁目、評価や機能なら2桁目）。
+   git タグは打たない（2026-10-10 から。版の目印は「chore: vX.Y.Z」のコミット）。
 
 ## ディレクトリ
 
