@@ -45,11 +45,14 @@ self.onmessage = async (ev: MessageEvent<StartMsg | StopMsg>) => {
   stopFlag = new Int32Array(stopSAB);
   setStopRequested(0);
 
+  // 停止時に返す途中結果（進捗ごとの best を控えておく。2026-10-10 即時停止＝案 (a)）
+  let lastBest: any[] = [];
   try {
     const { results: best, diagnostics } = await runLogicalSearch(
       templateId,
       searchOptions,
       (done: number, bestNow: any[]) => {
+        lastBest = Array.isArray(bestNow) ? bestNow : lastBest;
         if (isStopRequested()) throw new Error("__STOP__");
 
         const bestScore =
@@ -65,14 +68,15 @@ self.onmessage = async (ev: MessageEvent<StartMsg | StopMsg>) => {
     );
 
     if (isStopRequested()) {
-      (self as any).postMessage({ type: "stopped", runId });
+      (self as any).postMessage({ type: "stopped", runId, best: lastBest });
       return;
     }
 
     (self as any).postMessage({ type: "done", runId, best, diagnostics });
   } catch (e: any) {
     if (String(e?.message) === "__STOP__") {
-      (self as any).postMessage({ type: "stopped", runId });
+      // 途中結果（そこまでに評価した候補）を返す
+      (self as any).postMessage({ type: "stopped", runId, best: lastBest });
       return;
     }
     (self as any).postMessage({

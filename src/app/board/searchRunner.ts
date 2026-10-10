@@ -24,11 +24,20 @@ import { runSearch as runLogicalSearch } from "@/gaia/search";
  * worker itself reported an "error"/unexpected "stopped" message) so the
  * caller (`runSearchOffThread`) can fall back to the main-thread search.
  */
+export type SearchRunResult = {
+  results: any[];
+  diagnostics: any;
+  /** 停止ボタンで中断した（results は途中結果、diagnostics は null）。2026-10-10 */
+  stopped?: boolean;
+};
+
 export function runSearchInWorker(
   templateId: string,
   searchOptions: any,
-  onProgress: (done: number, bestScore: number | null) => void
-): Promise<{ results: any[]; diagnostics: any }> {
+  onProgress: (done: number, bestScore: number | null) => void,
+  /** 呼び出し側が停止関数を受け取る（停止ボタン用）。省略時は従来どおり止められない */
+  onStopHandle?: (stop: () => void) => void
+): Promise<SearchRunResult> {
   return new Promise((resolve, reject) => {
     if (typeof Worker === "undefined" || typeof SharedArrayBuffer === "undefined") {
       reject(new Error("Worker or SharedArrayBuffer is not available in this environment"));
@@ -51,6 +60,16 @@ export function runSearchInWorker(
 
     const runId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     let settled = false;
+    // 即時停止（2026-10-10 ユーザー確定 案 (a)）: 共有メモリのフラグを立て、念のため stop メッセージも送る。
+    // ワーカーは進捗の区切り（yieldEvery 件ごと）で止まり、途中結果を "stopped" で返す
+    const stopFlag = new Int32Array(stopSAB);
+    onStopHandle?.(() => {
+      if (settled) return;
+      Atomics.store(stopFlag, 0, 1);
+      try {
+        worker.postMessage({ type: "stop", runId });
+      } catch {}
+    });
 
     const cleanup = () => {
       worker.onmessage = null;
@@ -82,12 +101,11 @@ export function runSearchInWorker(
         return;
       }
 
-      // "stopped" is only emitted in response to a StopMsg, which this
-      // integration never sends. Treat it as unexpected and fall back.
+      // 停止ボタンによる中断。途中結果を正常終了として返す（diagnostics は無い）
       if (msg.type === "stopped") {
         settled = true;
         cleanup();
-        reject(new Error("worker search stopped unexpectedly"));
+        resolve({ results: Array.isArray(msg.best) ? msg.best : [], diagnostics: null, stopped: true });
         return;
       }
     };
@@ -120,16 +138,30 @@ export function runSearchInWorker(
 export async function runSearchOffThread(
   templateId: string,
   searchOptions: any,
-  onProgress: (done: number, bestScore: number | null) => void
-): Promise<{ results: any[]; diagnostics: any }> {
+  onProgress: (done: number, bestScore: number | null) => void,
+  onStopHandle?: (stop: () => void) => void
+): Promise<SearchRunResult> {
   try {
-    return await runSearchInWorker(templateId, searchOptions, onProgress);
+    return await runSearchInWorker(templateId, searchOptions, onProgress, onStopHandle);
   } catch (e) {
     console.warn("[board] Worker search unavailable, falling back to main-thread search:", e);
-    return await runLogicalSearch(templateId, searchOptions, (done: number, bestNow: any[]) => {
-      const bestScore =
-        bestNow && bestNow.length > 0 ? Number((bestNow[0] as any).score ?? (bestNow[0] as any).total ?? 0) : null;
-      onProgress(done, bestScore);
+    // メインスレッドの fallback でも停止できるように、進捗の区切りで例外を投げて途中結果を返す
+    let stopRequested = false;
+    let lastBest: any[] = [];
+    onStopHandle?.(() => {
+      stopRequested = true;
     });
+    try {
+      return await runLogicalSearch(templateId, searchOptions, (done: number, bestNow: any[]) => {
+        lastBest = Array.isArray(bestNow) ? bestNow : lastBest;
+        const bestScore =
+          bestNow && bestNow.length > 0 ? Number((bestNow[0] as any).score ?? (bestNow[0] as any).total ?? 0) : null;
+        onProgress(done, bestScore);
+        if (stopRequested) throw new Error("__STOP__");
+      });
+    } catch (e2: any) {
+      if (String(e2?.message) === "__STOP__") return { results: lastBest, diagnostics: null, stopped: true };
+      throw e2;
+    }
   }
 }

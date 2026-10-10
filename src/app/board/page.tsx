@@ -1174,6 +1174,12 @@ return (savedProfiles ?? []).filter((p) => {
 
   // --- Continuous search (repeat until stopped) ---
   const [continuousMode, setContinuousMode] = React.useState(false);
+  /** 連続検索の何回目か（進捗表示用。停止で 0 に） */
+  const [continuousRun, setContinuousRun] = React.useState(0);
+  /** 実行中の検索を即時に止める関数（searchRunner が渡す）。2026-10-10 ユーザー確定 案 (a) */
+  const stopSearchRef = React.useRef<null | (() => void)>(null);
+  /** 直近の検索が停止ボタンで中断されたときの件数（次の検索開始で消す） */
+  const [stoppedAt, setStoppedAt] = React.useState<number | null>(null);
   const stopContinuousRef = React.useRef(false);
   React.useEffect(() => () => {
     stopContinuousRef.current = true;
@@ -2125,25 +2131,33 @@ React.useEffect(() => {
   }
 
 
+/** 停止ボタン: 連続検索のループを止め、実行中の検索も即時に中断する（途中結果は保存される） */
+function handleStopSearch() {
+  stopContinuousRef.current = true;
+  setContinuousMode(false);
+  stopSearchRef.current?.();
+}
+
 async function handleToggleContinuous() {
   if (continuousMode) {
-    // Stop after the current search finishes (runLogicalSearch is not abortable here).
-    stopContinuousRef.current = true;
-    setContinuousMode(false);
+    handleStopSearch();
     return;
   }
 
   stopContinuousRef.current = false;
   setContinuousMode(true);
+  setContinuousRun(0);
 
   try {
     while (!stopContinuousRef.current) {
+      setContinuousRun((n) => n + 1);
       await handleGenerateRank();
       await nextFrame();
     }
   } finally {
     stopContinuousRef.current = false;
     setContinuousMode(false);
+    setContinuousRun(0);
   }
 }
 
@@ -2153,6 +2167,7 @@ async function handleGenerateRank() {
 
     setErrorMsg(null);
     setBusy(true);
+    setStoppedAt(null);
 
     // keep current persisted lists while searching
     setProgressCurrent(0);
@@ -2198,11 +2213,25 @@ async function handleGenerateRank() {
     };
 
     try {
-      const { results: best, diagnostics } = await runSearchOffThread(templateId, searchOptions, (done, bestScore) => {
-        setProgressCurrent(done);
-        // keep previous lists during searching; progress-only update
-        setProgressBest(bestScore);
-      });
+      let lastDone = 0;
+      const { results: best, diagnostics, stopped } = await runSearchOffThread(
+        templateId,
+        searchOptions,
+        (done, bestScore) => {
+          lastDone = done;
+          setProgressCurrent(done);
+          // keep previous lists during searching; progress-only update
+          setProgressBest(bestScore);
+        },
+        (stop) => {
+          stopSearchRef.current = stop;
+        }
+      );
+      stopSearchRef.current = null;
+      if (stopped) {
+        // 停止ボタンで中断。途中結果は下でそのまま保存する（評価済みの候補なので扱いは同じ）
+        setStoppedAt(lastDone);
+      }
 
       const mappedFinal: RankedResult[] = (best as any[]).map((x: any) => ({
         seed: String(x.seed),
@@ -2280,7 +2309,7 @@ async function handleGenerateRank() {
 
       if ((diagnostics as any)?.hardFailBy) setHardFailBy((diagnostics as any).hardFailBy);
 
-      setProgressCurrent(trials);
+      if (!stopped) setProgressCurrent(trials);
       setProgressBest(mappedFinal.length > 0 ? mappedFinal[0].score : null);
 
       if (mappedFinal.length > 0) {
@@ -2292,6 +2321,7 @@ async function handleGenerateRank() {
       console.error(e);
       setErrorMsg(e?.message ? String(e.message) : String(e));
     } finally {
+      stopSearchRef.current = null;
       setBusy(false);
     }
   }
@@ -2763,17 +2793,26 @@ const handleDeleteUsed = React.useCallback(
 
         {/* 人数/拡張は共通バー（GlobalBar）へ移動。配置方法は表示設定行の右端。 */}
 
-        <button onClick={handleGenerateRank} disabled={busy || !mapSupported} style={{ padding: isNarrow ? "6px 8px" : "6px 10px", fontWeight: 700 }}>
+        {/* 検索中はボタンを強調色にし、2 つ目のボタンは単発・連続どちらでも「停止」になる（即時停止。2026-10-10） */}
+        <button
+          onClick={handleGenerateRank}
+          disabled={busy || !mapSupported}
+          style={{
+            padding: isNarrow ? "6px 8px" : "6px 10px",
+            fontWeight: 700,
+            ...(busy ? { background: "#eef0ff", border: "1px solid #4453ff", color: "#2733cc" } : {}),
+          }}
+        >
           {busy ? t("searching") : t("runSearch")}
         </button>
 
         <button
-          onClick={handleToggleContinuous}
-          disabled={(busy && !continuousMode) || !mapSupported}
-          title={t("tipContinuous")}
+          onClick={busy ? handleStopSearch : handleToggleContinuous}
+          disabled={!mapSupported}
+          title={busy ? undefined : t("tipContinuous")}
           style={{ padding: isNarrow ? "6px 8px" : "6px 10px", fontWeight: 700 }}
         >
-          {continuousMode ? t("stopSearch") : t("continuous")}
+          {busy ? t("stopSearch") : t("continuous")}
         </button>
 
           <button
@@ -2796,6 +2835,19 @@ const handleDeleteUsed = React.useCallback(
               ) : null}
             </span>
           ) : null}
+
+        {/* 進捗（2026-10-10 ユーザー確定 (i)）: 検索中は細いバーと 1 行。停止で中断したときはその旨を次の検索まで出す */}
+        {busy ? (
+          <div style={{ flexBasis: "100%", fontSize: 12, opacity: 0.85 }}>
+            <div style={{ height: 4, background: "#e4e7ef", borderRadius: 2, overflow: "hidden", marginBottom: 3 }}>
+              <div style={{ height: "100%", width: `${Math.min(100, Math.round((progressCurrent / Math.max(1, trials)) * 100))}%`, background: "#4453ff", transition: "width 0.2s" }} />
+            </div>
+            {t("searchingStatus")} {progressCurrent.toLocaleString()} / {trials.toLocaleString()}（{Math.min(100, Math.round((progressCurrent / Math.max(1, trials)) * 100))}%）・{t("best")} {progressBest != null ? progressBest.toFixed(1) : "-"}
+            {continuousMode && continuousRun > 0 ? `・${lang === "ja" ? `連続 ${continuousRun} ${t("continuousRun")}` : `${t("continuousRun")} ${continuousRun}`}` : ""}
+          </div>
+        ) : stoppedAt != null ? (
+          <div style={{ flexBasis: "100%", fontSize: 12, opacity: 0.75 }}>{t("stoppedAt").replace("{done}", stoppedAt.toLocaleString())}</div>
+        ) : null}
 
 {/*
         <div style={{ fontSize: 12, opacity: 0.8 }}>
@@ -3407,7 +3459,7 @@ const handleDeleteUsed = React.useCallback(
                       ))}
                     </div>
 
-                    <div style={{ marginTop: 8 }}><ColorBreakdownTable breakdown={displayBreakdown} cols={breakdownCols} lang={lang} isBase={isBase} onMark={onMark} activeSources={activeSources} /></div>
+                    <div style={{ marginTop: 8 }}><ColorBreakdownTable breakdown={displayBreakdown} cols={breakdownCols} lang={lang} isBase={isBase} onMark={onMark} activeSources={activeSources} compact={isNarrow} /></div>
                 </div>
               ) : null}
 
