@@ -1033,16 +1033,38 @@ return (savedProfiles ?? []).filter((p) => {
 
   // breakdown table view config (render-only)
   // 列は種別ごと（eval_v7）: 評価 / 母星色 / 他色 / ガイア / 次元横断 / 原始・小惑星
+  // 原始・小惑星（拡張星）は既定で出さない（評価の 2% 前後で盤面間の差も 1 点ほど。2026-10-10 ユーザー確定 2-(a)）。
+  // 列の選択と「列を選ぶ」行の開閉は localStorage に覚える（復元は起動時 1 回、書込みは操作ハンドラのみ）
   const [breakdownCols, setBreakdownCols] = React.useState(() => ({
     total: true,
     own: true,
     other: true,
     gaia: true,
     transdim: true,
-    extra: true,
+    extra: false,
     cntOuter: false,
     cntTouch: false,
   }));
+  const [breakdownColsOpen, setBreakdownColsOpen] = React.useState(false);
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem("gaia_board_breakdown_cols");
+      if (raw) {
+        const o = JSON.parse(raw);
+        if (o && typeof o === "object") setBreakdownCols((prev) => ({ ...prev, ...Object.fromEntries(Object.entries(o).filter(([k, v]) => k in prev && typeof v === "boolean")) }));
+      }
+      if (localStorage.getItem("gaia_board_breakdown_cols_open") === "1") setBreakdownColsOpen(true);
+    } catch {}
+  }, []);
+  const setBreakdownCol = React.useCallback((k: string, on: boolean) => {
+    setBreakdownCols((prev) => {
+      const next = { ...prev, [k]: on };
+      try {
+        localStorage.setItem("gaia_board_breakdown_cols", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
 
   // Ranking selection: show EXACT evaluated placement
   const [selectedPlacement, setSelectedPlacement] = React.useState<any[] | null>(null);
@@ -3323,17 +3345,37 @@ const handleDeleteUsed = React.useCallback(
                 // 既定で開く。表示は displayResult に基づき、条件変更で結果バケットが
                 // 空になっても直近結果を保持してパネルが縮まない（位置不変）。2026-07-24。
                 <details open suppressHydrationWarning style={{ marginTop: 10 }}>
-                  <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.85 }}>
-                    {/* 列は種別ごと（eval_v7）。基本版は原始・小惑星の列を出さない */}
-                    {isBase
-                      ? lang === "ja"
-                        ? "種族別の内訳（母星色 / 他色 / ガイア / 次元横断 / 評価）"
-                        : "By faction (home / other / gaia / transdim / total)"
-                      : lang === "ja"
-                        ? "種族別の内訳（母星色 / 他色 / ガイア / 次元横断 / 原始・小惑星 / 評価）"
-                        : "By faction (home / other / gaia / transdim / proto・asteroid / total)"}
+                  <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.85, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    {/* 列は種別ごと（eval_v7）。基本版は原始・小惑星（拡張星）の列を出さない */}
+                    <span>
+                      {isBase
+                        ? lang === "ja"
+                          ? "種族別の内訳（母星色 / 他色 / ガイア / 次元横断 / 評価）"
+                          : "By faction (home / other / gaia / transdim / total)"
+                        : lang === "ja"
+                          ? "種族別の内訳（母星色 / 他色 / ガイア / 次元横断 / 拡張星 / 評価）"
+                          : "By faction (home / other / gaia / transdim / ext. / total)"}
+                    </span>
+                    {/* 列セレクタの開閉（2026-10-10 ユーザー確定 1-(a)。普段は使わないので畳んでおく）。
+                        summary の中なので details の開閉に伝播させない */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setBreakdownColsOpen((v) => {
+                          try {
+                            localStorage.setItem("gaia_board_breakdown_cols_open", v ? "0" : "1");
+                          } catch {}
+                          return !v;
+                        });
+                      }}
+                      style={{ marginLeft: "auto", fontSize: 11, padding: "1px 8px", borderRadius: 6, border: "1px solid #ccc", background: breakdownColsOpen ? "#eef0ff" : "#fff", color: breakdownColsOpen ? "#2733cc" : "#555", cursor: "pointer" }}
+                    >
+                      {lang === "ja" ? "列を選ぶ" : "Columns"}
+                    </button>
                   </summary>
-                  <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                  <div style={{ marginTop: 8, display: breakdownColsOpen ? "flex" : "none", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
                       <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.85 }}>
                         {lang === "ja" ? "詳細表表示" : "Table columns"}
                       </span>
@@ -3346,16 +3388,14 @@ const handleDeleteUsed = React.useCallback(
                           ["other", "他色", "other", t("tipColOther")],
                           ["gaia", "ガイア", "gaia", t("tipColGaia")],
                           ["transdim", "次元横断", "transdim", t("tipColTransdim")],
-                          ...(isBase ? [] : [["extra", "原始・小惑星", "proto/asteroid", t("tipColExtra")] as const]),
+                          ...(isBase ? [] : [["extra", "拡張星（原始・小惑星）", "ext. (proto/asteroid)", t("tipColExtra")] as const]),
                         ] as ReadonlyArray<readonly [string, string, string, string]>
                       ).map(([k, ja, en, tip]) => (
                         <label key={k} style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 12 }}>
                           <input
                             type="checkbox"
                             checked={(breakdownCols as any)[k]}
-                            onChange={(e) =>
-                              setBreakdownCols((prev) => ({ ...prev, [k]: e.target.checked }))
-                            }
+                            onChange={(e) => setBreakdownCol(k, e.target.checked)}
                           />
                           <Hint label={lang === "ja" ? ja : en} tip={tip} />
                         </label>

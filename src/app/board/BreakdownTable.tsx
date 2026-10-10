@@ -294,9 +294,12 @@ export function ColorBreakdownTable({
     cntTouch: on("cntTouch") && hasCounts && (colsIn as any).cntTouch === true,
   };
   const COL_ORDER = ["total", "own", "other", "gaia", "transdim", "extra", "cntOuter", "cntTouch"] as const;
+  // 列見出し。原始・小惑星は見出しだけ「拡張星」に短縮（6 文字の見出しが列幅を広げていた。
+  // 2026-10-10 ユーザー確定 2-(a)。正式名はホバー headTip とマーカーのラベルに残す）
   const COL_LABEL: Record<string, { ja: string; en: string }> = {
     total: { ja: "評価", en: "total" },
     ...KIND_LABEL,
+    extra: { ja: "拡張星", en: "ext." },
     cntOuter: { ja: "外周数", en: "outerCnt" },
     cntTouch: { ja: "隣接数", en: "touchCnt" },
   };
@@ -501,6 +504,8 @@ export function ColorBreakdownTable({
 
   // 評価の列には集計の仕組みをホバーで出す（設計意図を画面でも読めるようにする。2026-10-03、eval_v7 で式を更新）
   const headTip = (ck: string): string | undefined => {
+    // 拡張星（原始・小惑星）は見出しを短縮しているので、正式名と係数をホバーに
+    if (ck === "extra") return lang === "ja" ? "原始・小惑星（係数 0.1。入植コスト 原始 3 / 小惑星 2）" : "Proto / asteroid planets (coefficient 0.1; stone cost proto 3 / asteroid 2)";
     if (ck !== "total") return undefined;
     const base = unified?.base ?? 10;
     return lang === "ja"
