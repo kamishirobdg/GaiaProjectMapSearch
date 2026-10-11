@@ -1182,6 +1182,66 @@ return (savedProfiles ?? []).filter((p) => {
   const [stoppedAt, setStoppedAt] = React.useState<number | null>(null);
   /** 検索の経路（ワーカー / ワーカー（停止フラグなし）/ 本体スレッド）。進捗の行に出す診断用 */
   const [searchMode, setSearchMode] = React.useState<"worker" | "worker-nosab" | "main" | null>(null);
+  /**
+   * 検索中は画面を消さない（Screen Wake Lock。2026-10-11 ユーザー確定）。既定オン。localStorage に覚える
+   * （復元は起動時 1 回、書込みは操作ハンドラのみ）。ページが前面にある間だけ効き、背景に回ると自動で解除される
+   */
+  const [keepAwake, setKeepAwake] = React.useState(true);
+  const [wakeLockOn, setWakeLockOn] = React.useState(false);
+  const wakeLockRef = React.useRef<any>(null);
+  React.useEffect(() => {
+    try {
+      if (localStorage.getItem("gaia_board_keep_awake") === "0") setKeepAwake(false);
+    } catch {}
+  }, []);
+  React.useEffect(() => {
+    let cancelled = false;
+    const release = () => {
+      try {
+        wakeLockRef.current?.release?.();
+      } catch {}
+      wakeLockRef.current = null;
+      setWakeLockOn(false);
+    };
+    if (!busy || !keepAwake) {
+      release();
+      return;
+    }
+    const acquire = async () => {
+      if (cancelled || wakeLockRef.current) return;
+      if (typeof document === "undefined" || document.visibilityState !== "visible") return;
+      const wl = (navigator as any)?.wakeLock;
+      if (!wl?.request) return;
+      try {
+        const sentinel = await wl.request("screen");
+        if (cancelled) {
+          try {
+            sentinel.release();
+          } catch {}
+          return;
+        }
+        wakeLockRef.current = sentinel;
+        setWakeLockOn(true);
+        // 背景に回ると自動で解除される。前面に戻ったときに取り直す
+        sentinel.addEventListener?.("release", () => {
+          if (wakeLockRef.current === sentinel) {
+            wakeLockRef.current = null;
+            setWakeLockOn(false);
+          }
+        });
+      } catch {}
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void acquire();
+    };
+    void acquire();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisibility);
+      release();
+    };
+  }, [busy, keepAwake]);
   const stopContinuousRef = React.useRef(false);
   React.useEffect(() => () => {
     stopContinuousRef.current = true;
@@ -2215,38 +2275,93 @@ async function handleGenerateRank() {
     };
 
     try {
+      // 結果バケツへの保存。最後の 1 回だけでなく、途中結果の写し（500 件ごと）と、ページが背景に回った
+      // 瞬間にも同じ手順で保存する（2026-10-11 ユーザー確定。Android で画面オフや他アプリへの切替で
+      // ページが破棄されても、直前までの候補が残るように）。保存は直列化し、最後の保存が必ず最後に走る
+      const key = searchKey ?? (await sha256Hex(stableStringify(searchKeyParams)));
+      const toMapped = (list: any[]): RankedResult[] =>
+        (list as any[]).map((x: any) => ({
+          seed: String(x.seed),
+          score: Number(x.score ?? 0),
+          placement: (x as any).placement ?? [],
+          placementHash: (x as any).placementHash,
+          evaluation: { total: Number(x.score ?? 0), breakdown: x.breakdown, audit: x.audit },
+        }));
+      let persistChain: Promise<void> = Promise.resolve();
+      let lastSnapshot: any[] | null = null;
+      const enqueuePersist = (list: any[]) => {
+        persistChain = persistChain.then(() => persistResults(key, toMapped(list), false)).catch((e) => console.warn("[board] partial save failed:", e));
+      };
+      const onHidden = () => {
+        if (document.visibilityState === "hidden" && lastSnapshot && lastSnapshot.length > 0) enqueuePersist(lastSnapshot);
+      };
+      document.addEventListener("visibilitychange", onHidden);
+
       let lastDone = 0;
-      const { results: best, diagnostics, stopped } = await runSearchOffThread(
-        templateId,
-        searchOptions,
-        (done, bestScore) => {
-          lastDone = done;
-          setProgressCurrent(done);
-          // keep previous lists during searching; progress-only update
-          setProgressBest(bestScore);
-        },
-        (stop) => {
-          stopSearchRef.current = stop;
-        },
-        (mode) => setSearchMode(mode)
-      );
+      let best: any[] = [];
+      let diagnostics: any = null;
+      let stopped: boolean | undefined;
+      try {
+        const r = await runSearchOffThread(
+          templateId,
+          searchOptions,
+          (done, bestScore) => {
+            lastDone = done;
+            setProgressCurrent(done);
+            // keep previous lists during searching; progress-only update
+            setProgressBest(bestScore);
+          },
+          (stop) => {
+            stopSearchRef.current = stop;
+          },
+          (mode) => setSearchMode(mode),
+          (snap) => {
+            lastSnapshot = snap;
+            if (snap.length > 0) enqueuePersist(snap);
+          }
+        );
+        best = r.results;
+        diagnostics = r.diagnostics;
+        stopped = r.stopped;
+      } finally {
+        document.removeEventListener("visibilitychange", onHidden);
+      }
       stopSearchRef.current = null;
       if (stopped) {
         // 停止ボタンで中断。途中結果は下でそのまま保存する（評価済みの候補なので扱いは同じ）
         setStoppedAt(lastDone);
       }
 
-      const mappedFinal: RankedResult[] = (best as any[]).map((x: any) => ({
-        seed: String(x.seed),
-        score: Number(x.score ?? 0),
-        placement: (x as any).placement ?? [],
-        placementHash: (x as any).placementHash,
-        evaluation: { total: Number(x.score ?? 0), breakdown: x.breakdown, audit: x.audit },
-      }));
+      const mappedFinal: RankedResult[] = toMapped(best);
+      await persistChain;
+      await persistResults(key, mappedFinal, true);
 
+      if ((diagnostics as any)?.hardFailBy) setHardFailBy((diagnostics as any).hardFailBy);
+
+      if (!stopped) setProgressCurrent(trials);
+      setProgressBest(mappedFinal.length > 0 ? mappedFinal[0].score : null);
+
+      if (mappedFinal.length > 0) {
+        setSelectedPlacement(mappedFinal[0].placement ?? null);
+        setSelectedSeedLabel(String(mappedFinal[0].seed));
+        setSeed(String(mappedFinal[0].seed));
+      }
+    } catch (e: any) {
+      console.error(e);
+      setErrorMsg(e?.message ? String(e.message) : String(e));
+    } finally {
+      stopSearchRef.current = null;
+      setBusy(false);
+    }
+  }
+
+  /**
+   * 検索結果を結果バケツへ保存して画面の一覧を更新する。final のときだけ先頭の候補を選択する
+   * （途中保存で表示中の盤面が切り替わらないように）
+   */
+  async function persistResults(key: string, mappedFinal: RankedResult[], final: boolean) {
 {
   const now = Date.now();
-  const key = searchKey ?? (await sha256Hex(stableStringify(searchKeyParams)));
 
   const incoming: PersistedCandidate[] = mappedFinal.map((r) => {
     const placementHash = String((r as any).placementHash ?? computePlacementHash((r as any).placement ?? []));
@@ -2302,31 +2417,13 @@ async function handleGenerateRank() {
   setUsedResults(merged.used.map(toRankedResult));
   setResultsMode("active");
 
-  if (merged.active.length > 0) {
+  if (final && merged.active.length > 0) {
     const top = merged.active[0];
     setSelectedPlacement(top.placement ?? null);
     setSelectedSeedLabel(String(top.seed));
     setSeed(String(top.seed));
   }
 }
-
-      if ((diagnostics as any)?.hardFailBy) setHardFailBy((diagnostics as any).hardFailBy);
-
-      if (!stopped) setProgressCurrent(trials);
-      setProgressBest(mappedFinal.length > 0 ? mappedFinal[0].score : null);
-
-      if (mappedFinal.length > 0) {
-        setSelectedPlacement(mappedFinal[0].placement ?? null);
-        setSelectedSeedLabel(String(mappedFinal[0].seed));
-        setSeed(String(mappedFinal[0].seed));
-      }
-    } catch (e: any) {
-      console.error(e);
-      setErrorMsg(e?.message ? String(e.message) : String(e));
-    } finally {
-      stopSearchRef.current = null;
-      setBusy(false);
-    }
   }
 
   const handleCopyFromOldVersion = React.useCallback(
@@ -2847,6 +2944,7 @@ const handleDeleteUsed = React.useCallback(
             </div>
             {t("searchingStatus")} {progressCurrent.toLocaleString()} / {trials.toLocaleString()}（{Math.min(100, Math.round((progressCurrent / Math.max(1, trials)) * 100))}%）・{t("best")} {progressBest != null ? progressBest.toFixed(1) : "-"}
             {continuousMode && continuousRun > 0 ? `・${lang === "ja" ? `連続 ${continuousRun} ${t("continuousRun")}` : `${t("continuousRun")} ${continuousRun}`}` : ""}
+            {wakeLockOn ? `・${t("screenOn")}` : ""}
             {searchMode ? (
               <span style={{ marginLeft: 6, opacity: 0.6 }} title={lang === "ja" ? "検索の経路。worker ＝ ワーカー（即時停止）、worker-nosab ＝ ワーカー（停止は中断時点の直近 500 件まで）、main ＝ 本体スレッド" : "Search path"}>
                 [{searchMode}]
@@ -3506,6 +3604,21 @@ const handleDeleteUsed = React.useCallback(
                   onChange={(e) => setKeepTop(Math.max(1, Math.min(200, Number(e.target.value) || 1)))}
                   style={{ width: 80 }}
                 />
+              </label>
+
+              {/* 検索中は画面を消さない（Screen Wake Lock。2026-10-11） */}
+              <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
+                <input
+                  type="checkbox"
+                  checked={keepAwake}
+                  onChange={(e) => {
+                    setKeepAwake(e.target.checked);
+                    try {
+                      localStorage.setItem("gaia_board_keep_awake", e.target.checked ? "1" : "0");
+                    } catch {}
+                  }}
+                />
+                <Hint label={t("keepAwake")} tip={t("tipKeepAwake")} />
               </label>
             </div>
 

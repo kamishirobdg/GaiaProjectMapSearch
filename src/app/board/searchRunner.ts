@@ -40,7 +40,9 @@ export function runSearchInWorker(
   /** 呼び出し側が停止関数を受け取る（停止ボタン用）。省略時は従来どおり止められない */
   onStopHandle?: (stop: () => void) => void,
   /** どの経路で動いているか（進捗表示の診断用。2026-10-11） */
-  onMode?: (mode: SearchRunMode) => void
+  onMode?: (mode: SearchRunMode) => void,
+  /** 途中結果の写し（500 件ごと）。呼び出し側はこれをこまめに保存して、背景でページが破棄されても残るようにする */
+  onSnapshot?: (best: any[], done: number) => void
 ): Promise<SearchRunResult> {
   return new Promise((resolve, reject) => {
     if (typeof Worker === "undefined") {
@@ -110,7 +112,10 @@ export function runSearchInWorker(
       }
 
       if (msg.type === "snapshot") {
-        if (Array.isArray(msg.best)) lastSnapshot = msg.best;
+        if (Array.isArray(msg.best)) {
+          lastSnapshot = msg.best;
+          onSnapshot?.(msg.best, Number(msg.done ?? 0));
+        }
         return;
       }
 
@@ -167,10 +172,11 @@ export async function runSearchOffThread(
   searchOptions: any,
   onProgress: (done: number, bestScore: number | null) => void,
   onStopHandle?: (stop: () => void) => void,
-  onMode?: (mode: SearchRunMode) => void
+  onMode?: (mode: SearchRunMode) => void,
+  onSnapshot?: (best: any[], done: number) => void
 ): Promise<SearchRunResult> {
   try {
-    return await runSearchInWorker(templateId, searchOptions, onProgress, onStopHandle, onMode);
+    return await runSearchInWorker(templateId, searchOptions, onProgress, onStopHandle, onMode, onSnapshot);
   } catch (e) {
     console.warn("[board] Worker search unavailable, falling back to main-thread search:", e);
     onMode?.("main");
@@ -178,12 +184,15 @@ export async function runSearchOffThread(
     // yieldToEventLoop で yieldEvery 件ごとに描画と入力を通す（これが無いと画面が固まり停止も効かない）
     let stopRequested = false;
     let lastBest: any[] = [];
+    let progressCount = 0;
     onStopHandle?.(() => {
       stopRequested = true;
     });
     try {
       return await runLogicalSearch(templateId, { ...searchOptions, yieldToEventLoop: true }, (done: number, bestNow: any[]) => {
         lastBest = Array.isArray(bestNow) ? bestNow : lastBest;
+        // ワーカーと同じ間隔（進捗 10 回 ＝ 500 件ごと）で途中結果の写しを渡す
+        if (++progressCount % 10 === 0) onSnapshot?.(lastBest, done);
         const bestScore =
           bestNow && bestNow.length > 0 ? Number((bestNow[0] as any).score ?? (bestNow[0] as any).total ?? 0) : null;
         onProgress(done, bestScore);
