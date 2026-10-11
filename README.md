@@ -44,8 +44,14 @@ seed
   -> Top-K
 ```
 
-検索本体は Web Worker で走り（`src/workers/boardSearch.worker.ts`）、
-Worker の生成に失敗した場合はメインスレッドにフォールバックする。
+検索本体は Web Worker で走り（`src/workers/boardSearch.worker.ts`、`src/app/board/searchRunner.ts`）、
+Worker の生成に失敗した場合はメインスレッドにフォールバックする（2026-10-11 から、退避時は 50 件ごとに
+イベントループへ譲歩するので画面と停止ボタンが効く）。SharedArrayBuffer が使える（COOP/COEP で cross-origin
+isolation が効いている）ときは共有メモリのフラグで即時停止、無いときはワーカーを terminate して 500 件ごとの
+途中結果の写しを使う。停止ボタンで中断した途中結果も通常どおり結果バケツに保存される。検索中はボタンの下に
+進捗バーと「検索中 n / N・ベスト・連続 k 回目・画面点灯 [経路]」の 1 行（経路は worker / worker-nosab / main）。
+「検索中は画面を消さない」（Screen Wake Lock、既定オン）は条件の行にある。ページが背景に回った瞬間には直近の
+途中結果を保存するが、検索中の定期保存はしない（v1.6.7。背景で検索を続ける保証は Web では作れない）。
 
 ### ソフト評価の集計（2026-10-07 eval_v7「全惑星を同一の式で」、2026-10-08 eval_v8。経緯は eval_v3〜v6）
 
