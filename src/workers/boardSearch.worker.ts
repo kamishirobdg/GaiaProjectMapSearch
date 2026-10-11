@@ -14,7 +14,8 @@ type StartMsg = {
   runId: string;
   templateId: string;
   searchOptions: any;
-  stopSAB: SharedArrayBuffer;
+  /** 停止フラグ。cross-origin isolation が無く SharedArrayBuffer を作れない端末では null（停止は terminate で） */
+  stopSAB: SharedArrayBuffer | null;
 };
 
 type StopMsg = { type: "stop"; runId: string };
@@ -42,8 +43,9 @@ self.onmessage = async (ev: MessageEvent<StartMsg | StopMsg>) => {
   const { runId, templateId, searchOptions, stopSAB } = msg as StartMsg;
 
   currentRunId = runId;
-  stopFlag = new Int32Array(stopSAB);
+  stopFlag = stopSAB ? new Int32Array(stopSAB) : null;
   setStopRequested(0);
+  let progressCount = 0;
 
   // 停止時に返す途中結果（進捗ごとの best を控えておく。2026-10-10 即時停止＝案 (a)）
   let lastBest: any[] = [];
@@ -61,6 +63,9 @@ self.onmessage = async (ev: MessageEvent<StartMsg | StopMsg>) => {
             : null;
 
         (self as any).postMessage({ type: "progress", runId, done, bestScore });
+        // 10 回に 1 回（yieldEvery 50 なら 500 件ごと）途中結果の写しを送る。停止フラグが使えない端末では
+        // 呼び出し側がワーカーを terminate して、この写しを途中結果として使う（2026-10-11）
+        if (++progressCount % 10 === 0) (self as any).postMessage({ type: "snapshot", runId, done, best: lastBest });
 
         // Stop can also be respected right after posting progress.
         if (isStopRequested()) throw new Error("__STOP__");

@@ -1180,6 +1180,8 @@ return (savedProfiles ?? []).filter((p) => {
   const stopSearchRef = React.useRef<null | (() => void)>(null);
   /** 直近の検索が停止ボタンで中断されたときの件数（次の検索開始で消す） */
   const [stoppedAt, setStoppedAt] = React.useState<number | null>(null);
+  /** 検索の経路（ワーカー / ワーカー（停止フラグなし）/ 本体スレッド）。進捗の行に出す診断用 */
+  const [searchMode, setSearchMode] = React.useState<"worker" | "worker-nosab" | "main" | null>(null);
   const stopContinuousRef = React.useRef(false);
   React.useEffect(() => () => {
     stopContinuousRef.current = true;
@@ -2225,7 +2227,8 @@ async function handleGenerateRank() {
         },
         (stop) => {
           stopSearchRef.current = stop;
-        }
+        },
+        (mode) => setSearchMode(mode)
       );
       stopSearchRef.current = null;
       if (stopped) {
@@ -2844,6 +2847,11 @@ const handleDeleteUsed = React.useCallback(
             </div>
             {t("searchingStatus")} {progressCurrent.toLocaleString()} / {trials.toLocaleString()}（{Math.min(100, Math.round((progressCurrent / Math.max(1, trials)) * 100))}%）・{t("best")} {progressBest != null ? progressBest.toFixed(1) : "-"}
             {continuousMode && continuousRun > 0 ? `・${lang === "ja" ? `連続 ${continuousRun} ${t("continuousRun")}` : `${t("continuousRun")} ${continuousRun}`}` : ""}
+            {searchMode ? (
+              <span style={{ marginLeft: 6, opacity: 0.6 }} title={lang === "ja" ? "検索の経路。worker ＝ ワーカー（即時停止）、worker-nosab ＝ ワーカー（停止は中断時点の直近 500 件まで）、main ＝ 本体スレッド" : "Search path"}>
+                [{searchMode}]
+              </span>
+            ) : null}
           </div>
         ) : stoppedAt != null ? (
           <div style={{ flexBasis: "100%", fontSize: 12, opacity: 0.75 }}>{t("stoppedAt").replace("{done}", stoppedAt.toLocaleString())}</div>

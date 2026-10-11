@@ -31,23 +31,36 @@ export type SearchRunResult = {
   stopped?: boolean;
 };
 
+export type SearchRunMode = "worker" | "worker-nosab" | "main";
+
 export function runSearchInWorker(
   templateId: string,
   searchOptions: any,
   onProgress: (done: number, bestScore: number | null) => void,
   /** 呼び出し側が停止関数を受け取る（停止ボタン用）。省略時は従来どおり止められない */
-  onStopHandle?: (stop: () => void) => void
+  onStopHandle?: (stop: () => void) => void,
+  /** どの経路で動いているか（進捗表示の診断用。2026-10-11） */
+  onMode?: (mode: SearchRunMode) => void
 ): Promise<SearchRunResult> {
   return new Promise((resolve, reject) => {
-    if (typeof Worker === "undefined" || typeof SharedArrayBuffer === "undefined") {
-      reject(new Error("Worker or SharedArrayBuffer is not available in this environment"));
+    if (typeof Worker === "undefined") {
+      reject(new Error("Worker is not available in this environment"));
       return;
     }
 
     let worker: Worker;
-    let stopSAB: SharedArrayBuffer;
+    // SharedArrayBuffer は cross-origin isolation（COOP/COEP）が効いているときだけ作れる。無い端末でも
+    // ワーカーは使い、停止は terminate ＋ 直近の snapshot で代替する（2026-10-11。以前は SAB が無いと
+    // メインスレッドへ退避していて、その経路は検索中に画面が固まった）
+    let stopSAB: SharedArrayBuffer | null = null;
     try {
-      stopSAB = new SharedArrayBuffer(4);
+      if (typeof SharedArrayBuffer !== "undefined") {
+        try {
+          stopSAB = new SharedArrayBuffer(4);
+        } catch {
+          stopSAB = null;
+        }
+      }
       // Next.js/Turbopack worker convention: a `new URL(..., import.meta.url)`
       // argument lets the bundler discover and bundle the worker file.
       worker = new Worker(new URL("../../workers/boardSearch.worker.ts", import.meta.url), {
@@ -60,15 +73,24 @@ export function runSearchInWorker(
 
     const runId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     let settled = false;
+    let lastSnapshot: any[] = [];
+    onMode?.(stopSAB ? "worker" : "worker-nosab");
     // 即時停止（2026-10-10 ユーザー確定 案 (a)）: 共有メモリのフラグを立て、念のため stop メッセージも送る。
-    // ワーカーは進捗の区切り（yieldEvery 件ごと）で止まり、途中結果を "stopped" で返す
-    const stopFlag = new Int32Array(stopSAB);
+    // ワーカーは進捗の区切り（yieldEvery 件ごと）で止まり、途中結果を "stopped" で返す。
+    // SAB が無いときはワーカーを terminate し、直近の snapshot（500 件ごと）を途中結果にする
+    const stopFlag = stopSAB ? new Int32Array(stopSAB) : null;
     onStopHandle?.(() => {
       if (settled) return;
-      Atomics.store(stopFlag, 0, 1);
-      try {
-        worker.postMessage({ type: "stop", runId });
-      } catch {}
+      if (stopFlag) {
+        Atomics.store(stopFlag, 0, 1);
+        try {
+          worker.postMessage({ type: "stop", runId });
+        } catch {}
+        return;
+      }
+      settled = true;
+      cleanup();
+      resolve({ results: lastSnapshot, diagnostics: null, stopped: true });
     });
 
     const cleanup = () => {
@@ -84,6 +106,11 @@ export function runSearchInWorker(
       if (msg.type === "progress") {
         const bestScore = msg.bestScore == null ? null : Number(msg.bestScore);
         onProgress(Number(msg.done ?? 0), bestScore);
+        return;
+      }
+
+      if (msg.type === "snapshot") {
+        if (Array.isArray(msg.best)) lastSnapshot = msg.best;
         return;
       }
 
@@ -139,20 +166,23 @@ export async function runSearchOffThread(
   templateId: string,
   searchOptions: any,
   onProgress: (done: number, bestScore: number | null) => void,
-  onStopHandle?: (stop: () => void) => void
+  onStopHandle?: (stop: () => void) => void,
+  onMode?: (mode: SearchRunMode) => void
 ): Promise<SearchRunResult> {
   try {
-    return await runSearchInWorker(templateId, searchOptions, onProgress, onStopHandle);
+    return await runSearchInWorker(templateId, searchOptions, onProgress, onStopHandle, onMode);
   } catch (e) {
     console.warn("[board] Worker search unavailable, falling back to main-thread search:", e);
-    // メインスレッドの fallback でも停止できるように、進捗の区切りで例外を投げて途中結果を返す
+    onMode?.("main");
+    // メインスレッドの fallback でも停止できるように、進捗の区切りで例外を投げて途中結果を返す。
+    // yieldToEventLoop で yieldEvery 件ごとに描画と入力を通す（これが無いと画面が固まり停止も効かない）
     let stopRequested = false;
     let lastBest: any[] = [];
     onStopHandle?.(() => {
       stopRequested = true;
     });
     try {
-      return await runLogicalSearch(templateId, searchOptions, (done: number, bestNow: any[]) => {
+      return await runLogicalSearch(templateId, { ...searchOptions, yieldToEventLoop: true }, (done: number, bestNow: any[]) => {
         lastBest = Array.isArray(bestNow) ? bestNow : lastBest;
         const bestScore =
           bestNow && bestNow.length > 0 ? Number((bestNow[0] as any).score ?? (bestNow[0] as any).total ?? 0) : null;

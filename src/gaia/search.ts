@@ -19,6 +19,12 @@ export type SearchOptions = {
   hard: HardParams;
   soft: SoftParams;
   yieldEvery?: number;
+  /**
+   * yieldEvery 件ごとにイベントループへ制御を返す（メインスレッドで動かすときだけ true。2026-10-11）。
+   * これが無いと runSearch は一度も await しないので、ワーカーが使えない端末では検索中に画面が
+   * 固まり（ボタン・進捗が描き直されない）、停止ボタンも検索が終わるまで効かない。結果は変わらない
+   */
+  yieldToEventLoop?: boolean;
   /** base_34p のみ有効（p19の方法1/2/3、省略時=1）。LFテンプレでは無視される */
   placementMethod?: 1 | 2 | 3;
 };
@@ -62,6 +68,22 @@ export type SearchDiagnostics = {
   }>;
 };
 
+/** 描画と入力を通すための 1 回の譲歩（MessageChannel のマクロタスク。無ければ setTimeout 0） */
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof MessageChannel !== "undefined") {
+      const ch = new MessageChannel();
+      ch.port1.onmessage = () => {
+        ch.port1.close();
+        resolve();
+      };
+      ch.port2.postMessage(null);
+    } else {
+      setTimeout(resolve, 0);
+    }
+  });
+}
+
 function pushTopK(best: RankedResult[], cand: RankedResult, keepTop: number) {
   best.push(cand);
   best.sort((a, b) => b.score - a.score || a.seed - b.seed);
@@ -94,6 +116,12 @@ export async function runSearch(
 
   const best: RankedResult[] = [];
   let passedHard = 0;
+  // 進捗の通知と（必要なら）イベントループへの譲歩。yieldEvery 件ごと
+  const tick = async (i: number) => {
+    if (i % yieldEvery !== 0) return;
+    if (onProgress) onProgress(i + 1, best);
+    if (options.yieldToEventLoop) await yieldToEventLoop();
+  };
 
   for (let i = 0; i < options.trials; i++) {
     const seed = seed0 + i;
@@ -104,7 +132,7 @@ export async function runSearch(
       logicalMap = buildLogicalMap({ seed, templateId, placementMethod: options.placementMethod });
     } catch {
       hardFailBy.BUILD_LOGICAL_MAP_FAILED += 1;
-      if (onProgress && i % yieldEvery === 0) onProgress(i + 1, best);
+      await tick(i);
       continue;
     }
 
@@ -134,7 +162,7 @@ export async function runSearch(
       extracted = extractForEval(logicalMap, effectiveHard);
     } catch {
       hardFailBy.EXTRACT_FAILED += 1;
-      if (onProgress && i % yieldEvery === 0) onProgress(i + 1, best);
+      await tick(i);
       continue;
     }
 
@@ -171,7 +199,7 @@ export async function runSearch(
       for (const r of hard.reasons) {
         hardFailBy[r.reason] = (hardFailBy[r.reason] ?? 0) + 1;
       }
-      if (onProgress && i % yieldEvery === 0) onProgress(i + 1, best);
+      await tick(i);
       continue;
     }
     passedHard += 1;
@@ -206,7 +234,7 @@ export async function runSearch(
       options.keepTop
     );
 
-    if (onProgress && i % yieldEvery === 0) onProgress(i + 1, best);
+    await tick(i);
   }
 
   return {
