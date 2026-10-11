@@ -2275,9 +2275,12 @@ async function handleGenerateRank() {
     };
 
     try {
-      // 結果バケツへの保存。最後の 1 回だけでなく、途中結果の写し（500 件ごと）と、ページが背景に回った
-      // 瞬間にも同じ手順で保存する（2026-10-11 ユーザー確定。Android で画面オフや他アプリへの切替で
-      // ページが破棄されても、直前までの候補が残るように）。保存は直列化し、最後の保存が必ず最後に走る
+      // 結果バケツへの保存。最後の 1 回に加えて、ページが背景に回った瞬間（visibilitychange → hidden）に
+      // 直近の途中結果の写し（500 件ごとに届く）を同じ手順で保存する（2026-10-11 ユーザー確定。Android で
+      // 他アプリへの切替でページが破棄されても、直前までの候補が残るように）。500 件ごとの途中保存は
+      // v1.6.6 で入れたが検索が遅くなった（IndexedDB 書込みと一覧の再描画が 30,000 件で 60 回、連続検索の
+      // 切り替わりで待ち行列を消化）ので v1.6.7 で廃止（案 (b)）。失うのは最後の 1 回分だけなので、
+      // 連続検索は検索件数を小さくして回す。保存は直列化し、最後の保存が必ず最後に走る
       const key = searchKey ?? (await sha256Hex(stableStringify(searchKeyParams)));
       const toMapped = (list: any[]): RankedResult[] =>
         (list as any[]).map((x: any) => ({
@@ -2316,8 +2319,8 @@ async function handleGenerateRank() {
           },
           (mode) => setSearchMode(mode),
           (snap) => {
+            // 写しを控えるだけ（背景に回った瞬間と停止時に使う）。検索中には保存しない
             lastSnapshot = snap;
-            if (snap.length > 0) enqueuePersist(snap);
           }
         );
         best = r.results;
