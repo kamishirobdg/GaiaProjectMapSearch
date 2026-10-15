@@ -53,6 +53,16 @@ import {
 } from "@/gaia/eval/scoreBlend";
 import type { SetupResult } from "@/gaia/setup/types";
 import { T } from "@/components/ui/layout";
+import { HelpPopover, HELP_LABELS } from "@/components/ui/HelpPopover";
+import { sharedHelp, categoryHelpKey, type SharedHelpKey } from "@/components/helpText";
+
+/**
+ * Setup / List / Total 共通の「?」（タップ／クリック／ホバーで説明の小窓。第 2 弾、2026-10-15）。
+ * 文言は src/components/helpText.ts。title ツールチップはタッチ端末で出ないので項目の説明には使わない。
+ */
+export function SharedHelp({ k, lang }: { k: SharedHelpKey; lang: Lang }) {
+  return <HelpPopover content={sharedHelp(k, lang)} labels={HELP_LABELS[lang]} />;
+}
 
 type Lang = "ja" | "en";
 
@@ -161,30 +171,8 @@ const UI = {
     empty: "セットアップがありません（提案を生成すると表示されます）",
     colorPrefTitle: "色優遇/冷遇",
     colorPrefNote: "母星色ごとの ±。一括探索の並びに効く（評価表の値は変わらない）",
-    tipColorPrefScale: [
-      "その母星色の種族をどれだけ優遇（+）／冷遇（-）するか。",
-      "掛け先は「その色でいちばん強い種族のスコア」。",
-      "盤面が実際にどれだけ違うかを実測して目盛りを合わせてある（300件・4人LF）:",
-      "  0 = 効かない",
-      "  1 = 基準（バランス）とほぼ互角。同程度ならこの色が強い方を選ぶ",
-      "  2 = 優遇が主導。選ばれるセットアップはほぼこの色が強い",
-      "  3 = さらに強く寄る",
-      "  5 = 実質この色だけで決まる（基準はほぼ無視される）",
-      "マイナスは逆向きに同じだけ効く（この色が弱いセットアップを選ぶ）。",
-    ].join("\n"),
     factionPrefTitle: "種族優遇/冷遇",
     factionPrefNote: "種族ごとの ±。掛け先は「Mapの評価値＋Setupの評価値」の合計",
-    tipFactionPrefScale: [
-      "その種族をどれだけ優遇（+）／冷遇（-）するか。",
-      "掛け先は Map の評価値（母星色ぶん）と Setup の評価値の合計（200前後）。",
-      "同じ母星色の2種族は Map ぶんが同じで、Setup ぶんで差がつく。",
-      "  0 = 効かない",
-      "  1 = 基準（バランス）とほぼ互角。同程度ならこの種族に向く方を選ぶ",
-      "  2 = 優遇が主導。選ばれる組み合わせはほぼこの種族に向いている",
-      "  3 = さらに強く寄る",
-      "  5 = 実質この種族だけで決まる（基準はほぼ無視される）",
-      "マイナスは逆向きに同じだけ効く。",
-    ].join("\n"),
   },
   en: {
     evalTitle: "Evaluation (by faction)",
@@ -205,30 +193,8 @@ const UI = {
     empty: "No setup yet (generate a suggestion to see this)",
     colorPrefTitle: "Colour preference",
     colorPrefNote: "Per home colour; affects bulk-search ranking (not the table values)",
-    tipColorPrefScale: [
-      "How strongly factions of this home colour are favoured (+) or avoided (-).",
-      "Applied to the best faction of that colour.",
-      "Measured against how much setups actually differ (300 setups, 4p Lost Fleet):",
-      "  0 = off",
-      "  1 = about even with the criterion; breaks ties toward this colour",
-      "  2 = preference leads; the chosen setup almost always has this colour strong",
-      "  3 = stronger still",
-      "  5 = practically decided by this colour alone (criterion ignored)",
-      "Negative values do the same in reverse.",
-    ].join("\n"),
     factionPrefTitle: "Faction preference",
     factionPrefNote: "Per faction; applied to (map value + setup value)",
-    tipFactionPrefScale: [
-      "How strongly this faction is favoured (+) or avoided (-).",
-      "Applied to the map value of its home colour plus its setup value (~200).",
-      "Two factions of the same home colour share the map part and differ in the setup part.",
-      "  0 = off",
-      "  1 = about even with the criterion; breaks ties toward this faction",
-      "  2 = preference leads; the chosen pair almost always suits this faction",
-      "  3 = stronger still",
-      "  5 = practically decided by this faction alone (criterion ignored)",
-      "Negative values do the same in reverse.",
-    ].join("\n"),
   },
 } as const;
 
@@ -561,7 +527,10 @@ function ScoreSummary({
   };
   return (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", fontSize: T.fontBody, alignItems: "center" }}>
-      <span style={{ fontWeight: 700 }}>{t.summary}</span>
+      <span style={{ fontWeight: 700 }}>
+        {t.summary}
+        <SharedHelp k="setupSummary" lang={lang} />
+      </span>
       <span style={chip}>
         {t.mean} {fmt1(mean(values))}
       </span>
@@ -600,7 +569,10 @@ export function SetupWeightInputs({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
-        <span style={{ fontWeight: 700, fontSize: T.fontBody }}>{t.weightsTitle}</span>
+        <span style={{ fontWeight: 700, fontSize: T.fontBody }}>
+          {t.weightsTitle}
+          <SharedHelp k="setupWeights" lang={lang} />
+        </span>
         <span style={{ fontSize: T.fontNote, color: T.fgMuted }}>{t.weightsNote}</span>
         <button onClick={onReset} disabled={atDefault} style={{ marginLeft: "auto", fontSize: 11 }}>
           {atDefault ? t.isDefault : t.reset}
@@ -610,7 +582,6 @@ export function SetupWeightInputs({
         {keys.map((k) => (
           <label
             key={k}
-            title={lang === "ja" ? CAT_LABEL[k].tipJa : CAT_LABEL[k].tipEn}
             style={{
               display: "flex",
               gap: 4,
@@ -623,6 +594,7 @@ export function SetupWeightInputs({
             }}
           >
             <span>{lang === "ja" ? CAT_LABEL[k].ja : CAT_LABEL[k].en}</span>
+            <SharedHelp k={categoryHelpKey(k)} lang={lang} />
             <input
               type="number"
               step={SETUP_WEIGHT_STEP}
@@ -671,7 +643,10 @@ export function ColorPrefInputs({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
-        <span style={{ fontWeight: 700, fontSize: T.fontBody }}>{t.colorPrefTitle}</span>
+        <span style={{ fontWeight: 700, fontSize: T.fontBody }}>
+          {t.colorPrefTitle}
+          <SharedHelp k="setupColorPref" lang={lang} />
+        </span>
         <span style={{ fontSize: T.fontNote, color: T.fgMuted }}>{t.colorPrefNote}</span>
         <button onClick={onReset} disabled={atDefault} style={{ marginLeft: "auto", fontSize: 11 }}>
           {atDefault ? t.isDefault : t.reset}
@@ -681,7 +656,6 @@ export function ColorPrefInputs({
         {keys.map((k) => (
           <label
             key={k}
-            title={t.tipColorPrefScale}
             style={{
               display: "flex",
               gap: 4,
@@ -737,7 +711,10 @@ export function FactionPrefInputs({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
-        <span style={{ fontWeight: 700, fontSize: T.fontBody }}>{t.factionPrefTitle}</span>
+        <span style={{ fontWeight: 700, fontSize: T.fontBody }}>
+          {t.factionPrefTitle}
+          <SharedHelp k="listFactionPref" lang={lang} />
+        </span>
         <span style={{ fontSize: T.fontNote, color: T.fgMuted }}>{t.factionPrefNote}</span>
         <button onClick={onReset} disabled={atDefault} style={{ marginLeft: "auto", fontSize: 11 }}>
           {atDefault ? t.isDefault : t.reset}
@@ -747,7 +724,6 @@ export function FactionPrefInputs({
         {defs.map((f) => (
           <label
             key={f.id}
-            title={t.tipFactionPrefScale}
             style={{
               display: "flex",
               gap: 4,
@@ -868,7 +844,10 @@ export default function FactionEvalPanel({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: T.gapSm }}>
       <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
-        <span style={{ fontWeight: 700, fontSize: T.fontHead }}>{t.evalTitle}</span>
+        <span style={{ fontWeight: 700, fontSize: T.fontHead }}>
+          {t.evalTitle}
+          <SharedHelp k="setupEval" lang={lang} />
+        </span>
         <span style={{ fontSize: T.fontNote, color: T.fgMuted }}>{t.evalNote}</span>
       </div>
       {result && total ? (

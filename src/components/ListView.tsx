@@ -52,6 +52,7 @@ import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetu
 import { SetupBoard } from "@/components/SetupView";
 import FactionEvalPanel, {
   FactionPrefInputs,
+  SharedHelp,
   useFactionPref,
   useScoreBlend,
   useSetupWeights,
@@ -930,7 +931,15 @@ export default function ListView() {
       <TwoCol
         left={
           <>
-          <Panel title={t.pairTitle} note={t.pairNote}>
+          <Panel
+            title={
+              <>
+                {t.pairTitle}
+                <SharedHelp k="listPair" lang={lang} />
+              </>
+            }
+            note={t.pairNote}
+          >
             {/* コントロールは「幅が変わらないもの」を1行目に固定順で置き、選択肢の
                 ラベル長で幅が変わる起点セレクトは最後の行に単独で置く（探索の向きで
                 並びや位置がズレないようにする。2026-07-25 要望）。探し方は向きに
@@ -979,6 +988,7 @@ export default function ListView() {
 
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 <span>{t.pairCriterion}</span>
+                <SharedHelp k="listCriterion" lang={lang} />
                 <select
                   value={criterion}
                   onChange={(e) => {
@@ -1378,7 +1388,10 @@ export default function ListView() {
                     const topColors = recSettings.players + 2;
                     return (
                       <div>
-                        <span style={{ opacity: 0.7 }}>{t.totalStrong(topColors)}:</span>{" "}
+                        <span style={{ opacity: 0.7 }}>
+                          {t.totalStrong(topColors)}
+                          <SharedHelp k="listTopColors" lang={lang} />:
+                        </span>{" "}
                         {topTotalText(
                           mapValueByFaction(bd),
                           rec.setupScores,

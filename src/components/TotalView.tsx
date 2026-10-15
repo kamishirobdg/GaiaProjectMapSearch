@@ -32,7 +32,7 @@ import { scoreSetupFactions, type FactionScores } from "@/gaia/eval/factionEval"
 import { applyShipInteraction, shipInteractionOf } from "@/gaia/eval/shipInteraction";
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
 import { factionsForMode, type FactionId } from "@/gaia/eval/factionWeights";
-import { factionHomeBg, useScoreBlend, useSetupWeights } from "@/components/FactionEvalPanel";
+import { factionHomeBg, SharedHelp, useScoreBlend, useSetupWeights } from "@/components/FactionEvalPanel";
 import {
   blendScores,
   isDefaultScoreBlend,
@@ -408,7 +408,10 @@ export default function TotalView() {
       />
       <PageBody>
         <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>{t.title}</div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>
+            {t.title}
+            <SharedHelp k="totalTable" lang={lang} />
+          </div>
           <div style={{ fontSize: 11, opacity: 0.6 }}>{t.note}</div>
         </div>
 
@@ -482,7 +485,10 @@ export default function TotalView() {
 
           {/* 合算比（2026-09-19、案C）。既定 1:1。書き込みは onChange のときだけ。 */}
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 10, fontSize: 12 }}>
-            <span style={{ fontWeight: 700 }}>{t.blendTitle}</span>
+            <span style={{ fontWeight: 700 }}>
+              {t.blendTitle}
+              <SharedHelp k="totalBlend" lang={lang} />
+            </span>
             {(["map", "setup"] as ScoreBlendKey[]).map((k) => (
               <label
                 key={k}
