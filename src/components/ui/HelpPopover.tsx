@@ -65,11 +65,17 @@ export function HelpPopover({
   content,
   labels,
   size = 15,
+  trigger,
 }: {
   content: HelpContent;
   labels: HelpLabels;
   /** 「?」の直径（px） */
   size?: number;
+  /**
+   * 「?」の代わりにこの中身（文字）をトリガーにする。点線下線で「開ける」ことを示す。
+   * 内訳表の列見出しのように「?」を足す幅が無い場所用（狭い幅で横スクロールを戻さない）。
+   */
+  trigger?: React.ReactNode;
 }) {
   const [open, setOpen] = React.useState(false);
   // クリックで開いたか（ホバーで開いただけなら離れたときに閉じる）
@@ -107,10 +113,21 @@ export function HelpPopover({
     };
   }, [open, hide]);
 
-  // スクロール・リサイズで位置がずれるので閉じる
+  // スクロール・リサイズでは位置を測り直す（閉じない）。「?」が画面外に出たときだけ閉じる。
+  // 開いた直後に、タップ前のスクロール（要素を画面内へ入れる動き・フォーカス移動）の scroll イベントが
+  // 遅れて届くことがあり、閉じる方式だと開いた瞬間に消えた（2026-10-15 ヘッドレス確認）。
   React.useEffect(() => {
     if (!open) return;
-    const onMove = () => hide();
+    const onMove = () => {
+      const el = btnRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > window.innerHeight || r.right < 0 || r.left > window.innerWidth) {
+        hide();
+        return;
+      }
+      setPos(placeNear(r));
+    };
     window.addEventListener("scroll", onMove, true);
     window.addEventListener("resize", onMove);
     return () => {
@@ -145,28 +162,43 @@ export function HelpPopover({
           if (e.pointerType !== "mouse" || pinned) return;
           setOpen(false);
         }}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: size,
-          height: size,
-          minWidth: size,
-          padding: 0,
-          marginLeft: 4,
-          borderRadius: "50%",
-          border: "1px solid #9aa4b8",
-          background: open ? "#4453ff" : "#fff",
-          color: open ? "#fff" : "#4453ff",
-          fontSize: Math.round(size * 0.7),
-          fontWeight: 700,
-          lineHeight: 1,
-          cursor: "pointer",
-          verticalAlign: "middle",
-          flex: "0 0 auto",
-        }}
+        style={
+          trigger != null
+            ? {
+                display: "inline",
+                padding: 0,
+                margin: 0,
+                border: "none",
+                borderBottom: `1px dotted ${open ? "#4453ff" : "#999"}`,
+                background: "transparent",
+                color: "inherit",
+                font: "inherit",
+                lineHeight: "inherit",
+                cursor: "pointer",
+              }
+            : {
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: size,
+                height: size,
+                minWidth: size,
+                padding: 0,
+                marginLeft: 4,
+                borderRadius: "50%",
+                border: "1px solid #9aa4b8",
+                background: open ? "#4453ff" : "#fff",
+                color: open ? "#fff" : "#4453ff",
+                fontSize: Math.round(size * 0.7),
+                fontWeight: 700,
+                lineHeight: 1,
+                cursor: "pointer",
+                verticalAlign: "middle",
+                flex: "0 0 auto",
+              }
+        }
       >
-        ?
+        {trigger ?? "?"}
       </button>
       {open && pos ? (
         <div
@@ -188,6 +220,8 @@ export function HelpPopover({
             top: pos.top,
             bottom: pos.bottom,
             width: pos.width,
+            // padding と枠を幅に含める（content-box だと 375px で右端が画面外に出た。2026-10-15 ヘッドレス確認）
+            boxSizing: "border-box",
             maxHeight: "70vh",
             overflowY: "auto",
             zIndex: 1000,

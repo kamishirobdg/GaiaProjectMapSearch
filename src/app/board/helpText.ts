@@ -15,7 +15,7 @@ const ENTRIES = {
   // ---------- 検索の設定 ----------
   trials: {
     ja: {
-      title: "試行回数",
+      title: "検索件数",
       what: "1 回の検索で生成して評価する盤面の数。",
       why:
         "ハード制約を通る盤面は少ない（既定条件で LF 4人 0.2%、3人 0.7%。2026-09-29 実測）ので、上位を安定して得るには数万件が要る。" +
@@ -301,6 +301,126 @@ const ENTRIES = {
       what: "Strength per unit of preference: the coefficient of the term added to the search score.",
       why: "Default 25 was calibrated so that pref 1 is about even with the imbalance term (300 boards, 4p LF: imbalance range 1747 vs colour value range 67). Changed 3 → 25 on 2026-07-31.",
       ref: "2.3",
+    },
+  },
+
+  // ---------- 内訳表（集計の仕組みと種別の列。eval_v7 / v8） ----------
+  breakdown: {
+    ja: {
+      title: "種族別の内訳（集計の仕組み）",
+      what:
+        "種族の値 ＝ Σ 盤面の全惑星 係数（種別）× (固有値 10 ＋ 船接触 ＋ 船星系 ＋ 端の罰点) × 到達係数。" +
+        "到達係数は 0.5 の（到達コスト −1）乗。到達コストは跳躍（距離 2=1 / 3=1.5 / 4=2 / 5=3。航行 Lv1 開始の種族は距離 2 が 0.5）＋" +
+        "踏み台と到着した惑星の入植の歩数（改造の輪、ガイア 1、次元横断 2、原始 3、小惑星 2）。" +
+        "開始地点は母星色から合計が最大になる組（到達係数 1）。列は種別ごとに丸め、評価はその合計。",
+      why:
+        "方針「最上位 2 個からどれだけ到達しやすく入植しやすいかが全て」（2026-10-07）。到達コストは種族ごとで、開始建物の数・航行・改造・ガイアの初期研究を反映する。" +
+        "検索の偏り項と色優遇で使う色の値は、その色の 2 種族のうち大きい方。行名のホバーに固有値・船接触・船星系・端の内訳。",
+      ref: "2.10",
+    },
+    en: {
+      title: "Breakdown by faction (how it adds up)",
+      what:
+        "Faction value = Σ over every planet of coefficient(kind) × (base 10 + scout + core + rim penalty) × reach factor. " +
+        "Reach factor 0.5^(cost −1); cost = hop cost by distance (2=1 / 3=1.5 / 4=2 / 5=3; 0.5 at distance 2 for factions starting at navigation 1) + " +
+        "settlement steps of stepping stones and of the destination (terraform wheel, gaia 1, transdim 2, proto 3, asteroid 2). " +
+        "Starts are the home-colour planets with the largest total (factor 1). Columns are rounded per kind; the total is their sum.",
+      why:
+        "Policy (2026-10-07): what matters is how easily the best two starts reach and settle every planet. Reach cost is per faction: starting structures and navigation / terraforming / gaia research. " +
+        "The colour value used by the balance term and colour preference is the larger of the colour's two factions. Hover a row name for the base / scout / core / rim parts.",
+      ref: "2.10",
+    },
+  },
+  colTotal: {
+    ja: {
+      title: "評価",
+      what: "その種族の種別ごとの列の合計。全惑星を 係数（種別）× (固有値 10 ＋ 船接触 ＋ 船星系 ＋ 端の罰点) × 到達係数 で数える。",
+      why:
+        "固有値 10 は「惑星が 1 つあること自体の値」で、船接触 10 と同じ桁。固有値 0 だと基本版（船なし）の値が負になり評価が成立しない（2026-10-07 実測）。" +
+        "ダー・シュワーム人は開始地点が惑星首府 1 つなので、その値を × 1.5（eval_v8）。",
+      ref: "2.10",
+    },
+    en: {
+      title: "Total",
+      what: "Sum of the kind columns for that faction: every planet counted as coefficient(kind) × (base 10 + scout + core + rim penalty) × reach factor.",
+      why:
+        "Base 10 is the value of a planet simply existing, the same order as scout 10. With base 0 the base game (no ships) goes negative and the evaluation breaks (measured 2026-10-07). " +
+        "Ivits start from a single planetary institute, so that start is × 1.5 (eval_v8).",
+      ref: "2.10",
+    },
+  },
+  colOwn: {
+    ja: {
+      title: "母星",
+      what: "母星色の惑星（係数 1）。開始地点の値（到達係数 1）＋ 残りの同色惑星の値 × 到達係数。",
+      why: "係数 1 が基準（削らない）。開始地点は母星色から合計が最大になる 2 ヶ所（ゼノ族 3、ダー・シュワーム人と LF の種族 1）を総当たりで選ぶ。",
+      ref: "2.10",
+    },
+    en: {
+      title: "Home",
+      what: "Home-colour planets (coefficient 1): the starting planets (factor 1) plus the rest weighted by the reach factor.",
+      why: "Coefficient 1 is the reference (no discount). Starts are the two home-colour planets with the largest total (Xenos 3, Ivits and Lost Fleet factions 1), chosen by brute force.",
+      ref: "2.10",
+    },
+  },
+  colOther: {
+    ja: {
+      title: "他色",
+      what: "他の基本 6 色の惑星（係数 0.25。改造種族 ジオデン人・タクロン族・ネヴラ人は × 1.2）。改造の歩数は到達コストに入るので、1 歩の色は 3 歩の色よりずっと大きく数える。",
+      why:
+        "0.5 だと他色の寄与が 44% で母星色を超えた。0.25 で母星色 50% / 他色 28%（2026-10-07 実測）。改造種族の倍率 1.5 はジオデン人が +68 と突出、1.2 で +6。" +
+        "改造種族の分類は暫定で、将来は種族ごとの倍率表にする。",
+      ref: "2.10",
+    },
+    en: {
+      title: "Other",
+      what: "Planets of the other six basic colours (coefficient 0.25; terraforming factions Geodens / Taklons / Nevlas × 1.2). Terraform steps go into the reach cost, so one step away counts far more than three.",
+      why:
+        "At 0.5 the other colours contributed 44% and exceeded home; 0.25 gives home 50% / other 28% (measured 2026-10-07). Terraform boost 1.5 made Geodens stand out (+68); 1.2 gives +6. " +
+        "The terraforming-faction list is provisional; a per-faction table is planned.",
+      ref: "2.10",
+    },
+  },
+  colGaia: {
+    ja: {
+      title: "緑（ガイア）",
+      what: "ガイア惑星（係数 0.5）。入植コスト 1（グリーン人 0.5、LF の 3 種族 2）が到達コストに入る。",
+      why: "どの種族にも届く惑星なので他色 0.25 より大きい。値は 2.7 の「入植先の係数」から引き継いだもので、見直し候補。",
+      ref: "2.7 / 2.10",
+    },
+    en: {
+      title: "Gaia",
+      what: "Gaia planets (coefficient 0.5). Settlement cost 1 (Gleens 0.5, three Lost Fleet factions 2) goes into the reach cost.",
+      why: "Reachable by every faction, hence above other 0.25. Carried over from the destination coefficients in 2.7; a candidate for review.",
+      ref: "2.7 / 2.10",
+    },
+  },
+  colTransdim: {
+    ja: {
+      title: "紫（次元横断）",
+      what: "次元横断惑星（係数 0.25。ガイア種族 地球人・バルタック人・イタル人・モウェイド人は 0.5）。入植コスト 2（ガイア Lv1 開始 1、イタル人 1.5）が到達コストに入る。",
+      why: "ガイア計画を経る手間のぶん他色と同じ 0.25。ガイア種族は初期研究で届きやすいので 0.5 に上げる。値は 2.7 から引き継ぎで、見直し候補。",
+      ref: "2.7 / 2.10",
+    },
+    en: {
+      title: "Transdim",
+      what: "Transdimensional planets (coefficient 0.25; gaia factions Terrans / Baltaks / Itars / Moweids 0.5). Settlement cost 2 (gaia level 1 start 1, Itars 1.5) goes into the reach cost.",
+      why: "Same 0.25 as other colours because of the gaia-project step; gaia factions reach them easily from their starting research, so 0.5. Carried over from 2.7; a candidate for review.",
+      ref: "2.7 / 2.10",
+    },
+  },
+  colExtra: {
+    ja: {
+      title: "拡張星（原始・小惑星）",
+      what: "その種族から見た原始・小惑星（係数 0.1。入植コスト 原始 3 / 小惑星 2）。Lost Fleet の盤面だけ。",
+      why: "評価に占める割合は 1.3〜2.2%（2026-10-10 実測）と小さいので、列は既定で出さない（評価からは外していない）。",
+      ref: "2.5 / 2.10",
+    },
+    en: {
+      title: "Ext. (proto / asteroid)",
+      what: "Proto and asteroid planets as seen by that faction (coefficient 0.1; settlement cost proto 3 / asteroid 2). Lost Fleet boards only.",
+      why: "Only 1.3–2.2% of the evaluation (measured 2026-10-10), so the column is off by default (it still counts in the total).",
+      ref: "2.5 / 2.10",
     },
   },
 } as const satisfies Record<string, Entry>;

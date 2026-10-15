@@ -3535,6 +3535,7 @@ const handleDeleteUsed = React.useCallback(
                         : lang === "ja"
                           ? "種族別の内訳（母星 / 他色 / 緑 / 紫 / 拡張星 / 評価）"
                           : "By faction (home / other / gaia / transdim / ext. / total)"}
+                      <Help k="breakdown" lang={lang} />
                     </span>
                     {/* 列セレクタの開閉（2026-10-10 ユーザー確定 1-(a)。普段は使わないので畳んでおく） */}
                     <button
@@ -3560,21 +3561,22 @@ const handleDeleteUsed = React.useCallback(
                       {/* 列セレクタ: 種別ごとの列（eval_v7）。原始・小惑星は LF だけ */}
                       {(
                         [
-                          ["total", "評価", "total", t("tipTotalCol")],
-                          ["own", "母星", "home", t("tipColOwn")],
-                          ["other", "他色", "other", t("tipColOther")],
-                          ["gaia", "緑（ガイア）", "gaia", t("tipColGaia")],
-                          ["transdim", "紫（次元横断）", "transdim", t("tipColTransdim")],
-                          ...(isBase ? [] : [["extra", "拡張星（原始・小惑星）", "ext. (proto/asteroid)", t("tipColExtra")] as const]),
-                        ] as ReadonlyArray<readonly [string, string, string, string]>
-                      ).map(([k, ja, en, tip]) => (
+                          ["total", "評価", "total", "colTotal"],
+                          ["own", "母星", "home", "colOwn"],
+                          ["other", "他色", "other", "colOther"],
+                          ["gaia", "緑（ガイア）", "gaia", "colGaia"],
+                          ["transdim", "紫（次元横断）", "transdim", "colTransdim"],
+                          ...(isBase ? [] : [["extra", "拡張星（原始・小惑星）", "ext. (proto/asteroid)", "colExtra"] as const]),
+                        ] as ReadonlyArray<readonly [string, string, string, HelpKey]>
+                      ).map(([k, ja, en, helpKey]) => (
                         <label key={k} style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 12 }}>
                           <input
                             type="checkbox"
                             checked={(breakdownCols as any)[k]}
                             onChange={(e) => setBreakdownCol(k, e.target.checked)}
                           />
-                          <Hint label={lang === "ja" ? ja : en} tip={tip} />
+                          <span>{lang === "ja" ? ja : en}</span>
+                          <Help k={helpKey} lang={lang} />
                         </label>
                       ))}
                     </div>

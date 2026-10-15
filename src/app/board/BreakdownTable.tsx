@@ -6,6 +6,8 @@
 
 import React from "react";
 import type { Lang } from "./uiText";
+import { helpContent, type HelpKey } from "./helpText";
+import { HelpPopover, HELP_LABELS } from "@/components/ui/HelpPopover";
 import { FACTIONS } from "@/gaia/eval/factionWeights";
 import { SHIP_LABEL, type ShipId } from "@/gaia/setup/types";
 
@@ -497,25 +499,23 @@ export function ColorBreakdownTable({
 
   // 列ヘッダの ◎（その種別の惑星を全部マーク）は 2026-10-10 に廃止（ユーザー要望。種族の行のセルから種別ごとにマークできる）
 
-  // 評価の列には集計の仕組みをホバーで出す（設計意図を画面でも読めるようにする。2026-10-03、eval_v7 で式を更新）
-  const headTip = (ck: string): string | undefined => {
-    // 拡張星（原始・小惑星）は見出しを短縮しているので、正式名と係数をホバーに
-    if (ck === "extra") return lang === "ja" ? "原始・小惑星（係数 0.1。入植コスト 原始 3 / 小惑星 2）" : "Proto / asteroid planets (coefficient 0.1; stone cost proto 3 / asteroid 2)";
-    if (ck !== "total") return undefined;
-    const base = unified?.base ?? 10;
-    return lang === "ja"
-      ? `種族の値 ＝ Σ 盤面の全惑星 係数（種別）× (固有値 ${base} ＋ 船接触 ＋ 船星系 ＋ 端の罰点) × 到達係数。` +
-          `係数は 母星色 1 / 他色 0.25（改造種族 × 1.2）/ ガイア 0.5 / 次元横断 0.25（ガイア種族 0.5）/ 原始・小惑星 0.1。` +
-          `到達係数は 0.5 の（到達コスト−1）乗で、到達コストは跳躍（距離2=1 / 3=1.5 / 4=2 / 5=3）と、踏み台と到着した惑星の入植の歩数の和` +
-          `（改造の輪、ガイア 1、次元横断 2 / ガイア Lv1 開始 1 / イタル人 1.5、原始 3、小惑星 2）。` +
-          `開始地点は母星色から 2 ヶ所（ゼノ族 3、ダー・シュワーム人と LF の種族は 1）で、合計が最大になる組を総当たりで選ぶ。` +
-          `各列は種別ごとに丸めてあり、評価はその合計。検索の偏り項は色ごとに2種族の大きい方で測る。`
-      : `Faction value = sum over every planet of coefficient(kind) × (base ${base} + scout + core + rim penalty) × reach factor. ` +
-          `Coefficients: home 1 / other 0.25 (terraforming factions × 1.2) / gaia 0.5 / transdim 0.25 (gaia factions 0.5) / proto・asteroid 0.1. ` +
-          `Reach factor 0.5^(cost−1); cost = hop cost by distance (2=1 / 3=1.5 / 4=2 / 5=3) plus settlement steps of stepping stones and of the destination. ` +
-          `Starts: 2 home-colour planets (Xenos 3, Ivits and Lost Fleet factions 1), chosen by brute force. ` +
-          `Columns are rounded per kind; the balance term uses the larger of the two factions per colour.`;
-  };
+  // 種別の列見出しは、文字そのものをタップ／クリックすると説明の小窓が開く（2026-10-15。文言は helpText.ts）。
+  // 「?」を足すと狭い幅で表が広がり横スクロールが戻るので、見出しをトリガーにする。
+  // 2026-10-03〜 の title ホバー（評価の列に集計の式、拡張星に正式名と係数）はこの小窓に置き換えた。
+  const headHelpKey = (ck: string): HelpKey | null =>
+    ck === "total"
+      ? "colTotal"
+      : ck === "own"
+        ? "colOwn"
+        : ck === "other"
+          ? "colOther"
+          : ck === "gaia"
+            ? "colGaia"
+            : ck === "transdim"
+              ? "colTransdim"
+              : ck === "extra"
+                ? "colExtra"
+                : null;
 
   // 古い保存結果（byKind 無し）のフォールバック: 色ごとの評価だけ
   const sortedColors = [...PLANET_ORDER].sort((a, b) => axisGet(totals, b) - axisGet(totals, a));
@@ -530,9 +530,10 @@ export function ColorBreakdownTable({
             {COL_ORDER.map((ck) => {
               if (!cols[ck]) return null;
               const label = lang === "ja" ? COL_LABEL[ck].ja : COL_LABEL[ck].en;
+              const hk = headHelpKey(ck);
               return (
-                <th key={ck} style={thStyle} title={headTip(ck)}>
-                  {label}
+                <th key={ck} style={thStyle}>
+                  {hk ? <HelpPopover content={helpContent(hk, lang)} labels={HELP_LABELS[lang]} trigger={label} /> : label}
                 </th>
               );
             })}
