@@ -85,6 +85,8 @@ import {
 } from "./persistence";
 
 import { UI_TEXT, type Lang, type UiKey } from "./uiText";
+import { helpContent, type HelpKey } from "./helpText";
+import { HelpPopover, HELP_LABELS } from "@/components/ui/HelpPopover";
 import { ColorBreakdownTable, PLANET_ORDER, PLANET_LABEL_JA, PLANET_INPUT_BG, EXTRA_INPUT_BG, fmt0, axisMarkers, type BreakdownMarker, type MarkAxis, type PlanetTypeKey } from "./BreakdownTable";
 import { SHIP_LABEL } from "@/gaia/setup/types";
 
@@ -135,6 +137,14 @@ function Hint({ label, tip }: { label: React.ReactNode; tip: string }) {
       {label}
     </span>
   );
+}
+
+/**
+ * 項目の横の「?」（タップ／クリック／ホバーで小窓。2026-10-15 ユーザー確定 1-(a)）。
+ * 文言は helpText.ts（何を測るか／既定値の根拠／設計ノートの節）。title ツールチップは置き換えて外す。
+ */
+function Help({ k, lang }: { k: HelpKey; lang: Lang }) {
+  return <HelpPopover content={helpContent(k, lang)} labels={HELP_LABELS[lang]} />;
 }
 
 /** sector image helper (UI only) は @/gaia/board/viewerAssets へ抽出済み（一覧タブと共用） */
@@ -3068,7 +3078,8 @@ const handleDeleteUsed = React.useCallback(
             基本版/LF切替でボタン位置がズレないようにするため、2026-07-24） */}
         {isBase ? (
           <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
-            <Hint label={t("placementMethod")} tip={t("placementMethodTip")} />
+            <span>{t("placementMethod")}</span>
+            <Help k="placementMethod" lang={lang} />
             <select
               value={placementMethod}
               onChange={(e) => {
@@ -3586,7 +3597,8 @@ const handleDeleteUsed = React.useCallback(
             {/* Controls */}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <Hint label={t("trials")} tip={t("tipTrials")} />
+                <span>{t("trials")}</span>
+                <Help k="trials" lang={lang} />
                 <input
                   type="number"
                   value={trials}
@@ -3598,7 +3610,8 @@ const handleDeleteUsed = React.useCallback(
               </label>
 
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <Hint label={t("topK")} tip={t("tipTopK")} />
+                <span>{t("topK")}</span>
+                <Help k="topK" lang={lang} />
                 <input
                   type="number"
                   value={keepTop}
@@ -3621,17 +3634,20 @@ const handleDeleteUsed = React.useCallback(
                     } catch {}
                   }}
                 />
-                <Hint label={t("keepAwake")} tip={t("tipKeepAwake")} />
+                <span>{t("keepAwake")}</span>
+                <Help k="keepAwake" lang={lang} />
               </label>
             </div>
 
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <div style={{ fontWeight: 700, fontSize: 12 }}>
-                <Hint label={t("hard")} tip={t("tipHard")} />
+                <span>{t("hard")}</span>
+                <Help k="hard" lang={lang} />
               </div>
 
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <Hint label={t("outerSameColorMax")} tip={t("tipOuterSameColorMax")} />
+                <span>{t("outerSameColorMax")}</span>
+                <Help k="outerSameColorMax" lang={lang} />
                 <input
                   type="number"
                   value={outerSameColorMax}
@@ -3643,7 +3659,8 @@ const handleDeleteUsed = React.useCallback(
               </label>
 
               <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <Hint label={t("maxConnectedPlanets")} tip={t("tipMaxConnectedPlanets")} />
+                <span>{t("maxConnectedPlanets")}</span>
+                <Help k="maxConnectedPlanets" lang={lang} />
                 <input
                   type="number"
                   value={maxConnectedPlanets}
@@ -3661,13 +3678,15 @@ const handleDeleteUsed = React.useCallback(
                     checked={h5IncludeScouts}
                     onChange={(e) => setH5IncludeScouts(e.target.checked)}
                   />
-                  <Hint label={t("h5IncludeScouts")} tip={t("tipH5IncludeScouts")} />
+                  <span>{t("h5IncludeScouts")}</span>
+                  <Help k="h5IncludeScouts" lang={lang} />
                 </label>
               ) : null}
 
               {!isBase ? (
                 <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <Hint label={t("centerMode")} tip={t("tipCenterMode")} />
+                  <span>{t("centerMode")}</span>
+                  <Help k="centerMode" lang={lang} />
                   <select
                     value={centerMode}
                     onChange={(e) =>

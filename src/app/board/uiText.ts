@@ -20,8 +20,6 @@ export const UI_TEXT = {
     method1: "Method 1 (swap outer 05-10 only)",
     method2: "Method 2 (also swap inner 01-04)",
     method3: "Method 3 (swap all 10 tiles)",
-    placementMethodTip:
-      "Rulebook p.19: Method 1 keeps sectors 01-04 in their first-game positions and shuffles 05-10; Method 2 also shuffles 01-04 within the inner slots; Method 3 shuffles all 10 tiles. All tiles rotate freely in every method.",
     // 内訳表の種別の列（eval_v7、2026-10-07）。固有値と係数は定数（reachCost.ts の UNIFIED_VALUE）
     tipColOwn: "Home-colour planets (coefficient 1): the starting planets plus the rest weighted by reachability.",
     tipColOther:
@@ -124,7 +122,6 @@ export const UI_TEXT = {
     stoppedAt: "Stopped at {done} trials (partial results saved)",
     searchingStatus: "Searching",
     keepAwake: "Keep screen on while searching",
-    tipKeepAwake: "Asks the browser not to turn the screen off while a search runs (Screen Wake Lock; works while this page is in front). Switching to another app still pauses the search; the partial results so far are saved at that moment.",
     screenOn: "screen on",
     savedConditionsShort: "Saved",
     narrowTabCandidates: "Results",
@@ -223,16 +220,8 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     extra: "extra",
 
     // --- hover hints (⑤ UI wording, 2026-07-24). Shown via title=. ---
-    tipTrials: "Boards generated and evaluated per search run",
-    tipTopK: "How many top results are kept and shown",
     tipContinuous: "Repeats searches until stopped, accumulating top results",
-    tipHard: "Constraints that immediately reject a board",
     tipSoft: "Weights that rank the surviving boards",
-    tipOuterSameColorMax: "Max planets of the same color allowed on the outermost ring",
-    tipMaxConnectedPlanets:
-      "0 = no limit. With N, boards containing a connected planet cluster larger than N are rejected (gaia/transdim count as connected)",
-    tipH5IncludeScouts: "Scout cells also join clusters for the check above",
-    tipCenterMode: "Restricts which tile may occupy the center slot",
     tipWRimGap:
       "Penalty for a planet in the outermost corner (10 of the 18 cells within distance 2 are off the board). Each planet loses this value x (missing cells / 10): " +
       "inner planets lose nothing, one ring inside the edge about 3 missing, an edge planet 7 (side) to 10 (corner). Applies to proto/asteroid planets too. 0 = off.",
@@ -269,8 +258,6 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     method1: "方法1（外側05-10のみ入替）",
     method2: "方法2（内側01-04も入替）",
     method3: "方法3（全10タイル入替）",
-    placementMethodTip:
-      "ルールブックp19: 方法1は01-04を最初のゲームの位置に固定し05-10を入替。方法2は01-04も内側4スロット内で入替。方法3は全10タイルを入替。回転はどの方法でも全タイル自由。",
     // 内訳表の種別の列（eval_v7、2026-10-07）。固有値と係数は定数（reachCost.ts の UNIFIED_VALUE）
     tipColOwn: "母星色の惑星（係数 1）。開始地点の値 ＋ 残りの同色惑星の値 × 到達係数。",
     tipColOther:
@@ -373,7 +360,6 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     stoppedAt: "{done} 件で中断（途中結果は保存済み）",
     searchingStatus: "検索中",
     keepAwake: "検索中は画面を消さない",
-    tipKeepAwake: "検索中はブラウザに画面の自動消灯を抑止させる（Screen Wake Lock。このページが前面にある間だけ効く）。他のアプリに切り替えると検索は止まるが、その瞬間に直前までの途中結果が保存される。連続検索は検索件数を小さくして回すと失う分が減る",
     screenOn: "画面点灯",
     savedConditionsShort: "保存条件",
     narrowTabCandidates: "候補",
@@ -470,16 +456,8 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     confirmCopy: "旧バージョンの候補を現バージョンにコピーしますか？（盤面ごとに現バージョンの評価で再計算します）",
 
     // --- ホバーヒント（⑤ UI文言改善、2026-07-24）。title= で表示 ---
-    tipTrials: "1回の検索で生成・評価する盤面の数",
-    tipTopK: "スコア上位から保持・表示する件数",
     tipContinuous: "停止するまで検索を繰り返し、上位結果を蓄積します",
-    tipHard: "満たさない盤面をその場で却下する条件",
     tipSoft: "却下されなかった盤面を順位付けする重み",
-    tipOuterSameColorMax: "最外周（盤面の一番外の列）に置ける同色惑星の上限",
-    tipMaxConnectedPlanets:
-      "0=制限なし。Nを指定すると、隣接でつながった惑星のかたまりがN+1個以上ある盤面を却下します（ガイア/次元横断も連結に含む）",
-    tipH5IncludeScouts: "上の連結判定に探査船セルも含めます",
-    tipCenterMode: "中央スロットに入るタイルを制限します",
     tipWRimGap:
       "最外周の角の惑星1つの罰点（距離2以内の18マスのうち10マスが盤面の外）。各惑星は「この値 × 欠けマス数 ÷ 10」を引かれます。" +
       "端の開始地点は将来の広がり先（鉱山を置く惑星・同盟の衛星・パワーの授受）をそのぶん失う、という意図。" +
