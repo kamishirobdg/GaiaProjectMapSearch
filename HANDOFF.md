@@ -7,8 +7,10 @@
 
 **いまの状態**
 
-- 本番 https://gaia-project-map-search.vercel.app は **v1.6.7 · eval_v8**。作業ブランチ `claude/gaia-map-project-status-adrt1n`
-  は `main` と同一（この記録のコミットだけ先行）。ユーザーの実機（Android）で v1.6.7 まで問題なしの確認済み。
+- 本番 https://gaia-project-map-search.vercel.app は **v1.6.7 · eval_v8**。ユーザーの実機（Android）で v1.6.7 まで問題なしの確認済み。
+- **作業ブランチは 2026-10-15 から `claude/gaia-map-project-status-73aeld`（draft PR #27）**。旧 `claude/gaia-map-project-status-adrt1n`
+  （PR #26）は同一コミットで引き継いだうえで閉じた（ユーザー確定 (a)）。作業ブランチには **v1.6.8（Map の各項目の「?」の小窓。
+  表示だけ、評価値は不変。設計ノート 2.5 末尾）** が載っていて本番は未デプロイ。
 - 評価の式は eval_v7「全惑星を同一の式で」＋ eval_v8（ダー・シュワーム人の開始地点 × 1.5）。List / Total には船の相互作用
   （種族ごとの船接触、α 1 ＝ 掛け算）。評価値は 2026-10-09 以降変えていない（v1.6.1〜v1.6.7 は表示・操作だけ）。
 - **git タグは打たない**（2026-10-10 ユーザー決定。版の目印は「chore: vX.Y.Z」のコミット）。
@@ -22,6 +24,10 @@
    種族ごとの船接触の UI 表示（尺度が落ち着いてからホバーで）、Total の Setup 列のホバーに相互作用の説明。
 3. 本番で検索中の進捗の行の末尾が `[main]` と出る報告があれば、COOP/COEP が効いていない問題として調べる
    （`[worker]` が正常、`[worker-nosab]` は isolation 無しでワーカーは動いている状態）。
+4. **v1.6.8（Map の「?」の小窓）のリリースと実機確認**。ユーザーの「リリースして」で FF push（`git push origin HEAD:release/v1.01 &&
+   git push origin HEAD:main`）→ deployments API で Production を確認 → 共通バーが「v1.6.8 · eval_v8」。実機で「?」の小窓が
+   画面内に収まるか・タップで開閉できるかを見てもらう。その後 **第 2 弾: Setup / List / Total の評価指数・基準に同じ小窓**
+   （TODO「ドキュメント・説明」）。マニュアルの置き場所（`/manual` か docs/ の Markdown）はユーザー確認待ちのまま。
 
 **2026-10-10〜11 に本番へ出したもの（v1.6.1〜v1.6.7。すべて表示・操作だけ、評価値は不変）**
 
