@@ -55,16 +55,6 @@ export const UI_TEXT = {
     noSearchConfig: `No search config for templateId. Add it in src/gaia/ssot/searchPlacementConfig.ts`,
     templateMismatch:
       "The board does not belong to the selected template, so markers fall back to tile level. Match the players/expansion radios to the board.",
-    tipPrefScale: [
-      "How strongly this planet colour is favoured (+) or avoided (-).",
-      "Measured against how much boards actually differ (300 boards, 4p Lost Fleet):",
-      "  0 = off",
-      "  1 = about even with the balance term; breaks ties toward this colour",
-      "  2 = preference leads; the chosen board almost always has this colour strong",
-      "  3 = stronger still",
-      "  5 = practically decided by this colour alone (other conditions ignored)",
-      "Negative values do the same in reverse (pick boards where the colour is weak).",
-    ].join("\n"),
 
     currentPlacementHash: "current placementHash",
     fixedLarge: "fixedLarge",
@@ -221,18 +211,6 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
 
     // --- hover hints (⑤ UI wording, 2026-07-24). Shown via title=. ---
     tipContinuous: "Repeats searches until stopped, accumulating top results",
-    tipSoft: "Weights that rank the surviving boards",
-    tipWRimGap:
-      "Penalty for a planet in the outermost corner (10 of the 18 cells within distance 2 are off the board). Each planet loses this value x (missing cells / 10): " +
-      "inner planets lose nothing, one ring inside the edge about 3 missing, an edge planet 7 (side) to 10 (corner). Applies to proto/asteroid planets too. 0 = off.",
-    tipWOuter: "Weight per planet on the outermost ring (added to that color's total)",
-    tipWTouch: "Weight per planet one ring inside the outermost",
-    tipWScoutShip: "Weight per planet within the scout radius of this ship",
-    tipWScoutCoreShip:
-      "Weight for planets within distance 1-2 of this ship's touched planets. Only planets that have TWO OR MORE touched planets within that range qualify (d=1: weight, d=2: weight-1; contributions are summed). Gaia and transdimensional planets never count as touched planets.",
-    tipScoutRadius: "Distance within which a planet counts as touching a scout",
-    tipScoutCoreAttrib: "A planet in several ships' range is credited only to the highest-contribution ship",
-    tipColorPref: "+ favors boards where that color is strong, - penalizes it (weight x color total added to the score)",
     tipScore: "Higher when the seven colors are close in strength (small imbalance)",
     tipHashPair:
       "HASH(eval) = board of the selected search result / HASH(view) = board currently displayed. They differ only after manual seed edits or shared links",
@@ -293,16 +271,6 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
     noSearchConfig: `templateIdに対応する検索設定がありません。src/gaia/ssot/searchPlacementConfig.ts に追加してください。`,
     templateMismatch:
       "表示中の盤面が選択中のテンプレートのものではないため、マーカーがタイル単位に劣化しています。人数・拡張の選択を盤面に合わせてください。",
-    tipPrefScale: [
-      "その惑星色をどれだけ優遇（+）／冷遇（-）するか。",
-      "盤面が実際にどれだけ違うかを実測して目盛りを合わせてある（300盤面・4人LF）:",
-      "  0 = 効かない",
-      "  1 = 偏り（バランス）とほぼ互角。同程度の盤面ならこの色が強い方を選ぶ",
-      "  2 = 優遇が主導。選ばれる盤面はほぼこの色が強い",
-      "  3 = さらに強く寄る",
-      "  5 = 実質この色だけで決まる（他の条件はほぼ無視される）",
-      "マイナスは逆向きに同じだけ効く（この色が弱い盤面を選ぶ）。",
-    ].join("\n"),
 
     currentPlacementHash: "現在のHash",
     fixedLarge: "固定基本タイル",
@@ -457,19 +425,6 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
 
     // --- ホバーヒント（⑤ UI文言改善、2026-07-24）。title= で表示 ---
     tipContinuous: "停止するまで検索を繰り返し、上位結果を蓄積します",
-    tipSoft: "却下されなかった盤面を順位付けする重み",
-    tipWRimGap:
-      "最外周の角の惑星1つの罰点（距離2以内の18マスのうち10マスが盤面の外）。各惑星は「この値 × 欠けマス数 ÷ 10」を引かれます。" +
-      "端の開始地点は将来の広がり先（鉱山を置く惑星・同盟の衛星・パワーの授受）をそのぶん失う、という意図。" +
-      "内側の惑星は欠け0、外周（最外周の1つ内側）は3前後、最外周は辺7〜角10マス欠けます（既定 5 なら 0 / 1.5 / 3.5 / 5）。原始・小惑星にも掛かります。0で無効",
-    tipWOuter: "最外周（一番外の列）の惑星1個あたりの重み（その色の合計に加算）",
-    tipWTouch: "外周（最外周の1つ内側）の惑星1個あたりの重み",
-    tipWScoutShip: "この船の接触半径内にある惑星1個あたりの重み",
-    tipWScoutCoreShip:
-      "この船が接触した惑星（船接触惑星）から距離1〜2にある惑星への重み。ただし距離1〜2に船接触惑星が2つ以上ある惑星だけを対象にします（1つだけなら対象外）。距離1は重み、距離2は重み−1で、複数の船接触惑星から届く分は合算します。ガイア惑星と次元横断惑星は船接触惑星に数えません。",
-    tipScoutRadius: "船に接触しているとみなす距離",
-    tipScoutCoreAttrib: "複数の船の圏内にある惑星を、寄与が最大の船だけに数えます",
-    tipColorPref: "＋でその色が強い盤面を優遇、−で冷遇（重み×色合計がスコアに加算）",
     tipScore: "7色の強さが拮抗しているほど高くなります（偏りが小さいほど高評価）",
     tipHashPair:
       "HASH（評価）=選択中の検索結果の盤面／HASH（表示）=現在表示中の盤面。通常は一致し、シード手入力や共有リンク表示のときだけズレます",

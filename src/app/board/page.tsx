@@ -215,7 +215,7 @@ const DEFAULT_CONDITIONS = {
   // 「色の評価値の振れ幅（同）67」。優遇項の振れ幅は wColorPref × pref × 67 なので、
   // 3 のままだと pref=2 で偏り項の0.2倍しか効かず、実用域が10〜20になっていた。
   // 25 にすると pref=1 でほぼ互角、2 で優遇が主導、5 で実質その色だけで決まる
-  // ―― 入力欄の目盛りと体感が一致する（tipPrefScale の文言はこの実測に基づく）。
+  // ―― 入力欄の目盛りと体感が一致する（helpText.ts の colorPreference / wColorPref の文言はこの実測に基づく）。
   wColorPref: 25,
   pref: 0,
   // 保持件数
@@ -3706,7 +3706,7 @@ const handleDeleteUsed = React.useCallback(
             </div>
 
             <details style={{ marginTop: 10 }}>
-              <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.9 }} title={t("tipSoft")}>
+              <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.9 }}>
                 {t("soft")}
               </summary>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -3714,13 +3714,17 @@ const handleDeleteUsed = React.useCallback(
               {/* --- 基本軸: outer / touch (+ LF は scout radius)。薄背景のセルで表状に --- */}
               <div>
                 <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 6 }}>
-                  <Hint label={t("soft")} tip={t("tipSoft")} />
+                  <span>{t("soft")}</span>
+                  <Help k="soft" lang={lang} />
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
                   {/* 欠けマス罰点（eval_v4）。入力は10倍の整数（＝角の惑星1つぶん）。
                       クリックで最外周・外周の両方の惑星をマークする */}
                   <label {...evalCellProps("rim:*", "rim")}>
-                    <Hint label={t("wRimGap")} tip={t("tipWRimGap")} />
+                    <span>
+                      {t("wRimGap")}
+                      <Help k="wRimGap" lang={lang} />
+                    </span>
                     <input
                       type="number"
                       value={rimGapToInput(wRimGap)}
@@ -3733,7 +3737,10 @@ const handleDeleteUsed = React.useCallback(
                   </label>
                   {!isBase ? (
                     <label style={EVAL_CELL}>
-                      <Hint label={t("radius")} tip={t("tipScoutRadius")} />
+                      <span>
+                        {t("radius")}
+                        <Help k="scoutRadius" lang={lang} />
+                      </span>
                       <input
                         type="number"
                         value={scoutRadius}
@@ -3757,18 +3764,19 @@ const handleDeleteUsed = React.useCallback(
                 <div style={{ borderTop: "1px dashed #ddd", paddingTop: 8 }}>
                   {(
                     [
-                      ["scout", t("wScout"), t("tipWScoutShip"), [wScoutS1, wScoutS2, wScoutS3, wScoutS4], [setWScoutS1, setWScoutS2, setWScoutS3, setWScoutS4]],
-                      ["scoutCore", t("wScoutCore"), t("tipWScoutCoreShip"), [wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4], [setWScoutCoreS1, setWScoutCoreS2, setWScoutCoreS3, setWScoutCoreS4]],
-                    ] as ReadonlyArray<readonly [MarkAxis, string, string, number[], Array<(v: number) => void>]>
-                  ).map(([axis, title, tip, values, setters]) => (
+                      ["scout", t("wScout"), "wScout", [wScoutS1, wScoutS2, wScoutS3, wScoutS4], [setWScoutS1, setWScoutS2, setWScoutS3, setWScoutS4]],
+                      ["scoutCore", t("wScoutCore"), "wScoutCore", [wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4], [setWScoutCoreS1, setWScoutCoreS2, setWScoutCoreS3, setWScoutCoreS4]],
+                    ] as ReadonlyArray<readonly [MarkAxis, string, HelpKey, number[], Array<(v: number) => void>]>
+                  ).map(([axis, title, helpKey, values, setters]) => (
                     <div key={axis} style={{ marginBottom: 8 }}>
                       <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 6 }}>
-                        <Hint label={title} tip={tip} />
+                        <span>{title}</span>
+                        <Help k={helpKey} lang={lang} />
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: isNarrow ? "repeat(2, minmax(0, 1fr))" : "repeat(4, minmax(0, 1fr))", gap: 8, alignItems: "start" }}>
                         {(["twilight", "eclipse", "rebellion", "tfmars"] as const).map((ship, i) => (
                           <label key={ship} {...evalCellProps(`${axis}:${ship}`, axis, { scoutId: ship })}>
-                            <Hint label={lang === "ja" ? SHIP_LABEL[ship].ja : SHIP_LABEL[ship].en} tip={tip} />
+                            <span>{lang === "ja" ? SHIP_LABEL[ship].ja : SHIP_LABEL[ship].en}</span>
                             <input type="number" value={values[i]} min={0} max={20} onChange={(e) => setters[i](Number(e.target.value) || 0)} style={{ width: 56, flex: "0 0 auto" }} />
                           </label>
                         ))}
@@ -3778,7 +3786,8 @@ const handleDeleteUsed = React.useCallback(
                   <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
                     <label style={{ display: "flex", gap: 8, alignItems: "center", gridColumn: "1 / -1", flexWrap: "wrap", marginTop: 2 }}>
                       <input type="checkbox" checked={scoutCoreAttribBest} onChange={(e) => setScoutCoreAttribBest(e.target.checked)} />
-                      <Hint label={t("scoutCoreAttribBest")} tip={t("tipScoutCoreAttrib")} />
+                      <span>{t("scoutCoreAttribBest")}</span>
+                      <Help k="scoutCoreAttribBest" lang={lang} />
                     </label>
                   </div>
                 </div>
@@ -3786,12 +3795,14 @@ const handleDeleteUsed = React.useCallback(
 
               <div style={{ width: "100%", borderTop: "1px dashed #ddd", marginTop: 8, paddingTop: 8 }}>
                 <div style={{ fontWeight: 700, fontSize: 12 }}>
-                  <Hint label={t("colorPreference")} tip={t("tipColorPref")} />
+                  <span>{t("colorPreference")}</span>
+                  <Help k="colorPreference" lang={lang} />
                 </div>
 
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 6 }}>
                   <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <Hint label={t("wColorPref")} tip={t("tipColorPref")} />
+                    <span>{t("wColorPref")}</span>
+                    <Help k="wColorPref" lang={lang} />
                     <input
                       type="number"
                       value={wColorPref}
@@ -3830,7 +3841,6 @@ const handleDeleteUsed = React.useCallback(
                   ] as const).map(([key, ja, value, setter]) => (
                     <label
                       key={key}
-                      title={t("tipPrefScale")}
                       style={{
                         display: "flex",
                         gap: 6,
