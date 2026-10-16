@@ -3,6 +3,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { useIsNarrow } from "@/components/ui/layout";
 
 /**
  * Top-level tab switcher shared by the tool's pages. Each tab is its own route
@@ -21,8 +22,11 @@ const TABS: Array<{ key: TabKey; href: string; label: string }> = [
 ];
 
 export default function TabNav({ active }: { active: TabKey }) {
+  // 狭い幅（480px 未満）はタブの余白 12 → 6px・文字 13 → 12px に詰める（2026-10-16 ユーザー確定 (a)）。
+  // Manual を足して 5 タブになり、375px で「人数」が 2 行目へ落ちて共通バーが 3 行になっていたのを 2 行に戻す。
+  const compact = useIsNarrow(480);
   return (
-    <nav style={{ display: "flex", gap: 4, alignItems: "center" }}>
+    <nav style={{ display: "flex", gap: compact ? 3 : 4, alignItems: "center" }}>
       {TABS.map((tab) => {
         const isActive = tab.key === active;
         return (
@@ -30,8 +34,8 @@ export default function TabNav({ active }: { active: TabKey }) {
             key={tab.key}
             href={tab.href}
             style={{
-              padding: "4px 12px",
-              fontSize: 13,
+              padding: compact ? "4px 6px" : "4px 12px",
+              fontSize: compact ? 12 : 13,
               fontWeight: 700,
               borderRadius: 8,
               textDecoration: "none",
