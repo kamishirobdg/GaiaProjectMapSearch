@@ -9,13 +9,15 @@ import Link from "next/link";
  * so the heavy map page and the setup page stay independent.
  * "Total" は 2026-08-04 に追加した種族別総合評価（Map と Setup の合算）。
  */
-export type TabKey = "map" | "setup" | "list" | "total";
+export type TabKey = "map" | "setup" | "list" | "total" | "manual";
 
+// "Manual" はアプリ内マニュアル（2026-10-16 ユーザー決定: 入口は共通バーのタブ）。
 const TABS: Array<{ key: TabKey; href: string; label: string }> = [
   { key: "map", href: "/board", label: "Map" },
   { key: "setup", href: "/setup", label: "Setup" },
   { key: "list", href: "/list", label: "List" },
   { key: "total", href: "/total", label: "Total" },
+  { key: "manual", href: "/manual", label: "Manual" },
 ];
 
 export default function TabNav({ active }: { active: TabKey }) {
