@@ -1,7 +1,7 @@
 // src/components/ManualView.tsx
 //
 // アプリ内マニュアル（/manual。2026-10-16 ユーザー決定: 置き場所はアプリ内、入口は共通バーのタブ、日英）。
-// 本文は manualContent.ts。共通バー（人数・拡張・言語）は他のタブと同じ位置に出し、人数・拡張は共有設定に書く。
+// 本文は manualContent.ts（同日の指示で「使い方と設定項目」だけに。設計の経緯や設計ノートの参照は載せない）。共通バー（人数・拡張・言語）は他のタブと同じ位置に出し、人数・拡張は共有設定に書く。
 // 目次は章へのページ内リンク。狭い幅でも 1 カラムで読めるよう、表は横スクロールの内包にする。
 
 "use client";
@@ -131,15 +131,9 @@ export default function ManualView() {
           {m.chapters.map((c) => (
             <section key={c.id} id={`manual-${c.id}`} style={{ marginBottom: 22, scrollMarginTop: 60 }}>
               <h2 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 6px", paddingBottom: 4, borderBottom: "1px solid #ddd" }}>{c.title}</h2>
-              {c.blocks.map((b, i) =>
-                "ref" in b ? (
-                  <div key={i} style={{ fontSize: 11, color: T.fgMuted, marginTop: 8 }}>
-                    {m.refLabel} {b.ref}
-                  </div>
-                ) : (
-                  <Block key={i} b={b} />
-                )
-              )}
+              {c.blocks.map((b, i) => (
+                <Block key={i} b={b} />
+              ))}
             </section>
           ))}
         </div>

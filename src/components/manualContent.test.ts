@@ -7,18 +7,16 @@ describe("manualContent", () => {
     expect(MANUAL.en.chapters.map((c) => c.id)).toEqual(MANUAL.ja.chapters.map((c) => c.id));
   });
 
-  it("has 7 chapters, each with a title, blocks and a design-notes ref", () => {
+  it("has 5 chapters (common / map / setup / list / total), each with a title and blocks; table rows match the head", () => {
     for (const lang of ["ja", "en"] as const) {
       const chapters = MANUAL[lang].chapters;
-      expect(chapters).toHaveLength(7);
-      const ids = new Set(chapters.map((c) => c.id));
-      expect(ids.size).toBe(chapters.length);
+      expect(chapters.map((c) => c.id)).toEqual(["common", "map", "setup", "list", "total"]);
       for (const c of chapters) {
         expect(c.title.length).toBeGreaterThan(0);
-        expect(c.blocks.length).toBeGreaterThan(1);
-        expect(c.blocks.some((b) => "ref" in b)).toBe(true);
+        expect(c.blocks.length).toBeGreaterThan(0);
         for (const b of c.blocks) {
           if ("table" in b) {
+            expect(b.table.rows.length).toBeGreaterThan(0);
             for (const row of b.table.rows) expect(row).toHaveLength(b.table.head.length);
           }
         }
