@@ -7,6 +7,7 @@
 import React from "react";
 import type { Lang } from "./uiText";
 import { helpContent, type HelpKey } from "./helpText";
+import { distributeSurplus } from "./columnWidths";
 import { HelpPopover, HELP_LABELS } from "@/components/ui/HelpPopover";
 import { FACTIONS } from "@/gaia/eval/factionWeights";
 import { SHIP_LABEL, type ShipId } from "@/gaia/setup/types";
@@ -280,6 +281,47 @@ export function ColorBreakdownTable({
   /** 現在アクティブな sourceId 集合（枠のハイライト用）。 */
   activeSources?: Set<string>;
 }) {
+  // 狭い幅（compact）の列幅（2026-10-16 ユーザー確定）: まず内容幅で描画して各列の幅と枠の幅を測り、枠の余りを
+  // 数値の列に「狭い列から先に、等しくなったら均等に」配って colgroup で固定する（計算は columnWidths.ts）。
+  // 表の中身・列・言語が変わったときと、枠の幅が変わったとき（回転など）は null に戻して測り直す。
+  const wrapRef = React.useRef<HTMLDivElement | null>(null);
+  const tableRef = React.useRef<HTMLTableElement | null>(null);
+  const [colWidths, setColWidths] = React.useState<number[] | null>(null);
+  // 測り直しの合図。null → null の更新は React が無視するので、枠の幅が変わったときはこのカウンタも進める
+  // （詳細タブが非表示＝幅 0 の間に初回の測定が走り、表示されたあと再測定されなかった。2026-10-16 ヘッドレス確認）。
+  const [measureTick, setMeasureTick] = React.useState(0);
+  const colsKey = JSON.stringify(colsProp ?? null);
+  React.useLayoutEffect(() => {
+    setColWidths(null);
+    setMeasureTick((t) => t + 1);
+  }, [breakdown, colsKey, lang, isBase, compact]);
+  React.useLayoutEffect(() => {
+    if (!compact || colWidths != null) return;
+    const table = tableRef.current;
+    const wrap = wrapRef.current;
+    if (!table || !wrap) return;
+    const ths = Array.from(table.querySelectorAll<HTMLTableCellElement>("thead th"));
+    if (ths.length < 2) return;
+    const content = ths.map((th) => th.getBoundingClientRect().width);
+    const next = distributeSurplus(content, wrap.clientWidth);
+    if (next) setColWidths(next);
+  }, [compact, colWidths, measureTick]);
+  React.useEffect(() => {
+    if (!compact) return;
+    const wrap = wrapRef.current;
+    if (!wrap || typeof ResizeObserver === "undefined") return;
+    let last = wrap.clientWidth;
+    const ro = new ResizeObserver(() => {
+      if (wrap.clientWidth !== last) {
+        last = wrap.clientWidth;
+        setColWidths(null);
+        setMeasureTick((t) => t + 1);
+      }
+    });
+    ro.observe(wrap);
+    return () => ro.disconnect();
+  }, [compact]);
+
   if (!breakdown) return null;
 
   const audit = breakdown?.audit ?? null;
@@ -522,8 +564,24 @@ export function ColorBreakdownTable({
   const exTotal = computeExtremes([...PLANET_ORDER], (k) => axisGet(totals, k as any));
 
   return (
-    <div style={{ overflowX: "auto", border: "1px solid #eee", borderRadius: 8 }}>
-      <table style={compact ? { borderCollapse: "collapse", width: "auto" } : { borderCollapse: "collapse", width: "100%", minWidth: hasCounts && (cols.cntOuter || cols.cntTouch) ? 760 : 620 }}>
+    <div ref={wrapRef} style={{ overflowX: "auto", border: "1px solid #eee", borderRadius: 8 }}>
+      <table
+        ref={tableRef}
+        style={
+          compact
+            ? colWidths
+              ? { borderCollapse: "collapse", tableLayout: "fixed", width: colWidths.reduce((a, b) => a + b, 0) }
+              : { borderCollapse: "collapse", width: "auto" }
+            : { borderCollapse: "collapse", width: "100%", minWidth: hasCounts && (cols.cntOuter || cols.cntTouch) ? 760 : 620 }
+        }
+      >
+        {compact && colWidths ? (
+          <colgroup>
+            {colWidths.map((w, i) => (
+              <col key={i} style={{ width: w }} />
+            ))}
+          </colgroup>
+        ) : null}
         <thead>
           <tr>
             <th style={{ ...thStyle, textAlign: "left" }}>{lang === "ja" ? "種族" : "Faction"}</th>
