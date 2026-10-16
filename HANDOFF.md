@@ -10,7 +10,8 @@
 - 本番 https://gaia-project-map-search.vercel.app は **v1.6.8 · eval_v8**（2026-10-15、27回目の FF push ＝ ddc46f5。Map の各項目の
   「?」の小窓。表示だけ、評価値は不変。設計ノート 2.5 末尾。deployments API で Production の success 確認済み）。ユーザーの実機
   （Android）で v1.6.7 まで問題なしの確認済み、v1.6.8 の「?」の見た目は実機で確認してもらう。
-- 作業ブランチには **v1.6.9（第 2 弾: Setup / List / Total の評価指数・基準の「?」。表示だけ）** が載っていて本番は未デプロイ。
+- **2026-10-16、28回目の FF push ＝ v1.6.9**（第 2 弾: Setup / List / Total の評価指数・基準の「?」＋ List の古い注記「（種族重みは
+  DRAFT）」の削除。表示だけ）。ユーザー指示「リリースしてよい」。Production の success は deployments API で確認する。
 - **作業ブランチは 2026-10-15 から `claude/gaia-map-project-status-73aeld`（draft PR #27）**。旧 `claude/gaia-map-project-status-adrt1n`
   （PR #26）は同一コミットで引き継いだうえで閉じた（ユーザー確定 (a)）。
 - 評価の式は eval_v7「全惑星を同一の式で」＋ eval_v8（ダー・シュワーム人の開始地点 × 1.5）。List / Total には船の相互作用
