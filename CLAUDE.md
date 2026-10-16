@@ -76,7 +76,8 @@
   項目の説明には使わない（操作のヒントとセルのホバーは title のまま）。内訳表の列見出しは「?」を足さず文字をトリガーに
   （狭い幅で表を広げない）。**定数や既定値を変えたら helpText の数字も直す**（自動では埋めていない）。Setup / List / Total の文言は
   `src/components/helpText.ts`（「?」は `FactionEvalPanel.tsx` の `SharedHelp`。v1.6.9）。評価表の列見出しはクリックでマークするので
-  title のまま。次はマニュアル（アプリ内 `/manual`、2026-10-15 ユーザー決定）。
+  title のまま。**アプリ内マニュアル `/manual`**（2026-10-16、v1.7.0。共通バーの「Manual」タブ、日英、7 章）は
+  `src/components/manualContent.ts` が本文、`ManualView.tsx` が描画。**定数や既定値を変えたら helpText と manualContent の数字も直す**。
 - 端の罰点は「欠けマス × w」（距離2以内の18マスのうち盤面に無いマス1つにつき w、既定 0.5、
   `wRimGap`。eval_v4）。最外周セル→「最外周」列、外周セル→「外周」列、原始・小惑星にも掛ける。
   **入力欄は10倍の整数**（既定 5 ＝ 角の惑星1つの罰点。`RIM_GAP_INPUT_SCALE`）。内部値と
