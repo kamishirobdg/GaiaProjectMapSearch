@@ -215,6 +215,52 @@ const ENTRIES = {
     },
   },
 
+  // ---------- 探索条件の帯（ConditionBar。段階 1「条件の統一」2026-10-16） ----------
+  searchProfile: {
+    ja: {
+      title: "探索プロファイル",
+      what:
+        "種族優遇と、Map の検索条件（テンプレート・制約・評価指数）・Setup の検索条件（タイル指定・面・評価指数）を 1 つの名前で束ねる。" +
+        "Map / Setup の「一致・差分あり・未登録」は、この画面の条件がプロファイルに登録した条件と同じかどうか。",
+      why:
+        "検索を実行するとその側の条件が自動で登録される。Map で検索 → Setup へ移動して「一致」を確かめて検索、が基本の流れ。" +
+        "貯めた結果は条件ごとのバケツのままで、プロファイルはそれを束ねる索引（結果は消えない）。",
+      ref: "2.11",
+    },
+    en: {
+      title: "Search profile",
+      what:
+        "Bundles the faction preference with the Map conditions (template, constraints, weights) and the Setup conditions (tile rules, faces, weights) under one name. " +
+        "The Map / Setup badges say whether this page's conditions equal the ones registered in the profile.",
+      why:
+        "Running a search registers that side's conditions. Typical flow: search on Map, move to Setup, confirm 'match', search. " +
+        "Results stay in their per-condition buckets; the profile is just an index over them.",
+      ref: "2.11",
+    },
+  },
+  factionPref: {
+    ja: {
+      title: "種族優遇/冷遇",
+      what:
+        "種族ごとの ±（1 つの表を Map / Setup / List が共有）。Map では同じ色の 2 種族のうち |値| の大きい方をその色の優遇として検索に渡す" +
+        "（同じ大きさで逆符号なら 0）。Setup の検索と List のセット提案では種族ごとにそのまま掛ける。「色でまとめて」は同じ色の 2 種族に同じ値を入れる近道。",
+      why:
+        "目盛りは従来の色優遇と同じ: 0 効かない / 1 基準とほぼ互角 / 2 優遇が主導 / 5 実質その種族だけで決まる。マイナスは逆向きに同じだけ。" +
+        "Setup 側の係数は色優遇の半分（0.15。同じ色の 2 種族に入れると従来の色優遇とほぼ同じ大きさ）。",
+      ref: "2.11 / 4",
+    },
+    en: {
+      title: "Faction preference",
+      what:
+        "Per faction, ± (one table shared by Map / Setup / List). Map passes, per colour, the faction value with the larger |value| (0 when equal and opposite). " +
+        "Setup search and List suggestions apply it per faction. 'By colour' sets both factions of a colour at once.",
+      why:
+        "Same scale as the old colour preference: 0 off / 1 about even / 2 preference leads / 5 decided by this faction alone. " +
+        "On the Setup side the coefficient is half the colour one (0.15; setting both factions of a colour gives about the old colour bonus).",
+      ref: "2.11 / 4",
+    },
+  },
+
   // ---------- List ----------
   listPair: {
     ja: {

@@ -273,20 +273,22 @@ const ENTRIES = {
     ja: {
       title: "色優遇/冷遇",
       what:
-        "色ごとに ＋ で優遇、− で冷遇。検索スコアに 強さ × Σ 優遇 × 色の値 を足す。原始・小惑星は 7 色の軸に入らないので「最良の 1 惑星 × 補正値」に掛ける。",
+        "色ごとの ＋ で優遇、− で冷遇。値は上の「探索条件」の種族優遇から導く（同じ色の 2 種族のうち |値| の大きい方。同じ大きさで逆符号なら 0）。" +
+        "検索スコアに 強さ × Σ 優遇 × 色の値 を足す。原始・小惑星は 7 色の軸に入らないので「最良の 1 惑星 × 補正値」に掛ける。",
       why:
         "目盛りは盤面の実測（300 盤面・4人 LF）で合わせてある: 0 効かない / 1 偏り項とほぼ互角（同程度ならこの色が強い方） / 2 優遇が主導 / 3 さらに寄る / " +
-        "5 実質その色だけで決まる。マイナスは逆向きに同じだけ効く。",
-      ref: "2.3",
+        "5 実質その色だけで決まる。マイナスは逆向きに同じだけ効く。色の値は検索キーに入るので、種族優遇を変えると結果は別のバケツに貯まる。",
+      ref: "2.3 / 2.11",
     },
     en: {
       title: "Colour preference",
       what:
-        "Per colour, + favours and − penalises. Adds weight × Σ pref × colour value to the search score. Proto / asteroid are outside the seven colours, so pref applies to the best single planet × its factor.",
+        "Per colour, + favours and − penalises. Derived from the faction preference in the search profile above (per colour, the faction with the larger |value|; 0 when equal and opposite). " +
+        "Adds weight × Σ pref × colour value to the search score. Proto / asteroid are outside the seven colours, so pref applies to the best single planet × its factor.",
       why:
         "The scale was calibrated on 300 boards (4p LF): 0 no effect / 1 about even with the imbalance term / 2 preference leads / 3 stronger / " +
-        "5 effectively decides by that colour alone. Negative values work the same way in reverse.",
-      ref: "2.3",
+        "5 effectively decides by that colour alone. Negative values work the same way in reverse. The colour values are part of the search key, so changing the faction preference starts a new result bucket.",
+      ref: "2.3 / 2.11",
     },
   },
   wColorPref: {

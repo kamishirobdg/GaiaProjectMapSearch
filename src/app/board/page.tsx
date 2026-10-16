@@ -3,6 +3,19 @@
 import * as React from "react";
 import { MapBoardViewer, type PlacementItem as ViewerPlacementItem } from "@/components/MapBoardViewer";
 import GlobalBar from "@/components/GlobalBar";
+import ConditionBar from "@/components/ConditionBar";
+import {
+  bindMapToActiveProfile,
+  colorPrefFromFactionPref,
+  createSearchProfile,
+  DEFAULT_PROFILE_NAME,
+  factionPrefFromColorPref,
+  readActiveProfileId,
+  readSearchProfiles,
+  updateSearchProfile,
+  useSearchProfiles,
+  type SearchProfileMap,
+} from "@/lib/searchProfiles";
 import {
   readSharedExpansion,
   readSharedPlayers,
@@ -1130,35 +1143,20 @@ return (savedProfiles ?? []).filter((p) => {
 
   // Color preference (by planetTypeTotals)
   const [wColorPref, setWColorPref] = React.useState(DEFAULT_CONDITIONS.wColorPref);
-  const [prefBLACK, setPrefBLACK] = React.useState(DEFAULT_CONDITIONS.pref);
-  const [prefBLUE, setPrefBLUE] = React.useState(DEFAULT_CONDITIONS.pref);
-  const [prefBROWN, setPrefBROWN] = React.useState(DEFAULT_CONDITIONS.pref);
-  const [prefORANGE, setPrefORANGE] = React.useState(DEFAULT_CONDITIONS.pref);
-  const [prefRED, setPrefRED] = React.useState(DEFAULT_CONDITIONS.pref);
-  const [prefWHITE, setPrefWHITE] = React.useState(DEFAULT_CONDITIONS.pref);
-  const [prefYELLOW, setPrefYELLOW] = React.useState(DEFAULT_CONDITIONS.pref);
-  // 拡張種族の母星（原始惑星・小惑星）も優遇/冷遇できる（2026-07-31 要望）。
-  // 掛け先は内訳表と同じ extraStart（開始1ヶ所＋到達加重。2026-10-03 まで extraBest）。
-  const [prefPROTO, setPrefPROTO] = React.useState(DEFAULT_CONDITIONS.pref);
-  const [prefASTEROID, setPrefASTEROID] = React.useState(DEFAULT_CONDITIONS.pref);
-
   /**
-   * 検索キー／実行時に渡す色優遇の表。0 の種別はフィールドごと省略する
+   * 探索プロファイル（段階 1「条件の統一」2026-10-16）。色ごとの入力欄（prefBLACK … prefASTEROID、
+   * 原始・小惑星は 2026-07-31 から）は廃止し、色優遇はプロファイルの種族優遇から導く。
+   */
+  const { active: activeSearchProfile } = useSearchProfiles();
+  /**
+   * 検索キー／実行時に渡す色優遇の表。種族優遇から色ごとに導く（同じ色の 2 種族の |値| が大きい方。
+   * 同じ大きさで逆符号なら 0）。0 の原始・小惑星はフィールドごと省略する
    * （互換の鉄則。原始・小惑星を使わない条件は従来とバイト不変のキーになる）。
+   * 掛け先は従来どおり（原始・小惑星は内訳表と同じ extraStart）。
    */
   const colorPrefByType = React.useMemo(
-    () => ({
-      BLACK: prefBLACK,
-      BLUE: prefBLUE,
-      BROWN: prefBROWN,
-      ORANGE: prefORANGE,
-      RED: prefRED,
-      WHITE: prefWHITE,
-      YELLOW: prefYELLOW,
-      ...(prefPROTO !== 0 ? { PROTO: prefPROTO } : {}),
-      ...(prefASTEROID !== 0 ? { ASTEROID: prefASTEROID } : {}),
-    }),
-    [prefBLACK, prefBLUE, prefBROWN, prefORANGE, prefRED, prefWHITE, prefYELLOW, prefPROTO, prefASTEROID]
+    () => colorPrefFromFactionPref(activeSearchProfile?.factionPref ?? {}),
+    [activeSearchProfile]
   );
 
   const [trials, setTrials] = React.useState(30000);
@@ -1429,7 +1427,7 @@ setSelectedSeedLabel(String(found.seed ?? ""));
   }, []);
 
   const applySavedProfile = React.useCallback(
-    (p: PersistedProfile, opts?: { closePanel?: boolean; keepTemplate?: boolean }) => {
+    (p: PersistedProfile, opts?: { closePanel?: boolean; keepTemplate?: boolean; importPref?: boolean }) => {
       const closePanel = opts?.closePanel !== false; // default true
       const keepTemplate = opts?.keepTemplate === true; // default false
       const params = (p.params ?? null) as any;
@@ -1519,20 +1517,18 @@ try {
         // imbalanceMetric は std 固定（ドロップダウン廃止に伴い復元もしない）
         // ガイア近接・星系（wGaiaDist1〜3 / wClusterSize）は eval_v7 で廃止。旧プロファイルにあっても読まない
         if ((params as any)?.soft?.wColorPref != null) setWColorPref(Number((params as any).soft.wColorPref) || 0);
+        // 色優遇は探索プロファイルの種族優遇から導くようになった（2026-10-16）。保存済み条件に色の値が
+        // あれば、ユーザー操作の適用（importPref）のときだけ同じ色の 2 種族へ取り込む。起動時の自動適用
+        // （effect）では書き込まない（localStorage の規律）。取り込まないと検索キーが一致しないことがある
+        // （旧条件の色の値と、いまの種族優遇から導く色の値が違えば別バケツ）。
         try {
-          const cp = (params as any)?.soft?.colorPrefByType ?? (params as any)?.soft?.colorBiasByType ?? null;
-          if (cp) {
-            if (cp.BLACK != null) setPrefBLACK(Number(cp.BLACK) || 0);
-            if (cp.BLUE != null) setPrefBLUE(Number(cp.BLUE) || 0);
-            if (cp.BROWN != null) setPrefBROWN(Number(cp.BROWN) || 0);
-            if (cp.ORANGE != null) setPrefORANGE(Number(cp.ORANGE) || 0);
-            if (cp.RED != null) setPrefRED(Number(cp.RED) || 0);
-            if (cp.WHITE != null) setPrefWHITE(Number(cp.WHITE) || 0);
-            if (cp.YELLOW != null) setPrefYELLOW(Number(cp.YELLOW) || 0);
-            // 原始・小惑星は 0 のときフィールドごと省略しているので、
-            // 「不在＝0」として明示的に戻す（既定OFF前提の復元漏れを作らない）。
-            setPrefPROTO(cp.PROTO != null ? Number(cp.PROTO) || 0 : 0);
-            setPrefASTEROID(cp.ASTEROID != null ? Number(cp.ASTEROID) || 0 : 0);
+          if (opts?.importPref) {
+            const cp = (params as any)?.soft?.colorPrefByType ?? (params as any)?.soft?.colorBiasByType ?? null;
+            const fp = factionPrefFromColorPref(cp);
+            const activeId = readActiveProfileId();
+            const activeProfile = readSearchProfiles().find((x) => x.id === activeId) ?? null;
+            if (activeProfile) updateSearchProfile(activeProfile.id, { factionPref: fp });
+            else if (Object.keys(fp).length > 0) createSearchProfile(DEFAULT_PROFILE_NAME[lang], { factionPref: fp });
           }
         } catch {}
       } catch {}
@@ -1547,7 +1543,48 @@ try {
 
       if (closePanel) setShowSavedConditions(false);
     },
-    [setWhich, setOuterSameColorMax, setCenterMode, setMaxConnectedPlanets, setH5IncludeScouts, setWRimGap, setWScout, setWScoutCore, setScoutRadius, setWColorPref, setPrefBLACK, setPrefBLUE, setPrefBROWN, setPrefORANGE, setPrefRED, setPrefWHITE, setPrefYELLOW, setKeepTop, setShowSavedConditions]
+    [setWhich, setOuterSameColorMax, setCenterMode, setMaxConnectedPlanets, setH5IncludeScouts, setWRimGap, setWScout, setWScoutCore, setScoutRadius, setWColorPref, setKeepTop, setShowSavedConditions, lang]
+  );
+
+  // ---------- 探索プロファイルとの接続（段階 1「条件の統一」2026-10-16） ----------
+  /** いまの画面の条件（検索キーが決まるまで null）。帯の「一致 / 差分あり」の比較と「登録」に使う */
+  const currentSearchProfileMap = React.useMemo<SearchProfileMap | null>(
+    () => (searchKey && searchKeyRaw ? { searchKey, paramsRaw: searchKeyRaw, templateId } : null),
+    [searchKey, searchKeyRaw, templateId]
+  );
+  /** 帯の「登録した条件を適用」。保存済み条件の適用と同じ経路（paramsRaw を params に戻す） */
+  const applySearchProfileMap = React.useCallback(
+    (m: SearchProfileMap) => {
+      let params: any = null;
+      try {
+        params = m.paramsRaw ? JSON.parse(m.paramsRaw) : null;
+      } catch {
+        params = null;
+      }
+      if (!params) return;
+      const now = Date.now();
+      applySavedProfile(
+        { searchKey: m.searchKey, templateId: m.templateId, paramsRaw: m.paramsRaw, params, activeCount: 0, usedCount: 0, createdAt: now, updatedAt: now },
+        { closePanel: false }
+      );
+    },
+    [applySavedProfile]
+  );
+  const describeSearchProfileMap = React.useCallback(
+    (m: SearchProfileMap) => {
+      const tid = m.templateId;
+      const tmpl = tid === "base_34p" ? (lang === "ja" ? "基本版 3〜4人" : "Base 3–4p") : tid.startsWith("3p") ? "LF 3p" : tid.startsWith("4p") ? "LF 4p" : tid;
+      return `${tmpl} · ${m.searchKey.slice(0, 8)}`;
+    },
+    [lang]
+  );
+  const describeSearchProfileSetup = React.useCallback(
+    (s: { params: unknown }) => {
+      const su = ((s.params as any)?.setup ?? {}) as { mode?: string; playerCount?: number };
+      const mode = su.mode === "lostFleet" ? "LF" : lang === "ja" ? "基本版" : "Base";
+      return `${mode} ${su.playerCount ?? 4}p`;
+    },
+    [lang]
   );
 
   /**
@@ -1582,15 +1619,7 @@ try {
     setScoutRadius(D.scoutRadius);
 
     setWColorPref(D.wColorPref);
-    setPrefBLACK(D.pref);
-    setPrefBLUE(D.pref);
-    setPrefBROWN(D.pref);
-    setPrefORANGE(D.pref);
-    setPrefRED(D.pref);
-    setPrefWHITE(D.pref);
-    setPrefYELLOW(D.pref);
-    setPrefPROTO(D.pref);
-    setPrefASTEROID(D.pref);
+    // 種族優遇は探索プロファイル側の設定（Map / Setup / List 共有）なので、ここでは触らない（2026-10-16）。
 
     setKeepTop(D.keepTop);
 
@@ -2292,6 +2321,8 @@ async function handleGenerateRank() {
       // 切り替わりで待ち行列を消化）ので v1.6.7 で廃止（案 (b)）。失うのは最後の 1 回分だけなので、
       // 連続検索は検索件数を小さくして回す。保存は直列化し、最後の保存が必ず最後に走る
       const key = searchKey ?? (await sha256Hex(stableStringify(searchKeyParams)));
+      // 検索を実行した条件を探索プロファイルの Map 部として登録する（無ければ「既定」を作る。2026-10-16）。
+      bindMapToActiveProfile({ searchKey: key, paramsRaw: stableStringify(searchKeyParams), templateId }, DEFAULT_PROFILE_NAME[lang]);
       const toMapped = (list: any[]): RankedResult[] =>
         (list as any[]).map((x: any) => ({
           seed: String(x.seed),
@@ -2898,6 +2929,16 @@ const handleDeleteUsed = React.useCallback(
         lang={lang}
         onLang={setLang}
       />
+      {/* 探索条件の帯（プロファイル・種族優遇・Map / Setup の登録状態。段階 1、2026-10-16） */}
+      <ConditionBar
+        page="map"
+        lang={lang}
+        lf={!isBase}
+        currentMap={currentSearchProfileMap}
+        onApplyMap={applySearchProfileMap}
+        describeMap={describeSearchProfileMap}
+        describeSetup={describeSearchProfileSetup}
+      />
 
       {/* --- header --- */}
       {/* 狭い幅では見出しを出さず（タブが Map なので自明）、ボタン 3 つを 1 行に収める（2026-10-10 ユーザー確定 3-(a)） */}
@@ -3280,7 +3321,7 @@ const handleDeleteUsed = React.useCallback(
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
   <button
     disabled={!hasParams}
-    onClick={() => applySavedProfile(p)}
+    onClick={() => applySavedProfile(p, { importPref: true })}
     style={{ padding: "6px 10px" }}
   >
     {t("applyCondition")}
@@ -3815,57 +3856,44 @@ const handleDeleteUsed = React.useCallback(
                     />
                   </label>
 
-                  <span style={{ fontSize: 12, opacity: 0.75 }}>
-                    {lang === "ja"
-                      ? "prefは「惑星種別合計（planetTypeTotals）」を高く/低くする嗜好（+優遇 / -冷遇）"
-                      : "pref: + favors higher planetTypeTotals, - favors lower"}
-                  </span>
+                  <span style={{ fontSize: 12, opacity: 0.75 }}>{t("colorPrefDerivedNote")}</span>
                 </div>
 
-                {/* どの入力欄がどの色か一目で分かるよう、内訳テーブルと同じ色背景を付ける
-                    （基本/LF共通。ユーザー要望 2026-07-23） */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 8, marginTop: 6 }}>
+                {/* 色ごとの値は探索条件の帯（上部）の種族優遇から導く（2026-10-16）。ここは導いた値の表示だけ。
+                    内訳テーブルと同じ色背景（ユーザー要望 2026-07-23）は踏襲する */}
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
                   {([
-                    ["BLACK", "黒", prefBLACK, setPrefBLACK],
-                    ["BLUE", "青", prefBLUE, setPrefBLUE],
-                    ["BROWN", "茶", prefBROWN, setPrefBROWN],
-                    ["ORANGE", "橙", prefORANGE, setPrefORANGE],
-                    ["RED", "赤", prefRED, setPrefRED],
-                    ["WHITE", "白", prefWHITE, setPrefWHITE],
-                    ["YELLOW", "黄", prefYELLOW, setPrefYELLOW],
+                    ["BLACK", "黒"],
+                    ["BLUE", "青"],
+                    ["BROWN", "茶"],
+                    ["ORANGE", "橙"],
+                    ["RED", "赤"],
+                    ["WHITE", "白"],
+                    ["YELLOW", "黄"],
                     // 原始・小惑星は LF だけに出る惑星なので LF のときだけ（2026-07-31）。
-                    ...(isBase
-                      ? []
-                      : ([
-                          ["PROTO", "原始", prefPROTO, setPrefPROTO],
-                          ["ASTEROID", "小惑星", prefASTEROID, setPrefASTEROID],
-                        ] as const)),
-                  ] as const).map(([key, ja, value, setter]) => (
-                    <label
-                      key={key}
-                      style={{
-                        display: "flex",
-                        gap: 6,
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        background:
-                          PLANET_INPUT_BG[key as PlanetTypeKey] ?? EXTRA_INPUT_BG[key] ?? undefined,
-                        border: "1px solid rgba(0,0,0,0.15)",
-                        borderRadius: 6,
-                        padding: "3px 6px",
-                      }}
-                    >
-                      <span style={{ fontWeight: 700 }}>{lang === "ja" ? ja : key}</span>
-                      <input
-                        type="number"
-                        value={value}
-                        min={-20}
-                        max={20}
-                        onChange={(e) => setter(Math.max(-20, Math.min(20, Number(e.target.value) || 0)))}
-                        style={{ width: 60 }}
-                      />
-                    </label>
-                  ))}
+                    ...(isBase ? [] : ([["PROTO", "原始"], ["ASTEROID", "小惑星"]] as const)),
+                  ] as const).map(([key, ja]) => {
+                    const v = Number((colorPrefByType as Record<string, number>)[key] ?? 0);
+                    return (
+                      <span
+                        key={key}
+                        style={{
+                          display: "inline-flex",
+                          gap: 6,
+                          alignItems: "center",
+                          background: PLANET_INPUT_BG[key as PlanetTypeKey] ?? EXTRA_INPUT_BG[key] ?? undefined,
+                          border: "1px solid rgba(0,0,0,0.15)",
+                          borderRadius: 6,
+                          padding: "2px 6px",
+                          fontSize: 12,
+                          opacity: v === 0 ? 0.6 : 1,
+                        }}
+                      >
+                        <span style={{ fontWeight: 700 }}>{lang === "ja" ? ja : key}</span>
+                        <span style={{ fontVariantNumeric: "tabular-nums" }}>{v > 0 ? `+${v}` : String(v)}</span>
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
             </div>

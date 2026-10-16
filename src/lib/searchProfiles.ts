@@ -167,6 +167,22 @@ export function removeSearchProfile(id: string): void {
   if (readActiveProfileId() === id) writeActiveProfileId(list[0]?.id ?? null);
 }
 
+/** 検索の実行時に、その側の条件を有効なプロファイルへ登録する（無ければ defaultName で作る）。操作ハンドラから呼ぶ */
+export function bindMapToActiveProfile(map: SearchProfileMap, defaultName: string): void {
+  const id = readActiveProfileId();
+  const active = readSearchProfiles().find((p) => p.id === id) ?? null;
+  if (active) {
+    if (active.map?.searchKey !== map.searchKey) updateSearchProfile(active.id, { map });
+  } else createSearchProfile(defaultName, { map });
+}
+export function bindSetupToActiveProfile(setup: SearchProfileSetup, defaultName: string): void {
+  const id = readActiveProfileId();
+  const active = readSearchProfiles().find((p) => p.id === id) ?? null;
+  if (active) {
+    if (active.setup?.conditionKey !== setup.conditionKey) updateSearchProfile(active.id, { setup });
+  } else createSearchProfile(defaultName, { setup });
+}
+
 /** 読み取り専用のスナップショット（useSyncExternalStore 用。同じ内容なら同じ参照を返す） */
 let cache: { raw: string | null; active: string | null; profiles: SearchProfile[] } = { raw: null, active: null, profiles: [] };
 function snapshot(): { profiles: SearchProfile[]; active: string | null } {
@@ -261,6 +277,20 @@ export function colorPrefFromFactionPref(pref: Record<string, number>): Record<s
   for (const c of PREF_EXTRA_COLORS) {
     const v = pick(c);
     if (v !== 0) out[c] = v;
+  }
+  return out;
+}
+
+/**
+ * 旧 Map プロファイルの色優遇（colorPrefByType）を種族優遇へ取り込む（同じ色の 2 種族へ同じ値）。
+ * 保存済み条件の適用がユーザー操作のときだけ使う（起動時の自動適用では使わない）。
+ */
+export function factionPrefFromColorPref(cp: Record<string, unknown> | null | undefined): Record<string, number> {
+  let out: Record<string, number> = {};
+  if (!cp) return out;
+  for (const c of [...PREF_COLORS, ...PREF_EXTRA_COLORS]) {
+    const v = Number(cp[c] ?? 0);
+    if (Number.isFinite(v) && v !== 0) out = applyColorToFactionPref(out, c, v);
   }
   return out;
 }
