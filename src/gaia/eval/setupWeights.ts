@@ -235,99 +235,16 @@ export function writeSetupWeights(w: SetupWeights): void {
   }
 }
 
-// --- 色優遇/冷遇（母星色ごと。2026-07-31）------------------------------------
+// --- 優遇/冷遇の入力範囲 ------------------------------------------------------
 //
-// Map の colorPrefByType と同じ形。0 のキーは持たない（＝未指定と同じ）ので、
-// 使っていない条件のキーは従来とバイト不変。
-
-/** 優遇/冷遇を付けられる母星色。基本7色＋LFの原始・小惑星。 */
-export const COLOR_PREF_KEYS = [
-  "BLACK",
-  "BLUE",
-  "BROWN",
-  "ORANGE",
-  "RED",
-  "WHITE",
-  "YELLOW",
-  "PROTO",
-  "ASTEROID",
-] as const;
-export type ColorPrefKey = (typeof COLOR_PREF_KEYS)[number];
-export type ColorPrefByColor = Partial<Record<ColorPrefKey, number>>;
+// 色優遇（母星色ごと。2026-07-31、localStorage gaia_setup_color_pref）と List 専用の種族優遇
+// （gaia_list_faction_pref）の保存は段階 1「条件の統一」（2026-10-16）で廃止した。優遇は探索プロファイル
+// （src/lib/searchProfiles.ts）の種族優遇 1 つに統一され、Map / Setup / List が共有する。
+// 旧キーは読まない（残っていても無視される）。
 
 /** 入力範囲。Map の色優遇と同じ目盛り（1=互角 / 2=主導 / 5=ほぼ全て）。 */
 export const COLOR_PREF_MIN = -20;
 export const COLOR_PREF_MAX = 20;
 
-export const LS_SETUP_COLOR_PREF = "gaia_setup_color_pref";
-
-/** 0・非数値・範囲外を落として正規化する（0 はキーごと落とす）。 */
-export function sanitizeColorPref(raw: unknown): ColorPrefByColor {
-  const src = (raw ?? {}) as Record<string, unknown>;
-  const out: ColorPrefByColor = {};
-  for (const k of COLOR_PREF_KEYS) {
-    const n = Number(src[k]);
-    if (!Number.isFinite(n) || n === 0) continue;
-    out[k] = Math.max(COLOR_PREF_MIN, Math.min(COLOR_PREF_MAX, n));
-  }
-  return out;
-}
-
-export function readColorPref(): ColorPrefByColor {
-  try {
-    const raw = localStorage.getItem(LS_SETUP_COLOR_PREF);
-    if (!raw) return {};
-    return sanitizeColorPref(JSON.parse(raw));
-  } catch {
-    return {};
-  }
-}
-
-export function writeColorPref(p: ColorPrefByColor): void {
-  try {
-    const clean = sanitizeColorPref(p);
-    if (Object.keys(clean).length === 0) localStorage.removeItem(LS_SETUP_COLOR_PREF);
-    else localStorage.setItem(LS_SETUP_COLOR_PREF, JSON.stringify(clean));
-  } catch {
-    // ignore
-  }
-}
-
-// --- 種族優遇/冷遇（List 専用。2026-07-31）------------------------------------
-//
-// List は色ではなく種族ごとに ± を付ける（ユーザー確定）。掛け先は
-// 「Map の評価値（母星色ぶん）＋ Setup の評価値」。色優遇と同じく 0 は持たない。
-
+/** 種族 → ±（pairPlan の引数の型。探索プロファイルの factionPref と同じ形） */
 export type FactionPrefByFaction = Record<string, number>;
-export const LS_LIST_FACTION_PREF = "gaia_list_faction_pref";
-
-export function sanitizeFactionPref(raw: unknown): FactionPrefByFaction {
-  const src = (raw ?? {}) as Record<string, unknown>;
-  const out: FactionPrefByFaction = {};
-  for (const [k, v] of Object.entries(src)) {
-    const n = Number(v);
-    if (!Number.isFinite(n) || n === 0) continue;
-    out[k] = Math.max(COLOR_PREF_MIN, Math.min(COLOR_PREF_MAX, n));
-  }
-  return out;
-}
-
-export function readFactionPref(): FactionPrefByFaction {
-  try {
-    const raw = localStorage.getItem(LS_LIST_FACTION_PREF);
-    if (!raw) return {};
-    return sanitizeFactionPref(JSON.parse(raw));
-  } catch {
-    return {};
-  }
-}
-
-export function writeFactionPref(p: FactionPrefByFaction): void {
-  try {
-    const clean = sanitizeFactionPref(p);
-    if (Object.keys(clean).length === 0) localStorage.removeItem(LS_LIST_FACTION_PREF);
-    else localStorage.setItem(LS_LIST_FACTION_PREF, JSON.stringify(clean));
-  } catch {
-    // ignore
-  }
-}

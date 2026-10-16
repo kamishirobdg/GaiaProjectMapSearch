@@ -20,7 +20,6 @@ import {
 import { setupFactionBreakdown, setupFactionTileHits, type FactionScores } from "@/gaia/eval/factionEval";
 import { factionsForMode, type FactionId } from "@/gaia/eval/factionWeights";
 import {
-  COLOR_PREF_KEYS,
   COLOR_PREF_MAX,
   COLOR_PREF_MIN,
   DEFAULT_SETUP_WEIGHTS,
@@ -30,16 +29,8 @@ import {
   SETUP_WEIGHT_MIN,
   SETUP_WEIGHT_STEP,
   isDefaultWeights,
-  readColorPref,
-  readFactionPref,
   readSetupWeights,
-  sanitizeColorPref,
-  writeColorPref,
-  writeFactionPref,
   writeSetupWeights,
-  type ColorPrefByColor,
-  type ColorPrefKey,
-  type FactionPrefByFaction,
   type SetupWeightKey,
   type SetupWeights,
 } from "@/gaia/eval/setupWeights";
@@ -169,10 +160,6 @@ const UI = {
     spread: "散らばり",
     best: "最強",
     empty: "セットアップがありません（提案を生成すると表示されます）",
-    colorPrefTitle: "色優遇/冷遇",
-    colorPrefNote: "母星色ごとの ±。一括探索の並びに効く（評価表の値は変わらない）",
-    factionPrefTitle: "種族優遇/冷遇",
-    factionPrefNote: "種族ごとの ±。掛け先は「Mapの評価値＋Setupの評価値」の合計",
   },
   en: {
     evalTitle: "Evaluation (by faction)",
@@ -191,10 +178,6 @@ const UI = {
     spread: "spread",
     best: "best",
     empty: "No setup yet (generate a suggestion to see this)",
-    colorPrefTitle: "Colour preference",
-    colorPrefNote: "Per home colour; affects bulk-search ranking (not the table values)",
-    factionPrefTitle: "Faction preference",
-    factionPrefNote: "Per faction; applied to (map value + setup value)",
   },
 } as const;
 
@@ -255,41 +238,6 @@ export function useSetupWeights(): [
   return [weights, change, reset, setAll];
 }
 
-/**
- * 色優遇/冷遇（母星色ごと）の状態。useSetupWeights と同じ作法で、
- * 書き込みはユーザー操作のハンドラだけ（復元effectと書込みeffectを併用しない）。
- */
-export function useColorPref(): [
-  ColorPrefByColor,
-  (k: ColorPrefKey, v: number) => void,
-  () => void,
-  (p: ColorPrefByColor) => void,
-] {
-  const [pref, setPref] = React.useState<ColorPrefByColor>({});
-  React.useEffect(() => {
-    setPref(readColorPref());
-  }, []);
-  const change = React.useCallback((k: ColorPrefKey, v: number) => {
-    setPref((prev) => {
-      const next: ColorPrefByColor = { ...prev };
-      // 0 はキーごと落とす（未指定と同じ扱い＝キーをバイト不変に保つ）
-      if (!Number.isFinite(v) || v === 0) delete next[k];
-      else next[k] = v;
-      writeColorPref(next);
-      return next;
-    });
-  }, []);
-  const reset = React.useCallback(() => {
-    writeColorPref({});
-    setPref({});
-  }, []);
-  const setAll = React.useCallback((p: ColorPrefByColor) => {
-    const next = sanitizeColorPref(p);
-    writeColorPref(next);
-    setPref(next);
-  }, []);
-  return [pref, change, reset, setAll];
-}
 
 const thStyle: React.CSSProperties = {
   borderBottom: "1px solid #ddd",
@@ -619,166 +567,8 @@ export function SetupWeightInputs({
   );
 }
 
-/**
- * 色優遇/冷遇の入力欄（母星色ごと。2026-07-31）。Map の同名の入力と同じ見た目・
- * 同じ目盛りで、掛け先だけ違う（Map=その色の惑星の評価値／Setup=その色でいちばん
- * 強い種族のスコア）。原始・小惑星は LF のときだけ出す。
- */
-export function ColorPrefInputs({
-  pref,
-  onChange,
-  onReset,
-  lang,
-  lf,
-}: {
-  pref: ColorPrefByColor;
-  onChange: (k: ColorPrefKey, v: number) => void;
-  onReset: () => void;
-  lang: Lang;
-  lf: boolean;
-}) {
-  const t = UI[lang];
-  const keys = COLOR_PREF_KEYS.filter((k) => lf || (k !== "PROTO" && k !== "ASTEROID"));
-  const atDefault = keys.every((k) => !pref[k]);
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
-        <span style={{ fontWeight: 700, fontSize: T.fontBody }}>
-          {t.colorPrefTitle}
-          <SharedHelp k="setupColorPref" lang={lang} />
-        </span>
-        <span style={{ fontSize: T.fontNote, color: T.fgMuted }}>{t.colorPrefNote}</span>
-        <button onClick={onReset} disabled={atDefault} style={{ marginLeft: "auto", fontSize: 11 }}>
-          {atDefault ? t.isDefault : t.reset}
-        </button>
-      </div>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {keys.map((k) => (
-          <label
-            key={k}
-            style={{
-              display: "flex",
-              gap: 4,
-              alignItems: "center",
-              fontSize: T.fontNote,
-              border: "1px solid rgba(0,0,0,0.15)",
-              borderRadius: 6,
-              padding: "3px 6px",
-              background: factionHomeBg(k),
-            }}
-          >
-            <span style={{ fontWeight: 700 }}>
-              {lang === "ja" ? (PLANET_LABEL_JA[k as PlanetTypeKey] ?? EXTRA_LABEL_JA[k] ?? k) : k}
-            </span>
-            <input
-              type="number"
-              min={COLOR_PREF_MIN}
-              max={COLOR_PREF_MAX}
-              value={pref[k] ?? 0}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                onChange(k, Number.isFinite(v) ? Math.max(COLOR_PREF_MIN, Math.min(COLOR_PREF_MAX, v)) : 0);
-              }}
-              style={{ width: 52, padding: "2px 4px", fontSize: T.fontNote }}
-            />
-          </label>
-        ))}
-      </div>
-    </div>
-  );
-}
 
-/**
- * 種族ごとの優遇/冷遇の入力欄（List 専用。2026-07-31）。
- * 色ではなく種族単位で、掛け先は「Map の評価値＋Setup の評価値」。
- */
-export function FactionPrefInputs({
-  pref,
-  onChange,
-  onReset,
-  lang,
-  lf,
-}: {
-  pref: FactionPrefByFaction;
-  onChange: (id: string, v: number) => void;
-  onReset: () => void;
-  lang: Lang;
-  lf: boolean;
-}) {
-  const t = UI[lang];
-  const defs = factionsForMode(lf);
-  const atDefault = defs.every((f) => !pref[f.id]);
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
-        <span style={{ fontWeight: 700, fontSize: T.fontBody }}>
-          {t.factionPrefTitle}
-          <SharedHelp k="listFactionPref" lang={lang} />
-        </span>
-        <span style={{ fontSize: T.fontNote, color: T.fgMuted }}>{t.factionPrefNote}</span>
-        <button onClick={onReset} disabled={atDefault} style={{ marginLeft: "auto", fontSize: 11 }}>
-          {atDefault ? t.isDefault : t.reset}
-        </button>
-      </div>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {defs.map((f) => (
-          <label
-            key={f.id}
-            style={{
-              display: "flex",
-              gap: 4,
-              alignItems: "center",
-              fontSize: T.fontNote,
-              border: "1px solid rgba(0,0,0,0.15)",
-              borderRadius: 6,
-              padding: "2px 5px",
-              background: factionHomeBg(f.color),
-            }}
-          >
-            <span style={{ fontWeight: 700 }}>{lang === "ja" ? f.labelJa : f.labelEn}</span>
-            <input
-              type="number"
-              min={COLOR_PREF_MIN}
-              max={COLOR_PREF_MAX}
-              value={pref[f.id] ?? 0}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                onChange(f.id, Number.isFinite(v) ? Math.max(COLOR_PREF_MIN, Math.min(COLOR_PREF_MAX, v)) : 0);
-              }}
-              style={{ width: 46, padding: "2px 4px", fontSize: T.fontNote }}
-            />
-          </label>
-        ))}
-      </div>
-    </div>
-  );
-}
 
-/** 種族優遇の状態（List 専用）。useColorPref と同じ作法。 */
-export function useFactionPref(): [
-  FactionPrefByFaction,
-  (id: string, v: number) => void,
-  () => void,
-] {
-  const [pref, setPref] = React.useState<FactionPrefByFaction>({});
-  React.useEffect(() => {
-    setPref(readFactionPref());
-  }, []);
-  const change = React.useCallback((id: string, v: number) => {
-    setPref((prev) => {
-      const next = { ...prev };
-      if (!Number.isFinite(v) || v === 0) delete next[id];
-      else next[id] = v;
-      writeFactionPref(next);
-      return next;
-    });
-  }, []);
-  const reset = React.useCallback(() => {
-    writeFactionPref({});
-    setPref({});
-  }, []);
-  return [pref, change, reset];
-}
 
 /**
  * Map と Setup の合算比（2026-09-19、案C）。Total タブで編集し、List も読む
@@ -818,9 +608,6 @@ export default function FactionEvalPanel({
   players,
   onMark,
   activeSources,
-  colorPref,
-  onChangeColorPref,
-  onResetColorPref,
 }: {
   result: SetupResult | null;
   weights: SetupWeights;
@@ -831,10 +618,6 @@ export default function FactionEvalPanel({
   players: number;
   onMark?: (sourceId: string, req: SetupMarkRequest, additive: boolean) => void;
   activeSources?: Set<string>;
-  /** 色優遇/冷遇。渡されたときだけ入力欄を出す（2026-07-31）。 */
-  colorPref?: ColorPrefByColor;
-  onChangeColorPref?: (k: ColorPrefKey, v: number) => void;
-  onResetColorPref?: () => void;
 }) {
   const t = UI[lang];
   const total = React.useMemo(
@@ -872,15 +655,6 @@ export default function FactionEvalPanel({
         lang={lang}
         lf={lf}
       />
-      {colorPref && onChangeColorPref && onResetColorPref ? (
-        <ColorPrefInputs
-          pref={colorPref}
-          onChange={onChangeColorPref}
-          onReset={onResetColorPref}
-          lang={lang}
-          lf={lf}
-        />
-      ) : null}
     </div>
   );
 }

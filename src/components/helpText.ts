@@ -184,36 +184,6 @@ const ENTRIES = {
       ref: "3.1 / 2.10",
     },
   },
-  setupColorPref: {
-    ja: {
-      title: "色優遇/冷遇",
-      what: "母星色ごとの ±。一括探索とセット提案の並びに効く（評価表の値は変わらない）。掛け先は「その色でいちばん強い種族のスコア」。",
-      why:
-        "目盛りは実測で合わせてある（300 件・4人 LF。係数 0.3）: 0 効かない / 1 基準（バランス）とほぼ互角 / 2 優遇が主導 / 3 さらに寄る / 5 実質その色だけで決まる。マイナスは逆向きに同じだけ。",
-      ref: "4",
-    },
-    en: {
-      title: "Colour preference",
-      what: "Per home colour, ±. Affects bulk-search and suggestion ranking (not the table values). Applied to the best faction of that colour.",
-      why:
-        "Calibrated on 300 setups (4p LF, coefficient 0.3): 0 off / 1 about even with the criterion / 2 preference leads / 3 stronger / 5 decided by this colour alone. Negative values work in reverse.",
-      ref: "4",
-    },
-  },
-  listFactionPref: {
-    ja: {
-      title: "種族優遇/冷遇",
-      what: "種族ごとの ±。掛け先は「Map の評価値（母星色ぶん）＋ Setup の評価値」の合計（200 前後。合算比が 1:1 でないときはその比）。同じ母星色の 2 種族は Map ぶんが同じで Setup ぶんで差がつく。",
-      why: "目盛りは色優遇と同じ（係数は半分。掛け先が Map ＋ Setup で約 2 倍の大きさのため）: 0 効かない / 1 基準とほぼ互角 / 2 優遇が主導 / 5 実質その種族だけで決まる。",
-      ref: "4",
-    },
-    en: {
-      title: "Faction preference",
-      what: "Per faction, ±. Applied to map value (home colour) + setup value (about 200; scaled by the blend ratio when it is not 1:1). Two factions of one colour share the map part and differ in the setup part.",
-      why: "Same scale as colour preference (half the coefficient, since the target is about twice as large): 0 off / 1 about even / 2 preference leads / 5 decided by this faction alone.",
-      ref: "4",
-    },
-  },
 
   // ---------- 探索条件の帯（ConditionBar。段階 1「条件の統一」2026-10-16） ----------
   searchProfile: {
