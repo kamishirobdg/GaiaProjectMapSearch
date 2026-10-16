@@ -195,7 +195,7 @@ const ENTRIES = {
       why:
         "検索を実行するとその側の条件が自動で登録される。Map で検索 → Setup へ移動して「一致」を確かめて検索、が基本の流れ。" +
         "貯めた結果は条件ごとのバケツのままで、プロファイルはそれを束ねる索引（結果は消えない）。",
-      ref: "2.11",
+      ref: "1.4",
     },
     en: {
       title: "Search profile",
@@ -205,7 +205,7 @@ const ENTRIES = {
       why:
         "Running a search registers that side's conditions. Typical flow: search on Map, move to Setup, confirm 'match', search. " +
         "Results stay in their per-condition buckets; the profile is just an index over them.",
-      ref: "2.11",
+      ref: "1.4",
     },
   },
   factionPref: {
@@ -217,7 +217,7 @@ const ENTRIES = {
       why:
         "目盛りは従来の色優遇と同じ: 0 効かない / 1 基準とほぼ互角 / 2 優遇が主導 / 5 実質その種族だけで決まる。マイナスは逆向きに同じだけ。" +
         "Setup 側の係数は色優遇の半分（0.15。同じ色の 2 種族に入れると従来の色優遇とほぼ同じ大きさ）。",
-      ref: "2.11 / 4",
+      ref: "1.4 / 4",
     },
     en: {
       title: "Faction preference",
@@ -227,7 +227,7 @@ const ENTRIES = {
       why:
         "Same scale as the old colour preference: 0 off / 1 about even / 2 preference leads / 5 decided by this faction alone. " +
         "On the Setup side the coefficient is half the colour one (0.15; setting both factions of a colour gives about the old colour bonus).",
-      ref: "2.11 / 4",
+      ref: "1.4 / 4",
     },
   },
 

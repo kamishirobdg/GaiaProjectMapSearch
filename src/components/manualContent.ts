@@ -44,6 +44,7 @@ const ja: ManualText = {
             "共通バーの「人数」「基本版 / LF」「日本語 / EN」は全タブで共有されます。人数と拡張は検索・生成の条件に入ります。",
             "共通バー右端の「vX.Y.Z · eval_vN」はアプリの版と Map の評価バージョンです。評価の意味が変わると eval_vN が上がり、Map の検索結果は新しいバージョンのものとして別に貯まります（古い結果は「コピー」で引き継げます）。",
             "検索・生成の結果は条件ごとに自動で保存され、同じ条件で再開すると前回の上位と合流します。ピン留めした盤面とタイル配置は List に集まり、容量の整理からも守られます。",
+            "共通バーの下の「探索条件」の帯は探索プロファイルです。種族優遇 / 冷遇（「編集」。色でまとめて入れることもできます）と、Map・Setup それぞれの検索条件を 1 つの名前で束ねます。検索を実行するとその側の条件が自動で登録され、帯の Map / Setup に「一致」「差分あり」「未登録」が出ます。Map で検索したあと Setup へ移り、「一致」を確かめてから検索する、という流れで使います。",
           ],
         },
       ],
@@ -97,7 +98,7 @@ const ja: ManualText = {
               ["船接触（LF、船ごと）", "10", "船の近くの惑星 1 つあたりの加点", "惑星の基本の値が 10 なので、10 で「船の近くは約 2 倍」"],
               ["船星系（LF、船ごと）", "3", "船の星系の中にある惑星への加点", "船接触より小さく保つのが目安"],
               ["船星系: 最大寄与に帰属", "オフ", "複数の船の圏内の惑星を 1 隻だけに数える", "船どうしが近い盤面で加点が膨らむときに"],
-              ["色優遇 / 冷遇", "0", "色ごとの ＋ / −。＋ でその色が強い盤面を優遇", "1 でバランスとほぼ互角、2 で優遇が主導、5 でその色だけで決まります"],
+              ["色優遇 / 冷遇", "0", "色ごとの ＋ / −。＋ でその色が強い盤面を優遇。値は帯の種族優遇から導きます（同じ色の 2 種族の大きい方）", "1 でバランスとほぼ互角、2 で優遇が主導、5 でその色だけで決まります。変えると結果は別に貯まります"],
               ["色優遇 / 冷遇の強さ", "25", "優遇 1 あたりの強さ", "通常は変えません"],
             ],
           },
@@ -133,10 +134,11 @@ const ja: ManualText = {
         { h3: "使い方" },
         {
           ul: [
-            "シードを指定するかランダムで「生成」すると、タイル配置と種族別の評価が出ます。",
-            "条件はタイルや面をタップして指定します（固定 / 除外 / 候補）。生成はその条件を満たすように作られます。",
-            "「一括探索」は現在の条件で大量に生成し、基準の良い順に並べます。結果は条件と基準ごとに貯まります。",
-            "気に入った配置は保存リストから「ピン留め」（List へ）。",
+            "画面は Map と同じ「候補 / 詳細 / 条件」の並びです（狭い幅ではタブ）。",
+            "候補: 「検索」は現在の条件で大量に生成し、基準の良い順に上位 20 件を候補に残します。結果は条件と基準ごとに貯まり、次の検索は前回の上位と合流します。候補一覧には検索の上位と保存した配置が 1 つの表に並びます（ピン留めが先、次に基準値の順）。行をタップすると表示が切り替わります。",
+            "候補の行の「保存」で容量の整理から守り、「ピン留め」で List へ送ります（未保存の行をピン留めすると自動で保存されます）。「使用済み」にすると一覧から使用済みへ移ります。",
+            "詳細: 表示中の配置の種族別の評価表です。",
+            "条件: シードの指定とランダム、保存済み条件、評価指数です。タイルや面の固定 / 除外 / 候補は盤面のタイルをタップして指定します。",
           ],
         },
         { h3: "評価（種族別）と評価指数" },
@@ -161,7 +163,7 @@ const ja: ManualText = {
         {
           ul: [
             "評価指数はカテゴリ全体の効き方を変える係数で、List の提案にも同じ値が使われます。変えても貯めた結果は消えません。",
-            "色優遇 / 冷遇（母星色ごとの ±）は一括探索と提案の並びに効き、評価表の値は変えません。目盛りは Map と同じです。",
+            "種族優遇 / 冷遇（帯で編集。種族ごとの ±）は検索と提案の並びに効き、評価表の値は変えません。目盛りは Map の色優遇と同じで、係数は色優遇の半分です（同じ色の 2 種族に入れると従来の色優遇とほぼ同じ大きさ）。",
           ],
         },
       ],
@@ -193,7 +195,7 @@ const ja: ManualText = {
         {
           ul: [
             "基準 2・3 は盤面に依存しないので、盤面は条件に合う先頭のものになります。盤面で選びたいときは 1 か 4 を使います。",
-            "種族優遇 / 冷遇（種族ごとの ±）は盤面と配置の合計に掛かります。目盛りは色優遇と同じです。",
+            "種族優遇 / 冷遇（帯で編集。種族ごとの ±）は盤面と配置の合計に掛かります。目盛りは色優遇と同じです。",
             "「合計の上位」は盤面＋配置の合計が高い順に人数＋2 色（同じ色は強い方の種族だけ）です。",
           ],
         },
@@ -250,6 +252,7 @@ const en: ManualText = {
             "Players, Base game / LF and the language in the top bar are shared by all tabs. Players and expansion are part of the search and generation conditions.",
             "The right end of the top bar shows the app version and the map evaluation version (\"vX.Y.Z · eval_vN\"). When the meaning of the evaluation changes, eval_vN goes up and map results are stored separately per version (older results can be carried over with \"Copy\").",
             "Search and generation results are saved automatically per condition and merge with the previous top results when you resume. Pinned boards and layouts gather on the List tab and are protected from trimming.",
+            "The \"Search profile\" strip under the top bar bundles the faction preference (\"Edit\"; values can be set per colour too) with the Map and Setup search conditions under one name. Running a search registers that side's conditions, and the Map / Setup badges show \"match\", \"differs\" or \"not set\". Typical flow: search on Map, move to Setup, confirm \"match\", then search.",
           ],
         },
       ],
@@ -303,7 +306,7 @@ const en: ManualText = {
               ["Scout (LF, per ship)", "10", "Bonus per planet near the ship", "The base value of a planet is 10, so 10 means \"about double near a ship\""],
               ["Scout core (LF, per ship)", "3", "Bonus for planets inside the ship's cluster", "Keep it below scout"],
               ["Scout core: best ship only", "Off", "Credit a planet in several ships' range to one ship only", "When ships sit close together and the bonus inflates"],
-              ["Colour preference", "0", "± per colour; + favours boards where that colour is strong", "1 is about even with balance, 2 lets preference lead, 5 decides by that colour alone"],
+              ["Colour preference", "0", "± per colour; + favours boards where that colour is strong. Derived from the faction preference in the strip (the larger of the two factions of a colour)", "1 is about even with balance, 2 lets preference lead, 5 decides by that colour alone. Changing it starts a new result bucket"],
               ["Preference weight", "25", "Strength per unit of preference", "Usually left as is"],
             ],
           },
@@ -337,10 +340,11 @@ const en: ManualText = {
         { h3: "How to use" },
         {
           ul: [
-            "Generate with a seed or at random to get a tile layout and the per-faction evaluation.",
-            "Set conditions by tapping tiles or faces (fix / exclude / candidate). Generation satisfies them.",
-            "Bulk search generates many layouts under the current conditions and ranks them by a criterion; results are stored per condition and criterion.",
-            "Pin a layout you like from the saved list (it goes to List).",
+            "The page follows the Map layout: Candidates / Detail / Conditions (tabs at narrow widths).",
+            "Candidates: Search generates many layouts under the current conditions and keeps the best 20 as candidates; results are stored per condition and criterion and the next search merges with them. The candidate table lists search results and saved layouts together (pinned first, then by score). Tap a row to show it.",
+            "Save a row to protect it from trimming, Pin it to send it to List (pinning an unsaved row saves it), and mark it Used to move it to the used view.",
+            "Detail: the per-faction evaluation table of the displayed layout.",
+            "Conditions: seed and random, saved conditions, and the weights. Fix / exclude / shortlist tiles and faces by tapping them on the board.",
           ],
         },
         { h3: "Evaluation by faction and weights" },
@@ -363,7 +367,7 @@ const en: ManualText = {
         {
           ul: [
             "Weights scale whole categories and are shared with List suggestions. Changing them does not discard stored results.",
-            "Colour preference (± per home colour) affects bulk-search and suggestion ranking, not the table values. Same scale as on Map.",
+            "Faction preference (edited in the strip; ± per faction) affects search and suggestion ranking, not the table values. Same scale as Map's colour preference, with half the coefficient (setting both factions of a colour gives about the old colour bonus).",
           ],
         },
       ],
@@ -395,7 +399,7 @@ const en: ManualText = {
         {
           ul: [
             "Criteria 2 and 3 do not depend on the board, so the first matching board is used. Use 1 or 4 to choose by board.",
-            "Faction preference (± per faction) applies to board + layout. Same scale as colour preference.",
+            "Faction preference (edited in the strip; ± per faction) applies to board + layout. Same scale as colour preference.",
             "\"Top by total\" lists players + 2 colours by board + layout (only the stronger faction per colour).",
           ],
         },

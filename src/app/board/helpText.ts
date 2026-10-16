@@ -278,7 +278,7 @@ const ENTRIES = {
       why:
         "目盛りは盤面の実測（300 盤面・4人 LF）で合わせてある: 0 効かない / 1 偏り項とほぼ互角（同程度ならこの色が強い方） / 2 優遇が主導 / 3 さらに寄る / " +
         "5 実質その色だけで決まる。マイナスは逆向きに同じだけ効く。色の値は検索キーに入るので、種族優遇を変えると結果は別のバケツに貯まる。",
-      ref: "2.3 / 2.11",
+      ref: "2.3 / 1.4",
     },
     en: {
       title: "Colour preference",
@@ -288,7 +288,7 @@ const ENTRIES = {
       why:
         "The scale was calibrated on 300 boards (4p LF): 0 no effect / 1 about even with the imbalance term / 2 preference leads / 3 stronger / " +
         "5 effectively decides by that colour alone. Negative values work the same way in reverse. The colour values are part of the search key, so changing the faction preference starts a new result bucket.",
-      ref: "2.3 / 2.11",
+      ref: "2.3 / 1.4",
     },
   },
   wColorPref: {

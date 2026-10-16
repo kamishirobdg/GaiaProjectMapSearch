@@ -141,6 +141,14 @@
   `buildSetup.test` の golden 値も変わる。順番は「似た挙動」でまとめてある。
 - IndexedDB は v6。**別タブが古い接続を握ると upgrade が止まる**ので、
   `openDb` に `onversionchange`（接続を手放す）と `onblocked`（即失敗）を入れてある。
+- **探索プロファイル（2026-10-16、v1.8.0。段階 1「条件の統一」、設計ノート 1.4）**: `src/lib/searchProfiles.ts`（localStorage）が
+  種族優遇＋Map の searchKey＋Setup の conditionKey を束ねる索引。**結果バケツの鍵は変えない**。共通バー直下の帯は
+  `src/components/ConditionBar.tsx`（Map / Setup / List / Total）。検索の実行でその側の条件を自動登録（`bindMapToActiveProfile` /
+  `bindSetupToActiveProfile`）。優遇は種族優遇 1 つ: Map は `colorPrefFromFactionPref` で色優遇を導く（検索キーの形は不変）、
+  Setup の検索は `SETUP_FACTION_PREF_W`（0.15、仮置き）、List は `LIST_FACTION_PREF_W`。旧 `gaia_setup_color_pref` /
+  `gaia_list_faction_pref` は読まない。Setup の左ペインは Map と同じ 候補 / 詳細 / 条件（`gaia_setup_narrow_tab`）で、検索は
+  `src/workers/setupSearch.worker.ts` ＋ `src/lib/setupSearchRunner.ts`（採点は `setupSearchCore.searchChunk` で共通）。
+  仮置きの確認事項は設計ノート 1.4 末尾。次は Pair タブ（v1.9）→ Pair をトップに（v2.0）。
 
 ## 描画とセル座標（2026-07-30 に整理）
 
