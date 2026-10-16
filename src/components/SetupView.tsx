@@ -32,9 +32,15 @@ import { STORE_SETUP_PROFILES, isDbUpgradeBlocked } from "@/app/board/persistenc
 import { DEFAULT_SETUP_WEIGHTS, isDefaultWeights, type SetupWeights } from "@/gaia/eval/setupWeights";
 import { copyText, decodeSetupToken, setupShareUrl } from "@/lib/setupShare";
 import GlobalBar from "@/components/GlobalBar";
+import ConditionBar from "@/components/ConditionBar";
+import {
+  bindSetupToActiveProfile,
+  DEFAULT_PROFILE_NAME,
+  useSearchProfiles,
+  type SearchProfileSetup,
+} from "@/lib/searchProfiles";
 import FactionEvalPanel, {
   factionHomeBg,
-  useColorPref,
   useSetupWeights,
   type SetupMarkRequest,
 } from "@/components/FactionEvalPanel";
@@ -42,10 +48,11 @@ import {
   recommendSetups,
   scoreSetupFactions,
   topFactions,
-  SETUP_COLOR_PREF_W,
+  SETUP_FACTION_PREF_W,
+  type FactionPref,
   type Recommendation,
 } from "@/gaia/eval/factionEval";
-import { factionsForMode, type FactionDef } from "@/gaia/eval/factionWeights";
+import { factionsForMode, type FactionDef, type FactionId } from "@/gaia/eval/factionWeights";
 import {
   clearRanking,
   deleteRankingByCondition,
@@ -879,16 +886,16 @@ export default function SetupView() {
 
   // 評価指数（カテゴリ別係数）。List タブと localStorage を共有する。
   const [evalWeights, changeEvalWeight, resetEvalWeights, setAllEvalWeights] = useSetupWeights();
-  // 色優遇/冷遇（母星色ごと。2026-07-31）。一括探索の並びにだけ効く。
-  const [colorPref, changeColorPref, resetColorPref, setAllColorPref] = useColorPref();
+  // 種族優遇/冷遇（段階 1「条件の統一」2026-10-16）。色ごとの入力（useColorPref、localStorage gaia_setup_color_pref）は
+  // 廃止し、探索プロファイルの種族優遇（Map / List と共有）を読む。検索の並びにだけ効く（評価表の値は変わらない）。
+  const { active: activeSearchProfile } = useSearchProfiles();
   /** criterionScore へ渡す形。指定が無ければ undefined＝素通り。 */
-  const colorPrefArg = React.useMemo(
-    () =>
-      Object.keys(colorPref).length > 0
-        ? { w: SETUP_COLOR_PREF_W, byColor: colorPref as Record<string, number> }
-        : undefined,
-    [colorPref]
-  );
+  const factionPrefArg = React.useMemo<FactionPref | undefined>(() => {
+    const pref = activeSearchProfile?.factionPref ?? {};
+    return Object.keys(pref).length > 0
+      ? { w: SETUP_FACTION_PREF_W, byFaction: pref as Partial<Record<FactionId, number>> }
+      : undefined;
+  }, [activeSearchProfile]);
 
   /**
    * いまの「条件」。シードだけを除いたビルド入力＋評価指数（2026-07-30）。
@@ -1023,6 +1030,35 @@ export default function SetupView() {
     [lang]
   );
 
+  // ---------- 探索プロファイルとの接続（段階 1「条件の統一」2026-10-16） ----------
+  /** いまの画面の条件（帯の「一致 / 差分あり」の比較と「登録」に使う） */
+  const currentSearchProfileSetup = React.useMemo<SearchProfileSetup>(
+    () => ({ conditionKey, params: conditionParams }),
+    [conditionKey, conditionParams]
+  );
+  /** 帯の「登録した条件を適用」（条件プロファイルの適用と同じ経路） */
+  const applySearchProfileSetup = React.useCallback(
+    (s: SearchProfileSetup) => {
+      const setup = (s.params as any)?.setup ?? {};
+      applyInput({ ...setup, seed } as BuildSetupInput, true);
+      const w = (s.params as any)?.evalWeights as SetupWeights | undefined;
+      setAllEvalWeights({ ...DEFAULT_SETUP_WEIGHTS, ...(w ?? {}) });
+    },
+    [applyInput, seed, setAllEvalWeights]
+  );
+  const describeSearchProfileSetup = React.useCallback(
+    (s: SearchProfileSetup) => summarizeCondition(s.params as typeof conditionParams),
+    [summarizeCondition]
+  );
+  const describeSearchProfileMap = React.useCallback(
+    (m: { templateId: string; searchKey: string }) => {
+      const tid = m.templateId;
+      const tmpl = tid === "base_34p" ? (lang === "ja" ? "基本版 3〜4人" : "Base 3–4p") : tid.startsWith("3p") ? "LF 3p" : tid.startsWith("4p") ? "LF 4p" : tid;
+      return `${tmpl} · ${m.searchKey.slice(0, 8)}`;
+    },
+    [lang]
+  );
+
   // 復元は読み取りのみ（書込みはユーザー操作ハンドラのみの規律）。
   React.useEffect(() => {
     let alive = true;
@@ -1080,14 +1116,14 @@ export default function SetupView() {
       playerCount: players,
       lostFleet: lf,
       weights: evalWeights,
-      colorPref: colorPrefArg,
+      factionPref: factionPrefArg,
     }).then((rows) => {
       if (alive) setBulkRows(rows);
     });
     return () => {
       alive = false;
     };
-  }, [bucketKey, bulkCriterion, players, lf, evalWeights, colorPrefArg]);
+  }, [bucketKey, bulkCriterion, players, lf, evalWeights, factionPrefArg]);
 
   const handleBulkSearch = React.useCallback(() => {
     if (bulkBusy) {
@@ -1099,6 +1135,8 @@ export default function SetupView() {
     const seeds = Array.from({ length: total }, () => randomSeedString());
     const baseInput = buildInput("") as any;
     delete baseInput.seed;
+    // 検索を実行した条件を探索プロファイルの Setup 部として登録する（無ければ「既定」を作る。2026-10-16）。
+    bindSetupToActiveProfile({ conditionKey, params: conditionParams }, DEFAULT_PROFILE_NAME[lang]);
     // 探索中に条件が変わってもこの回の結果は「開始時の条件」のバケツへ入れる。
     const forKey = bucketKey;
     const forCriterion = bulkCriterion;
@@ -1118,7 +1156,7 @@ export default function SetupView() {
         playerCount: players,
         lostFleet: lf,
         weights: evalWeights,
-        colorPref: colorPrefArg,
+        factionPref: factionPrefArg,
         fresh: acc.map((r) => ({ seed: String(r.input.seed), input: r.input, score: r.score })),
         cap: BULK_TOP_N,
       })
@@ -1159,7 +1197,7 @@ export default function SetupView() {
         playerCount: players,
         lostFleet: lf,
         weights: evalWeights,
-        colorPref: colorPrefArg,
+        factionPref: factionPrefArg,
         topN: BULK_TOP_N,
         baseInput,
       });
@@ -1168,7 +1206,7 @@ export default function SetupView() {
       window.setTimeout(() => step(from + BULK_CHUNK, merged), 0);
     };
     step(0, []);
-  }, [bulkBusy, bulkTrials, buildInput, bucketKey, bulkCriterion, players, lf, evalWeights, colorPrefArg]);
+  }, [bulkBusy, bulkTrials, buildInput, bucketKey, bulkCriterion, players, lf, evalWeights, factionPrefArg, conditionKey, conditionParams, lang]);
 
   const handleBulkClear = React.useCallback(() => {
     bulkGenRef.current += 1;
@@ -1529,6 +1567,16 @@ export default function SetupView() {
         onSelect={onGlobalSelect}
         lang={lang}
         onLang={setLangPersist}
+      />
+      {/* 探索条件の帯（プロファイル・種族優遇・Map / Setup の登録状態。段階 1、2026-10-16） */}
+      <ConditionBar
+        page="setup"
+        lang={lang}
+        lf={lf}
+        currentSetup={currentSearchProfileSetup}
+        onApplySetup={applySearchProfileSetup}
+        describeMap={describeSearchProfileMap}
+        describeSetup={describeSearchProfileSetup}
       />
     <PageBody>
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
@@ -1908,9 +1956,6 @@ ${pickHint}`}
           players={players}
           onMark={onMark}
           activeSources={activeSources}
-          colorPref={colorPref}
-          onChangeColorPref={changeColorPref}
-          onResetColorPref={resetColorPref}
         />
       </section>
 

@@ -29,6 +29,8 @@ import { encodePlacementToken, decodePlacementToken } from "@/gaia/ssot/placemen
 import { listSavedSetups, recordSetup, setSetupPinned, type SavedSetup } from "@/lib/setupHistory";
 import { copyText, decodeSetupToken, encodeSetupToken } from "@/lib/setupShare";
 import GlobalBar from "@/components/GlobalBar";
+import ConditionBar from "@/components/ConditionBar";
+import { useSearchProfiles } from "@/lib/searchProfiles";
 import {
   readSharedExpansion,
   readSharedPlayers,
@@ -51,9 +53,7 @@ import { blendScores, isDefaultScoreBlend, type ScoreBlend } from "@/gaia/eval/s
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
 import { SetupBoard } from "@/components/SetupView";
 import FactionEvalPanel, {
-  FactionPrefInputs,
   SharedHelp,
-  useFactionPref,
   useScoreBlend,
   useSetupWeights,
 } from "@/components/FactionEvalPanel";
@@ -414,7 +414,10 @@ export default function ListView() {
   // 表示だけでなくセット提案の選定（criterionScore に渡すスコア）にも効かせる。
   const [evalWeights, changeEvalWeight, resetEvalWeights, setAllEvalWeights] = useSetupWeights();
   // 種族優遇/冷遇（2026-07-31）。掛け先は「Mapの評価値＋Setupの評価値」の合計。
-  const [factionPref, changeFactionPref, resetFactionPref] = useFactionPref();
+  // 段階 1「条件の統一」（2026-10-16）: List 専用の入力（useFactionPref、localStorage gaia_list_faction_pref）は廃止し、
+  // 探索プロファイルの種族優遇（Map / Setup と共有。共通バー直下の帯で編集）を読む。
+  const { active: activeSearchProfile } = useSearchProfiles();
+  const factionPref = React.useMemo(() => activeSearchProfile?.factionPref ?? {}, [activeSearchProfile]);
   // Map と Setup の合算比（Total タブで編集。種族優遇の掛け先と「合計の上位」に効く。2026-09-19）
   const [scoreBlend] = useScoreBlend();
 
@@ -921,6 +924,8 @@ export default function ListView() {
         lang={lang}
         onLang={setLangPersist}
       />
+      {/* 探索条件の帯（プロファイル・種族優遇・Map / Setup の登録状態。段階 1、2026-10-16） */}
+      <ConditionBar page="list" lang={lang} lf={expansion === "lostFleet"} />
     <PageBody>
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <div style={{ fontWeight: 700, fontSize: 16 }}>{t.title}</div>
@@ -1139,23 +1144,13 @@ export default function ListView() {
               lf={recSettings?.lf ?? expansion === "lostFleet"}
               players={recSettings?.players ?? players}
             />
-            {/* 種族優遇/冷遇（2026-07-31）。List は色ではなく種族ごとで、
-                掛け先は「Map の評価値＋Setup の評価値」の合計。 */}
-            <div style={{ marginTop: 10 }}>
-              <FactionPrefInputs
-                pref={factionPref}
-                onChange={changeFactionPref}
-                onReset={resetFactionPref}
-                lang={lang}
-                lf={recSettings?.lf ?? expansion === "lostFleet"}
-              />
-              {/* 合算比が 1:1 でないときだけ、どの比で掛けているかを出す（2026-09-19）。 */}
-              {!isDefaultScoreBlend(scoreBlend) ? (
-                <div style={{ fontSize: 11, opacity: 0.65, marginTop: 4 }}>
-                  {t.blendInUse} Map ×{scoreBlend.map} : Setup ×{scoreBlend.setup} {t.blendWhere}
-                </div>
-              ) : null}
-            </div>
+            {/* 種族優遇/冷遇は共通バー直下の「探索条件」の帯で編集する（2026-10-16）。
+                合算比が 1:1 でないときだけ、どの比で掛けているかを出す（2026-09-19）。 */}
+            {!isDefaultScoreBlend(scoreBlend) ? (
+              <div style={{ fontSize: 11, opacity: 0.65, marginTop: 4 }}>
+                {t.blendInUse} Map ×{scoreBlend.map} : Setup ×{scoreBlend.setup} {t.blendWhere}
+              </div>
+            ) : null}
           </Panel>
           {/* 提案ログ: 生成のたびに自動で積む履歴（左ペインの空きスペース）。 */}
           {pairLogHere.length > 0 ? (

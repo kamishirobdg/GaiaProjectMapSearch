@@ -16,6 +16,7 @@
 import React from "react";
 import Link from "next/link";
 import GlobalBar from "@/components/GlobalBar";
+import ConditionBar from "@/components/ConditionBar";
 import { PageBody, Panel, T } from "@/components/ui/layout";
 import {
   openDb,
@@ -406,6 +407,8 @@ export default function TotalView() {
         lang={lang}
         onLang={setLangPersist}
       />
+      {/* 探索条件の帯（プロファイル・種族優遇・Map / Setup の登録状態。段階 1、2026-10-16） */}
+      <ConditionBar page="total" lang={lang} lf={expansion === "lostFleet"} />
       <PageBody>
         <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <div style={{ fontWeight: 700, fontSize: 16 }}>

@@ -343,6 +343,14 @@ export const SETUP_COLOR_PREF_W = 0.3;
  */
 export const LIST_FACTION_PREF_W = SETUP_COLOR_PREF_W / 2;
 
+/**
+ * Setup の検索（旧 一括探索）に掛ける種族優遇の係数（段階 1「条件の統一」2026-10-16。**仮置き、ユーザー確認待ち**）。
+ * 優遇が色から種族ごとになった（1 つの表を Map / Setup / List で共有）。掛け先は種族ごとの Setup 評価値で、
+ * 「色でまとめて」入れると同じ色の 2 種族ぶんが足されて色優遇の掛け先（その色の最強種族）の約 2 倍になるので、
+ * 色優遇の半分にして目盛り（1 ＝ 基準とほぼ互角）を保つ。
+ */
+export const SETUP_FACTION_PREF_W = SETUP_COLOR_PREF_W / 2;
+
 /** 母星色ごとの「その色でいちばん強い種族のスコア」。色優遇の掛け先。 */
 export function colorValueOf(
   scores: FactionScores,
