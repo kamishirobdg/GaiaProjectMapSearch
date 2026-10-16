@@ -16,8 +16,9 @@
 - **2026-10-16、29回目の FF push ＝ v1.7.0 · eval_v8（90eb953）**（アプリ内マニュアル `/manual`。共通バーの「Manual」タブ、日英、
   7 章。狭い幅のタブの詰め（ユーザー確定 (a)、バー 99 → 73px）。設計ノート 2.5 末尾）。評価は不変（`EVAL_VERSION` 据え置き）。
   ユーザー指示「リリースしてよい」。deployments API で Production（deployment 7112469065）の success 確認済み。
-- **同日、30回目の FF push ＝ v1.7.1**（狭い幅の内訳表の列幅: 余りを数値列へ「狭い列から先に、等しくなったら均等に」。表示だけ）。
-  ユーザー指示「リリースまで行って」。Production の success は deployments API で確認する。
+- **同日、30回目の FF push ＝ v1.7.1 · eval_v8（894ce2c）**（狭い幅の内訳表の列幅: 余りを数値列へ「狭い列から先に、等しくなったら
+  均等に」。表示だけ）。ユーザー指示「リリースまで行って」。deployments API で Production（deployment 7112694094）の success 確認済み。
+  **ユーザーの実機で表示は問題なし（2026-10-16）**。次は調整項目の検証（`docs/tuning-guide.md` 1 節末尾「本番で見る場所」）。
 - **作業ブランチは 2026-10-15 から `claude/gaia-map-project-status-73aeld`（draft PR #27）**。旧 `claude/gaia-map-project-status-adrt1n`
   （PR #26）は同一コミットで引き継いだうえで閉じた（ユーザー確定 (a)）。
 - 評価の式は eval_v7「全惑星を同一の式で」＋ eval_v8（ダー・シュワーム人の開始地点 × 1.5）。List / Total には船の相互作用
