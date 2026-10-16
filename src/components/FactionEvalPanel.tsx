@@ -20,8 +20,6 @@ import {
 import { setupFactionBreakdown, setupFactionTileHits, type FactionScores } from "@/gaia/eval/factionEval";
 import { factionsForMode, type FactionId } from "@/gaia/eval/factionWeights";
 import {
-  COLOR_PREF_MAX,
-  COLOR_PREF_MIN,
   DEFAULT_SETUP_WEIGHTS,
   LF_ONLY_WEIGHT_KEYS,
   SETUP_WEIGHT_DISPLAY_ORDER,
@@ -608,6 +606,7 @@ export default function FactionEvalPanel({
   players,
   onMark,
   activeSources,
+  hideWeights,
 }: {
   result: SetupResult | null;
   weights: SetupWeights;
@@ -618,6 +617,8 @@ export default function FactionEvalPanel({
   players: number;
   onMark?: (sourceId: string, req: SetupMarkRequest, additive: boolean) => void;
   activeSources?: Set<string>;
+  /** 評価指数の入力欄を出さない（Setup の「条件」節に別置きするとき。2026-10-16） */
+  hideWeights?: boolean;
 }) {
   const t = UI[lang];
   const total = React.useMemo(
@@ -648,13 +649,15 @@ export default function FactionEvalPanel({
       ) : (
         <div style={{ fontSize: T.fontBody, color: T.fgMuted }}>{t.empty}</div>
       )}
-      <SetupWeightInputs
-        weights={weights}
-        onChange={onChangeWeight}
-        onReset={onResetWeights}
-        lang={lang}
-        lf={lf}
-      />
+      {hideWeights ? null : (
+        <SetupWeightInputs
+          weights={weights}
+          onChange={onChangeWeight}
+          onReset={onResetWeights}
+          lang={lang}
+          lf={lf}
+        />
+      )}
     </div>
   );
 }

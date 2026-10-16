@@ -193,6 +193,18 @@ export async function mergeRanking(args: {
   return keep;
 }
 
+/** 候補一覧の行ごとの削除（2026-10-16）。seed だけ指定すると、その条件のすべての基準から消す。 */
+export async function deleteRankingBySeed(conditionKey: string, seed: string): Promise<void> {
+  try {
+    const db = await openDb();
+    const rows = await idbGetAllFromStore<RankedSetup>(db, STORE_SETUP_RANKING);
+    const ids = rows.filter((r) => r.conditionKey === conditionKey && r.seed === seed).map((r) => r.id);
+    if (ids.length > 0) await idbDeleteByIds(db, STORE_SETUP_RANKING, ids);
+  } catch {
+    // ignore
+  }
+}
+
 /** その条件×基準のランキングを消す（画面の「消去」）。 */
 export async function clearRanking(conditionKey: string, criterion: RecommendCriterion): Promise<void> {
   try {
