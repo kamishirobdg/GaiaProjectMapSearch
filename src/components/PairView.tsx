@@ -21,6 +21,10 @@
 // 連続探索（マップ → セットアップ）は Map の結果バケツの上位 K 枚のうち未探索のものだけに Setup を探索 → Map の検索 → 上位の更新 → 新たに
 // 入った未探索のマップだけ探索、の繰り返し（探索済みは gaia_pair_explored_v1）。セットアップ → マップは起点のセットアップを固定して Map を
 // 探索し続け、制約を通った盤面ごとに組の基準値を計算して順位表へ。結果バケツは配置とスコアだけ（persistence.slimEvaluation）、容量 1000。
+// v2.3（2026-10-17 ユーザー確定「推奨」）: 候補一覧は「主」（マップ → セットアップならマップ、セットアップ → マップならセットアップ）ごとに
+// 1 行（最良の相手）、詳細で別の相手を選べる。順位表は向きごと・主ごとに上位 10 組・主 50 件で IndexedDB（pairRanking.ts、保存した組も）。
+// プレイ済み: 詳細の「プレイ済みにする」でマップは結果バケツの使用済み（＋ pair_maps の印）、セットアップは Setup の候補の使用済みにし、
+// Pair の選択肢・一覧・提案・連続探索から除く（「プレイ済みも表示」で見られる。戻すのは Map / Setup タブの使用済み一覧）。
 
 import React from "react";
 import Link from "next/link";
@@ -35,6 +39,7 @@ import {
   loadFromDb,
   readMapCapacity,
   SEARCH_RESULT_KEEP_MAX,
+  setCandidatesUsedByHash,
   type PersistedCandidate,
   type PersistedProfile,
 } from "@/app/board/persistence";
@@ -47,7 +52,8 @@ import {
 } from "@/gaia/board/viewerAssets";
 import { buildSectorLookup } from "@/gaia/board/previewBoard";
 import { computePlacementHash, encodePlacementToken, decodePlacementToken } from "@/gaia/ssot/placementHash";
-import { listSavedSetups, recordSetup, type SavedSetup } from "@/lib/setupHistory";
+import { primaryOf } from "@/lib/pairRanking";
+import { listSavedSetups, recordSetup, setSetupUsed, setupHistoryId, type SavedSetup } from "@/lib/setupHistory";
 import { copyText, decodeSetupToken, encodeSetupToken } from "@/lib/setupShare";
 import GlobalBar from "@/components/GlobalBar";
 import ConditionBar from "@/components/ConditionBar";
@@ -78,17 +84,27 @@ import { deriveSetupSettings, mapTopOfPlacement, planPair, setupSettingsOf, uses
 import { scorePairOf } from "@/lib/pairScore";
 import { evaluatePlacement, evaluationOfCandidate, evaluationOfPlacement, type MapEvalCache, type MapEvaluation } from "@/lib/mapEvaluate";
 import {
-  loadExplored,
-  loadPairRanking,
-  markExplored,
-  mergeIntoPairRanking,
-  PAIR_RANKING_CAP,
-  pairRankId,
+  addPairSaved,
+  clearPairRanking,
+  deletePairSaved,
+  deletePairSavedByCondition,
+  exploredMapOf,
+  groupPairRows,
+  loadPairData,
+  markPairMapPlayed,
+  migratePairLocalStorage,
+  pairMapKey,
+  pairMapRowOf,
+  pairRankKeyOf,
+  pairRowId,
+  placementOfMapRow,
+  savePairRows,
+  setPairExplored,
   unexploredOf,
-  writeExplored,
-  writePairRanking,
-  type ExploredMaps,
-  type PairRankRow,
+  type PairData,
+  type PairMapRow,
+  type PairRow as PairRankRow,
+  type PairSavedRow,
 } from "@/lib/pairRanking";
 import { runSearchOffThread, type SearchRunMode } from "@/app/board/searchRunner";
 import { runSetupSearch, type SetupSearchRunMode } from "@/lib/setupSearchRunner";
@@ -151,7 +167,7 @@ const UI = {
     save: "保存",
     saved: "保存済み",
     deleteSaved: "削除",
-    savedNote: "保存した組は条件ごとに貯まり、マップがピン解除されても再表示できる",
+    savedNote: "主（マップ → セットアップならマップ、逆ならセットアップ）ごとに 1 行。基準値はいまの基準・評価指数・合算比で採点し直した値。保存した組は条件ごとに貯まる",
     seed: "シード",
     score: "スコア",
     modeBase: "基本版",
@@ -200,6 +216,14 @@ const UI = {
     contRound: (n: number) => `${n} 周目`,
     contSetupOf: (i: number, n: number) => `Setup ${i}/${n}`,
     contNoneUnexplored: "未探索なし",
+    altSetups: (n: number) => `別の候補 Setup（${n} 件）`,
+    altMaps: (n: number) => `別の候補 Map（${n} 件）`,
+    altCount: (n: number) => `+${n}`,
+    markPlayed: "プレイ済みにする",
+    playedDone: "プレイ済み",
+    markPlayedTip: "マップは Map タブの使用済みに、セットアップは Setup タブの候補に記録して使用済みにする。以後 Pair には出ない（戻すのは各タブの使用済み一覧）",
+    showPlayed: "プレイ済みも表示",
+    playedBadge: "済",
     contDirMismatch: "起点のセットアップの拡張・人数が探索プロファイルの Map の条件（テンプレート）と合いません",
     kindRanked: "連続",
     rankedRowTip: (round: number) => `連続で探索の順位表（${round} 周目に発見）`,
@@ -259,7 +283,7 @@ const UI = {
     save: "Save",
     saved: "Saved",
     deleteSaved: "Delete",
-    savedNote: "Saved pairs are kept per condition and can be shown even after the map is unpinned",
+    savedNote: "One row per primary item (the map in Map → Setup, the setup in Setup → Map). Scores are recomputed with the current criterion, weights and blend. Saved pairs are kept per condition",
     seed: "Seed",
     score: "Score",
     modeBase: "Base game",
@@ -308,6 +332,14 @@ const UI = {
     contRound: (n: number) => `round ${n}`,
     contSetupOf: (i: number, n: number) => `Setup ${i}/${n}`,
     contNoneUnexplored: "nothing unexplored",
+    altSetups: (n: number) => `Other setups (${n})`,
+    altMaps: (n: number) => `Other maps (${n})`,
+    altCount: (n: number) => `+${n}`,
+    markPlayed: "Mark as played",
+    playedDone: "Played",
+    markPlayedTip: "Marks the map used on the Map tab and records the setup as used on the Setup tab. It no longer appears in Pair (undo from each tab's used list)",
+    showPlayed: "Show played",
+    playedBadge: "played",
     contDirMismatch: "The chosen setup's expansion / player count does not match the Map conditions (template) of the search profile",
     kindRanked: "ranked",
     rankedRowTip: (round: number) => `Continuous-search ranking (found in round ${round})`,
@@ -393,47 +425,17 @@ const SETUP_PER_MAP_MAX = 1000000;
 /** ワーカーへ 1 回に渡すシードの数（10 万件のシード配列を 1 度に構造化クローンしないため。停止の粒度にもなる） */
 const SETUP_BATCH = 25000;
 
-/**
- * 保存した組（マップ配置＋基準＋セットアップ入力の自己完結スナップショット。旧 List の「保存した提案」と同じ形・同じキー）。
- * 条件バケツ（conditionKey）で分かれる。
- */
-const LS_PROPOSALS = "gaia_list_proposals_v2";
-const PROPOSALS_CAP = 50;
-type SavedProposal = {
-  id: string;
-  conditionKey: string;
-  createdAt: number;
-  criterion: RecommendCriterion;
-  tid: string;
-  mapPlacement: PlacementItem[];
-  mapScore: number;
-  mapHash: string;
-  setupInput: BuildSetupInput;
-  players: number;
-  lf: boolean;
-  /** 保存時の基準値（表示用。旧データには無い） */
-  score?: number;
-};
-function loadProposals(): SavedProposal[] {
-  try {
-    const raw = localStorage.getItem(LS_PROPOSALS);
-    if (!raw) return [];
-    const a = JSON.parse(raw);
-    return Array.isArray(a) ? (a as SavedProposal[]) : [];
-  } catch {
-    return [];
-  }
-}
-function writeProposals(list: SavedProposal[]): void {
-  try {
-    localStorage.setItem(LS_PROPOSALS, JSON.stringify(list));
-  } catch {}
-}
+/** プレイ済みも表示（localStorage。既定オフ） */
+const LS_SHOW_PLAYED = "gaia_pair_show_played";
 
 /** 候補一覧の 1 行（提案・保存した組・共有された組を同じ形に揃える） */
 type PairRow = {
   key: string;
   kind: "proposal" | "saved" | "shared" | "ranked";
+  /** 盤面の鍵（pairRanking.pairMapKey） */
+  mapKey: string;
+  /** セットアップのシード（主の鍵に使う） */
+  seed: string;
   /** 盤面（候補にあるマップならその候補、無ければ配置だけ） */
   map: PersistedCandidate | null;
   mapPlacement: PlacementItem[];
@@ -452,6 +454,10 @@ type PairRow = {
   round?: number;
   /** 「合計の上位」の文字列（採点のついでに作る） */
   topTotal?: string;
+  /** 同じ主の組の数（一覧の行＝主の最良の相手） */
+  alts?: number;
+  /** プレイ済み（「プレイ済みも表示」のときだけ一覧に出る） */
+  played?: boolean;
 };
 
 /** 候補のマップ（条件プロファイルの evalVersion が古ければ、いまのコードで評価し直した値に差し替えたもの） */
@@ -513,8 +519,20 @@ export default function PairView() {
   const contStopRef = React.useRef<(() => void) | null>(null);
   const contActiveRef = React.useRef(false);
   const [setupPerMap, setSetupPerMap] = React.useState(SETUP_PER_MAP_DEFAULT);
-  const [pairRanking, setPairRanking] = React.useState<PairRankRow[]>([]);
-  const rankingRef = React.useRef<PairRankRow[]>([]);
+  const [pairData, setPairData] = React.useState<PairData>({ maps: {}, rows: [], explored: [], saved: [] });
+  /** 結果バケツで使用済みのマップ（配置ハッシュ） */
+  const [usedHashes, setUsedHashes] = React.useState<Set<string>>(() => new Set());
+  const [showPlayed, setShowPlayed] = React.useState(false);
+  /** 主ごとに選んだ相手（候補の行の key） */
+  const [partnerByGroup, setPartnerByGroup] = React.useState<Record<string, string>>({});
+  const [playedKeys, setPlayedKeys] = React.useState<Set<string>>(() => new Set());
+  const reloadPairData = React.useCallback(async () => {
+    try {
+      setPairData(await loadPairData());
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const conditionParams = React.useMemo(
     () => ({ players, lf: expansion === "lostFleet", pairDir, setupSource, criterion, evalWeights }),
@@ -524,7 +542,6 @@ export default function PairView() {
   const [profiles, setProfiles] = React.useState<Array<ConditionProfile<typeof conditionParams>>>([]);
   const clearPair = React.useCallback(() => {
     setPairOptions([]);
-    setSelectedKey((k) => (k && k.startsWith("p:") ? null : k));
   }, []);
 
   const [dbBlocked, setDbBlocked] = React.useState(false);
@@ -592,11 +609,19 @@ export default function PairView() {
     [lang]
   );
 
-  const [savedProposals, setSavedProposals] = React.useState<SavedProposal[]>([]);
-  const proposalsHere = React.useMemo(() => savedProposals.filter((p) => p.conditionKey === conditionKey), [savedProposals, conditionKey]);
-  /** 順位表の鍵: 人数・拡張・基準・評価指数（探索の向き・探し方は採点に効かないので含めない） */
-  const rankingKey = React.useMemo(() => conditionKeyOf({ players, lf: expansion === "lostFleet", criterion, evalWeights }), [players, expansion, criterion, evalWeights]);
-  const rankingHere = React.useMemo(() => pairRanking.filter((r) => r.conditionKey === rankingKey), [pairRanking, rankingKey]);
+  const proposalsHere = React.useMemo(() => pairData.saved.filter((p) => p.conditionKey === conditionKey), [pairData.saved, conditionKey]);
+  /** 順位表の鍵: 人数・拡張・基準・評価指数・探索の向き（向きごとに別の順位表。v2.3.0） */
+  const rankingKey = React.useMemo(() => pairRankKeyOf({ players, lf: expansion === "lostFleet", criterion, evalWeights, dir: pairDir }), [players, expansion, criterion, evalWeights, pairDir]);
+  const rankingHere = React.useMemo(() => pairData.rows.filter((r) => r.rankKey === rankingKey), [pairData.rows, rankingKey]);
+  /** 盤面の配置（トークンを戻したもの。盤面ごとに 1 回） */
+  const mapPlacements = React.useMemo(() => {
+    const out: Record<string, PlacementItem[] | null> = {};
+    for (const k of Object.keys(pairData.maps)) out[k] = placementOfMapRow(pairData.maps[k]) as PlacementItem[] | null;
+    return out;
+  }, [pairData.maps]);
+  const usedSetupIds = React.useMemo(() => new Set(allSetups.filter((r) => r.used).map((r) => r.id)), [allSetups]);
+  const isMapPlayed = React.useCallback((tid: string, hash: string) => (!!hash && usedHashes.has(hash)) || !!pairData.maps[pairMapKey(tid, hash)]?.played, [usedHashes, pairData.maps]);
+  const isSetupPlayed = React.useCallback((input: BuildSetupInput) => usedSetupIds.has(setupHistoryId(input)), [usedSetupIds]);
 
   // 条件プロファイルの件数の追従（結果が 0 件のうちは作らない）
   React.useEffect(() => {
@@ -630,6 +655,7 @@ export default function PairView() {
       setTopOverallMap(top);
       setTemplateIdBySearchKey(tmap);
       setProfilesBySearchKey(pmap);
+      setUsedHashes(new Set(all.filter((c) => c.used).map((c) => String(c.placementHash ?? ""))));
       setRankedMaps(all.slice().sort((a, b) => Number(b.score) - Number(a.score)).slice(0, RANKED_MAP_CAP));
     } catch {
       // ignore
@@ -639,7 +665,8 @@ export default function PairView() {
     } catch {
       // ignore
     }
-  }, []);
+    await reloadPairData();
+  }, [reloadPairData]);
 
   useIsoLayoutEffect(() => {
     resetStaleEvalScaleStorage();
@@ -679,10 +706,10 @@ export default function PairView() {
       const pm = Number(localStorage.getItem(LS_SETUP_PER_MAP));
       if (Number.isFinite(pm) && pm >= SETUP_PER_MAP_MIN) setSetupPerMap(Math.min(SETUP_PER_MAP_MAX, Math.floor(pm)));
     } catch {}
-    setSavedProposals(loadProposals());
-    rankingRef.current = loadPairRanking();
-    setPairRanking(rankingRef.current);
-    void reloadPools();
+    try {
+      if (localStorage.getItem(LS_SHOW_PLAYED) === "1") setShowPlayed(true);
+    } catch {}
+    void migratePairLocalStorage().then(() => reloadPools());
     // 共有されたセット（?h=&t=&s=）を捕捉して URL を浄化
     try {
       if (!pairCapturedRef.current) {
@@ -714,10 +741,11 @@ export default function PairView() {
   const sectorById = React.useMemo(() => buildSectorLookup(getAllSectors() as any), []);
   const sectorImgById = React.useMemo(() => buildSectorImgById(), []);
 
-  const selectableMapsRaw = React.useMemo<PersistedCandidate[]>(
-    () => buildMapPool({ pinned: pinnedMaps, ranked: rankedMaps, templateIdBySearchKey, topOverall: topOverallMap }),
-    [pinnedMaps, rankedMaps, topOverallMap, templateIdBySearchKey]
-  );
+  const selectableMapsRaw = React.useMemo<PersistedCandidate[]>(() => {
+    const pool = buildMapPool({ pinned: pinnedMaps, ranked: rankedMaps, templateIdBySearchKey, topOverall: topOverallMap });
+    // プレイ済み（結果バケツの使用済み、または pair_maps の印）は既定で出さない（v2.3.0）
+    return showPlayed ? pool : pool.filter((c) => !c.used && !isMapPlayed(templateIdBySearchKey[c.searchKey] ?? "", String(c.placementHash ?? "")));
+  }, [pinnedMaps, rankedMaps, topOverallMap, templateIdBySearchKey, showPlayed, isMapPlayed]);
   /**
    * 候補のマップを **いまの評価コード** に揃える（2026-10-17。ユーザー報告「Pair の値と Map で開いた値が一致しない」）。
    * 条件プロファイルの evalVersion がいまと違う候補（eval_v8 以前の結果バケツ）は、その条件で評価し直した score / breakdown に
@@ -733,10 +761,11 @@ export default function PairView() {
     [selectableMapsRaw, profilesBySearchKey, templateIdBySearchKey]
   );
   const selectableSetups = React.useMemo<SavedSetup[]>(() => {
-    const pins = allSetups.filter((r) => r.pinned);
+    const src = showPlayed ? allSetups : allSetups.filter((r) => !r.used);
+    const pins = src.filter((r) => r.pinned);
     const seen = new Set(pins.map((r) => r.id));
-    return [...pins, ...allSetups.filter((r) => !seen.has(r.id))];
-  }, [allSetups]);
+    return [...pins, ...src.filter((r) => !seen.has(r.id))];
+  }, [allSetups, showPlayed]);
 
   React.useEffect(() => {
     if (selectableMaps.length > 0 && !selectableMaps.some((m) => m.id === pairMapId)) setPairMapId(selectableMaps[0].id);
@@ -791,22 +820,30 @@ export default function PairView() {
     setPairMsg(plan.note === "mapIndependent" ? UI[lang].mapIndependentNote : null);
     setPairOptions(plan.options);
     setRecSettings(plan.settings);
-    setSelectedKey(plan.options.length > 0 ? `p:${plan.options[0].key}` : null);
+    setSelectedKey(null);
   }, [selectableMaps, selectableSetups, pairMapId, pairSetupId, pairDir, setupSource, criterion, templateIdBySearchKey, clearPair, lang, evalWeights, factionPref, scoreBlend]);
 
   // ---------- 候補一覧（提案 ＋ 保存した組 ＋ 共有された組） ----------
   const baseRows = React.useMemo<PairRow[]>(() => {
     const out: PairRow[] = [];
+    const push = (r: PairRow) => {
+      const played = isMapPlayed(r.tid, r.mapHash) || isSetupPlayed(r.setupInput);
+      if (played && !showPlayed) return;
+      out.push(played ? { ...r, played: true } : r);
+    };
     if (pairShared) {
-      out.push({
+      const hash = computePlacementHash(pairShared.placement as any);
+      push({
         key: "shared",
         kind: "shared",
-        map: selectableMaps.find((c) => String(c.placementHash ?? "") && templateIdBySearchKey[c.searchKey] === pairShared.templateId && mapToken((c.placement ?? []) as PlacementItem[]) === mapToken(pairShared.placement)) ?? null,
+        map: selectableMaps.find((c) => String(c.placementHash ?? "") === hash && templateIdBySearchKey[c.searchKey] === pairShared.templateId) ?? null,
         mapPlacement: pairShared.placement,
         tid: pairShared.templateId,
-        mapHash: "",
+        mapHash: hash,
+        mapKey: pairMapKey(pairShared.templateId, hash),
         mapScore: 0,
         setupInput: pairShared.input,
+        seed: String(pairShared.input.seed),
         criterion: null,
         score: null,
         players: pairShared.input.playerCount ?? 4,
@@ -815,15 +852,19 @@ export default function PairView() {
     }
     for (const o of pairOptions) {
       const m = selectableMaps.find((c) => c.id === o.mapId) ?? null;
-      out.push({
+      const tid = m ? (templateIdBySearchKey[m.searchKey] ?? "") : "";
+      const hash = String(m?.placementHash ?? "");
+      push({
         key: `p:${o.key}`,
         kind: "proposal",
         map: m,
         mapPlacement: (m?.placement ?? []) as PlacementItem[],
-        tid: m ? (templateIdBySearchKey[m.searchKey] ?? "") : "",
-        mapHash: String(m?.placementHash ?? ""),
+        tid,
+        mapHash: hash,
+        mapKey: pairMapKey(tid, hash),
         mapScore: Number(m?.score ?? 0),
         setupInput: o.rec.input,
+        seed: String(o.rec.input.seed),
         criterion: o.rec.criterion,
         score: o.rec.score,
         players: recSettings?.players ?? players,
@@ -831,44 +872,54 @@ export default function PairView() {
       });
     }
     for (const r of rankingHere) {
-      const m = selectableMaps.find((c) => String(c.placementHash ?? "") === r.mapHash) ?? null;
-      out.push({
+      const mr = pairData.maps[r.mapKey];
+      const placement = mapPlacements[r.mapKey];
+      if (!mr || !placement) continue;
+      const m = selectableMaps.find((c) => String(c.placementHash ?? "") === mr.hash) ?? null;
+      push({
         key: `r:${r.id}`,
         kind: "ranked",
         map: m,
-        mapPlacement: r.mapPlacement as PlacementItem[],
-        tid: r.tid,
-        mapHash: r.mapHash,
-        mapScore: m ? Number(m.score ?? 0) : r.mapScore,
-        setupInput: r.setupInput,
+        mapPlacement: placement,
+        tid: mr.tid,
+        mapHash: mr.hash,
+        mapKey: r.mapKey,
+        mapScore: m ? Number(m.score ?? 0) : mr.score,
+        setupInput: r.input,
+        seed: r.seed,
         criterion: r.criterion,
         score: r.score,
         players: r.players,
         lf: r.lf,
-        mapSearchKey: r.mapSearchKey,
+        mapSearchKey: mr.searchKey,
         round: r.round,
       });
     }
     for (const p of proposalsHere) {
-      const m = p.mapHash ? (selectableMaps.find((c) => String(c.placementHash ?? "") === p.mapHash) ?? null) : null;
-      out.push({
+      const mr = pairData.maps[p.mapKey];
+      const placement = (p.mapKey ? mapPlacements[p.mapKey] : null) ?? [];
+      const m = mr ? (selectableMaps.find((c) => String(c.placementHash ?? "") === mr.hash) ?? null) : null;
+      push({
         key: `s:${p.id}`,
         kind: "saved",
         map: m,
-        mapPlacement: p.mapPlacement,
-        tid: p.tid,
-        mapHash: p.mapHash,
-        mapScore: p.mapScore,
-        setupInput: p.setupInput,
+        mapPlacement: placement,
+        tid: mr?.tid ?? "",
+        mapHash: mr?.hash ?? "",
+        mapKey: p.mapKey,
+        mapScore: m ? Number(m.score ?? 0) : (mr?.score ?? 0),
+        setupInput: p.input,
+        seed: p.seed,
         criterion: p.criterion,
-        score: p.score ?? null,
+        score: null,
         players: p.players,
         lf: p.lf,
         savedId: p.id,
+        mapSearchKey: mr?.searchKey,
       });
     }
     return out;
-  }, [pairShared, pairOptions, rankingHere, proposalsHere, selectableMaps, templateIdBySearchKey, recSettings, players, expansion, mapToken]);
+  }, [pairShared, pairOptions, rankingHere, proposalsHere, selectableMaps, templateIdBySearchKey, recSettings, players, expansion, pairData.maps, mapPlacements, isMapPlayed, isSetupPlayed, showPlayed]);
 
   /**
    * 行のマップの評価（いまのコードの値）。候補にあるマップはその評価（古い結果バケツなら評価し直し済み）、候補に無い盤面
@@ -889,12 +940,11 @@ export default function PairView() {
 
 
   /**
-   * 候補一覧（v2.2.0）: 全行をいまの基準・評価指数・合算比・種族優遇で採点し直し、基準値の降順に並べる（# ＝ 順位）。
-   * 保存した組の保存時の基準値や順位表の探索時の値は使わない（基準が違っても同じ物差しで並ぶ）。
+   * 候補の全行をいまの基準・評価指数・合算比・種族優遇で採点し直す（v2.2.0）。保存時の基準値や探索時の値は使わない。
    * 1 行 ＝ セットアップの構築 ＋ 採点（0.5ms 前後）。マップの評価はキャッシュ。
    */
-  const rows = React.useMemo<PairRow[]>(() => {
-    const scored = baseRows.map((r) => {
+  const scoredRows = React.useMemo<PairRow[]>(() => {
+    return baseRows.map((r) => {
       const bd = mapEvalOfRow(r)?.breakdown ?? null;
       const res = buildSetupFromSeed(r.setupInput);
       const ss = applyShipInteraction(scoreSetupFactions(res, evalWeights), shipInteractionOf(res, bd, evalWeights));
@@ -903,10 +953,36 @@ export default function PairView() {
       const topTotal = topTotalText(totalScoresOfPair(mapValueByFaction(bd), ss, scoreBlend), r.players + 2, lang, r.lf);
       return { ...r, criterion, score, topTotal };
     });
-    return scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || (a.key < b.key ? -1 : 1));
   }, [baseRows, mapEvalOfRow, evalWeights, criterion, scoreBlend, factionPref, lang]);
 
-  const selectedRow = React.useMemo(() => rows.find((r) => r.key === selectedKey) ?? null, [rows, selectedKey]);
+  /** 主（探索の向きで マップ か セットアップ）ごとにまとめ、主の中は基準値の降順、主どうしは最良の降順（v2.3.0） */
+  const groups = React.useMemo(
+    () => groupPairRows(scoredRows.map((r) => ({ ...r, score: r.score ?? 0 })), pairDir),
+    [scoredRows, pairDir]
+  );
+  /** 候補一覧の行 ＝ 主ごとの最良の相手（# ＝ 順位） */
+  const rows = React.useMemo<PairRow[]>(() => groups.map((g) => ({ ...g.rows[0], alts: g.rows.length })), [groups]);
+
+  // 選択は主の鍵。選択が無い／消えたら先頭（最良）の主、共有された組はその主
+  React.useEffect(() => {
+    if (groups.length === 0) {
+      if (selectedKey !== null) setSelectedKey(null);
+      return;
+    }
+    if (selectedKey === "shared") {
+      const g = groups.find((x) => x.rows.some((r) => r.kind === "shared"));
+      setSelectedKey(g ? g.primary : groups[0].primary);
+      return;
+    }
+    if (!groups.some((g) => g.primary === selectedKey)) setSelectedKey(groups[0].primary);
+  }, [groups, selectedKey]);
+
+  const selectedGroup = React.useMemo(() => groups.find((g) => g.primary === selectedKey) ?? null, [groups, selectedKey]);
+  const selectedRow = React.useMemo<PairRow | null>(() => {
+    if (!selectedGroup) return null;
+    const want = partnerByGroup[selectedGroup.primary];
+    return (want ? selectedGroup.rows.find((r) => r.key === want) : undefined) ?? selectedGroup.rows[0];
+  }, [selectedGroup, partnerByGroup]);
 
   /** 詳細の材料: Setup の値（船の相互作用込み）・Map の値・合計 */
   const detail = React.useMemo(() => {
@@ -931,39 +1007,57 @@ export default function PairView() {
     };
   }, [selectedRow, mapEvalOfRow, evalWeights, scoreBlend, lang]);
 
+  const mapRowOfPairRow = React.useCallback(
+    (r: PairRow): PairMapRow | null =>
+      r.tid && r.mapHash && r.mapPlacement.length > 0 ? pairMapRowOf(r.tid, r.mapHash, r.mapPlacement, r.mapSearchKey ?? r.map?.searchKey ?? "", r.mapScore) : null,
+    []
+  );
   const handleSaveRow = React.useCallback(
     (r: PairRow) => {
-      const prop: SavedProposal = {
-        id: `${r.map?.id ?? r.mapHash ?? "m"}|${r.criterion ?? "-"}|${r.setupInput.seed}|${Date.now()}`,
+      const map = mapRowOfPairRow(r);
+      const row: PairSavedRow = {
+        id: `${map?.key ?? "m"}|${r.seed}|${Date.now()}`,
         conditionKey,
-        createdAt: Date.now(),
+        mapKey: map?.key ?? "",
+        seed: r.seed,
+        input: r.setupInput,
         criterion: r.criterion ?? criterion,
-        tid: r.tid,
-        mapPlacement: r.mapPlacement,
-        mapScore: r.mapScore,
-        mapHash: r.mapHash,
-        setupInput: r.setupInput,
         players: r.players,
         lf: r.lf,
-        ...(r.score != null ? { score: r.score } : {}),
+        createdAt: Date.now(),
       };
-      setSavedProposals((prev) => {
-        const next = [prop, ...prev].slice(0, PROPOSALS_CAP);
-        writeProposals(next);
-        return next;
-      });
-      setSelectedKey(`s:${prop.id}`);
+      void addPairSaved(row, map).then(reloadPairData);
     },
-    [conditionKey, criterion]
+    [conditionKey, criterion, mapRowOfPairRow, reloadPairData]
   );
-  const handleDeleteSaved = React.useCallback((id: string) => {
-    setSavedProposals((prev) => {
-      const next = prev.filter((p) => p.id !== id);
-      writeProposals(next);
-      return next;
-    });
-    setSelectedKey((k) => (k === `s:${id}` ? null : k));
-  }, []);
+  const handleDeleteSaved = React.useCallback(
+    (id: string) => {
+      void deletePairSaved(id).then(reloadPairData);
+    },
+    [reloadPairData]
+  );
+  /**
+   * プレイ済みにする（v2.3.0）: マップは全バケツで使用済み（Map タブの使用済み一覧に出る）＋ pair_maps の印、セットアップは Setup の
+   * 候補に記録して使用済み（Setup タブの使用済み表示に出る）。以後 Pair の選択肢・一覧・提案・連続探索から除く。
+   */
+  const handleMarkPlayed = React.useCallback(
+    (r: PairRow) => {
+      void (async () => {
+        try {
+          if (r.mapHash) await setCandidatesUsedByHash(r.mapHash, true);
+          const map = mapRowOfPairRow(r);
+          if (map) await markPairMapPlayed(map, true);
+          await recordSetup(r.setupInput);
+          await setSetupUsed(setupHistoryId(r.setupInput), true);
+        } catch (e: any) {
+          setPairMsg(String(e?.message ?? e));
+        }
+        setPlayedKeys((prev) => new Set([...prev, r.key]));
+        await reloadPools();
+      })();
+    },
+    [mapRowOfPairRow, reloadPools]
+  );
   const handleRecordSetup = React.useCallback((input: BuildSetupInput) => {
     void recordSetup(input).then((rows2) => {
       setAllSetups(rows2);
@@ -1097,7 +1191,7 @@ export default function PairView() {
         setAllSetups(await listSavedSetups());
         setPairOptions(options);
         setRecSettings({ players: sPlayers, lf: sLf });
-        setSelectedKey(options.length > 0 ? `p:${options[0].key}` : null);
+        setSelectedKey(null);
         if (isNarrow && options.length > 0) selectNarrowTab("detail");
       } catch (e: any) {
         setPairMsg(String(e?.message ?? e));
@@ -1198,12 +1292,10 @@ export default function PairView() {
       sLf = (setupBase as any).mode === "lostFleet";
     }
 
-    const mergeFresh = (fresh: PairRankRow[]) => {
+    const mergeFresh = async (fresh: PairRankRow[], maps: PairMapRow[]) => {
       if (fresh.length === 0) return;
-      const next = mergeIntoPairRanking(rankingRef.current, forRankKey, fresh, PAIR_RANKING_CAP);
-      rankingRef.current = next;
-      writePairRanking(next);
-      setPairRanking(next);
+      await savePairRows(forRankKey, dir, fresh, maps);
+      await reloadPairData();
     };
     const runMapSearch = async () => {
       setContPhase("map");
@@ -1255,29 +1347,37 @@ export default function PairView() {
             const results = await runMapSearch();
             const now = Date.now();
             const fresh: PairRankRow[] = [];
+            const maps: PairMapRow[] = [];
             for (const r of results) {
               const bd = r.breakdown ?? r.evaluation?.breakdown ?? null;
               const placement = (r.placement ?? []) as PlacementItem[];
               if (!bd || placement.length === 0) continue;
               const mapHash = String(r.placementHash ?? computePlacementHash(placement as any));
+              const mk = pairMapKey(templateId, mapHash);
               const top = mapTopOfPlacement(templateId, placement, sPlayers);
               const ss = applyShipInteraction(raw, shipInteractionOf(setupResult, bd, forWeights));
               const score = scorePairOf({ criterion: forCriterion, setupScores: ss, mapBreakdown: bd, blend: forBlend, factionPref: forPref, players: sPlayers, lf: sLf, mapTop: top });
-              fresh.push({ id: pairRankId(mapHash, seed), conditionKey: forRankKey, mapSearchKey: mapKey, mapHash, tid: templateId, mapPlacement: placement, mapScore: Number(r.score ?? 0), seed, setupInput: fixedSetup.input, criterion: forCriterion, score, players: sPlayers, lf: sLf, createdAt: now, round });
+              maps.push(pairMapRowOf(templateId, mapHash, placement, mapKey, Number(r.score ?? 0)));
+              fresh.push({ id: pairRowId(forRankKey, mk, seed), rankKey: forRankKey, mapKey: mk, seed, input: fixedSetup.input, score, criterion: forCriterion, players: sPlayers, lf: sLf, createdAt: now, round });
             }
-            mergeFresh(fresh);
+            await mergeFresh(fresh, maps);
           }
           return;
         }
         // ---- マップ → セットアップ ----
-        let explored: ExploredMaps = loadExplored();
         while (contActiveRef.current) {
           round++;
           setContRound(round);
-          // 1) 結果バケツの上位 K 枚のうち未探索のもの
+          // 1) 結果バケツ（使用済みを除く active）の上位 K 枚のうち、プレイ済みでなく未探索のもの
+          const pd = await loadPairData();
+          const explored = exploredMapOf(pd.explored, forRankKey);
           const loaded = await loadFromDb(mapKey, capacity);
-          const topK = loaded.active.slice().sort((a, b) => Number(b.score) - Number(a.score)).slice(0, forK);
-          const todo = unexploredOf(topK, explored, forRankKey, perMap);
+          const topK = loaded.active
+            .slice()
+            .sort((a, b) => Number(b.score) - Number(a.score))
+            .slice(0, forK)
+            .filter((m) => !pd.maps[pairMapKey(templateId, String(m.placementHash ?? ""))]?.played);
+          const todo = unexploredOf(topK, (m) => pairMapKey(templateId, String(m.placementHash ?? "")), explored, perMap);
           // 2) 未探索のマップごとに Setup をそのマップとの組として採点
           for (let i = 0; i < todo.length && contActiveRef.current; i++) {
             const m = todo[i].map;
@@ -1327,14 +1427,13 @@ export default function PairView() {
               didTrials += n;
             }
             const now = Date.now();
-            mergeFresh(
-              acc.map((r) => ({ id: pairRankId(mapHash, r.seed), conditionKey: forRankKey, mapSearchKey: mapKey, mapHash, tid: templateId, mapPlacement: placement, mapScore: Number(m.score ?? 0), seed: r.seed, setupInput: r.input, criterion: forCriterion, score: r.score, players: sPlayers, lf: sLf, createdAt: now, round }))
+            const mk = pairMapKey(templateId, mapHash);
+            await mergeFresh(
+              acc.map((r) => ({ id: pairRowId(forRankKey, mk, r.seed), rankKey: forRankKey, mapKey: mk, seed: r.seed, input: r.input, score: r.score, criterion: forCriterion, players: sPlayers, lf: sLf, createdAt: now, round })),
+              [pairMapRowOf(templateId, mapHash, placement, mapKey, Number(m.score ?? 0))]
             );
             // 探索済みの記録（途中で止めた分は数えない）
-            if (!stopped && didTrials > 0) {
-              explored = markExplored(explored, forRankKey, mapHash, (perMap - want) + didTrials);
-              writeExplored(explored);
-            }
+            if (!stopped && didTrials > 0) await setPairExplored(forRankKey, mk, perMap - want + didTrials);
           }
           if (!contActiveRef.current) break;
           // 3) Map の検索 → 上位の更新 → 4) 次の周で新たに入った未探索のマップだけ探索
@@ -1349,15 +1448,11 @@ export default function PairView() {
         setContPhase(null);
       }
     })();
-  }, [contBusy, activeSearchProfile, lang, criterion, pairK, pairL, factionPref, scoreBlend, evalWeights, setupPerMap, rankingKey, reloadPools, pairDir, selectableSetups, pairSetupId]);
+  }, [contBusy, activeSearchProfile, lang, criterion, pairK, pairL, factionPref, scoreBlend, evalWeights, setupPerMap, rankingKey, reloadPools, reloadPairData, pairDir, selectableSetups, pairSetupId]);
 
   const handleClearRanking = React.useCallback(() => {
-    const next = rankingRef.current.filter((r) => r.conditionKey !== rankingKey);
-    rankingRef.current = next;
-    writePairRanking(next);
-    setPairRanking(next);
-    setSelectedKey((k) => (k && k.startsWith("r:") ? null : k));
-  }, [rankingKey]);
+    void clearPairRanking(rankingKey).then(reloadPairData);
+  }, [rankingKey, reloadPairData]);
 
   // 探索中にページを離れたら停める（ワーカーを残さない）
   React.useEffect(
@@ -1370,7 +1465,7 @@ export default function PairView() {
   );
 
   const isSavedAlready = React.useCallback(
-    (r: PairRow) => r.kind === "saved" || proposalsHere.some((p) => p.mapHash === r.mapHash && String(p.setupInput.seed) === String(r.setupInput.seed)),
+    (r: PairRow) => r.kind === "saved" || proposalsHere.some((p) => p.mapKey === r.mapKey && p.seed === r.seed),
     [proposalsHere]
   );
 
@@ -1472,6 +1567,23 @@ export default function PairView() {
                           </>
                         ) : null}
                       </div>
+                      {selectedGroup && selectedGroup.rows.length > 1 ? (
+                        <label style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                          <span style={{ opacity: 0.7 }}>{pairDir === "mapToSetup" ? t.altSetups(selectedGroup.rows.length) : t.altMaps(selectedGroup.rows.length)}</span>
+                          <select
+                            value={r.key}
+                            onChange={(e) => setPartnerByGroup((prev) => ({ ...prev, [selectedGroup.primary]: e.target.value }))}
+                            style={{ maxWidth: 320 }}
+                          >
+                            {selectedGroup.rows.map((x, i) => (
+                              <option key={x.key} value={x.key}>
+                                {i + 1}. {pairDir === "mapToSetup" ? x.seed : `${x.mapHash.slice(0, 8)} / ${Math.round(x.mapScore)}`} ・ {Math.round((x.score ?? 0) * 100) / 100}
+                                {x.played ? ` (${t.playedBadge})` : ""}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : null}
                       {detail.mapTop ? (
                         <div>
                           <span style={{ opacity: 0.7 }}>{t.mapStrong}:</span> {detail.mapTop.map((x) => `${factionLabel(x.id, lang)} ${Math.round(x.score)}`).join(" / ")}
@@ -1519,6 +1631,9 @@ export default function PairView() {
                             {isSavedAlready(r) ? t.saved : t.save}
                           </button>
                         )}
+                        <button onClick={() => handleMarkPlayed(r)} style={{ fontSize: 11 }} disabled={!!r.played || playedKeys.has(r.key)} title={t.markPlayedTip}>
+                          {r.played || playedKeys.has(r.key) ? t.playedDone : t.markPlayed}
+                        </button>
                       </div>
                       <div style={{ fontWeight: 700, marginTop: 4 }}>
                         {t.totalTable}
@@ -1723,12 +1838,13 @@ export default function PairView() {
                         </thead>
                         <tbody>
                           {rows.map((r, i) => {
-                            const on = r.key === selectedKey;
+                            const primary = primaryOf(r, pairDir);
+                            const on = primary === selectedKey;
                             return (
                               <tr
                                 key={r.key}
                                 onClick={() => {
-                                  setSelectedKey(r.key);
+                                  setSelectedKey(primary);
                                   if (isNarrow) selectNarrowTab("detail");
                                 }}
                                 title={`${t.rowHint} ・ ${r.kind === "proposal" ? t.kindProposal : r.kind === "saved" ? t.kindSaved : r.kind === "ranked" ? t.rankedRowTip(r.round ?? 0) : t.kindShared}`}
@@ -1739,8 +1855,13 @@ export default function PairView() {
                                   {r.tid ? templateMeta(r.tid, t) : "—"}
                                   {r.mapHash ? <span style={{ fontFamily: "monospace", opacity: 0.8 }}> {r.mapHash.slice(0, 6)}</span> : null}
                                   {r.mapScore ? <span style={{ opacity: 0.7 }}> / {Math.round(r.mapScore)}</span> : null}
+                                  {pairDir === "setupToMap" && (r.alts ?? 1) > 1 ? <span style={{ opacity: 0.6 }}> {t.altCount((r.alts ?? 1) - 1)}</span> : null}
                                 </td>
-                                <td style={{ ...td, fontFamily: "monospace", fontWeight: on ? 700 : 400, whiteSpace: "nowrap" }}>{String(r.setupInput.seed)}</td>
+                                <td style={{ ...td, fontFamily: "monospace", fontWeight: on ? 700 : 400, whiteSpace: "nowrap" }}>
+                                  {String(r.setupInput.seed)}
+                                  {pairDir === "mapToSetup" && (r.alts ?? 1) > 1 ? <span style={{ opacity: 0.6, fontFamily: "inherit" }}> {t.altCount((r.alts ?? 1) - 1)}</span> : null}
+                                  {r.played ? <span style={{ opacity: 0.6, fontFamily: "inherit" }}> ({t.playedBadge})</span> : null}
+                                </td>
                                 <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }} title={r.criterion ? criterionShort(r.criterion, t) : undefined}>
                                   {r.score != null ? Math.round(r.score * 100) / 100 : "—"}
                                 </td>
@@ -1787,11 +1908,7 @@ export default function PairView() {
                     void deleteConditionProfile(STORE_LIST_PROFILES, key).then(refreshProfiles);
                   }}
                   onDeleteAll={(key) => {
-                    setSavedProposals((prev) => {
-                      const next = prev.filter((p) => p.conditionKey !== key);
-                      writeProposals(next);
-                      return next;
-                    });
+                    void deletePairSavedByCondition(key).then(reloadPairData);
                     void deleteConditionProfile(STORE_LIST_PROFILES, key).then(refreshProfiles);
                   }}
                   onResetDefaults={resetConditions}
@@ -1844,6 +1961,17 @@ export default function PairView() {
                   </label>
                   <div style={{ fontSize: 11, opacity: 0.6 }}>{t.perMapNote}</div>
                 </div>
+                <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
+                  <input
+                    type="checkbox"
+                    checked={showPlayed}
+                    onChange={(e) => {
+                      setShowPlayed(e.target.checked);
+                      try { localStorage.setItem(LS_SHOW_PLAYED, e.target.checked ? "1" : "0"); } catch {}
+                    }}
+                  />
+                  <span>{t.showPlayed}</span>
+                </label>
                 <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
                   <span>{t.tileModeLabel}</span>
                   <select
