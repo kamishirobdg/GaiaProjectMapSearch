@@ -214,7 +214,7 @@ export function totalScoresOf(setupScores: FactionScores, mapBreakdown: any, ble
  * 合計 T_f で測るときの種族優遇。Map ぶんは T_f に入っているので mapValueByFaction も合算比も付けず、
  * w × 優遇 × T_f になる（従来の「Map ＋ Setup の合計に掛ける」と同じ大きさ）。
  */
-function prefOnTotal(factionPref: FactionPrefByFaction): FactionPref | undefined {
+export function prefOnTotal(factionPref: FactionPrefByFaction): FactionPref | undefined {
   return Object.keys(factionPref).length > 0
     ? { w: LIST_FACTION_PREF_W, byFaction: factionPref as Partial<Record<FactionId, number>> }
     : undefined;

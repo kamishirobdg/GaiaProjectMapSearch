@@ -246,6 +246,28 @@ const ENTRIES = {
       ref: "4 / 1.5",
     },
   },
+  pairSearchBoth: {
+    ja: {
+      title: "両方を探索",
+      what:
+        "探索プロファイルに登録した Map の条件と Setup の条件で、Map の検索（件数は Map タブの設定）と Setup の検索（件数は Setup タブの設定）を順に実行し、" +
+        "結果はそれぞれの候補に貯める。そのあと Map 上位 K × Setup 上位 L の総当たりを基準で採点し、上位 10 組を候補に並べる（K・L は「条件」で変更、既定 20、上限 50）。",
+      why:
+        "Map の検索は制約を満たす盤面が 0.1〜0.2%（4人 LF、既定の制約）しか無いので、件数を減らすと組の材料が足りなくなる（5000 件で 4 盤面ほど）。" +
+        "Setup は 0.25ms/件 なので 5000 件でも 1 秒かからない。条件が未登録の側があるときは、そのタブで検索を 1 回実行すると登録される。",
+      ref: "1.6",
+    },
+    en: {
+      title: "Search both",
+      what:
+        "Runs the Map search (trial count from the Map tab) and the Setup search (trial count from the Setup tab) with the conditions registered in the search profile, storing results in their candidate buckets; " +
+        "then scores top K maps × top L setups by the criterion and lists the best 10 pairs (K / L in Conditions, default 20, max 50).",
+      why:
+        "Only 0.1–0.2% of boards pass the default constraints (4p LF), so fewer Map trials leave too few boards to pair (about 4 at 5000). " +
+        "Setup costs 0.25 ms per trial, so 5000 take under a second. If one side is not registered yet, run one search on that tab.",
+      ref: "1.6",
+    },
+  },
   pairCriterion: {
     ja: {
       title: "基準",

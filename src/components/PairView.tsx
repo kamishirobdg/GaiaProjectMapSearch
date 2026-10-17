@@ -10,6 +10,9 @@
 // 基準 2・3 はマップの内訳があれば合計 T_f で測る（pairPlan.ts）。種族優遇は共通バー直下の帯（探索プロファイル）。
 // 旧 List の提案ログは廃止（保存した組に一本化）。保存した組は旧 List と同じ localStorage（gaia_list_proposals_v2）を読む。
 // 起点の選択（gaia_list_pair_map / gaia_list_pair_setup）も旧 List / Total と同じキー。
+// 段階 3（v2.0、2026-10-17）: トップ `/` が Pair。「両方を探索」＝ 探索プロファイルに登録した Map / Setup の条件で両方の検索
+// （ワーカー）を順に実行して各結果バケツへ保存し、Map 上位 K × Setup 上位 L の総当たりを基準で採点して上位 10 組を候補に並べる
+// （pairSearch.ts）。旧 List のピン留め一覧は削除（Map / Setup の候補に含まれる。ユーザー確定 3-(a)）。
 
 import React from "react";
 import Link from "next/link";
@@ -17,7 +20,6 @@ import { MapBoardViewer, type PlacementItem } from "@/components/MapBoardViewer"
 import {
   openDb,
   idbGetAllFromStore,
-  idbPutAll,
   loadProfilesFromDb,
   STORE_CANDIDATES,
   STORE_LIST_PROFILES,
@@ -33,7 +35,7 @@ import {
 } from "@/gaia/board/viewerAssets";
 import { buildSectorLookup } from "@/gaia/board/previewBoard";
 import { encodePlacementToken, decodePlacementToken } from "@/gaia/ssot/placementHash";
-import { listSavedSetups, recordSetup, setSetupPinned, type SavedSetup } from "@/lib/setupHistory";
+import { listSavedSetups, recordSetup, type SavedSetup } from "@/lib/setupHistory";
 import { copyText, decodeSetupToken, encodeSetupToken } from "@/lib/setupShare";
 import GlobalBar from "@/components/GlobalBar";
 import ConditionBar from "@/components/ConditionBar";
@@ -60,7 +62,14 @@ import { conditionKeyOf, deleteConditionProfile, listConditionProfiles, upsertCo
 import { DEFAULT_SETUP_WEIGHTS, isDefaultWeights, type SetupWeights } from "@/gaia/eval/setupWeights";
 import { PageBody, Panel, SectionTitle, T, TwoCol, useIsNarrow } from "@/components/ui/layout";
 import { buildMapPool } from "@/lib/mapCandidates";
-import { mapTopOf, planPair, setupSettingsOf, type PairDir, type PairOption, type SetupSource } from "@/lib/pairPlan";
+import { mapTopOf, planPair, setupSettingsOf, usesTotalBasis, type PairDir, type PairOption, type SetupSource } from "@/lib/pairPlan";
+import { runSearchOffThread, type SearchRunMode } from "@/app/board/searchRunner";
+import { runSetupSearch, type SetupSearchRunMode } from "@/lib/setupSearchRunner";
+import { saveMapSearchResults } from "@/lib/mapSearchSave";
+import { mergeRanking, SETUP_RANKING_CAP } from "@/lib/setupRanking";
+import { setupConditionKey } from "@/lib/setupHistory";
+import { SETUP_FACTION_PREF_W } from "@/gaia/eval/factionEval";
+import { PAIR_SEARCH_K_DEFAULT, PAIR_SEARCH_KL_MAX, PAIR_SEARCH_L_DEFAULT, PAIR_SEARCH_TOP_N, scorePairs } from "@/lib/pairSearch";
 
 type Lang = "ja" | "en";
 
@@ -145,6 +154,19 @@ const UI = {
     used: "使用済み",
     savedConds: "保存済み条件",
     weightsTitle: "評価指数",
+    searchBoth: "両方を探索",
+    searchBothStop: "停止",
+    searchBothNote: "探索プロファイルに登録した Map / Setup の条件で両方の検索を実行し、上位 K × L の組を基準で採点する",
+    phaseMap: "Map",
+    phaseSetup: "Setup",
+    phasePair: "組を採点",
+    needMapCond: "探索プロファイルに Map の条件が未登録です（Map タブで検索を 1 回実行すると登録されます）",
+    needSetupCond: "探索プロファイルに Setup の条件が未登録です（Setup タブで検索を 1 回実行すると登録されます）",
+    bothNoMaps: "Map の検索で制約を満たす盤面が 1 つもありませんでした（件数を増やすか制約を緩めてください）",
+    klLabel: "両方を探索の総当たり",
+    kLabel: "Map 上位",
+    lLabel: "Setup 上位",
+    klNote: "Map 上位 K × Setup 上位 L を採点して上位 10 組を候補に並べる（既定 20 × 20、上限 50）",
   },
   en: {
     title: "Pair (map + setup)",
@@ -226,6 +248,19 @@ const UI = {
     used: "Used",
     savedConds: "Saved conditions",
     weightsTitle: "Weights",
+    searchBoth: "Search both",
+    searchBothStop: "Stop",
+    searchBothNote: "Runs the Map and Setup searches with the conditions registered in the search profile, then scores the top K × L pairs",
+    phaseMap: "Map",
+    phaseSetup: "Setup",
+    phasePair: "Scoring pairs",
+    needMapCond: "The search profile has no Map conditions yet (run one search on the Map tab to register them)",
+    needSetupCond: "The search profile has no Setup conditions yet (run one search on the Setup tab to register them)",
+    bothNoMaps: "The Map search found no board that satisfies the constraints (raise the trial count or relax the constraints)",
+    klLabel: "Search-both grid",
+    kLabel: "Top maps",
+    lLabel: "Top setups",
+    klNote: "Scores top K maps × top L setups and lists the best 10 pairs (default 20 × 20, max 50)",
   },
 } as const;
 
@@ -273,10 +308,6 @@ function templateMeta(templateId: string, t: TextOf): string {
   }
 }
 
-function fmtWhen(ts: number | undefined, lang: Lang): string {
-  if (!ts) return "";
-  return new Date(ts).toLocaleString(lang === "ja" ? "ja-JP" : "en-US", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
-}
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
 
@@ -293,6 +324,12 @@ const LS_MAP_LABEL = "gaia_list_pair_map_label";
 const LS_CRITERION = "gaia_list_criterion";
 /** 狭い幅のタブ（Map の gaia_board_narrow_tab と同型） */
 const LS_NARROW_TAB = "gaia_pair_narrow_tab";
+/** 両方を探索の総当たり K / L（段階 3） */
+const LS_K = "gaia_pair_k";
+const LS_L = "gaia_pair_l";
+/** Map / Setup の検索件数は各タブの設定を読む（Pair で別に持たない） */
+const LS_MAP_TRIALS = "gaia_search_trials";
+const LS_SETUP_TRIALS = "gaia_setup_bulk_trials";
 
 /**
  * 保存した組（マップ配置＋基準＋セットアップ入力の自己完結スナップショット。旧 List の「保存した提案」と同じ形・同じキー）。
@@ -360,7 +397,6 @@ export default function PairView() {
   const [pinnedMaps, setPinnedMaps] = React.useState<PersistedCandidate[]>([]);
   const [topOverallMap, setTopOverallMap] = React.useState<PersistedCandidate | null>(null);
   const [templateIdBySearchKey, setTemplateIdBySearchKey] = React.useState<Record<string, string>>({});
-  const [pinnedSetups, setPinnedSetups] = React.useState<SavedSetup[]>([]);
   const [rankedMaps, setRankedMaps] = React.useState<PersistedCandidate[]>([]);
   const [allSetups, setAllSetups] = React.useState<SavedSetup[]>([]);
   const [copiedKey, setCopiedKey] = React.useState<string | null>(null);
@@ -382,6 +418,15 @@ export default function PairView() {
   const [selectedKey, setSelectedKey] = React.useState<string | null>(null);
   const [narrowTab, setNarrowTab] = React.useState<"candidates" | "detail" | "conditions">("candidates");
   const isNarrow = useIsNarrow();
+  // ---- 両方を探索（段階 3）----
+  const [bothBusy, setBothBusy] = React.useState(false);
+  const [bothPhase, setBothPhase] = React.useState<"map" | "setup" | "pair" | null>(null);
+  const [bothDone, setBothDone] = React.useState(0);
+  const [bothTotal, setBothTotal] = React.useState(0);
+  const [bothMode, setBothMode] = React.useState<SearchRunMode | SetupSearchRunMode | null>(null);
+  const bothStopRef = React.useRef<(() => void) | null>(null);
+  const [pairK, setPairK] = React.useState(PAIR_SEARCH_K_DEFAULT);
+  const [pairL, setPairL] = React.useState(PAIR_SEARCH_L_DEFAULT);
 
   const conditionParams = React.useMemo(
     () => ({ players, lf: expansion === "lostFleet", pairDir, setupSource, criterion, evalWeights }),
@@ -475,6 +520,33 @@ export default function PairView() {
   const pairCapturedRef = React.useRef(false);
   const [pairShared, setPairShared] = React.useState<{ placement: PlacementItem[]; templateId: string; input: BuildSetupInput } | null>(null);
 
+  /** マップ候補（ピン留め＋ランキング）とセットアップの保存リストを読み直す（起動時と「両方を探索」の保存後） */
+  const reloadPools = React.useCallback(async () => {
+    try {
+      const db = await openDb();
+      const all = await idbGetAllFromStore<PersistedCandidate>(db, STORE_CANDIDATES);
+      const pins = all.filter((c) => c.pinned).sort((a, b) => (b.pinnedAt ?? 0) - (a.pinnedAt ?? 0));
+      const top = all.slice().sort((a, b) => Number(b.score) - Number(a.score))[0] ?? null;
+      const profilesDb = await loadProfilesFromDb(500);
+      const tmap: Record<string, string> = {};
+      for (const p of profilesDb) {
+        const tid = String(p.templateId ?? (p.params as any)?.templateId ?? "");
+        if (tid) tmap[p.searchKey] = tid;
+      }
+      setPinnedMaps(pins);
+      setTopOverallMap(top);
+      setTemplateIdBySearchKey(tmap);
+      setRankedMaps(all.slice().sort((a, b) => Number(b.score) - Number(a.score)).slice(0, RANKED_MAP_CAP));
+    } catch {
+      // ignore
+    }
+    try {
+      setAllSetups(await listSavedSetups());
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useIsoLayoutEffect(() => {
     resetStaleEvalScaleStorage();
     const v = (() => {
@@ -506,41 +578,13 @@ export default function PairView() {
       if (savedTileMode === "image" || savedTileMode === "schematic") setTileMode(savedTileMode);
       const nt = localStorage.getItem(LS_NARROW_TAB);
       if (nt === "candidates" || nt === "detail" || nt === "conditions") setNarrowTab(nt);
+      const k = Number(localStorage.getItem(LS_K));
+      if (Number.isFinite(k) && k >= 1) setPairK(Math.min(PAIR_SEARCH_KL_MAX, Math.floor(k)));
+      const l = Number(localStorage.getItem(LS_L));
+      if (Number.isFinite(l) && l >= 1) setPairL(Math.min(PAIR_SEARCH_KL_MAX, Math.floor(l)));
     } catch {}
     setSavedProposals(loadProposals());
-
-    let alive = true;
-    void (async () => {
-      try {
-        const db = await openDb();
-        const all = await idbGetAllFromStore<PersistedCandidate>(db, STORE_CANDIDATES);
-        const pins = all.filter((c) => c.pinned).sort((a, b) => (b.pinnedAt ?? 0) - (a.pinnedAt ?? 0));
-        const top = all.slice().sort((a, b) => Number(b.score) - Number(a.score))[0] ?? null;
-        const profilesDb = await loadProfilesFromDb(500);
-        const tmap: Record<string, string> = {};
-        for (const p of profilesDb) {
-          const tid = String(p.templateId ?? (p.params as any)?.templateId ?? "");
-          if (tid) tmap[p.searchKey] = tid;
-        }
-        if (alive) {
-          setPinnedMaps(pins);
-          setTopOverallMap(top);
-          setTemplateIdBySearchKey(tmap);
-          setRankedMaps(all.slice().sort((a, b) => Number(b.score) - Number(a.score)).slice(0, RANKED_MAP_CAP));
-        }
-      } catch {
-        // ignore
-      }
-      try {
-        const rows = await listSavedSetups();
-        if (alive) {
-          setPinnedSetups(rows.filter((r) => r.pinned));
-          setAllSetups(rows);
-        }
-      } catch {
-        // ignore
-      }
-    })();
+    void reloadPools();
     // 共有されたセット（?h=&t=&s=）を捕捉して URL を浄化
     try {
       if (!pairCapturedRef.current) {
@@ -567,10 +611,7 @@ export default function PairView() {
     } catch {
       // ignore
     }
-    return () => {
-      alive = false;
-    };
-  }, []);
+  }, [reloadPools]);
 
   const sectorById = React.useMemo(() => buildSectorLookup(getAllSectors() as any), []);
   const sectorImgById = React.useMemo(() => buildSectorImgById(), []);
@@ -617,18 +658,6 @@ export default function PairView() {
     copyText(text);
     setCopiedKey(key);
     window.setTimeout(() => setCopiedKey((v) => (v === key ? null : v)), 2000);
-  }, []);
-
-  const unpinMap = React.useCallback(async (c: PersistedCandidate) => {
-    try {
-      const db = await openDb();
-      await idbPutAll(db, STORE_CANDIDATES, [{ ...c, pinned: false, pinnedAt: undefined, updatedAt: Date.now() }]);
-      setPinnedMaps((prev) => prev.filter((x) => x.id !== c.id));
-    } catch {}
-  }, []);
-  const unpinSetup = React.useCallback(async (id: string) => {
-    const rows = await setSetupPinned(id, false);
-    setPinnedSetups(rows.filter((r) => r.pinned));
   }, []);
 
   const mapToken = React.useCallback((placement: PlacementItem[]): string => {
@@ -780,10 +809,143 @@ export default function PairView() {
   const handleRecordSetup = React.useCallback((input: BuildSetupInput) => {
     void recordSetup(input).then((rows2) => {
       setAllSetups(rows2);
-      setPinnedSetups(rows2.filter((r) => r.pinned));
       setRecordedSeed(String(input.seed));
     });
   }, []);
+
+  /**
+   * 両方を探索（段階 3）。探索プロファイルの Map 部 / Setup 部の条件で、Map の検索 → 結果バケツへ保存 → Setup の検索 →
+   * 候補（ランキング）へ保存 → 上位 K × L の総当たりを採点、の順に走らせる。件数は各タブの設定（localStorage）を読む。
+   */
+  const handleSearchBoth = React.useCallback(() => {
+    if (bothBusy) {
+      bothStopRef.current?.();
+      return;
+    }
+    const prof = activeSearchProfile;
+    if (!prof?.map) {
+      setPairMsg(UI[lang].needMapCond);
+      return;
+    }
+    if (!prof?.setup) {
+      setPairMsg(UI[lang].needSetupCond);
+      return;
+    }
+    let mapParams: any = null;
+    try {
+      mapParams = prof.map.paramsRaw ? JSON.parse(prof.map.paramsRaw) : null;
+    } catch {
+      mapParams = null;
+    }
+    const setupParams: any = prof.setup.params ?? null;
+    if (!mapParams?.templateId || !setupParams?.setup) {
+      setPairMsg(UI[lang].needMapCond);
+      return;
+    }
+    const mapKey = prof.map.searchKey;
+    const templateId = String(mapParams.templateId);
+    const lsNum = (key: string, dflt: number, max: number) => {
+      try {
+        const v = Number(localStorage.getItem(key));
+        return Number.isFinite(v) && v >= 1 ? Math.min(max, Math.floor(v)) : dflt;
+      } catch {
+        return dflt;
+      }
+    };
+    const mapTrials = lsNum(LS_MAP_TRIALS, 30000, 200000);
+    const setupTrials = lsNum(LS_SETUP_TRIALS, 5000, 20000);
+    const keepTop = 20;
+    const capacity = Math.max(keepTop, 100);
+    const setupBase = { ...(setupParams.setup as Omit<BuildSetupInput, "seed">) };
+    const sPlayers = Number((setupBase as any).playerCount ?? 4);
+    const sLf = (setupBase as any).mode === "lostFleet";
+    const setupCriterion: RecommendCriterion = usesTotalBasis(criterion) ? criterion : "topBalance";
+    const randSeed = () => String(Math.floor(Math.random() * 2147483647) + 1);
+    const forCriterion = criterion;
+    const forK = pairK;
+    const forL = pairL;
+    const forPref = factionPref;
+    const forBlend = scoreBlend;
+    const forWeights = evalWeights;
+
+    setBothBusy(true);
+    setPairMsg(null);
+    setBothPhase("map");
+    setBothDone(0);
+    setBothTotal(mapTrials);
+    setBothMode(null);
+    void (async () => {
+      try {
+        // 1) Map の検索（Map タブと同じワーカー・同じ options の形）
+        const searchOptions = {
+          trials: mapTrials,
+          keepTop: capacity,
+          seedStart: Number(randSeed()),
+          yieldEvery: 50,
+          ...(mapParams.placementMethod != null ? { placementMethod: mapParams.placementMethod } : {}),
+          hard: mapParams.hard ?? {},
+          soft: mapParams.soft ?? {},
+        };
+        const mr = await runSearchOffThread(
+          templateId,
+          searchOptions,
+          (done) => setBothDone(done),
+          (stop) => {
+            bothStopRef.current = stop;
+          },
+          (m) => setBothMode(m)
+        );
+        bothStopRef.current = null;
+        const maps = await saveMapSearchResults({ searchKey: mapKey, searchKeyParams: mapParams, templateId, results: mr.results, capacityActive: capacity, keepTop });
+        if (maps.length === 0) {
+          setPairMsg(UI[lang].bothNoMaps);
+          return;
+        }
+        // 2) Setup の検索（Setup タブと同じワーカー）→ 候補（ランキング）へ保存
+        setBothPhase("setup");
+        setBothDone(0);
+        setBothTotal(setupTrials);
+        setBothMode(null);
+        const prefArg = Object.keys(forPref).length > 0 ? { w: SETUP_FACTION_PREF_W, byFaction: forPref as Partial<Record<FactionId, number>> } : undefined;
+        const sr = await runSetupSearch(
+          { seeds: Array.from({ length: setupTrials }, randSeed), criterion: setupCriterion, playerCount: sPlayers, lostFleet: sLf, weights: forWeights, factionPref: prefArg, topN: SETUP_RANKING_CAP, baseInput: setupBase },
+          {
+            onProgress: (done) => setBothDone(done),
+            onMode: (m) => setBothMode(m),
+            onStopHandle: (stop) => {
+              bothStopRef.current = stop;
+            },
+          }
+        );
+        bothStopRef.current = null;
+        const setupKey = setupConditionKey({ ...setupBase, seed: "" } as BuildSetupInput);
+        let setupRows: Array<{ seed: string; input: BuildSetupInput }> = sr.results.map((r) => ({ seed: r.seed, input: r.input }));
+        try {
+          const merged = await mergeRanking({ conditionKey: setupKey, criterion: setupCriterion, playerCount: sPlayers, lostFleet: sLf, weights: forWeights, factionPref: prefArg, fresh: sr.results.map((r) => ({ seed: r.seed, input: r.input, score: r.score })), cap: SETUP_RANKING_CAP });
+          setupRows = merged.map((r) => ({ seed: r.seed, input: r.input }));
+        } catch {
+          // DB が使えないときは今回ぶんだけで組む
+        }
+        // 3) 上位 K × L の総当たり
+        setBothPhase("pair");
+        const tmap = { ...templateIdBySearchKey, [mapKey]: templateId };
+        const options = scorePairs({ maps: maps.filter((m) => !!(m as any)?.evaluation?.breakdown), setups: setupRows, templateIdBySearchKey: tmap, criterion: forCriterion, players: sPlayers, lf: sLf, evalWeights: forWeights, factionPref: forPref, blend: forBlend, k: forK, l: forL, topN: PAIR_SEARCH_TOP_N });
+        await reloadPools();
+        setTemplateIdBySearchKey((prev) => ({ ...prev, [mapKey]: templateId }));
+        setAllSetups(await listSavedSetups());
+        setPairOptions(options);
+        setRecSettings({ players: sPlayers, lf: sLf });
+        setSelectedKey(options.length > 0 ? `p:${options[0].key}` : null);
+        if (isNarrow && options.length > 0) selectNarrowTab("detail");
+      } catch (e: any) {
+        setPairMsg(String(e?.message ?? e));
+      } finally {
+        bothStopRef.current = null;
+        setBothBusy(false);
+        setBothPhase(null);
+      }
+    })();
+  }, [bothBusy, activeSearchProfile, lang, criterion, pairK, pairL, factionPref, scoreBlend, evalWeights, templateIdBySearchKey, reloadPools, isNarrow, selectNarrowTab]);
 
   const isSavedAlready = React.useCallback(
     (r: PairRow) => r.kind === "saved" || proposalsHere.some((p) => p.mapHash === r.mapHash && String(p.setupInput.seed) === String(r.setupInput.seed)),
@@ -860,7 +1022,7 @@ export default function PairView() {
                   const r = selectedRow;
                   const sToken = encodeSetupToken(r.setupInput);
                   const bToken = mapToken(r.mapPlacement);
-                  const pairPath = bToken && r.tid ? `/pair?h=${bToken}&t=${r.tid}&s=${sToken}` : `/setup?s=${sToken}`;
+                  const pairPath = bToken && r.tid ? `/?h=${bToken}&t=${r.tid}&s=${sToken}` : `/setup?s=${sToken}`;
                   const topColors = r.players + 2;
                   return (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 12 }}>
@@ -1016,9 +1178,24 @@ export default function PairView() {
                           <option value="alignMap">{t.crit4}</option>
                         </select>
                       </label>
-                      <button onClick={handleGenerate} style={{ padding: "3px 12px", fontWeight: 700 }}>
+                      <button onClick={handleGenerate} disabled={bothBusy} style={{ padding: "3px 12px", fontWeight: 700 }}>
                         {pairOptions.length > 0 ? t.regenerate : t.generate}
                       </button>
+                      <button
+                        onClick={handleSearchBoth}
+                        title={t.searchBothNote}
+                        style={{ padding: "3px 12px", fontWeight: 700, ...(bothBusy ? { background: "#eef0ff", border: "1px solid #4453ff", color: "#2733cc" } : {}) }}
+                      >
+                        {bothBusy ? t.searchBothStop : t.searchBoth}
+                      </button>
+                      <SharedHelp k="pairSearchBoth" lang={lang} />
+                      {bothBusy ? (
+                        <span style={{ opacity: 0.7 }}>
+                          {bothPhase === "map" ? t.phaseMap : bothPhase === "setup" ? t.phaseSetup : t.phasePair}
+                          {bothPhase === "pair" ? "" : ` ${bothDone}/${bothTotal}`}
+                          {bothMode ? ` [${bothMode}]` : ""}
+                        </span>
+                      ) : null}
                     </div>
                     <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                       {pairDir === "setupToMap" ? (
@@ -1145,93 +1322,6 @@ export default function PairView() {
                   )}
                 </div>
 
-                {/* ピン留め一覧（旧 List。折りたたみ） */}
-                <details>
-                  <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
-                    {t.pinnedTitle}（{t.maps} {pinnedMaps.length} / {t.setups} {pinnedSetups.length}）
-                  </summary>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
-                    <div>
-                      <div style={{ fontWeight: 700, marginBottom: 6, fontSize: 12 }}>{t.maps}</div>
-                      {pinnedMaps.length === 0 ? (
-                        <div style={{ fontSize: 12, opacity: 0.6 }}>{t.emptyMaps}</div>
-                      ) : (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-start" }}>
-                          {pinnedMaps.map((c) => {
-                            const tid = templateIdBySearchKey[c.searchKey] ?? "";
-                            const token = mapToken((c.placement ?? []) as PlacementItem[]);
-                            const href = token ? `/board?h=${token}${tid ? `&t=${tid}` : ""}` : "/board";
-                            const key = `map:${c.id}`;
-                            return (
-                              <div key={c.id} style={{ border: "1px solid #ddd", borderRadius: 8, padding: 8, width: 300, display: "flex", flexDirection: "column", gap: 6, background: "#fafafa" }}>
-                                <Link href={href} title={t.open} style={{ display: "block" }}>
-                                  {miniBoard(tid, (c.placement ?? []) as PlacementItem[])}
-                                </Link>
-                                <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap", fontSize: 12 }}>
-                                  <span>📌</span>
-                                  <span>{templateMeta(tid, t)}</span>
-                                  <span>
-                                    <span style={{ opacity: 0.7 }}>{t.score}:</span> {Math.round(Number(c.score))}
-                                  </span>
-                                  <span style={{ fontFamily: "monospace", opacity: 0.8 }}>{String(c.placementHash ?? "").slice(0, 8)}</span>
-                                  {c.used ? <span style={{ opacity: 0.7 }}>{t.used}</span> : null}
-                                  <span style={{ opacity: 0.55, marginLeft: "auto" }}>{fmtWhen(c.pinnedAt, lang)}</span>
-                                </div>
-                                <div style={{ display: "flex", gap: 4 }}>
-                                  <Link href={href} style={linkStyle}>
-                                    {t.open}
-                                  </Link>
-                                  <button onClick={() => flashCopied(key, `${window.location.origin}${href}`)} style={{ fontSize: 11 }} disabled={!token}>
-                                    {copiedKey === key ? t.shareCopied : t.share}
-                                  </button>
-                                  <button onClick={() => void unpinMap(c)} style={{ fontSize: 11, marginLeft: "auto" }}>
-                                    {t.unpin}
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 700, marginBottom: 6, fontSize: 12 }}>{t.setups}</div>
-                      {pinnedSetups.length === 0 ? (
-                        <div style={{ fontSize: 12, opacity: 0.6 }}>{t.emptySetups}</div>
-                      ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                          {pinnedSetups.map((r) => {
-                            const path = `/setup?s=${encodeSetupToken(r.input)}`;
-                            const key = `setup:${r.id}`;
-                            return (
-                              <div key={r.id} style={{ display: "flex", gap: 8, alignItems: "center", border: "1px solid #ddd", background: "#fafafa", borderRadius: 8, padding: "4px 8px", fontSize: 12, flexWrap: "wrap" }}>
-                                <span>📌</span>
-                                <span style={{ fontFamily: "monospace", fontWeight: 700 }}>{r.input.seed}</span>
-                                <span>{r.input.mode === "lostFleet" ? t.modeLF : t.modeBase}</span>
-                                <span>
-                                  {t.players}: {r.input.playerCount ?? 4}
-                                </span>
-                                {r.used ? <span style={{ opacity: 0.7 }}>{t.used}</span> : null}
-                                <span style={{ opacity: 0.55 }}>{fmtWhen(r.createdAt, lang)}</span>
-                                <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
-                                  <Link href={path} style={linkStyle}>
-                                    {t.open}
-                                  </Link>
-                                  <button onClick={() => flashCopied(key, `${window.location.origin}${path}`)} style={{ fontSize: 11 }}>
-                                    {copiedKey === key ? t.shareCopied : t.share}
-                                  </button>
-                                  <button onClick={() => void unpinSetup(r.id)} style={{ fontSize: 11 }}>
-                                    {t.unpin}
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </details>
               </section>
 
               {/* ---------- 条件 ---------- */}
@@ -1265,6 +1355,32 @@ export default function PairView() {
                 />
                 <SetupWeightInputs weights={evalWeights} onChange={changeEvalWeight} onReset={resetEvalWeights} lang={lang} lf={expansion === "lostFleet"} />
                 <BlendInputs blend={scoreBlend} onChange={changeBlend} onReset={resetBlend} lang={lang} />
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <span style={{ fontWeight: 700 }}>{t.klLabel}</span>
+                    {([
+                      ["k", t.kLabel, pairK, setPairK, LS_K],
+                      ["l", t.lLabel, pairL, setPairL, LS_L],
+                    ] as const).map(([key, label, value, setter, ls]) => (
+                      <label key={key} style={{ display: "flex", gap: 4, alignItems: "center", border: "1px solid #eee", borderRadius: 6, padding: "3px 6px" }}>
+                        <span>{label}</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={PAIR_SEARCH_KL_MAX}
+                          value={value}
+                          onChange={(e) => {
+                            const v = Math.max(1, Math.min(PAIR_SEARCH_KL_MAX, Math.floor(Number(e.target.value)) || 1));
+                            setter(v);
+                            try { localStorage.setItem(ls, String(v)); } catch {}
+                          }}
+                          style={{ width: 56, padding: "2px 4px", fontSize: 12 }}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 11, opacity: 0.6 }}>{t.klNote}</div>
+                </div>
                 <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
                   <span>{t.tileModeLabel}</span>
                   <select

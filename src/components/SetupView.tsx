@@ -109,8 +109,9 @@ type BulkCriterion = (typeof BULK_CRITERIA)[number];
 /** 条件×基準ごとに保存・表示する件数（setupRanking の保存上限と揃える）。 */
 const BULK_TOP_N = SETUP_RANKING_CAP;
 // 1 チャンク（250 件）の分割は src/lib/setupSearchCore.ts（ワーカーとメインスレッドの fallback で共通。2026-10-16）。
-const BULK_TRIALS_MAX = 5000;
-const BULK_TRIALS_DEFAULT = 1000;
+// 既定 5000（2026-10-17 ユーザー確認。0.25ms/件 なので 5000 件 ≒ 0.6 秒）。上限 20000。
+const BULK_TRIALS_MAX = 20000;
+const BULK_TRIALS_DEFAULT = 5000;
 
 // Research track display names (labels only; ids are the source of truth).
 const TRACK_LABEL: Record<ResearchTrackId, { ja: string; en: string }> = {

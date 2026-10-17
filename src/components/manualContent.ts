@@ -32,9 +32,9 @@ const ja: ManualText = {
           table: {
             head: ["タブ", "何をする画面か"],
             rows: [
+              ["Pair（トップ）", "盤面とタイル配置の組を提案し、種族ごとに値を合算して見比べる。「両方を探索」で Map と Setup の検索を一括で実行できる"],
               ["Map", "盤面（セクターの配置）をシードから大量に作り、条件で絞って評価の良い順に並べる"],
               ["Setup", "タイル配置をシードから作り、種族ごとの価値を出す"],
-              ["Pair", "盤面とタイル配置の組を提案し、種族ごとに値を合算して見比べる"],
             ],
           },
         },
@@ -176,8 +176,9 @@ const ja: ManualText = {
           ul: [
             "画面は Map / Setup と同じ「候補 / 詳細 / 条件」の並びです（狭い幅ではタブ）。",
             "候補: 「探索の向き」（盤面から配置を探す / 配置から盤面を探す）、セットアップの探し方（ランダム生成 / 保存済み）、「基準」を選んで「提案を生成」すると、上位 5 件が候補一覧に並びます。保存した組も同じ一覧に出ます。",
+            "「両方を探索」は、探索プロファイルに登録した Map と Setup の条件で両方の検索を順に実行し（件数はそれぞれのタブの設定）、結果を各タブの候補に貯めたうえで、Map 上位 K × Setup 上位 L の組を基準で採点して上位 10 組を候補に並べます。条件が未登録の側は、そのタブで検索を 1 回実行すると登録されます。",
             "候補の行をタップすると「詳細」に盤面・配置・種族別の合計（Map の値、Setup の値、その合計）が出ます。「保存」で組を残し、「Map で開く」「Setup で開く」で各タブへ、「セット共有URL」で組をそのまま共有できます。",
-            "条件: 保存済み条件、評価指数、合算比です。ピン留めした盤面と配置の一覧は候補の下に畳んであります。",
+            "条件: 保存済み条件、評価指数、合算比、「両方を探索」の K・L（既定 20 × 20、上限 50）です。",
           ],
         },
         { h3: "基準" },
@@ -224,9 +225,9 @@ const en: ManualText = {
           table: {
             head: ["Tab", "What it does"],
             rows: [
+              ["Pair (home)", "Suggests board + layout pairs and compares them by per-faction totals. \"Search both\" runs the Map and Setup searches in one go"],
               ["Map", "Generates boards (sector layouts) from seeds in bulk, filters them by constraints and ranks them"],
               ["Setup", "Builds a tile layout from a seed and values it per faction"],
-              ["Pair", "Suggests board + layout pairs and compares them by per-faction totals"],
             ],
           },
         },
@@ -364,8 +365,9 @@ const en: ManualText = {
           ul: [
             "The page follows the Map / Setup layout: Candidates / Detail / Conditions (tabs at narrow widths).",
             "Candidates: choose a direction (board → layout / layout → board), the setup source (random rolls / saved) and a criterion, then Generate; the top 5 appear in the candidate list together with saved pairs.",
+            "\"Search both\" runs the Map and Setup searches with the conditions registered in the search profile (trial counts from each tab), stores the results in each tab's candidates, then scores top K maps × top L setups and lists the best 10 pairs. If one side is not registered yet, run one search on that tab.",
             "Tap a candidate row to see the board, the layout and the per-faction totals (map value, setup value, sum) in Detail. Save keeps the pair; Open in Map / Open in Setup jump to those tabs; Share pair URL shares the exact pair.",
-            "Conditions: saved conditions, weights and the blend. The pinned boards and layouts are collapsed under the candidates.",
+            "Conditions: saved conditions, weights, the blend, and K / L for Search both (default 20 × 20, max 50).",
           ],
         },
         { h3: "Criteria" },

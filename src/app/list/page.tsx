@@ -6,5 +6,5 @@ export default async function ListPage({ searchParams }: { searchParams: Promise
   const q = new URLSearchParams();
   for (const [k, v] of Object.entries(sp)) if (typeof v === "string") q.set(k, v);
   const qs = q.toString();
-  redirect(`/pair${qs ? `?${qs}` : ""}`);
+  redirect(`/${qs ? `?${qs}` : ""}`);
 }

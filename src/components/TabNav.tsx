@@ -13,11 +13,11 @@ import { useIsNarrow } from "@/components/ui/layout";
 export type TabKey = "map" | "setup" | "pair" | "manual";
 
 // "Manual" はアプリ内マニュアル（2026-10-16 ユーザー決定: 入口は共通バーのタブ）。
-// "Pair" は旧 List ＋ Total（段階 2、2026-10-17）。段階 3（v2.0）で先頭に移し `/` を Pair にする（ユーザー確定 D-(a)）。
+// "Pair" は旧 List ＋ Total（段階 2、2026-10-17）。段階 3（v2.0、同日）で先頭に移し、トップ `/` を Pair にした（ユーザー確定 D-(a)）。
 const TABS: Array<{ key: TabKey; href: string; label: string }> = [
+  { key: "pair", href: "/", label: "Pair" },
   { key: "map", href: "/board", label: "Map" },
   { key: "setup", href: "/setup", label: "Setup" },
-  { key: "pair", href: "/pair", label: "Pair" },
   { key: "manual", href: "/manual", label: "Manual" },
 ];
 
