@@ -370,11 +370,14 @@ describe("開始地点の選び方（eval_v3〜v6 の性質を保つ）", () => 
     expect(auditOf(r).scout.scoutPlanetCount).toBe(2);
   });
 
-  it("色優遇の掛け先は extraStart の値（原始・小惑星）", () => {
-    const r = evaluateSoft(extractedOf([cell({ q: 1, r: 0, kind: "PROTO" })], [scout(0, 0, "twilight")]), { ...BASE_SOFT, wScout: 10, wColorPref: 2, colorPrefByType: { PROTO: 1 } as any });
+  it("種族優遇の掛け先は種族ごとの値（eval_v9。LF4種族は原始・小惑星からの開始の値）", () => {
+    const r = evaluateSoft(extractedOf([cell({ q: 1, r: 0, kind: "PROTO" })], [scout(0, 0, "twilight")]), { ...BASE_SOFT, wScout: 10, wFactionPref: 2, factionPref: { moweyds: 1, spaceGiants: -1 } });
     expect(extraStartOf(r, "PROTO").total).toBe(20);
-    expect(r.breakdown.colorPreference?.valueExtraByKind?.PROTO).toBe(20);
-    expect(r.breakdown.colorPreference?.scoreExtraByKind?.PROTO).toBe(40);
+    expect(r.breakdown.factionPreference?.valueByFaction.moweyds).toBe(20);
+    expect(r.breakdown.factionPreference?.scoreByFaction.moweyds).toBe(40);
+    expect(r.breakdown.factionPreference?.scoreByFaction.spaceGiants).toBe(-2 * factionOf(r, "spaceGiants").total);
+    expect(r.breakdown.factionPreference?.score).toBe(40 - 2 * factionOf(r, "spaceGiants").total);
+    expect(r.score).toBe(r.breakdown.imbalance.score + (r.breakdown.factionPreference?.score ?? 0));
   });
 
   it("原始・小惑星が無い盤面では extraStart も LF4種族の行も出さない", () => {

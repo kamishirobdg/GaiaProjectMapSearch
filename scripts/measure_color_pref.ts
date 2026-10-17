@@ -1,14 +1,16 @@
 // scripts/measure_color_pref.ts
 //
-// 色優遇/冷遇の値がどれくらい効くかを実測する（2026-07-31）。
+// 優遇/冷遇の値がどれくらい効くかを実測する（2026-07-31。eval_v9（2026-10-17）からは種族ごと）。
 // ツールチップの文言を「実際の数値の影響度」と合わせるための計測。
 //
 //   npx tsx scripts/measure_color_pref.ts [盤面数]
 //
 // 考え方:
-//   スコア = 偏り項(-wImbalance × std) + 色優遇項(wColorPref × pref × その色の評価値)
-//   検索はスコア最大の盤面を選ぶので、pref を上げるほど「その色の評価値が高い盤面」が
+//   スコア = 偏り項(-wImbalance × std) + 種族優遇項(wFactionPref × pref × その種族の評価値)
+//   検索はスコア最大の盤面を選ぶので、pref を上げるほど「その種族の評価値が高い盤面」が
 //   選ばれやすくなる。どこから優遇が偏り項を押し切るかを、盤面ごとの実測値から出す。
+//   eval_v8 までは色ごと（代表値）に掛けていた。下の「色ごと」の集計は代表値（その色の 2 種族の大きい方）で、
+//   種族ごとの振れ幅はそれと同程度か少し小さい。
 
 import { makeSearchPlacementFromSeed } from "../src/gaia/ssot/searchPlacementConfig";
 import { buildLogicalMapFromPlacement } from "../src/gaia/logicalMap/buildLogicalMap";
@@ -17,7 +19,7 @@ import { evaluateSoft } from "../src/gaia/eval/evaluateSoft";
 
 const N = Number(process.argv[2] ?? 300) || 300;
 const COLORS = ["BLACK", "BLUE", "BROWN", "ORANGE", "RED", "WHITE", "YELLOW"] as const;
-const W_COLOR_PREF = 25; // DEFAULT_CONDITIONS.wColorPref
+const W_COLOR_PREF = 25; // DEFAULT_CONDITIONS.wFactionPref（eval_v8 までの wColorPref）
 
 const hard = { outerSameColorMax: 1, centerMode: "NONE", maxConnectedPlanets: 0, h5IncludeScouts: false } as any;
 const soft = {

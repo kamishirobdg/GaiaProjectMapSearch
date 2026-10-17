@@ -45,7 +45,9 @@ export const SEARCH_ALGO_VERSION = "search_v1";
 // wClusterSize）を廃止、内訳表は種別ごとの列。eval_v5 / v6 は本番に出していない（docs/design-notes.md 2.10）。
 // eval_v8 (2026-10-08): ダー・シュワーム人の開始地点（惑星首府 1 つ）の値 × 1.5（BASIC_REACH_PROFILES.ivits.startValueScale。
 // 首府であること・全体の最後に入植地を選べることの評価。ユーザー確定 案 (A)。docs/design-notes.md 2.10）。
-export const EVAL_VERSION = "eval_v8";
+// eval_v9 (2026-10-17): 検索スコアの優遇項を種族ごとに（wFactionPref × Σ 種族優遇 × その種族の値。ユーザー確定 3-(b)）。
+// 検索キーの colorPrefByType / wColorPref は factionPref / wFactionPref に置き換え（既存の結果は保持しない。docs/design-notes.md 1.4）。
+export const EVAL_VERSION = "eval_v9";
 
 export type PersistedCandidate = {
   id: string; // `${searchKey}:${placementHash}`

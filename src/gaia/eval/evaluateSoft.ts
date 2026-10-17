@@ -95,10 +95,11 @@ export type SoftParams = {
   wImbalance: number;
   imbalanceMetric?: "std" | "range";
 
-  // Color preference (optional): maximize/minimize planetTypeTotals by type
-  // score += wColorPref * Σ(prefByType[type] * planetTypeTotals[type])
-  wColorPref?: number;
-  colorPrefByType?: Partial<Record<PlanetType, number>>;
+  // 種族優遇/冷遇（任意。eval_v9、2026-10-17 ユーザー確定 3-(b)）: score += wFactionPref × Σ_f pref[f] × byFaction[f].total
+  // eval_v8 までは色ごと（wColorPref × Σ pref[色] × 代表値 planetTypeTotals[色]、原始・小惑星は extraStart）だった。
+  // 0 の種族はキーを持たない（無効時フィールド省略）。
+  wFactionPref?: number;
+  factionPref?: Partial<Record<string, number>>;
 
   // eval_v6 までの基本版の軸「ガイア近接（wGaiaDist1〜3）」「星系（wClusterSize）」は eval_v7 で廃止した。
   // 検索キーにも入らない（新バケツなので互換の問題なし）。古い保存結果の表示は page.tsx が再評価する。
@@ -167,20 +168,17 @@ export type SoftBreakdown = {
     score: number;
   };
 
-  colorPreference?: {
-    wColorPref: number;
-    prefByType: AxisByType;
-    valueByType: AxisByType;
-    scoreByType: AxisByType;
+  /**
+   * 種族優遇/冷遇の記録（eval_v9。pref を付けたときだけ）。掛け先は種族ごとの値（byFaction[f].total。
+   * LF4種族は原始・小惑星からの開始なので、その惑星が無い盤面では 0）。
+   * eval_v8 までの colorPreference（色ごと・代表値）は廃止。
+   */
+  factionPreference?: {
+    wFactionPref: number;
+    prefByFaction: Record<string, number>;
+    valueByFaction: Record<string, number>;
+    scoreByFaction: Record<string, number>;
     score: number;
-    /**
-     * 原始・小惑星ぶんの優遇/冷遇（2026-07-31）。基本7色は planetTypeTotals を
-     * 掛けるが、この2つは軸を持たないので extraBest（最良の1惑星×補正値）を掛ける。
-     * 指定が無ければフィールドごと出さない（既存の監査データと同じ形を保つ）。
-     */
-    prefExtraByKind?: Record<string, number>;
-    valueExtraByKind?: Record<string, number>;
-    scoreExtraByKind?: Record<string, number>;
   };
 
   audit: {
@@ -251,7 +249,8 @@ export type SoftBreakdown = {
       byFaction?: Record<string, FactionStart>;
       /**
        * 色ごとの代表種族（その色の2種族のうち total の大きい方。同点は FACTIONS の順で先）。
-       * 検索の偏り項と色優遇はこの代表値（planetTypeTotals）で測る（案A）。
+       * 検索の偏り項はこの代表値（planetTypeTotals）で測る（案A）。eval_v8 までの色優遇もこの代表値だった
+       * （eval_v9 からは種族ごとの値に掛ける）。
        */
       representative?: Record<string, string>;
       /**
@@ -403,7 +402,7 @@ export const EXTRA_PREF_KINDS = ["PROTO", "ASTEROID"] as const;
  * 内訳表の追加行を基本7色の行と同じ物差しで読めるようにするための係数。
  * 検索スコア本体（planetTypeTotals）には入らないが、次の2つには効くので
  * 「表示専用」ではない:
- *   - Map の色優遇（`wColorPref × pref × extraBest.total`。pref を付けたときだけ）
+ *   - Map の色優遇（`wColorPref × pref × extraBest.total`。pref を付けたときだけ。eval_v9 で種族優遇に置き換えた）
  *   - List の種族優遇の掛け先（`mapValueByFaction` が LF4種族の Map 評価値に使う）
  *
  * 実測（`npx tsx scripts/_probe_extra_best_bias.ts`、LF 3p/4p 各60盤面・既定の評価指数）:
@@ -526,8 +525,8 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
   const scoutCoreAttributionMode = ((params as any).scoutCoreAttributionMode as ("all" | "best") | undefined) ?? "all";
   const wImbalance = num(params.wImbalance, 0);
 
-  const wColorPref = num((params as any).wColorPref, 0);
-  const colorPrefByTypeRaw = ((params as any).colorPrefByType ?? (params as any).colorBiasByType ?? null) as any;
+  const wFactionPref = num((params as any).wFactionPref, 0);
+  const factionPrefRaw = ((params as any).factionPref ?? null) as Record<string, unknown> | null;
 
   const metric: "std" | "range" =
     params.imbalanceMetric === "range" || params.imbalanceMetric === "std" ? params.imbalanceMetric : "std";
@@ -1141,39 +1140,27 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
   const imbalanceValue = metric === "range" ? range(values) : std(values);
     const imbalanceScore = -wImbalance * imbalanceValue;
 
-  // ===== color preference (optional) =====
-  const prefByType: AxisByType = zeroAxis();
-  for (const t of PLANET_TYPES) {
-    prefByType[t] = num(colorPrefByTypeRaw?.[t], 0);
+  // ===== 種族優遇/冷遇（任意。eval_v9） =====
+  // 掛け先は種族ごとの値 byFaction[f].total（内訳表の行の合計と同じ）。色の代表値ではなく種族そのものに掛けるので、
+  // 同じ色の 2 種族に別の値を付けられる。指定が無ければ完全に素通り。
+  const prefByFaction: Record<string, number> = {};
+  for (const [f, p] of Object.entries(factionPrefRaw ?? {})) {
+    const n = num(p, 0);
+    if (n !== 0) prefByFaction[f] = n;
   }
-  // 原始・小惑星は軸（planetTypeTotals）を持たないので、内訳表に出しているのと同じ
-  // extraStart（開始1ヶ所＋到達加重。2026-10-03 まで extraBest）を優遇/冷遇の掛け先にする
-  // （2026-07-31 要望）。指定が無ければ完全に素通り＝既存のスコア・キーは不変。
-  const prefExtraByKind: Record<string, number> = {};
-  const valueExtraByKind: Record<string, number> = {};
-  const scoreExtraByKind: Record<string, number> = {};
-  for (const k of EXTRA_PREF_KINDS) {
-    const p = num(colorPrefByTypeRaw?.[k], 0);
-    if (p !== 0) prefExtraByKind[k] = p;
-  }
-
-  const colorPrefScoreByType: AxisByType = zeroAxis();
-  let colorPrefScore = 0;
-  if (wColorPref !== 0) {
-    for (const [k, p] of Object.entries(prefExtraByKind)) {
-      const value = extraStart[k]?.total ?? 0;
-      const v = wColorPref * p * value;
-      valueExtraByKind[k] = value;
-      scoreExtraByKind[k] = v;
-      colorPrefScore += v;
-    }
-    for (const t of PLANET_TYPES) {
-      const v = wColorPref * prefByType[t] * (planetTypeTotals[t] ?? 0);
-      colorPrefScoreByType[t] = v;
-      colorPrefScore += v;
+  const valueByFaction: Record<string, number> = {};
+  const scoreByFaction: Record<string, number> = {};
+  let factionPrefScore = 0;
+  if (wFactionPref !== 0) {
+    for (const [f, p] of Object.entries(prefByFaction)) {
+      const value = byFaction[f]?.total ?? 0;
+      const v = wFactionPref * p * value;
+      valueByFaction[f] = value;
+      scoreByFaction[f] = v;
+      factionPrefScore += v;
     }
   }
-  const totalScore = imbalanceScore + colorPrefScore;
+  const totalScore = imbalanceScore + factionPrefScore;
 
   const excludedPlanetCounts = collectExcludedPlanetCountsBestEffort(extracted);
 
@@ -1185,18 +1172,9 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
       axesByType: aggByKind,
       planetTypeTotals,
       imbalance: { metric, value: imbalanceValue, score: imbalanceScore },
-      colorPreference:
-        wColorPref !== 0 || PLANET_TYPES.some((t) => prefByType[t] !== 0)
-          ? {
-              wColorPref,
-              prefByType,
-              valueByType: planetTypeTotals,
-              scoreByType: colorPrefScoreByType,
-              score: colorPrefScore,
-              ...(Object.keys(prefExtraByKind).length > 0
-                ? { prefExtraByKind, valueExtraByKind, scoreExtraByKind }
-                : {}),
-            }
+      factionPreference:
+        Object.keys(prefByFaction).length > 0
+          ? { wFactionPref, prefByFaction, valueByFaction, scoreByFaction, score: factionPrefScore }
           : undefined,
       audit: {
         outerCountByType,

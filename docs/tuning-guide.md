@@ -81,9 +81,9 @@ byFaction を持たない古い候補（eval_v6 以前）は全種族共通の C
 | `HOP_COST_BY_DISTANCE` ★ | `reachCost.ts` | 距離 1=0 / 2=1 / 3=1.5 / 4=2 / 5=3 / 6 以上 不可 | 跳躍のコスト。航行 Lv1 開始の種族は距離 2 が 0.5（`hop2`）、航行を伸ばせないバルタック人は 1.5 |
 | 入植の歩数 ★ | `reachCost.ts` `STONE_COST_*` | 同色 0 / 改造の輪で隣 1・2 つ先 2・反対 3 / ガイア 1 / 次元横断 2（ガイア Lv1 開始 1、イタル人 1.5）/ 原始 3 / 小惑星 2 | 踏み台と到着した惑星の両方に払う。改造の輪は テラ→酸化→火山→砂漠→沼沢→チタン→氷 |
 | `BASIC_REACH_PROFILES` / `LF_REACH_PROFILES` ★ | `reachCost.ts` | 開始建物 2（ゼノ族 3、ダー・シュワーム人と LF 4 種族 1）、グリーン人 ガイア 0.5、ジオデン人 改造の歩数 × 2/3 など | 初期研究の差。LF 4 種族は母星種別が無く同じ種別にも原始 3・小惑星 2 を払う。`reachCost.test.ts` が値を固定している |
-| 色の代表値（案 A） ★ | `evaluateSoft.ts` | その色の 2 種族のうち大きい方 | 検索の偏り項と色優遇はこの代表値で 7 色のばらつきを測る。種族の値を変えると代表が入れ替わることがある（3 節） |
-| 評価指数の既定値（UI で変更可） | `page.tsx` の既定条件 | `wScout` 10 / `wScoutCore` 4（船別 10 / 3）/ `scoutRadius` 3 / `wColorPref` 25 / `keepTop` 20 | 船接触・船星系は「状況の値」として固有値 10 に足される。`wColorPref` 25 は「1 ＝ 基準とほぼ互角」に実測で合わせた目盛り（設計ノート 4 節） |
-| `wImbalance` | `page.tsx` | 100（固定） | 7 色の代表値のばらつき（偏り項）の係数。`wColorPref` と同じく planetTypeTotals に掛けるので Map の桁を変えても触らない |
+| 色の代表値（案 A） ★ | `evaluateSoft.ts` | その色の 2 種族のうち大きい方 | 検索の偏り項はこの代表値で 7 色のばらつきを測る（種族優遇は eval_v9 から種族ごとの値に掛ける）。種族の値を変えると代表が入れ替わることがある（3 節） |
+| 評価指数の既定値（UI で変更可） | `page.tsx` の既定条件 | `wScout` 10 / `wScoutCore` 4（船別 10 / 3）/ `scoutRadius` 3 / `wFactionPref` 25（eval_v8 までの `wColorPref`）/ `keepTop` 20 | 船接触・船星系は「状況の値」として固有値 10 に足される。`wFactionPref` 25 は色ごとだった頃に「1 ＝ 基準とほぼ互角」に実測で合わせた目盛り（設計ノート 4 節）。eval_v9 で種族ごとの値に掛けるようになったが据え置き（同じ色の 2 種族に入れると約 2 倍）。Setup 側の `SETUP_FACTION_PREF_W` 0.15 と List の 0.15 も据え置き（2026-10-17 ユーザー確定 2-(a)。再実測は評価値の調整後） |
+| `wImbalance` | `page.tsx` | 100（固定） | 7 色の代表値のばらつき（偏り項）の係数。planetTypeTotals に掛けるので Map の桁を変えても触らない |
 | Setup の重み | `data/weights/*.csv`（正本）、`setupWeights.ts` | `SETUP_WEIGHT_BASE` 9（ブースター・最終得点・同盟・LF 船）、基本技術 9、上級技術 6、ラウンド得点 6、追加上級 2、`SETUP_SCORE_DIVISOR` 28、`SETUP_COLOR_PREF_W` 0.3 | 値は VP 換算。生成物（`*Weights.ts`）は手で編集しない。値を変えたら `_probe_category_influence.ts` で影響力を測り直す（順の目安 技術 > LF 船 > 上級 > ブースター > ラウンド > 最終 > 追加上級 > 同盟。順を守るための微調整はしない） |
 | List の 4 基準の添え物の係数 | `pairPlan.ts` | 0.2 / 0.3 | 「主項が同じ候補の順番を決める」程度の目分量。据え置き |
 | 「合計の上位」の数 | `factionEval.ts` `topFactionsByColor` | 人数 + 2 色、同じ色は強い方の種族だけ | 同色の 2 種族は卓で 1 人しか選べない |

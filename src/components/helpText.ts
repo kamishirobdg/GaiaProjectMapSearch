@@ -212,8 +212,8 @@ const ENTRIES = {
     ja: {
       title: "種族優遇/冷遇",
       what:
-        "種族ごとの ±（1 つの表を Map / Setup / List が共有）。Map では同じ色の 2 種族のうち |値| の大きい方をその色の優遇として検索に渡す" +
-        "（同じ大きさで逆符号なら 0）。Setup の検索と List のセット提案では種族ごとにそのまま掛ける。「色でまとめて」は同じ色の 2 種族に同じ値を入れる近道。",
+        "種族ごとの ±（1 つの表を Map / Setup / List が共有）。Map の検索ではその種族の盤面の値に（eval_v9）、Setup の検索ではその種族の配置の値に、" +
+        "List のセット提案では両方の合計に、それぞれ種族ごとにそのまま掛ける。「色でまとめて」は同じ色の 2 種族に同じ値を入れる近道。",
       why:
         "目盛りは従来の色優遇と同じ: 0 効かない / 1 基準とほぼ互角 / 2 優遇が主導 / 5 実質その種族だけで決まる。マイナスは逆向きに同じだけ。" +
         "Setup 側の係数は色優遇の半分（0.15。同じ色の 2 種族に入れると従来の色優遇とほぼ同じ大きさ）。",
@@ -222,8 +222,8 @@ const ENTRIES = {
     en: {
       title: "Faction preference",
       what:
-        "Per faction, ± (one table shared by Map / Setup / List). Map passes, per colour, the faction value with the larger |value| (0 when equal and opposite). " +
-        "Setup search and List suggestions apply it per faction. 'By colour' sets both factions of a colour at once.",
+        "Per faction, ± (one table shared by Map / Setup / List). Map search applies it to the faction's board value (eval_v9), Setup search to its layout value, " +
+        "List suggestions to the sum, each per faction. 'By colour' sets both factions of a colour at once.",
       why:
         "Same scale as the old colour preference: 0 off / 1 about even / 2 preference leads / 5 decided by this faction alone. " +
         "On the Setup side the coefficient is half the colour one (0.15; setting both factions of a colour gives about the old colour bonus).",

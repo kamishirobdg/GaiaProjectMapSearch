@@ -4,14 +4,15 @@ import * as React from "react";
 import { MapBoardViewer, type PlacementItem as ViewerPlacementItem } from "@/components/MapBoardViewer";
 import GlobalBar from "@/components/GlobalBar";
 import ConditionBar from "@/components/ConditionBar";
+import { FACTIONS } from "@/gaia/eval/factionWeights";
 import {
   bindMapToActiveProfile,
-  colorPrefFromFactionPref,
   createSearchProfile,
   DEFAULT_PROFILE_NAME,
   factionPrefFromColorPref,
   readActiveProfileId,
   readSearchProfiles,
+  sanitizeFactionPref,
   updateSearchProfile,
   useSearchProfiles,
   type SearchProfileMap,
@@ -229,7 +230,8 @@ const DEFAULT_CONDITIONS = {
   // 3 のままだと pref=2 で偏り項の0.2倍しか効かず、実用域が10〜20になっていた。
   // 25 にすると pref=1 でほぼ互角、2 で優遇が主導、5 で実質その色だけで決まる
   // ―― 入力欄の目盛りと体感が一致する（helpText.ts の colorPreference / wColorPref の文言はこの実測に基づく）。
-  wColorPref: 25,
+  // eval_v9（2026-10-17）からは掛け先が種族ごとの値（wFactionPref）。係数は据え置き（再実測は評価値の調整後）
+  wFactionPref: 25,
   pref: 0,
   // 保持件数
   keepTop: 20,
@@ -1047,7 +1049,7 @@ return (savedProfiles ?? []).filter((p) => {
         `tfmars=${String(soft?.wScoutCoreByScoutKey?.tfmars ?? soft?.wScoutCoreByScoutKey?.S4 ?? "")}} ` +
         `scoutCoreAttrib=${String(soft?.scoutCoreAttributionMode ?? "")} ` +
         `scoutRadius=${String(soft?.scoutRadius ?? "")} imbalanceMetric=${String(soft?.imbalanceMetric ?? "")} ` +
-        `wColorPref=${String(soft?.wColorPref ?? "")} colorPref{black=${String(soft?.colorPrefByType?.BLACK ?? "")},blue=${String(soft?.colorPrefByType?.BLUE ?? "")},brown=${String(soft?.colorPrefByType?.BROWN ?? "")},orange=${String(soft?.colorPrefByType?.ORANGE ?? "")},red=${String(soft?.colorPrefByType?.RED ?? "")},white=${String(soft?.colorPrefByType?.WHITE ?? "")},yellow=${String(soft?.colorPrefByType?.YELLOW ?? "")}} ` +
+        `wFactionPref=${String(soft?.wFactionPref ?? soft?.wColorPref ?? "")} factionPref=${JSON.stringify(soft?.factionPref ?? soft?.colorPrefByType ?? {})} ` +
         `algoVersion=${String(params?.algoVersion ?? p.algoVersion ?? "")} evalVersion=${String(params?.evalVersion ?? p.evalVersion ?? "")} ` +
         `${p.searchKey}`
       ).toLowerCase();
@@ -1142,20 +1144,16 @@ return (savedProfiles ?? []).filter((p) => {
   // 検索キーにも入らないので、保存済みの条件プロファイルの該当フィールドは読まない。
 
   // Color preference (by planetTypeTotals)
-  const [wColorPref, setWColorPref] = React.useState(DEFAULT_CONDITIONS.wColorPref);
+  const [wFactionPref, setWFactionPref] = React.useState(DEFAULT_CONDITIONS.wFactionPref);
   /**
    * 探索プロファイル（段階 1「条件の統一」2026-10-16）。色ごとの入力欄（prefBLACK … prefASTEROID、
-   * 原始・小惑星は 2026-07-31 から）は廃止し、色優遇はプロファイルの種族優遇から導く。
+   * 原始・小惑星は 2026-07-31 から）は廃止し、優遇はプロファイルの種族優遇（Map / Setup / List 共有）。
+   * eval_v9（2026-10-17 ユーザー確定 3-(b)）からは色に導かず、種族ごとの値にそのまま掛ける。
    */
   const { active: activeSearchProfile } = useSearchProfiles();
-  /**
-   * 検索キー／実行時に渡す色優遇の表。種族優遇から色ごとに導く（同じ色の 2 種族の |値| が大きい方。
-   * 同じ大きさで逆符号なら 0）。0 の原始・小惑星はフィールドごと省略する
-   * （互換の鉄則。原始・小惑星を使わない条件は従来とバイト不変のキーになる）。
-   * 掛け先は従来どおり（原始・小惑星は内訳表と同じ extraStart）。
-   */
-  const colorPrefByType = React.useMemo(
-    () => colorPrefFromFactionPref(activeSearchProfile?.factionPref ?? {}),
+  /** 検索キー／実行時に渡す種族優遇（種族 id → ±。0 はキーを持たない）。 */
+  const factionPref = React.useMemo(
+    () => sanitizeFactionPref(activeSearchProfile?.factionPref ?? {}),
     [activeSearchProfile]
   );
 
@@ -1516,15 +1514,19 @@ try {
 
         // imbalanceMetric は std 固定（ドロップダウン廃止に伴い復元もしない）
         // ガイア近接・星系（wGaiaDist1〜3 / wClusterSize）は eval_v7 で廃止。旧プロファイルにあっても読まない
-        if ((params as any)?.soft?.wColorPref != null) setWColorPref(Number((params as any).soft.wColorPref) || 0);
+        {
+          const w = (params as any)?.soft?.wFactionPref ?? (params as any)?.soft?.wColorPref;
+          if (w != null) setWFactionPref(Number(w) || 0);
+        }
         // 色優遇は探索プロファイルの種族優遇から導くようになった（2026-10-16）。保存済み条件に色の値が
         // あれば、ユーザー操作の適用（importPref）のときだけ同じ色の 2 種族へ取り込む。起動時の自動適用
         // （effect）では書き込まない（localStorage の規律）。取り込まないと検索キーが一致しないことがある
         // （旧条件の色の値と、いまの種族優遇から導く色の値が違えば別バケツ）。
         try {
           if (opts?.importPref) {
-            const cp = (params as any)?.soft?.colorPrefByType ?? (params as any)?.soft?.colorBiasByType ?? null;
-            const fp = factionPrefFromColorPref(cp);
+            const soft = (params as any)?.soft ?? {};
+            // eval_v9 からの条件は種族ごと（soft.factionPref）。eval_v8 までの色の値は同じ色の 2 種族へ取り込む
+            const fp = soft.factionPref ? sanitizeFactionPref(soft.factionPref) : factionPrefFromColorPref(soft.colorPrefByType ?? soft.colorBiasByType ?? null);
             const activeId = readActiveProfileId();
             const activeProfile = readSearchProfiles().find((x) => x.id === activeId) ?? null;
             if (activeProfile) updateSearchProfile(activeProfile.id, { factionPref: fp });
@@ -1543,7 +1545,7 @@ try {
 
       if (closePanel) setShowSavedConditions(false);
     },
-    [setWhich, setOuterSameColorMax, setCenterMode, setMaxConnectedPlanets, setH5IncludeScouts, setWRimGap, setWScout, setWScoutCore, setScoutRadius, setWColorPref, setKeepTop, setShowSavedConditions, lang]
+    [setWhich, setOuterSameColorMax, setCenterMode, setMaxConnectedPlanets, setH5IncludeScouts, setWRimGap, setWScout, setWScoutCore, setScoutRadius, setWFactionPref, setKeepTop, setShowSavedConditions, lang]
   );
 
   // ---------- 探索プロファイルとの接続（段階 1「条件の統一」2026-10-16） ----------
@@ -1618,7 +1620,7 @@ try {
     setScoutCoreAttribBest(D.scoutCoreAttribBest);
     setScoutRadius(D.scoutRadius);
 
-    setWColorPref(D.wColorPref);
+    setWFactionPref(D.wFactionPref);
     // 種族優遇（探索プロファイル側の設定。Map / Setup / List 共有）も「優遇なし」へ戻す（2026-10-17 ユーザー確定 4）。
     if (activeSearchProfile) updateSearchProfile(activeSearchProfile.id, { factionPref: {} });
 
@@ -1670,8 +1672,8 @@ try {
           ...rimGap,
           wImbalance,
           imbalanceMetric,
-          wColorPref,
-          colorPrefByType,
+          wFactionPref,
+          factionPref,
         }
       : {
           ...rimGap,
@@ -1683,10 +1685,10 @@ try {
           wScoutByScoutKey: { twilight: wScoutS1, eclipse: wScoutS2, rebellion: wScoutS3, tfmars: wScoutS4 },
           wScoutCoreByScoutKey: { twilight: wScoutCoreS1, eclipse: wScoutCoreS2, rebellion: wScoutCoreS3, tfmars: wScoutCoreS4 },
           scoutCoreAttributionMode: scoutCoreAttribBest ? "best" : "all",
-          wColorPref,
-          colorPrefByType,
+          wFactionPref,
+          factionPref,
         };
-  }, [isBase, wRimGap, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wColorPref, colorPrefByType]);
+  }, [isBase, wRimGap, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wFactionPref, factionPref]);
 
   const searchKeyParams = React.useMemo(() => {
     return {
@@ -2309,8 +2311,8 @@ async function handleGenerateRank() {
         wScoutByScoutKey: { twilight: wScoutS1, eclipse: wScoutS2, rebellion: wScoutS3, tfmars: wScoutS4 },
         wScoutCoreByScoutKey: { twilight: wScoutCoreS1, eclipse: wScoutCoreS2, rebellion: wScoutCoreS3, tfmars: wScoutCoreS4 },
         scoutCoreAttributionMode: scoutCoreAttribBest ? "best" : "all",
-        wColorPref,
-        colorPrefByType,
+        wFactionPref,
+        factionPref,
       },
     };
 
@@ -3839,62 +3841,56 @@ const handleDeleteUsed = React.useCallback(
 
               <div style={{ width: "100%", borderTop: "1px dashed #ddd", marginTop: 8, paddingTop: 8 }}>
                 <div style={{ fontWeight: 700, fontSize: 12 }}>
-                  <span>{t("colorPreference")}</span>
-                  <Help k="colorPreference" lang={lang} />
+                  <span>{t("factionPreference")}</span>
+                  <Help k="factionPreference" lang={lang} />
                 </div>
 
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 6 }}>
                   <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <span>{t("wColorPref")}</span>
-                    <Help k="wColorPref" lang={lang} />
+                    <span>{t("wFactionPref")}</span>
+                    <Help k="wFactionPref" lang={lang} />
                     <input
                       type="number"
-                      value={wColorPref}
+                      value={wFactionPref}
                       min={0}
                       max={100}
-                      onChange={(e) => setWColorPref(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                      onChange={(e) => setWFactionPref(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
                       style={{ width: 60 }}
                     />
                   </label>
 
-                  <span style={{ fontSize: 12, opacity: 0.75 }}>{t("colorPrefDerivedNote")}</span>
+                  <span style={{ fontSize: 12, opacity: 0.75 }}>{t("factionPrefNote")}</span>
                 </div>
 
-                {/* 色ごとの値は探索条件の帯（上部）の種族優遇から導く（2026-10-16）。ここは導いた値の表示だけ。
-                    内訳テーブルと同じ色背景（ユーザー要望 2026-07-23）は踏襲する */}
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
-                  {([
-                    ["BLACK", "黒"],
-                    ["BLUE", "青"],
-                    ["BROWN", "茶"],
-                    ["ORANGE", "橙"],
-                    ["RED", "赤"],
-                    ["WHITE", "白"],
-                    ["YELLOW", "黄"],
-                    // 原始・小惑星は LF だけに出る惑星なので LF のときだけ（2026-07-31）。
-                    ...(isBase ? [] : ([["PROTO", "原始"], ["ASTEROID", "小惑星"]] as const)),
-                  ] as const).map(([key, ja]) => {
-                    const v = Number((colorPrefByType as Record<string, number>)[key] ?? 0);
-                    return (
-                      <span
-                        key={key}
-                        style={{
-                          display: "inline-flex",
-                          gap: 6,
-                          alignItems: "center",
-                          background: PLANET_INPUT_BG[key as PlanetTypeKey] ?? EXTRA_INPUT_BG[key] ?? undefined,
-                          border: "1px solid rgba(0,0,0,0.15)",
-                          borderRadius: 6,
-                          padding: "2px 6px",
-                          fontSize: 12,
-                          opacity: v === 0 ? 0.6 : 1,
-                        }}
-                      >
-                        <span style={{ fontWeight: 700 }}>{lang === "ja" ? ja : key}</span>
-                        <span style={{ fontVariantNumeric: "tabular-nums" }}>{v > 0 ? `+${v}` : String(v)}</span>
-                      </span>
-                    );
-                  })}
+                {/* 種族ごとの値は探索条件の帯（上部）で編集する（2026-10-16）。ここは検索キーに入る値の表示だけ
+                    （背景は母星色。内訳表と同じ配色） */}
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6, alignItems: "center" }}>
+                  {Object.keys(factionPref).length === 0 ? (
+                    <span style={{ fontSize: 12, opacity: 0.6 }}>{t("factionPrefNone")}</span>
+                  ) : (
+                    FACTIONS.filter((f) => factionPref[f.id]).map((f) => {
+                      const v = Number(factionPref[f.id] ?? 0);
+                      return (
+                        <span
+                          key={f.id}
+                          style={{
+                            display: "inline-flex",
+                            gap: 6,
+                            alignItems: "center",
+                            background: PLANET_INPUT_BG[f.color as PlanetTypeKey] ?? EXTRA_INPUT_BG[f.color] ?? undefined,
+                            border: "1px solid rgba(0,0,0,0.15)",
+                            borderRadius: 6,
+                            padding: "2px 6px",
+                            fontSize: 12,
+                          }}
+                        >
+                          <span style={{ fontWeight: 700 }}>{lang === "ja" ? f.labelJa : f.labelEn}</span>
+                          <span style={{ fontVariantNumeric: "tabular-nums" }}>{v > 0 ? `+${v}` : String(v)}</span>
+                        </span>
+                      );
+                    })
+                  )}
+                  <span style={{ fontSize: 11, opacity: 0.6 }}>{t("factionPrefSameColorNote")}</span>
                 </div>
               </div>
             </div>

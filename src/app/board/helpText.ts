@@ -269,39 +269,41 @@ const ENTRIES = {
       ref: "2.2",
     },
   },
-  colorPreference: {
+  factionPreference: {
     ja: {
-      title: "色優遇/冷遇",
+      title: "種族優遇/冷遇",
       what:
-        "色ごとの ＋ で優遇、− で冷遇。値は上の「探索条件」の種族優遇から導く（同じ色の 2 種族のうち |値| の大きい方。同じ大きさで逆符号なら 0）。" +
-        "検索スコアに 強さ × Σ 優遇 × 色の値 を足す。原始・小惑星は 7 色の軸に入らないので「最良の 1 惑星 × 補正値」に掛ける。",
+        "種族ごとの ＋ で優遇、− で冷遇（値は上の「探索条件」の帯で編集。Map / Setup / List 共通）。" +
+        "検索スコアに 強さ × Σ 優遇 × その種族の値（内訳表の行の合計）を足す。同じ色の 2 種族に別の値を付けられる。",
       why:
-        "目盛りは盤面の実測（300 盤面・4人 LF）で合わせてある: 0 効かない / 1 偏り項とほぼ互角（同程度ならこの色が強い方） / 2 優遇が主導 / 3 さらに寄る / " +
-        "5 実質その色だけで決まる。マイナスは逆向きに同じだけ効く。色の値は検索キーに入るので、種族優遇を変えると結果は別のバケツに貯まる。",
+        "目盛りは盤面の実測（300 盤面・4人 LF、色ごとだった eval_v8 まで）で合わせてある: 0 効かない / 1 偏り項とほぼ互角 / 2 優遇が主導 / 3 さらに寄る / " +
+        "5 実質その種族だけで決まる。マイナスは逆向きに同じだけ効く。種族ごとに掛けるので、同じ色の 2 種族に同じ値を入れると色 1 つに入れた旧来の約 2 倍。" +
+        "種族優遇は検索キーに入るので、変えると結果は別のバケツに貯まる。",
       ref: "2.3 / 1.4",
     },
     en: {
-      title: "Colour preference",
+      title: "Faction preference",
       what:
-        "Per colour, + favours and − penalises. Derived from the faction preference in the search profile above (per colour, the faction with the larger |value|; 0 when equal and opposite). " +
-        "Adds weight × Σ pref × colour value to the search score. Proto / asteroid are outside the seven colours, so pref applies to the best single planet × its factor.",
+        "Per faction, + favours and − penalises (edited in the search-profile strip above; shared by Map / Setup / List). " +
+        "Adds weight × Σ pref × that faction's value (the row total in the breakdown) to the search score. The two factions of a colour can differ.",
       why:
-        "The scale was calibrated on 300 boards (4p LF): 0 no effect / 1 about even with the imbalance term / 2 preference leads / 3 stronger / " +
-        "5 effectively decides by that colour alone. Negative values work the same way in reverse. The colour values are part of the search key, so changing the faction preference starts a new result bucket.",
+        "The scale was calibrated on 300 boards (4p LF, per colour up to eval_v8): 0 no effect / 1 about even with the imbalance term / 2 preference leads / 3 stronger / " +
+        "5 effectively decides by that faction alone. Negative values work the same way in reverse. Setting both factions of a colour gives about twice the old per-colour effect. " +
+        "The preference is part of the search key, so changing it starts a new result bucket.",
       ref: "2.3 / 1.4",
     },
   },
-  wColorPref: {
+  wFactionPref: {
     ja: {
-      title: "色優遇/冷遇の強さ",
+      title: "種族優遇/冷遇の強さ",
       what: "優遇／冷遇 1 あたりの強さ。検索スコアに足す項の係数。",
-      why: "既定 25 は「優遇 1 ＝ 偏り項とほぼ互角」になるよう実測で合わせた（4人 LF 300 盤面: 偏り項の振れ幅 1747 に対し色の値の振れ幅 67）。2026-07-31 に 3 → 25。",
+      why: "既定 25 は「優遇 1 ＝ 偏り項とほぼ互角」になるよう実測で合わせた（4人 LF 300 盤面: 偏り項の振れ幅 1747 に対し色の値の振れ幅 67。2026-07-31 に 3 → 25）。eval_v9 で掛け先が種族の値になったが係数は据え置き（再実測は評価値の調整後）。",
       ref: "2.3",
     },
     en: {
       title: "Preference weight",
       what: "Strength per unit of preference: the coefficient of the term added to the search score.",
-      why: "Default 25 was calibrated so that pref 1 is about even with the imbalance term (300 boards, 4p LF: imbalance range 1747 vs colour value range 67). Changed 3 → 25 on 2026-07-31.",
+      why: "Default 25 was calibrated so that pref 1 is about even with the imbalance term (300 boards, 4p LF: imbalance range 1747 vs colour value range 67; 3 → 25 on 2026-07-31). eval_v9 applies it per faction; the coefficient is kept until values are re-tuned.",
       ref: "2.3",
     },
   },
@@ -317,7 +319,7 @@ const ENTRIES = {
         "開始地点は母星色から合計が最大になる組（到達係数 1）。列は種別ごとに丸め、評価はその合計。",
       why:
         "方針「最上位 2 個からどれだけ到達しやすく入植しやすいかが全て」（2026-10-07）。到達コストは種族ごとで、開始建物の数・航行・改造・ガイアの初期研究を反映する。" +
-        "検索の偏り項と色優遇で使う色の値は、その色の 2 種族のうち大きい方。行名のホバーに固有値・船接触・船星系・端の内訳。",
+        "検索の偏り項で使う色の値は、その色の 2 種族のうち大きい方（種族優遇は種族ごとの値に掛ける）。行名のホバーに固有値・船接触・船星系・端の内訳。",
       ref: "2.10",
     },
     en: {

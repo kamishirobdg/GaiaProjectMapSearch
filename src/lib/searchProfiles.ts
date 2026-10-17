@@ -240,7 +240,7 @@ export function useSearchProfiles(): {
   };
 }
 
-// ---------- 種族優遇 → 色優遇（Map の検索条件へ渡す形）----------
+// ---------- 色の近道（同じ色の 2 種族へ同じ値）と旧 色優遇の取り込み ----------
 
 export const PREF_COLORS = ["BLACK", "BLUE", "BROWN", "ORANGE", "RED", "WHITE", "YELLOW"] as const;
 export const PREF_EXTRA_COLORS = ["PROTO", "ASTEROID"] as const;
@@ -250,36 +250,6 @@ export function factionsOfColor(color: string): FactionId[] {
   return FACTIONS.filter((f) => f.color === color).map((f) => f.id);
 }
 
-/**
- * 種族優遇から Map の色優遇（colorPrefByType）を導く（2026-10-16 の仮置き。明日ユーザー確認）。
- * 同じ色の 2 種族のうち |値| が大きい方を採る。同じ大きさで符号が逆なら 0。
- * 基本 7 色は常にキーを持ち（0 も入れる）、原始・小惑星は 0 のときキーごと省略する
- * （Map の既存の検索キーとバイト不変に保つため）。
- */
-export function colorPrefFromFactionPref(pref: Record<string, number>): Record<string, number> {
-  const pick = (color: string): number => {
-    let best = 0;
-    let tie = false;
-    for (const id of factionsOfColor(color)) {
-      const v = Number(pref[id] ?? 0);
-      if (!v) continue;
-      if (Math.abs(v) > Math.abs(best)) {
-        best = v;
-        tie = false;
-      } else if (Math.abs(v) === Math.abs(best) && v !== best) {
-        tie = true;
-      }
-    }
-    return tie ? 0 : best;
-  };
-  const out: Record<string, number> = {};
-  for (const c of PREF_COLORS) out[c] = pick(c);
-  for (const c of PREF_EXTRA_COLORS) {
-    const v = pick(c);
-    if (v !== 0) out[c] = v;
-  }
-  return out;
-}
 
 /**
  * 旧 Map プロファイルの色優遇（colorPrefByType）を種族優遇へ取り込む（同じ色の 2 種族へ同じ値）。
