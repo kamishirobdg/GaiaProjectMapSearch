@@ -56,6 +56,9 @@
   合わせて採点（ワーカー `pairWith`）→ 上位 L 件を順位表（`pairRanking.ts`、条件ごと 50 組、localStorage）へ、を停止まで繰り返す。
   (3) Map タブに候補が無いのは eval_v9 の新バケツが空なだけ（旧バケツは「旧バージョンの候補」からコピー）。ヘッドレスで 2 周 →
   停止 → 順位表 50 組 → 再読込後も残ることを確認済み。
+- **同日、35回目の FF push ＝ v2.1.0 · eval_v9（2c1e2e4。`34c7278..2c1e2e4` の 3 コミット）**: 上の 3 件。deployments API で Production
+  （deployment 7136752203）の success 確認済み。PR #34 は FF push で merged 扱い（次の変更は新しい PR）。次は本番での体感
+  （1 マップあたりの件数・K・L の既定、順位表 50 組で足りるか、評価し直した値が Map タブと揃っているか）の報告待ち。
 - **作業ブランチは 2026-10-15 から `claude/gaia-map-project-status-73aeld`**。段階 1 の PR #31 は 32回目の FF push で merged 扱いになり、
   段階 2（v1.9.0）は **draft PR #32**（同じブランチ。FF push のたびに PR が閉じるので、次の段階は新しい PR を作る）。旧 PR #27 / #26 は閉じた。旧 `claude/gaia-map-project-status-adrt1n`
   （PR #26）は同一コミットで引き継いだうえで閉じた（ユーザー確定 (a)）。
