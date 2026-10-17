@@ -39,7 +39,8 @@
   基準 2・3 は合計 T_f、旧 List / Total は削除して `/pair` へリダイレクト。ヘッドレス Chromium で 提案の生成 → 候補一覧 → 詳細の
   合計表（18 行）→ 保存 → 共有 URL、`/list?x=1` → `/pair?x=1`、375px のタブを確認済み。**仮置き 6 件は設計ノート 1.5 末尾**。
   次は段階 3（v2.0）。ユーザー指示「リリースして段階2へ進んで」のうち段階 2 はここまで。
-- **作業ブランチは 2026-10-15 から `claude/gaia-map-project-status-73aeld`（draft PR #27）**。旧 `claude/gaia-map-project-status-adrt1n`
+- **作業ブランチは 2026-10-15 から `claude/gaia-map-project-status-73aeld`**。段階 1 の PR #31 は 32回目の FF push で merged 扱いになり、
+  段階 2（v1.9.0）は **draft PR #32**（同じブランチ。FF push のたびに PR が閉じるので、次の段階は新しい PR を作る）。旧 PR #27 / #26 は閉じた。旧 `claude/gaia-map-project-status-adrt1n`
   （PR #26）は同一コミットで引き継いだうえで閉じた（ユーザー確定 (a)）。
 - 評価の式は eval_v7「全惑星を同一の式で」＋ eval_v8（ダー・シュワーム人の開始地点 × 1.5）。List / Total には船の相互作用
   （種族ごとの船接触、α 1 ＝ 掛け算）。評価値は 2026-10-09 以降変えていない（v1.6.1〜v1.6.7 は表示・操作だけ）。
