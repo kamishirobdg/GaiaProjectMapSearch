@@ -10,14 +10,14 @@ import { useIsNarrow } from "@/components/ui/layout";
  * so the heavy map page and the setup page stay independent.
  * "Total" は 2026-08-04 に追加した種族別総合評価（Map と Setup の合算）。
  */
-export type TabKey = "map" | "setup" | "list" | "total" | "manual";
+export type TabKey = "map" | "setup" | "pair" | "manual";
 
 // "Manual" はアプリ内マニュアル（2026-10-16 ユーザー決定: 入口は共通バーのタブ）。
+// "Pair" は旧 List ＋ Total（段階 2、2026-10-17）。段階 3（v2.0）で先頭に移し `/` を Pair にする（ユーザー確定 D-(a)）。
 const TABS: Array<{ key: TabKey; href: string; label: string }> = [
   { key: "map", href: "/board", label: "Map" },
   { key: "setup", href: "/setup", label: "Setup" },
-  { key: "list", href: "/list", label: "List" },
-  { key: "total", href: "/total", label: "Total" },
+  { key: "pair", href: "/pair", label: "Pair" },
   { key: "manual", href: "/manual", label: "Manual" },
 ];
 

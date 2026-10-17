@@ -1,12 +1,10 @@
-import React from "react";
-import ListView from "@/components/ListView";
+import { redirect } from "next/navigation";
 
-// タブナビ・人数・拡張・言語は ListView 内の GlobalBar が担う（全タブ共通の
-// 固定位置に置くため、ページ側では TabNav を出さない）。
-export default function ListPage() {
-  return (
-    <div style={{ width: "100%", minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
-      <ListView />
-    </div>
-  );
+// 旧 List タブは Pair（/pair）へ統合した（段階 2、2026-10-17）。共有 URL（?h=&t=&s=）の引数はそのまま渡す。
+export default async function ListPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const sp = await searchParams;
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) if (typeof v === "string") q.set(k, v);
+  const qs = q.toString();
+  redirect(`/pair${qs ? `?${qs}` : ""}`);
 }

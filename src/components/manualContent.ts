@@ -34,8 +34,7 @@ const ja: ManualText = {
             rows: [
               ["Map", "盤面（セクターの配置）をシードから大量に作り、条件で絞って評価の良い順に並べる"],
               ["Setup", "タイル配置をシードから作り、種族ごとの価値を出す"],
-              ["List", "ピン留めした盤面とタイル配置の組み合わせを提案する"],
-              ["Total", "盤面 1 つとタイル配置 1 つを選び、種族ごとに値を合算して並べる"],
+              ["Pair", "盤面とタイル配置の組を提案し、種族ごとに値を合算して見比べる"],
             ],
           },
         },
@@ -43,7 +42,7 @@ const ja: ManualText = {
           ul: [
             "共通バーの「人数」「基本版 / LF」「日本語 / EN」は全タブで共有されます。人数と拡張は検索・生成の条件に入ります。",
             "共通バー右端の「vX.Y.Z · eval_vN」はアプリの版と Map の評価バージョンです。評価の意味が変わると eval_vN が上がり、Map の検索結果は新しいバージョンのものとして別に貯まります（古い結果は「コピー」で引き継げます）。",
-            "検索・生成の結果は条件ごとに自動で保存され、同じ条件で再開すると前回の上位と合流します。ピン留めした盤面とタイル配置は List に集まり、容量の整理からも守られます。",
+            "検索・生成の結果は条件ごとに自動で保存され、同じ条件で再開すると前回の上位と合流します。ピン留めした盤面とタイル配置は Pair の起点に使え、容量の整理からも守られます。",
             "共通バーの下の「探索条件」の帯は探索プロファイルです。種族優遇 / 冷遇（「編集」。色でまとめて入れることもできます）と、Map・Setup それぞれの検索条件を 1 つの名前で束ねます。検索を実行するとその側の条件が自動で登録され、帯の Map / Setup に「一致」「差分あり」「未登録」が出ます。Map で検索したあと Setup へ移り、「一致」を確かめてから検索する、という流れで使います。",
           ],
         },
@@ -58,7 +57,7 @@ const ja: ManualText = {
           ul: [
             "「条件」で検索件数と制約条件・評価指数を決め、「検索実行」を押します。「連続検索」は停止するまで繰り返し、上位を貯めます。",
             "「ランク」（狭い画面では「候補」タブ）に上位の盤面が並びます。行をタップすると盤面が表示され、「詳細」に種族別の内訳が出ます。",
-            "気に入った盤面は「ピン留め」（List へ）、遊んだ盤面は「使用済み」（一覧から外す）。「共有URL」で盤面をそのまま共有できます。",
+            "気に入った盤面は「ピン留め」（Pair の起点に）、遊んだ盤面は「使用済み」（一覧から外す）。「共有URL」で盤面をそのまま共有できます。",
             "狭い画面では盤面の下が「候補 / 詳細 / 条件」のタブになります。",
           ],
         },
@@ -136,7 +135,7 @@ const ja: ManualText = {
           ul: [
             "画面は Map と同じ「候補 / 詳細 / 条件」の並びです（狭い幅ではタブ）。",
             "候補: 「検索」は現在の条件で大量に生成し、基準の良い順に上位 20 件を候補に残します。結果は条件と基準ごとに貯まり、次の検索は前回の上位と合流します。候補一覧には検索の上位と保存した配置が 1 つの表に並びます（ピン留めが先、次に基準値の順）。行をタップすると表示が切り替わります。",
-            "候補の行の「保存」で容量の整理から守り、「ピン留め」で List へ送ります（未保存の行をピン留めすると自動で保存されます）。「使用済み」にすると一覧から使用済みへ移ります。",
+            "候補の行の「保存」で容量の整理から守り、「ピン留め」で Pair の起点にします（未保存の行をピン留めすると自動で保存されます）。「使用済み」にすると一覧から使用済みへ移ります。",
             "詳細: 表示中の配置の種族別の評価表です。",
             "条件: シードの指定とランダム、保存済み条件、評価指数です。タイルや面の固定 / 除外 / 候補は盤面のタイルをタップして指定します。",
           ],
@@ -162,22 +161,23 @@ const ja: ManualText = {
         },
         {
           ul: [
-            "評価指数はカテゴリ全体の効き方を変える係数で、List の提案にも同じ値が使われます。変えても貯めた結果は消えません。",
+            "評価指数はカテゴリ全体の効き方を変える係数で、Pair の提案にも同じ値が使われます。変えても貯めた結果は消えません。",
             "種族優遇 / 冷遇（帯で編集。種族ごとの ±）は検索と提案の並びに効き、評価表の値は変えません。目盛りは Map の色優遇と同じで、係数は色優遇の半分です（同じ色の 2 種族に入れると従来の色優遇とほぼ同じ大きさ）。",
           ],
         },
       ],
     },
     {
-      id: "list",
-      title: "4. List（組み合わせを提案する）",
+      id: "pair",
+      title: "4. Pair（組を提案して合算する）",
       blocks: [
         { h3: "使い方" },
         {
           ul: [
-            "Map と Setup でピン留めしたものがここに集まります。",
-            "「探索の向き」（盤面から配置を探す / 配置から盤面を探す）と「基準」を選んで「提案を生成」すると、候補が上位 5 件まで出ます。",
-            "候補の「この組を Total タブで見る」で合算の内訳へ、「保存リストに記録」で Setup の保存リストへ送れます。",
+            "画面は Map / Setup と同じ「候補 / 詳細 / 条件」の並びです（狭い幅ではタブ）。",
+            "候補: 「探索の向き」（盤面から配置を探す / 配置から盤面を探す）、セットアップの探し方（ランダム生成 / 保存済み）、「基準」を選んで「提案を生成」すると、上位 5 件が候補一覧に並びます。保存した組も同じ一覧に出ます。",
+            "候補の行をタップすると「詳細」に盤面・配置・種族別の合計（Map の値、Setup の値、その合計）が出ます。「保存」で組を残し、「Map で開く」「Setup で開く」で各タブへ、「セット共有URL」で組をそのまま共有できます。",
+            "条件: 保存済み条件、評価指数、合算比です。ピン留めした盤面と配置の一覧は候補の下に畳んであります。",
           ],
         },
         { h3: "基準" },
@@ -185,42 +185,26 @@ const ja: ManualText = {
           table: {
             head: ["基準", "どんな組み合わせを選ぶか"],
             rows: [
+              ["2 上位バランス", "合計（Map ＋ Setup）で上位（人数＋2）の種族が拮抗している組"],
+              ["3 全体バランス", "合計で全種族の値の散らばりが小さい組"],
               ["1 逆優位", "盤面で強い種族ほど配置では弱くなる組（打ち消し合い）"],
-              ["2 上位バランス", "上位（人数＋2）の種族が拮抗している配置"],
-              ["3 全体バランス", "全種族の値の散らばりが小さい配置"],
               ["4 優位", "盤面で強い種族が配置でも強い組（相乗）"],
             ],
           },
         },
         {
           ul: [
-            "基準 2・3 は盤面に依存しないので、盤面は条件に合う先頭のものになります。盤面で選びたいときは 1 か 4 を使います。",
-            "種族優遇 / 冷遇（帯で編集。種族ごとの ±）は盤面と配置の合計に掛かります。目盛りは色優遇と同じです。",
-            "「合計の上位」は盤面＋配置の合計が高い順に人数＋2 色（同じ色は強い方の種族だけ）です。",
-          ],
-        },
-      ],
-    },
-    {
-      id: "total",
-      title: "5. Total（合算して並べる）",
-      blocks: [
-        { h3: "使い方" },
-        {
-          ul: [
-            "盤面とタイル配置を 1 つずつ選ぶと、種族ごとに Map の値と Setup の値、その合計が並びます。選択は List と共有です。",
-            "Map の値は Map の詳細（種族別の内訳）の「評価」と同じ、Setup の値は Setup の「総合」と同じです。LF では、船に乗るタイルの値をその種族が船に届きやすいかで増減してから足します。",
+            "基準 2・3 は盤面の評価の内訳を使って合計で測ります。内訳を持たない古い盤面では配置の値だけで測り、その旨の注記が出ます。",
+            "種族優遇 / 冷遇（帯で編集。種族ごとの ±）は合計に掛かります。目盛りは Map と同じです。",
+            "「合計の上位」は合計が高い順に人数＋2 色（同じ色は強い方の種族だけ）です。",
           ],
         },
         { h3: "合算比" },
         {
           table: {
             head: ["項目", "既定", "意味", "変えるときの注意"],
-            rows: [["Map × / Setup ×", "1 : 1", "合計を出すときの倍率", "List の種族優遇と「合計の上位」にも同じ比が使われます"]],
+            rows: [["Map × / Setup ×", "1 : 1", "合計を出すときの倍率", "基準 2・3 の採点、種族優遇の掛け先、「合計の上位」にも同じ比が使われます"]],
           },
-        },
-        {
-          p: "内訳を持たない古い盤面の候補は Map の値が 0 になります。Map タブで検索し直すと付きます。",
         },
       ],
     },
@@ -242,8 +226,7 @@ const en: ManualText = {
             rows: [
               ["Map", "Generates boards (sector layouts) from seeds in bulk, filters them by constraints and ranks them"],
               ["Setup", "Builds a tile layout from a seed and values it per faction"],
-              ["List", "Suggests pairs of pinned boards and tile layouts"],
-              ["Total", "Adds the map value and the setup value per faction for one board and one layout"],
+              ["Pair", "Suggests board + layout pairs and compares them by per-faction totals"],
             ],
           },
         },
@@ -251,7 +234,7 @@ const en: ManualText = {
           ul: [
             "Players, Base game / LF and the language in the top bar are shared by all tabs. Players and expansion are part of the search and generation conditions.",
             "The right end of the top bar shows the app version and the map evaluation version (\"vX.Y.Z · eval_vN\"). When the meaning of the evaluation changes, eval_vN goes up and map results are stored separately per version (older results can be carried over with \"Copy\").",
-            "Search and generation results are saved automatically per condition and merge with the previous top results when you resume. Pinned boards and layouts gather on the List tab and are protected from trimming.",
+            "Search and generation results are saved automatically per condition and merge with the previous top results when you resume. Pinned boards and layouts can be used as starting points on the Pair tab and are protected from trimming.",
             "The \"Search profile\" strip under the top bar bundles the faction preference (\"Edit\"; values can be set per colour too) with the Map and Setup search conditions under one name. Running a search registers that side's conditions, and the Map / Setup badges show \"match\", \"differs\" or \"not set\". Typical flow: search on Map, move to Setup, confirm \"match\", then search.",
           ],
         },
@@ -266,7 +249,7 @@ const en: ManualText = {
           ul: [
             "Set the trial count, constraints and weights under Conditions and press Search. Continuous search repeats until stopped, accumulating the top results.",
             "The top boards appear under Rank (the Results tab on narrow screens). Tap a row to show the board; Detail shows the per-faction breakdown.",
-            "Pin a board you like (it goes to List), mark a played one as Used (removed from the list). Share URL shares the exact board.",
+            "Pin a board you like (usable on Pair), mark a played one as Used (removed from the list). Share URL shares the exact board.",
             "On narrow screens the area below the board becomes Results / Detail / Conditions tabs.",
           ],
         },
@@ -342,7 +325,7 @@ const en: ManualText = {
           ul: [
             "The page follows the Map layout: Candidates / Detail / Conditions (tabs at narrow widths).",
             "Candidates: Search generates many layouts under the current conditions and keeps the best 20 as candidates; results are stored per condition and criterion and the next search merges with them. The candidate table lists search results and saved layouts together (pinned first, then by score). Tap a row to show it.",
-            "Save a row to protect it from trimming, Pin it to send it to List (pinning an unsaved row saves it), and mark it Used to move it to the used view.",
+            "Save a row to protect it from trimming, Pin it to use it on Pair (pinning an unsaved row saves it), and mark it Used to move it to the used view.",
             "Detail: the per-faction evaluation table of the displayed layout.",
             "Conditions: seed and random, saved conditions, and the weights. Fix / exclude / shortlist tiles and faces by tapping them on the board.",
           ],
@@ -366,22 +349,23 @@ const en: ManualText = {
         },
         {
           ul: [
-            "Weights scale whole categories and are shared with List suggestions. Changing them does not discard stored results.",
+            "Weights scale whole categories and are shared with Pair suggestions. Changing them does not discard stored results.",
             "Faction preference (edited in the strip; ± per faction) affects search and suggestion ranking, not the table values. Same scale as Map's colour preference, with half the coefficient (setting both factions of a colour gives about the old colour bonus).",
           ],
         },
       ],
     },
     {
-      id: "list",
-      title: "4. List (suggesting pairs)",
+      id: "pair",
+      title: "4. Pair (suggesting and adding up)",
       blocks: [
         { h3: "How to use" },
         {
           ul: [
-            "Everything pinned on Map and Setup gathers here.",
-            "Choose a direction (board → layout / layout → board) and a criterion, then Generate to get up to 5 candidates.",
-            "\"See this pair on the Total tab\" shows the sum per faction; \"Record to saved list\" sends the layout to Setup's saved list.",
+            "The page follows the Map / Setup layout: Candidates / Detail / Conditions (tabs at narrow widths).",
+            "Candidates: choose a direction (board → layout / layout → board), the setup source (random rolls / saved) and a criterion, then Generate; the top 5 appear in the candidate list together with saved pairs.",
+            "Tap a candidate row to see the board, the layout and the per-faction totals (map value, setup value, sum) in Detail. Save keeps the pair; Open in Map / Open in Setup jump to those tabs; Share pair URL shares the exact pair.",
+            "Conditions: saved conditions, weights and the blend. The pinned boards and layouts are collapsed under the candidates.",
           ],
         },
         { h3: "Criteria" },
@@ -389,41 +373,27 @@ const en: ManualText = {
           table: {
             head: ["Criterion", "What it picks"],
             rows: [
+              ["2 Top balance", "Pairs where the top (players + 2) factions are close by total (map + setup)"],
+              ["3 Overall balance", "Pairs with a small spread of totals across all factions"],
               ["1 Oppose map", "Pairs where factions strong on the board are weak in the layout (cancelling out)"],
-              ["2 Top balance", "Layouts where the top (players + 2) factions are close"],
-              ["3 Overall balance", "Layouts with a small spread across all factions"],
               ["4 Align map", "Pairs where factions strong on the board are strong in the layout too"],
             ],
           },
         },
         {
           ul: [
-            "Criteria 2 and 3 do not depend on the board, so the first matching board is used. Use 1 or 4 to choose by board.",
-            "Faction preference (edited in the strip; ± per faction) applies to board + layout. Same scale as colour preference.",
-            "\"Top by total\" lists players + 2 colours by board + layout (only the stronger faction per colour).",
-          ],
-        },
-      ],
-    },
-    {
-      id: "total",
-      title: "5. Total (adding up)",
-      blocks: [
-        { h3: "How to use" },
-        {
-          ul: [
-            "Pick one board and one layout to see the map value, the setup value and their sum per faction. The selection is shared with List.",
-            "The map value equals Total in Map's Detail; the setup value equals Setup's total. In LF, tiles on ships are scaled by how easily the faction reaches the ship before adding.",
+            "Criteria 2 and 3 use the board's evaluation breakdown to score by total. Old boards without a breakdown are scored by the layout only, with a note.",
+            "Faction preference (edited in the strip; ± per faction) applies to the total. Same scale as on Map.",
+            "\"Top by total\" lists players + 2 colours by total (only the stronger faction per colour).",
           ],
         },
         { h3: "Blend" },
         {
           table: {
             head: ["Item", "Default", "Meaning", "When changing"],
-            rows: [["Map × / Setup ×", "1 : 1", "Multipliers used for the sum", "List's faction preference and \"Top by total\" use the same ratio"]],
+            rows: [["Map × / Setup ×", "1 : 1", "Multipliers used for the sum", "Criteria 2 / 3, the faction preference and \"Top by total\" use the same ratio"]],
           },
         },
-        { p: "Old board candidates without a breakdown get 0 for the map value. Re-search on the Map tab to add it." },
       ],
     },
   ],

@@ -5,7 +5,7 @@
 //
 // 役割:
 //   1. 探索プロファイル（src/lib/searchProfiles.ts）の選択・新規・名前・削除。
-//   2. 種族優遇／冷遇の編集（1 つの表を Map / Setup / List が共有する。色の近道は同色 2 種族へ同じ値）。
+//   2. 種族優遇／冷遇の編集（1 つの表を Map / Setup / Pair が共有する。色の近道は同色 2 種族へ同じ値）。
 //   3. Map 部・Setup 部の登録状態（一致 / 差分あり / 未登録）と「登録」「適用」。
 //      Map ページでは Map 部、Setup ページでは Setup 部が操作でき、他方は状態だけ出す
 //      （「Setup へ移動して同一の条件であることを目視確認しながら探索」の目印）。
@@ -33,7 +33,7 @@ import { EXTRA_INPUT_BG, EXTRA_LABEL_JA, PLANET_INPUT_BG, PLANET_LABEL_JA, type 
 import { SharedHelp } from "@/components/FactionEvalPanel";
 
 type Lang = "ja" | "en";
-export type ConditionBarPage = "map" | "setup" | "list" | "total";
+export type ConditionBarPage = "map" | "setup" | "pair";
 
 const UI = {
   ja: {

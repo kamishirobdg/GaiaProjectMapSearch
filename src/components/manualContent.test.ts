@@ -7,10 +7,10 @@ describe("manualContent", () => {
     expect(MANUAL.en.chapters.map((c) => c.id)).toEqual(MANUAL.ja.chapters.map((c) => c.id));
   });
 
-  it("has 5 chapters (common / map / setup / list / total), each with a title and blocks; table rows match the head", () => {
+  it("has 4 chapters (common / map / setup / pair), each with a title and blocks; table rows match the head", () => {
     for (const lang of ["ja", "en"] as const) {
       const chapters = MANUAL[lang].chapters;
-      expect(chapters.map((c) => c.id)).toEqual(["common", "map", "setup", "list", "total"]);
+      expect(chapters.map((c) => c.id)).toEqual(["common", "map", "setup", "pair"]);
       for (const c of chapters) {
         expect(c.title.length).toBeGreaterThan(0);
         expect(c.blocks.length).toBeGreaterThan(0);

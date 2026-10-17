@@ -1,6 +1,6 @@
 // src/components/helpText.ts
 //
-// Setup / List / Total の各項目のポップアップ文言（第 2 弾。2026-10-15 ユーザー「進めてよい」）。
+// Setup / Pair（旧 List ＋ Total）の各項目のポップアップ文言（第 2 弾。2026-10-15 ユーザー「進めてよい」）。
 // 形は Map の `src/app/board/helpText.ts` と同じ: 「何を測るか」＋「既定値の根拠」＋設計ノート（docs/design-notes.md）の節。
 // 既定値や係数の数字は直書き（定数から自動で埋めない）。値を変えたらここも直す。
 
@@ -11,7 +11,7 @@ type Lang = "ja" | "en";
 type Entry = { ja: HelpContent; en: HelpContent };
 
 const ENTRIES = {
-  // ---------- Setup / List 共通（FactionEvalPanel） ----------
+  // ---------- Setup / Pair 共通（FactionEvalPanel） ----------
   setupEval: {
     ja: {
       title: "評価（種族別）",
@@ -38,20 +38,20 @@ const ENTRIES = {
     ja: {
       title: "総合スコア",
       what: "表の総合列のまとめ。平均 ＝ 全種族の平均、上位 K ＝ 上位 K（人数＋2）種族の平均、散らばり ＝ 全種族の標準偏差、最強 ＝ 最大の種族。",
-      why: "List の基準 2〜4 が見ているのと同じ量（上位 K の拮抗、全体の散らばり、上位の強さ）を 1 行で読めるようにしたもの。",
+      why: "Pair の基準 2〜4 が見ているのと同じ量（上位 K の拮抗、全体の散らばり、上位の強さ）を 1 行で読めるようにしたもの。",
       ref: "4",
     },
     en: {
       title: "Overall",
       what: "Summary of the total column. mean = all factions; top K = mean of the top K (players + 2); spread = standard deviation; best = the strongest faction.",
-      why: "The same quantities the List criteria 2–4 look at (top-K balance, overall spread, strength of the top), readable in one line.",
+      why: "The same quantities the Pair criteria 2–4 look at (top-K balance, overall spread, strength of the top), readable in one line.",
       ref: "4",
     },
   },
   setupWeights: {
     ja: {
       title: "評価指数",
-      what: "カテゴリ別の係数。タイルごとの値（CSV）に掛けてから合計する。List の「セット提案」の選定にも同じ係数が効く。",
+      what: "カテゴリ別の係数。タイルごとの値（CSV）に掛けてから合計する。Pair の「組の提案」の選定にも同じ係数が効く。",
       why:
         "役割分担: タイルの値 ＝ そのタイルと種族の噛み合い、係数 ＝ カテゴリ全体をどれだけ効かせるか（桁合わせ）。既定 基準 9 / 標準技術 9 / 上級 6 / ラウンド 6 / 追加上級 2。" +
         "影響力の目安は 技術 > LF船 > 上級 > ブースター > ラウンド > 最終 > 追加上級 > 同盟（2026-09-27 実測: 26.8 / 17.5 / 16.7 / 14.5 / 8.9（最終）/ 7.0（同盟）/ 6.2（ラウンド）/ 2.4%）。" +
@@ -60,7 +60,7 @@ const ENTRIES = {
     },
     en: {
       title: "Eval weights",
-      what: "Per-category coefficients applied to the tile values (CSV) before summing. The List tab's pair suggestions use the same weights.",
+      what: "Per-category coefficients applied to the tile values (CSV) before summing. The Pair tab's suggestions use the same weights.",
       why:
         "Division of labour: tile value = fit between tile and faction; weight = how much the whole category counts (scale only). Defaults: base 9 / standard tech 9 / advanced 6 / round 6 / extra advanced 2. " +
         "Intended influence order: tech > LF ships > advanced > boosters > round > final > extra advanced > federation (measured 2026-09-27: 26.8 / 17.5 / 16.7 / 14.5 / 8.9 (final) / 7.0 (fed) / 6.2 (round) / 2.4%). " +
@@ -171,7 +171,7 @@ const ENTRIES = {
       title: "LF船（失われた艦隊の船）",
       what: "船に乗る基本技術・金枠同盟・アーティファクトの値。どの船に乗ったかで値を上書きできる（船に到達しないと取れない。0 は基準値へフォールバック）。",
       why:
-        "既定 9（基準）。影響力 17.5%（2 位）。List のセット提案と Total の Setup 列では、船 s に乗るタイルの値をその種族の船接触（Map 側）の相対値で増減する" +
+        "既定 9（基準）。影響力 17.5%（2 位）。Pair の組の提案と合計表の Setup 列では、船 s に乗るタイルの値をその種族の船接触（Map 側）の相対値で増減する" +
         "船の相互作用（α 1。加点は Setup の値の 2.5%、合計の上位の顔ぶれが変わる組 23%）。",
       ref: "3.1 / 2.10",
     },
@@ -179,7 +179,7 @@ const ENTRIES = {
       title: "LF ships",
       what: "Values of the ship tech, gold federations and artifacts carried by the ships; can be overridden per ship (you must reach the ship; 0 falls back to the base value).",
       why:
-        "Default 9 (base). Influence 17.5% (2nd). In the List suggestions and the Total tab's Setup column, tiles on ship s are scaled by the faction's relative scout contact on the map " +
+        "Default 9 (base). Influence 17.5% (2nd). In the Pair suggestions and the totals table's Setup column, tiles on ship s are scaled by the faction's relative scout contact on the map " +
         "(ship interaction, α 1; adds 2.5% of the setup value and changes the top-by-total line in 23% of pairs).",
       ref: "3.1 / 2.10",
     },
@@ -212,8 +212,8 @@ const ENTRIES = {
     ja: {
       title: "種族優遇/冷遇",
       what:
-        "種族ごとの ±（1 つの表を Map / Setup / List が共有）。Map の検索ではその種族の盤面の値に（eval_v9）、Setup の検索ではその種族の配置の値に、" +
-        "List のセット提案では両方の合計に、それぞれ種族ごとにそのまま掛ける。「色でまとめて」は同じ色の 2 種族に同じ値を入れる近道。",
+        "種族ごとの ±（1 つの表を Map / Setup / Pair が共有）。Map の検索ではその種族の盤面の値に（eval_v9）、Setup の検索ではその種族の配置の値に、" +
+        "Pair の組の提案では両方の合計に、それぞれ種族ごとにそのまま掛ける。「色でまとめて」は同じ色の 2 種族に同じ値を入れる近道。",
       why:
         "目盛りは従来の色優遇と同じ: 0 効かない / 1 基準とほぼ互角 / 2 優遇が主導 / 5 実質その種族だけで決まる。マイナスは逆向きに同じだけ。" +
         "Setup 側の係数は色優遇の半分（0.15。同じ色の 2 種族に入れると従来の色優遇とほぼ同じ大きさ）。",
@@ -222,8 +222,8 @@ const ENTRIES = {
     en: {
       title: "Faction preference",
       what:
-        "Per faction, ± (one table shared by Map / Setup / List). Map search applies it to the faction's board value (eval_v9), Setup search to its layout value, " +
-        "List suggestions to the sum, each per faction. 'By colour' sets both factions of a colour at once.",
+        "Per faction, ± (one table shared by Map / Setup / Pair). Map search applies it to the faction's board value (eval_v9), Setup search to its layout value, " +
+        "Pair suggestions to the sum, each per faction. 'By colour' sets both factions of a colour at once.",
       why:
         "Same scale as the old colour preference: 0 off / 1 about even / 2 preference leads / 5 decided by this faction alone. " +
         "On the Setup side the coefficient is half the colour one (0.15; setting both factions of a colour gives about the old colour bonus).",
@@ -231,40 +231,44 @@ const ENTRIES = {
     },
   },
 
-  // ---------- List ----------
-  listPair: {
+  // ---------- Pair（旧 List ＋ Total。段階 2、2026-10-17） ----------
+  pairSuggest: {
     ja: {
-      title: "セット提案（マップ＋セットアップ）",
-      what: "探索の向き（マップ → セットアップ／セットアップ → マップ）と基準を選ぶと、候補を基準の良い順に上位 5 件まで提示する。セットアップはランダム生成か保存済みから。",
-      why: "Setup の値には船の相互作用（船に乗るタイルの値 × その種族の船接触の相対値、α 1）を掛けてから採点する。評価指数・色優遇・種族優遇は Setup / List と共通。",
-      ref: "4",
+      title: "組の提案（マップ＋セットアップ）",
+      what: "探索の向き（マップ → セットアップ／セットアップ → マップ）と基準を選ぶと、候補を基準の良い順に上位 5 件まで提示する。セットアップはランダム生成か保存済みから。候補の行を選ぶと「詳細」に盤面・配置・種族別の合計が出る。",
+      why: "Setup の値には船の相互作用（船に乗るタイルの値 × その種族の船接触の相対値、α 1）を掛けてから採点する。評価指数・種族優遇（帯）は Map / Setup と共通。保存した組は条件ごとに貯まる。",
+      ref: "4 / 1.5",
     },
     en: {
       title: "Pair suggestion (map + setup)",
-      what: "Pick a direction (map → setup / setup → map) and a criterion to get up to 5 candidates ranked by the criterion. Setups come from random generation or the saved list.",
-      why: "Setup values include the ship interaction (tiles on a ship × the faction's relative scout contact, α 1) before scoring. Weights and preferences are shared with Setup / List.",
-      ref: "4",
+      what: "Pick a direction (map → setup / setup → map) and a criterion to get up to 5 candidates ranked by the criterion. Setups come from random generation or the saved list. Selecting a candidate row shows the board, the layout and the faction totals in Detail.",
+      why: "Setup values include the ship interaction (tiles on a ship × the faction's relative scout contact, α 1) before scoring. Weights and the faction preference (strip) are shared with Map / Setup. Saved pairs are kept per condition.",
+      ref: "4 / 1.5",
     },
   },
-  listCriterion: {
+  pairCriterion: {
     ja: {
       title: "基準",
       what:
-        "1 逆優位 ＝ −(Map 上位 3 種族の Setup 値の和) − 0.2 × 全種族の散らばり。2 上位バランス ＝ −(上位 K ＝ 人数＋2 の散らばり) ＋ 0.3 × (上位の平均 − 残りの平均)。" +
-        "3 全体バランス ＝ −全種族の散らばり。4 優位 ＝ Map 上位 K 種族の Setup 値の平均 − 0.2 × その散らばり。",
-      why: "添え物の係数 0.2 / 0.3 は「主項が同じ候補の順番を決める」程度の目分量（据え置き）。基準 2・3 はマップに依存しないので、マップは条件に合う先頭のものになる。",
-      ref: "4",
+        "2 上位バランス ＝ −(合計 T_f の上位 K ＝ 人数＋2 の散らばり) ＋ 0.3 × (上位の平均 − 残りの平均)。3 全体バランス ＝ −(合計 T_f の全種族の散らばり)。" +
+        "1 逆優位 ＝ −(Map 上位 3 種族の Setup 値の和) − 0.2 × 全種族の散らばり。4 優位 ＝ Map 上位 K 種族の Setup 値の平均 − 0.2 × その散らばり。",
+      why:
+        "合計 T_f ＝ Map × 倍率 ＋ Setup × 倍率（合算比）。基準 2・3 は段階 2（2026-10-17）からマップの内訳があれば合計で測る（それまでは Setup の値だけ）。" +
+        "添え物の係数 0.2 / 0.3 は「主項が同じ候補の順番を決める」程度の目分量（据え置き）。内訳を持たない古いマップでは従来どおり Setup の値だけで測る。",
+      ref: "4 / 1.5",
     },
     en: {
       title: "Criterion",
       what:
-        "1 oppose map = −(sum of setup values of the map's top 3) − 0.2 × spread of all. 2 top balance = −(spread of the top K = players + 2) + 0.3 × (mean of top − mean of rest). " +
-        "3 overall balance = −spread of all. 4 align map = mean setup value of the map's top K − 0.2 × their spread.",
-      why: "The 0.2 / 0.3 side terms only order candidates whose main term ties (kept as is). Criteria 2 and 3 ignore the map, so the first matching map is used.",
-      ref: "4",
+        "2 top balance = −(spread of the top K = players + 2 by total T_f) + 0.3 × (mean of top − mean of rest). 3 overall balance = −(spread of all factions by total T_f). " +
+        "1 oppose map = −(sum of setup values of the map's top 3) − 0.2 × spread of all. 4 align map = mean setup value of the map's top K − 0.2 × their spread.",
+      why:
+        "Total T_f = map × weight + setup × weight (blend). Since stage 2 (2026-10-17) criteria 2 / 3 use the total whenever the map has a breakdown (before: setup values only). " +
+        "The 0.2 / 0.3 side terms only order candidates whose main term ties (kept as is). Old maps without a breakdown fall back to setup values.",
+      ref: "4 / 1.5",
     },
   },
-  listTopColors: {
+  pairTopColors: {
     ja: {
       title: "合計の上位",
       what: "Map ＋ Setup の合計（合算比を掛けたもの）が高い順に、人数＋2 色。同じ色は強い方の種族だけ。",
@@ -278,35 +282,33 @@ const ENTRIES = {
       ref: "4",
     },
   },
-
-  // ---------- Total ----------
-  totalTable: {
+  pairTotal: {
     ja: {
-      title: "種族別総合評価",
+      title: "種族別の合計",
       what:
-        "選んだマップとセットアップで、種族ごとに Map の評価値（Map タブの内訳表のその種族の行）と Setup の評価値（Setup / List と同じ種族スコア。船の相互作用込み）を合算比で足す。",
+        "選んだ組で、種族ごとに Map の評価値（Map タブの内訳表のその種族の行）と Setup の評価値（Setup タブと同じ種族スコア。船の相互作用込み）を合算比で足す。",
       why: "Map と Setup はどちらも種族あたり 100 前後の桁の約束（足して 200 前後）。内訳を持たない古いマップ候補は Map ぶんが 0 になる（Map タブで検索し直すと付く）。",
       ref: "1.2 / 4",
     },
     en: {
-      title: "Total by faction",
+      title: "Totals by faction",
       what:
-        "For the chosen map and setup, adds per faction the map value (that faction's row in the Map tab's breakdown) and the setup value (the same faction score as Setup / List, ship interaction included) using the blend ratio.",
+        "For the selected pair, adds per faction the map value (that faction's row in the Map tab's breakdown) and the setup value (the same faction score as Setup, ship interaction included) using the blend ratio.",
       why: "Map and setup are both meant to be about 100 per faction (about 200 together). Old map candidates without a breakdown get 0 for the map part (re-search on the Map tab to add it).",
       ref: "1.2 / 4",
     },
   },
-  totalBlend: {
+  pairBlend: {
     ja: {
       title: "合算比",
-      what: "合計 ＝ Map × 倍率 ＋ Setup × 倍率。List の種族優遇の掛け先と「合計の上位」にも同じ比が効く。",
+      what: "合計 ＝ Map × 倍率 ＋ Setup × 倍率。基準 2・3 の採点、種族優遇の掛け先、「合計の上位」にも同じ比が効く。",
       why:
         "既定 1:1 は未決。Map の最上位は LF 4人 205 / 3人 186 / 基本版 73（eval_v7 の実測）と版で桁が違い、一律の倍率では LF で Map が支配する。評価値の調整が終わってから決め直す（tuning-guide 1-8）。",
       ref: "4",
     },
     en: {
       title: "Blend",
-      what: "Total = map × weight + setup × weight. The List tab's faction preference and its top-by-total line use the same ratio.",
+      what: "Total = map × weight + setup × weight. Criteria 2 / 3, the faction preference and the top-by-total line use the same ratio.",
       why:
         "The default 1:1 is still open. Top map values differ by mode (LF 4p 205 / 3p 186 / base 73 under eval_v7), so a single multiplier lets the map dominate in Lost Fleet. To be settled once the evaluation constants are tuned (tuning-guide 1-8).",
       ref: "4",

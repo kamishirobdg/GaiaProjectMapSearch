@@ -1,12 +1,10 @@
-import React from "react";
-import TotalView from "@/components/TotalView";
+import { redirect } from "next/navigation";
 
-// タブナビ・人数・拡張・言語は TotalView 内の GlobalBar が担う（全タブ共通の
-// 固定位置に置くため、ページ側では TabNav を出さない）。
-export default function TotalPage() {
-  return (
-    <div style={{ width: "100%", minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
-      <TotalView />
-    </div>
-  );
+// 旧 Total タブは Pair（/pair）の「詳細」へ統合した（段階 2、2026-10-17）。
+export default async function TotalPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const sp = await searchParams;
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) if (typeof v === "string") q.set(k, v);
+  const qs = q.toString();
+  redirect(`/pair${qs ? `?${qs}` : ""}`);
 }
