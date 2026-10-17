@@ -183,6 +183,8 @@
   `pair_saved`。localStorage の旧鍵は起動時に 1 回だけ移行して消す）。**プレイ済み**: 詳細の「プレイ済みにする」→ マップは全バケツで
   使用済み（`setCandidatesUsedByHash`）＋ `pair_maps.played`、セットアップは Setup の候補に記録して使用済み。Pair は使用済みを
   選択肢・一覧・提案・連続探索から除く（「プレイ済みも表示」`gaia_pair_show_played`）。戻すのは Map / Setup タブの使用済み一覧。
+  **v2.3.1**: Pair のマップの選択肢は **いまの `EVAL_VERSION` の結果バケツだけ**（旧バケツのピン留めは出ない）、選択肢の文字の記憶
+  `gaia_list_pair_map_label` は廃止、「ピン解除」（`setCandidatesPinnedByHash`）。
 
 ## 描画とセル座標（2026-07-30 に整理）
 

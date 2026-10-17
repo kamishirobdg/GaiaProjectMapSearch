@@ -76,6 +76,9 @@
   （deployment 7141964245）の success 確認済み。PR #36 は FF push で merged 扱い（次の変更は新しい PR）。**本番を開くと IndexedDB が v11 に
   上がる（別タブで開いたままだと止まる。既存の対策で即失敗して空扱い → タブを閉じて再読み込み）**。次は本番での体感（別の候補の
   選び方、プレイ済みの運用、移行後の順位表）の報告待ち。
+- **同日、38回目の FF push ＝ v2.3.1 · eval_v9（c53614c）**: Pair にだけ出るピン留めマップの対処（選択肢はいまの評価バージョンのバケツ
+  だけ、選択肢の文字の記憶 `gaia_list_pair_map_label` を廃止、「ピン解除」ボタン。設計ノート 1.9 追補）。deployments API で Production
+  （deployment 7142767472）の success 確認済み。FF push が先で main と差分が無くなったため PR は作れなかった（記録はこの行）。
 - **作業ブランチは 2026-10-15 から `claude/gaia-map-project-status-73aeld`**。段階 1 の PR #31 は 32回目の FF push で merged 扱いになり、
   段階 2（v1.9.0）は **draft PR #32**（同じブランチ。FF push のたびに PR が閉じるので、次の段階は新しい PR を作る）。旧 PR #27 / #26 は閉じた。旧 `claude/gaia-map-project-status-adrt1n`
   （PR #26）は同一コミットで引き継いだうえで閉じた（ユーザー確定 (a)）。
