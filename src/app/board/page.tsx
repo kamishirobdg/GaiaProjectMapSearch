@@ -1619,7 +1619,8 @@ try {
     setScoutRadius(D.scoutRadius);
 
     setWColorPref(D.wColorPref);
-    // 種族優遇は探索プロファイル側の設定（Map / Setup / List 共有）なので、ここでは触らない（2026-10-16）。
+    // 種族優遇（探索プロファイル側の設定。Map / Setup / List 共有）も「優遇なし」へ戻す（2026-10-17 ユーザー確定 4）。
+    if (activeSearchProfile) updateSearchProfile(activeSearchProfile.id, { factionPref: {} });
 
     setKeepTop(D.keepTop);
 
@@ -1628,7 +1629,7 @@ try {
     } catch {
       // ignore
     }
-  }, []);
+  }, [activeSearchProfile, ]);
 
 
   const refreshProfiles = React.useCallback(async () => {

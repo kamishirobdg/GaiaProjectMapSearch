@@ -36,6 +36,7 @@ import ConditionBar from "@/components/ConditionBar";
 import {
   bindSetupToActiveProfile,
   DEFAULT_PROFILE_NAME,
+  updateSearchProfile,
   useSearchProfiles,
   type SearchProfileSetup,
 } from "@/lib/searchProfiles";
@@ -189,7 +190,7 @@ const UI = {
     bulkRun: "検索",
     bulkStop: "停止",
     bulkClear: "消去",
-    bulkEmpty: "まだ候補がありません（「検索」で探すか、「ランダム」で 1 件ずつ足す）",
+    bulkEmpty: "まだ候補がありません（「検索」で探す。表示中の配置は「この内容を記録」で足せる）",
     bulkResultHead: "上位",
     bulkScore: "基準値",
     bulkTopFactions: "強い種族",
@@ -292,7 +293,7 @@ const UI = {
     bulkRun: "Search",
     bulkStop: "Stop",
     bulkClear: "Clear",
-    bulkEmpty: "No candidates yet (run a search, or add one at a time with Random)",
+    bulkEmpty: "No candidates yet (run a search; \"Record this\" adds the displayed layout)",
     bulkResultHead: "Top",
     bulkScore: "Score",
     bulkTopFactions: "Strong factions",
@@ -1010,7 +1011,9 @@ export default function SetupView() {
     setTileRules(dtr);
     lsSet(LS.tileRules, JSON.stringify(dtr));
     resetEvalWeights();
-  }, [resetEvalWeights]);
+    // 種族優遇（探索プロファイル側の設定）も「優遇なし」へ戻す（2026-10-17 ユーザー確定 4）。
+    if (activeSearchProfile) updateSearchProfile(activeSearchProfile.id, { factionPref: {} });
+  }, [resetEvalWeights, activeSearchProfile]);
 
   /** 条件の要約（プロファイル一覧の1行に出す）。 */
   const summarizeCondition = React.useCallback(
@@ -1090,11 +1093,10 @@ export default function SetupView() {
     [conditionParams, refreshProfiles]
   );
 
+  // 「ランダム」はシードを引くだけ（2026-10-17 ユーザー確定 6: 1 件ずつの自動保存はしない。保存は「この内容を記録」か候補の行の操作）。
   const handleRoll = React.useCallback(() => {
-    const s = randomSeedString();
-    setSeed(s);
-    recordAndTrack(buildInput(s));
-  }, [buildInput, recordAndTrack]);
+    setSeed(randomSeedString());
+  }, []);
 
   const changeBulkTrials = React.useCallback((v: number) => {
     const n = Math.max(1, Math.min(BULK_TRIALS_MAX, Math.floor(v) || 1));
