@@ -26,6 +26,10 @@
   プロファイル＋帯、優遇を種族優遇 1 つに、Map の検索の優遇項を種族ごとに＝eval_v9、Setup の 候補 / 詳細 / 条件 と検索ワーカー、
   確認事項 7 件の確定ぶん）。ユーザー指示「リリースして段階2へ進んで」。deployments API で Production（deployment 7135465127）の
   success 確認済み。**Map の検索結果は eval_v9 の新バケツ**（旧バケツは「旧バージョンの候補」からコピーで再評価）。
+- **同日、33回目の FF push ＝ v1.9.0 · eval_v9（d48b752。`8809fd6..d48b752` の 7 コミット）**: 段階 2「Pair タブ」（旧 List ＋ Total を
+  候補 / 詳細 / 条件 の型で統合、基準 2・3 は合計 T_f、`/list` `/total` は `/pair` へ）。ユーザー回答「1.9はリリースしてよい」。
+  deployments API で Production（deployment 7135984953）の success 確認済み。PR #32 は FF push で merged 扱い。次は段階 3（v2.0）の
+  提案（`/` を Pair に、両方を探索、上位 K × L の総当たり）と、Pair のピン留め一覧の削除（3-a）の確認待ち。
 - **2026-10-16 夜、UI の再設計（ユーザー確定 A-(a) / B-(a) / C-(a) / D-(a)）の段階 1 を作業ブランチで実装（v1.8.0、本番は未デプロイ。
   設計ノート 1.4）**: 探索プロファイル（`src/lib/searchProfiles.ts`）＋ 共通バー直下の「探索条件」の帯（`ConditionBar.tsx`、
   4 画面）、優遇を種族優遇 1 つに（Map は導出、Setup は `SETUP_FACTION_PREF_W` 0.15 仮置き、List は従来の係数）、Setup の左ペインを
