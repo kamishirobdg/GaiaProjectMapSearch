@@ -47,6 +47,9 @@
   Pair のピン留め一覧は削除（3-(a)）、Setup の既定件数 5000。ユーザー確認「実装が終わったものはそのまま本番リリースしてよい」
   → 以後はプレビュー確認を待たずに検証のうえ FF push する（設計ノート 1.6「運用」）。ヘッドレス Chromium で `/` のタブ順、
   両方を探索（Map `[worker]` → Setup `[worker]` → 組を採点、候補 10 組、詳細の合計表）、`/pair?x=2` → `/?x=2` を確認済み。
+- **同日、34回目の FF push ＝ v2.0.0 · eval_v9（c94d5ac。`e311683..c94d5ac` の 3 コミット）**: 段階 3。deployments API で Production
+  （deployment 7136118461）の success 確認済み。PR #33 は FF push で merged 扱い。**UI の再設計（段階 1〜3）はここまで**。
+  次は本番での体感（両方を探索の件数・K・L、Setup 既定 5000）と評価値の調整の報告待ち。
 - **作業ブランチは 2026-10-15 から `claude/gaia-map-project-status-73aeld`**。段階 1 の PR #31 は 32回目の FF push で merged 扱いになり、
   段階 2（v1.9.0）は **draft PR #32**（同じブランチ。FF push のたびに PR が閉じるので、次の段階は新しい PR を作る）。旧 PR #27 / #26 は閉じた。旧 `claude/gaia-map-project-status-adrt1n`
   （PR #26）は同一コミットで引き継いだうえで閉じた（ユーザー確定 (a)）。
