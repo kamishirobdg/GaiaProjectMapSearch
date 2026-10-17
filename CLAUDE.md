@@ -10,7 +10,9 @@
 - **ブランチ作成前に必ず `cd /c/work/GaiaProjectMapSearch && pwd` でCWD確認**
   （シェルCWDが C:\work に戻り、外側リポジトリに迷いブランチを作る事故が複数回発生）。
 - 毎コミット: `npm run typecheck`（0件）/ `npm run lint`（エラー0）/ `npm test`（全緑）。
-- `git push` は Vercelデプロイを意味する。**指示があるまで push しない**。
+- `git push` は Vercelデプロイを意味する。**2026-10-17 から: 実装が終わったものは検証（typecheck / lint / test ＋ ヘッドレス）のうえ
+  本番へ FF push してよい**（ユーザー確認。設計ノート 1.6「運用」）。評価の意味が変わる変更（`EVAL_VERSION`）と挙動が変わる仕様の
+  選択肢の提示は従来どおり。
 - 挙動が変わる仕様は、実装前に選択肢を提示して確定してから着手。
 - **版**（2026-10-05 ユーザー確定、案B）: 本番へ出すときは `package.json` の version を上げる
   （評価の意味が変わる・機能追加は2桁目、表示やドキュメントだけなら3桁目）。版の目印は「chore: vX.Y.Z」の
@@ -155,8 +157,14 @@
   （保存済み条件・評価指数・合算比）。狭い幅はタブ `gaia_pair_narrow_tab`。**基準 2・3 はマップの内訳があれば合計 T_f で測る**
   （`pairPlan.ts` `usesTotalBasis` / `totalScoresOf`、`recommendSetups` の `criterionScores`。内訳の無い旧候補は Setup の値）。既定の
   基準は 2 上位バランス。旧 List の提案ログは廃止、保存した組は旧キー `gaia_list_proposals_v2` を継承。`/list` `/total` は `/pair` へ
-  リダイレクト（共有 URL の引数は保持）。TabNav は Map / Setup / Pair / Manual。次は段階 3（v2.0）: `/` を Pair に、タブ順
-  Pair / Map / Setup / Manual、Pair から両方の検索を一括実行（ユーザー確定 D-(a)）。
+  リダイレクト（共有 URL の引数は保持）。
+- **Pair がトップ、「両方を探索」（2026-10-17、v2.0.0。段階 3、設計ノート 1.6）**: `/` が Pair（`/pair` `/list` `/total` は `/` へ）。タブ順
+  Pair / Map / Setup / Manual。「両方を探索」は探索プロファイルの Map 部 / Setup 部の条件で Map の検索（`runSearchOffThread`、件数は
+  Map タブの `gaia_search_trials`）→ `src/lib/mapSearchSave.ts` で Map の結果バケツへ → Setup の検索（`runSetupSearch`、件数は
+  `gaia_setup_bulk_trials`、既定 5000 / 上限 20000）→ `mergeRanking` → `src/lib/pairSearch.ts` `scorePairs`（Map 上位 K × Setup 上位 L、
+  既定 20 × 20、上限 50、上位 10 組）。Map の件数は 30000 のまま（制約を通る盤面が 0.1〜0.2%。5000 では材料不足）。
+  **運用**: 実装が終わったものは typecheck / lint / test ＋ ヘッドレス確認のうえ、プレビュー確認を待たずに本番へ FF push してよい
+  （2026-10-17 ユーザー確認。作業ブランチの push と下書き PR は記録のために続ける）。
 
 ## 描画とセル座標（2026-07-30 に整理）
 
