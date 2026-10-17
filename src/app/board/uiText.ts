@@ -68,6 +68,7 @@ export const UI_TEXT = {
 
     trials: "Trials",
     topK: "Top-K",
+    capacity: "Stored",
     totalSearched: "totalSearched",
     speed: "speed",
     eta: "eta",
@@ -279,6 +280,7 @@ scoutCoreAttribBest: "ScoutCore attribution: best",
 
     trials: "検索件数",
     topK: "表示件数",
+    capacity: "保存数",
     totalSearched: "総検索数",
     speed: "速度",
     eta: "残り時間",

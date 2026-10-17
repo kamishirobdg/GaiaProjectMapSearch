@@ -96,6 +96,13 @@ import {
   idbDeleteByIds,
   STORE_CANDIDATES,
   STORE_PROFILES,
+  slimEvaluation,
+  readMapCapacity,
+  LS_MAP_CAPACITY,
+  MAP_CAPACITY_DEFAULT,
+  MAP_CAPACITY_MIN,
+  MAP_CAPACITY_MAX,
+  SEARCH_RESULT_KEEP_MAX,
 } from "./persistence";
 
 import { UI_TEXT, type Lang, type UiKey } from "./uiText";
@@ -708,7 +715,7 @@ React.useEffect(() => {
       score,
       rankValue,
       placement: row.placement ?? [],
-      evaluation: row.evaluation ?? null,
+      evaluation: slimEvaluation(row.evaluation ?? null),
       used: usedKey === 1,
       usedKey: usedKey === 1 ? 1 : 0,
       usedAt: row.usedAt ? Number(row.usedAt) : undefined,
@@ -1159,6 +1166,8 @@ return (savedProfiles ?? []).filter((p) => {
 
   const [trials, setTrials] = React.useState(30000);
   const [keepTop, setKeepTop] = React.useState(DEFAULT_CONDITIONS.keepTop);
+  /** 結果バケツの容量（localStorage、既定 1000。v2.2.0） */
+  const [mapCapacity, setMapCapacity] = React.useState(MAP_CAPACITY_DEFAULT);
 
   // trials is an execution setting (excluded from searchKeyParams / saved profiles),
   // so it needs its own persistence like seedMode. Read on mount to avoid hydration mismatch.
@@ -1199,6 +1208,7 @@ return (savedProfiles ?? []).filter((p) => {
     try {
       if (localStorage.getItem("gaia_board_keep_awake") === "0") setKeepAwake(false);
     } catch {}
+    setMapCapacity(readMapCapacity());
   }, []);
   React.useEffect(() => {
     let cancelled = false;
@@ -1389,7 +1399,7 @@ setSelectedSeedLabel(String(found.seed ?? ""));
   }, [template, which]);
 
   // Active (unused) persistence capacity per spec: max(TopK, 100).
-  const capacityActive = React.useMemo(() => Math.max(keepTop, 100), [keepTop]);
+  const capacityActive = React.useMemo(() => Math.max(keepTop, mapCapacity), [keepTop, mapCapacity]);
 
   const didAutoApplyRef = React.useRef(false);
 
@@ -2004,8 +2014,9 @@ const displayResult = currentResult ?? lastShownResultRef.current;
  */
 const displayBreakdown = React.useMemo(() => {
   const b: any = getBreakdown(displayResult);
-  if (!b) return null;
-  const a = b.audit ?? {};
+  // v2.2.0 からの保存は内訳を持たない（配置とスコアだけ）。表示中の盤面があれば配置から評価し直す
+  if (!b && !displayResult) return null;
+  const a = b?.audit ?? {};
   const needsShipId =
     (a.scout?.scoutHits?.length ?? 0) > 0 && a.scout.scoutHits[0]?.scoutId === undefined;
   const needsCoreShip =
@@ -2288,7 +2299,8 @@ async function handleGenerateRank() {
     // runs in the worker or (via fallback) on the main thread.
     const searchOptions = {
       trials,
-      keepTop: capacityActive,
+      // ワーカーが返す上位は内訳込み（1 件 270KB）なので容量（1000）とは別に抑える。バケツへは検索のたびにマージして積む
+      keepTop: Math.min(capacityActive, SEARCH_RESULT_KEEP_MAX),
       seedStart,
       yieldEvery: 50,
       // base_34p: 配置方法を渡す（LFでは省略）。H4/H5探査船は base では常に無効
@@ -2420,7 +2432,7 @@ async function handleGenerateRank() {
       score: Number((r as any).score ?? 0),
       rankValue: -Number((r as any).score ?? 0),
       placement: (r as any).placement ?? [],
-      evaluation: (r as any).evaluation ?? null,
+      evaluation: slimEvaluation((r as any).evaluation ?? null),
       used: false,
       usedKey: 0,
       createdAt: now,
@@ -2507,7 +2519,7 @@ async function handleGenerateRank() {
             return {
               score: ev.score,
               rankValue: -ev.score,
-              evaluation: { ...(c.evaluation ?? {}), score: ev.score, breakdown: ev.breakdown },
+              evaluation: slimEvaluation({ ...(c.evaluation ?? {}), score: ev.score, breakdown: ev.breakdown }),
             };
           } catch {
             return {};
@@ -3664,6 +3676,26 @@ const handleDeleteUsed = React.useCallback(
                   min={1}
                   max={200}
                   onChange={(e) => setKeepTop(Math.max(1, Math.min(200, Number(e.target.value) || 1)))}
+                  style={{ width: 80 }}
+                />
+              </label>
+
+              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span>{t("capacity")}</span>
+                <Help k="capacity" lang={lang} />
+                <input
+                  type="number"
+                  value={mapCapacity}
+                  min={MAP_CAPACITY_MIN}
+                  max={MAP_CAPACITY_MAX}
+                  step={100}
+                  onChange={(e) => {
+                    const v = Math.max(MAP_CAPACITY_MIN, Math.min(MAP_CAPACITY_MAX, Math.floor(Number(e.target.value)) || MAP_CAPACITY_MIN));
+                    setMapCapacity(v);
+                    try {
+                      localStorage.setItem(LS_MAP_CAPACITY, String(v));
+                    } catch {}
+                  }}
                   style={{ width: 80 }}
                 />
               </label>

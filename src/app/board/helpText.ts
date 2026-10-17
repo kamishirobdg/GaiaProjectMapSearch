@@ -43,6 +43,24 @@ const ENTRIES = {
       why: "Default 20. Results accumulate per condition; the lowest are trimmed beyond capacity. Pinned maps are never trimmed.",
     },
   },
+  capacity: {
+    ja: {
+      title: "保存数",
+      what: "条件ごとの結果バケツに残す盤面の数（スコア上位から。ピン留めは整理の対象外）。検索のたびにマージして積み上がる。",
+      why:
+        "既定 1000（100〜5000）。v2.2.0 から保存するのは配置とスコアと小さな集計だけ（1 盤面 3KB 前後）で、内訳表・マーカー・Pair の種族ごとの値は" +
+        "盤面から評価し直す（1 盤面 0.5ms）。以前の形（内訳込み 270KB）のままでは 1000 盤面で 270MB になるため。Pair の連続探索はこのバケツの上位 K 枚を使う。",
+      ref: "1.8",
+    },
+    en: {
+      title: "Stored",
+      what: "How many boards the per-condition bucket keeps (best scores first; pinned boards are never trimmed). Each search merges into it.",
+      why:
+        "Default 1000 (100–5000). Since v2.2.0 only the placement, score and small totals are stored (about 3 KB per board); the breakdown table, markers and Pair's per-faction values are re-evaluated from the board (0.5 ms each). " +
+        "The old form (270 KB with breakdown) would reach 270 MB at 1000 boards. Pair's continuous search takes the top K of this bucket.",
+      ref: "1.8",
+    },
+  },
   keepAwake: {
     ja: {
       title: "検索中は画面を消さない",

@@ -4,7 +4,7 @@
 // IndexedDB を伴う関数はブラウザ専用のため対象外。
 
 import { describe, expect, it } from "vitest";
-import { mergeCandidates, type PersistedCandidate } from "./persistence";
+import { hasFactionBreakdown, mergeCandidates, slimEvaluation, type PersistedCandidate } from "./persistence";
 
 const SK = "sk";
 
@@ -63,5 +63,45 @@ describe("mergeCandidates pinning", () => {
     const merged = mergeCandidates(SK, [], used, [], 5);
     expect(merged.used[0].pinned).toBe(true);
     expect(merged.used[0].pinnedAt).toBe(3);
+  });
+});
+
+describe("slimEvaluation（v2.2.0: 配置とスコアだけ保存）", () => {
+  it("重い明細（debug / audit.startAccess / ヒット座標）を落とし、一覧に要る集計は残す", () => {
+    const ev = {
+      total: 5,
+      breakdown: {
+        planetTypeTotals: { red: 1 },
+        imbalance: { metric: "std", value: 2 },
+        axesByType: { scout: { red: 1 } },
+        factionPreference: 0,
+        debug: { big: "x".repeat(100) },
+        audit: {
+          outerCountByType: { red: 1 },
+          touchCountByType: { red: 0 },
+          rimGap: { total: 1 },
+          startAccess: { byFaction: { terrans: { total: 9, planets: ["p"] } } },
+          outerHits: [1],
+          touchHits: [2],
+          scout: { radius: 3, scoutPlanetCount: 4, scoutHits: [{ scoutId: "a" }] },
+          scoutCore: { coreHits: [1] },
+        },
+      },
+    };
+    const slim = slimEvaluation(ev);
+    expect(slim.total).toBe(5);
+    expect(slim.breakdown.planetTypeTotals).toEqual({ red: 1 });
+    expect(slim.breakdown.imbalance.value).toBe(2);
+    expect(slim.breakdown.debug).toBeUndefined();
+    expect(slim.breakdown.audit.startAccess).toBeUndefined();
+    expect(slim.breakdown.audit.outerHits).toBeUndefined();
+    expect(slim.breakdown.audit.scoutCore).toBeUndefined();
+    expect(slim.breakdown.audit.scout).toEqual({ radius: 3, scoutPlanetCount: 4 });
+    expect(slim.breakdown.audit.outerCountByType).toEqual({ red: 1 });
+    expect(hasFactionBreakdown(ev)).toBe(true);
+    expect(hasFactionBreakdown(slim)).toBe(false);
+    // 元のオブジェクトは変えない
+    expect(ev.breakdown.audit.startAccess).toBeDefined();
+    expect(slimEvaluation(null)).toBeNull();
   });
 });

@@ -10,7 +10,7 @@
 import { buildLogicalMapFromPlacement } from "@/gaia/logicalMap/buildLogicalMap";
 import { extractForEval } from "@/gaia/eval/extractForEval";
 import { evaluateSoft } from "@/gaia/eval/evaluateSoft";
-import { EVAL_VERSION, type PersistedCandidate, type PersistedProfile } from "@/app/board/persistence";
+import { EVAL_VERSION, hasFactionBreakdown, type PersistedCandidate, type PersistedProfile } from "@/app/board/persistence";
 
 /** 条件プロファイルを持たない候補（古い保存）の評価に使う既定（/board の DEFAULT_CONDITIONS と同じ値） */
 export const DEFAULT_MAP_HARD = { minSameColorDist: 3, outerSameColorMax: 1, centerMode: "NONE" } as const;
@@ -44,12 +44,13 @@ export function evaluatePlacement(templateId: string, placement: any[], hard?: a
 }
 
 /**
- * 候補の評価（score と breakdown）。条件プロファイルの evalVersion がいまと同じなら保存された評価をそのまま、
- * 違う（または無い）ならその条件で評価し直す。評価し直せないときは保存された評価にフォールバック。
+ * 候補の評価（score と breakdown）。条件プロファイルの evalVersion がいまと同じで、保存された内訳が種族ごとの値を持って
+ * いればそのまま。違う（または v2.2.0 以降の軽い保存で内訳を持たない）ならその条件で評価し直す。評価し直せないときは
+ * 保存された評価にフォールバック。
  */
 export function evaluationOfCandidate(c: PersistedCandidate, profile: PersistedProfile | undefined, templateId: string, cache: MapEvalCache): MapEvaluation {
   const stored: MapEvaluation = { score: Number(c.score ?? 0), breakdown: c.evaluation?.breakdown ?? null, reevaluated: false };
-  if (profile?.evalVersion === EVAL_VERSION && stored.breakdown) return stored;
+  if (profile?.evalVersion === EVAL_VERSION && hasFactionBreakdown(c.evaluation)) return stored;
   const key = `${templateId}|${String(c.placementHash ?? c.id)}`;
   if (cache.has(key)) return cache.get(key) ?? stored;
   const params = (profile?.params ?? null) as { hard?: unknown; soft?: unknown } | null;

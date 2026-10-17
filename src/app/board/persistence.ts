@@ -90,6 +90,61 @@ export type PersistedProfile = {
   copiedFromKeys?: string[] | null;
 };
 
+/**
+ * 結果バケツに保存する評価を軽くする（2026-10-17、v2.2.0。ユーザー確定「配置とスコアだけ保存して内訳は再評価」）。
+ * 検索結果の内訳は 1 盤面 270KB（4p LF。9 割が種族ごと・惑星ごとの明細 audit.startAccess とマーカー用のヒット座標）で、
+ * 容量を 1000 にすると Pair が全候補を読むたびに 270MB になるので、保存するのは一覧の行に要る小さな集計だけ
+ * （planetTypeTotals / imbalance / axesByType / factionPreference と audit の件数系）。内訳表・マーカー・Pair の種族ごとの値は
+ * 配置から評価し直して得る（Map タブは displayBreakdown、Pair は src/lib/mapEvaluate.ts。1 盤面 0.5ms）。
+ * 保存後の 1 候補は 3KB 前後。
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function slimEvaluation(evaluation: any): any {
+  if (!evaluation || typeof evaluation !== "object") return evaluation ?? null;
+  const bd = evaluation.breakdown;
+  if (!bd || typeof bd !== "object") return evaluation;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { debug: _d, audit, ...rest } = bd;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let slimAudit: any = undefined;
+  if (audit && typeof audit === "object") {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { startAccess: _s, outerHits: _o, touchHits: _t, scoutCore: _c, scout, ...auditRest } = audit;
+    slimAudit = { ...auditRest };
+    if (scout && typeof scout === "object") {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { scoutHits: _h, ...scoutRest } = scout;
+      slimAudit.scout = scoutRest;
+    }
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { audit: _ea, ...evRest } = evaluation;
+  return { ...evRest, breakdown: { ...rest, ...(slimAudit ? { audit: slimAudit } : {}) } };
+}
+
+/** 保存された評価が種族ごとの値（Pair の Map の値・船の相互作用の材料）を持っているか */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function hasFactionBreakdown(evaluation: any): boolean {
+  const bf = evaluation?.breakdown?.audit?.startAccess?.byFaction;
+  return !!bf && typeof bf === "object" && Object.keys(bf).length > 0;
+}
+
+/** 結果バケツの容量（条件ごとの active の上限。ピン留めは整理の対象外）。2026-10-17 v2.2.0、既定 100 → 1000 */
+export const LS_MAP_CAPACITY = "gaia_map_capacity";
+export const MAP_CAPACITY_DEFAULT = 1000;
+export const MAP_CAPACITY_MIN = 100;
+export const MAP_CAPACITY_MAX = 5000;
+/** ワーカーが 1 回の検索で返す上位の数（内訳込みなので容量とは別に抑える。制約を通る盤面は 30000 件で 60〜200） */
+export const SEARCH_RESULT_KEEP_MAX = 200;
+export function readMapCapacity(): number {
+  try {
+    const v = Number(localStorage.getItem(LS_MAP_CAPACITY));
+    return Number.isFinite(v) && v >= MAP_CAPACITY_MIN ? Math.min(MAP_CAPACITY_MAX, Math.floor(v)) : MAP_CAPACITY_DEFAULT;
+  } catch {
+    return MAP_CAPACITY_DEFAULT;
+  }
+}
+
 export const IDB_NAME = "gaia_map_cache";
 // v5: setups store added (setup-side saved list; see src/lib/setupHistory.ts).
 // v6: Setup/List も Map と同じ「条件プロファイル + 条件ごとの結果バケツ」構造へ
