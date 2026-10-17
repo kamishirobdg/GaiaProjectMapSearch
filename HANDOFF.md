@@ -50,6 +50,12 @@
 - **同日、34回目の FF push ＝ v2.0.0 · eval_v9（c94d5ac。`e311683..c94d5ac` の 3 コミット）**: 段階 3。deployments API で Production
   （deployment 7136118461）の success 確認済み。PR #33 は FF push で merged 扱い。**UI の再設計（段階 1〜3）はここまで**。
   次は本番での体感（両方を探索の件数・K・L、Setup 既定 5000）と評価値の調整の報告待ち。
+- **同日、v2.1.0（設計ノート 1.7）**: ユーザー報告 3 件への対応。(1) Pair の Map の値は候補の条件プロファイルの evalVersion が古ければ
+  表示時に評価し直す（`src/lib/mapEvaluate.ts`。原因は eval_v4 以前の内訳に種族ごとの値が無く色の値で代用されていたこと）、Setup の差は
+  船の相互作用（合計表に「船」列）。(2)「連続で探索」: Map の検索 → 上位 K 枚ごとに Setup を 1 マップあたり N 件（既定 10 万）マップに
+  合わせて採点（ワーカー `pairWith`）→ 上位 L 件を順位表（`pairRanking.ts`、条件ごと 50 組、localStorage）へ、を停止まで繰り返す。
+  (3) Map タブに候補が無いのは eval_v9 の新バケツが空なだけ（旧バケツは「旧バージョンの候補」からコピー）。ヘッドレスで 2 周 →
+  停止 → 順位表 50 組 → 再読込後も残ることを確認済み。
 - **作業ブランチは 2026-10-15 から `claude/gaia-map-project-status-73aeld`**。段階 1 の PR #31 は 32回目の FF push で merged 扱いになり、
   段階 2（v1.9.0）は **draft PR #32**（同じブランチ。FF push のたびに PR が閉じるので、次の段階は新しい PR を作る）。旧 PR #27 / #26 は閉じた。旧 `claude/gaia-map-project-status-adrt1n`
   （PR #26）は同一コミットで引き継いだうえで閉じた（ユーザー確定 (a)）。
