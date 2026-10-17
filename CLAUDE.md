@@ -61,8 +61,8 @@
 - **eval_v8（2026-10-08、v1.6.0。作業ブランチ、本番は v1.5.0）**: ダー・シュワーム人の開始地点（惑星首府 1 つ）の
   値 × 1.5（`BASIC_REACH_PROFILES.ivits.startValueScale`、`planStarts` の開始地点の重みに入る。調整必須の
   マジックナンバー）。内訳表の種別セルのマーカーは到達コスト ≦ 3 の惑星だけ（`MARKER_MAX_REACH_COST`。2026-10-09 に 2 → 3）。
-  **船の相互作用**（`src/gaia/eval/shipInteraction.ts`、α 1 ＝ 掛け算、**種族ごとの船接触 (ii-f)**。2026-10-09）: List のセット提案の
-  採点と Total の Setup 列で、船 s に乗るタイルの種族別の値を、その種族の船接触 C_{s,f}（船の近くの惑星の到達係数 × 船接触）の
+  **船の相互作用**（`src/gaia/eval/shipInteraction.ts`、α 1 ＝ 掛け算、**種族ごとの船接触 (ii-f)**。2026-10-09）: Pair（旧 List ＋ Total）の組の提案の
+  採点と合計表の Setup 列で、船 s に乗るタイルの種族別の値を、その種族の船接触 C_{s,f}（船の近くの惑星の到達係数 × 船接触）の
   相対値で増減する。検索には入れない。加点は Setup の値の 2.5%、合計の上位の顔ぶれが変わる組 23%。α と尺度は本番の体感で
   調整する第一候補（`docs/tuning-guide.md`）。
 - **画面と検索の実行（2026-10-10〜11、v1.6.1〜v1.6.7。評価値は不変）**: 狭い幅（1180px 未満）は盤面の下が「候補 / 詳細 / 条件」の
@@ -74,7 +74,7 @@
 - **項目の説明は「?」の小窓（2026-10-15、v1.6.8）**: `src/components/ui/HelpPopover.tsx`（共通部品）＋ Map の文言
   `src/app/board/helpText.ts`（何を測るか／既定値の根拠／設計ノートの節。ja / en）。**title ツールチップはタッチ端末で出ない**ので
   項目の説明には使わない（操作のヒントとセルのホバーは title のまま）。内訳表の列見出しは「?」を足さず文字をトリガーに
-  （狭い幅で表を広げない）。**定数や既定値を変えたら helpText の数字も直す**（自動では埋めていない）。Setup / List / Total の文言は
+  （狭い幅で表を広げない）。**定数や既定値を変えたら helpText の数字も直す**（自動では埋めていない）。Setup / Pair の文言は
   `src/components/helpText.ts`（「?」は `FactionEvalPanel.tsx` の `SharedHelp`。v1.6.9）。評価表の列見出しはクリックでマークするので
   title のまま。**アプリ内マニュアル `/manual`**（2026-10-16、v1.7.0 → v1.7.2。共通バーの「Manual」タブ、日英、5 章）は
   `src/components/manualContent.ts` が本文、`ManualView.tsx` が描画。**マニュアルは「使い方と設定項目（既定値・意味・注意）」だけ。
@@ -108,7 +108,7 @@
   `window.requestAnimationFrame = cb => setTimeout(() => cb(performance.now()), 16)`
   スクリーンショットはタイムアウトするため read_page / JS評価で検証する。
 - **ユーザーに確認を依頼するときは、回答する前に devサーバを起動しておく**（毎回）。
-- 埋め込みブラウザには**ピン留めマップ・保存セットアップが無い**。List のセット提案や
+- 埋め込みブラウザには**ピン留めマップ・保存セットアップが無い**。Pair の組の提案や
   Setup の保存リストは空状態しか再現できないので、実データ確認はユーザーに依頼する。
 - 検索は件数を絞らないと埋め込みブラウザでは終わらない（30000→400程度）。ただし件数を
   絞ると制約を満たす結果が0件になることがある。結果が要るときは
@@ -125,11 +125,11 @@
   待っても Etag が変わらないのに、バンドルは差し替わっている。ブラウザで実際の DOM を
   見て判定すること。
 
-## Setup/List の構造（2026-07-30 に整理）
+## Setup / Pair の構造（2026-07-30 に整理。List ＋ Total は 2026-10-17 に Pair へ）
 
 - **3タブとも「条件プロファイル ＋ 条件ごとの結果バケツ」**で揃えてある。
   Map=`profiles`/`candidates`、Setup=`setup_profiles`/`setups`、
-  List=`list_profiles`＋localStorage。共通部品は `src/lib/conditionProfiles.ts` と
+  Pair（旧 List）=`list_profiles`＋localStorage。共通部品は `src/lib/conditionProfiles.ts` と
   `src/components/ConditionProfilesPanel.tsx`。
 - **条件プロファイルのキーは評価指数まで含む**が、**結果バケツのキーは
   セットアップの設定だけ**。生成される中身は評価指数に依存しないので、
@@ -143,13 +143,20 @@
   `openDb` に `onversionchange`（接続を手放す）と `onblocked`（即失敗）を入れてある。
 - **探索プロファイル（2026-10-16、v1.8.0。段階 1「条件の統一」、設計ノート 1.4）**: `src/lib/searchProfiles.ts`（localStorage）が
   種族優遇＋Map の searchKey＋Setup の conditionKey を束ねる索引。**結果バケツの鍵は変えない**。共通バー直下の帯は
-  `src/components/ConditionBar.tsx`（Map / Setup / List / Total）。検索の実行でその側の条件を自動登録（`bindMapToActiveProfile` /
+  `src/components/ConditionBar.tsx`（Map / Setup / Pair）。検索の実行でその側の条件を自動登録（`bindMapToActiveProfile` /
   `bindSetupToActiveProfile`）。優遇は種族優遇 1 つ: **Map は eval_v9（2026-10-17 ユーザー確定 3-(b)）から種族ごとの値に掛ける**
   （検索キーは `soft.wFactionPref` / `soft.factionPref`。eval_v8 までの色ごと `wColorPref` / `colorPrefByType` は廃止、既存の結果は
-  保持しない）、Setup の検索は `SETUP_FACTION_PREF_W`（0.15）、List は `LIST_FACTION_PREF_W`（0.15）。3 つの係数は据え置き
+  保持しない）、Setup の検索は `SETUP_FACTION_PREF_W`（0.15）、Pair は `LIST_FACTION_PREF_W`（0.15）。3 つの係数は据え置き
   （2026-10-17 ユーザー確定 2-(a)。再実測は評価値の調整後）。旧 `gaia_setup_color_pref` / `gaia_list_faction_pref` は読まない。Setup の左ペインは Map と同じ 候補 / 詳細 / 条件（`gaia_setup_narrow_tab`）で、検索は
   `src/workers/setupSearch.worker.ts` ＋ `src/lib/setupSearchRunner.ts`（採点は `setupSearchCore.searchChunk` で共通）。
-  確認事項 7 件は 2026-10-17 に全件確定（設計ノート 1.4 末尾）。次は Pair タブ（v1.9）→ Pair をトップに（v2.0）。
+  確認事項 7 件は 2026-10-17 に全件確定（設計ノート 1.4 末尾）。
+- **Pair タブ（2026-10-17、v1.9.0。段階 2、設計ノート 1.5）**: `src/components/PairView.tsx`（`/pair`）が旧 List ＋ Total。
+  候補（組の提案＋候補一覧: 提案・保存した組・共有された組を 1 表に）/ 詳細（盤面・配置・`TotalTable.tsx` の種族別合計表）/ 条件
+  （保存済み条件・評価指数・合算比）。狭い幅はタブ `gaia_pair_narrow_tab`。**基準 2・3 はマップの内訳があれば合計 T_f で測る**
+  （`pairPlan.ts` `usesTotalBasis` / `totalScoresOf`、`recommendSetups` の `criterionScores`。内訳の無い旧候補は Setup の値）。既定の
+  基準は 2 上位バランス。旧 List の提案ログは廃止、保存した組は旧キー `gaia_list_proposals_v2` を継承。`/list` `/total` は `/pair` へ
+  リダイレクト（共有 URL の引数は保持）。TabNav は Map / Setup / Pair / Manual。次は段階 3（v2.0）: `/` を Pair に、タブ順
+  Pair / Map / Setup / Manual、Pair から両方の検索を一括実行（ユーザー確定 D-(a)）。
 
 ## 描画とセル座標（2026-07-30 に整理）
 
