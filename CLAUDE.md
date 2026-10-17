@@ -177,6 +177,12 @@
   **結果バケツは配置とスコアと小さな集計だけ保存**（`persistence.slimEvaluation`、1 盤面 4KB。内訳表・マーカー・Pair の種族ごとの値は
   盤面から再評価）、容量は Map タブの「保存数」（`gaia_map_capacity`、既定 1000）。ワーカーの返す上位は `SEARCH_RESULT_KEEP_MAX`（200）。
   候補一覧は全行をいまの基準で採点し直して順位で並べる（`pairScore.scorePairOf` が組の基準値の唯一の式）。「船」列は廃止（脚注だけ）。
+- **v2.3.0（2026-10-17、設計ノート 1.9。ユーザー確定「推奨」）**: 候補一覧は **主**（マップ → セットアップならマップ、逆ならセットアップ）
+  ごとに 1 行（最良の相手、「+n」）、詳細で別の相手を選ぶ（`groupPairRows`）。順位表は向きごと・主ごと上位 10 組・主 50 件。
+  **Pair の保存は IndexedDB v11**（`src/lib/pairRanking.ts`: `pair_maps`（配置はトークンで 1 回、`played`）/ `pair_rows` / `pair_explored` /
+  `pair_saved`。localStorage の旧鍵は起動時に 1 回だけ移行して消す）。**プレイ済み**: 詳細の「プレイ済みにする」→ マップは全バケツで
+  使用済み（`setCandidatesUsedByHash`）＋ `pair_maps.played`、セットアップは Setup の候補に記録して使用済み。Pair は使用済みを
+  選択肢・一覧・提案・連続探索から除く（「プレイ済みも表示」`gaia_pair_show_played`）。戻すのは Map / Setup タブの使用済み一覧。
 
 ## 描画とセル座標（2026-07-30 に整理）
 

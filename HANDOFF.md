@@ -67,6 +67,11 @@
 - **同日、36回目の FF push ＝ v2.2.0 · eval_v9（ea74d69。`96269d4..ea74d69` の 3 コミット）**: 上の 5 件。deployments API で Production
   （deployment 7141345338）の success 確認済み。PR #35 は FF push で merged 扱い（次の変更は新しい PR）。次は本番での体感（保存数 1000
   の読み込み、順位表の並び、セットアップ → マップの使い勝手）の報告待ち。
+- **同日、v2.3.0（設計ノート 1.9。ユーザー確定「推奨」「どちらも推奨」）**: 候補一覧は主（マップ → セットアップならマップ、逆なら
+  セットアップ）ごとに 1 行＋詳細で別の相手を選ぶ。順位表は向きごと・主ごと上位 10 組・主 50 件。Pair の保存を IndexedDB v11 へ
+  （`pair_maps` / `pair_rows` / `pair_explored` / `pair_saved`。配置はトークンで 1 回、1 組 250 バイト。localStorage の旧鍵は起動時に
+  移行して消す）。プレイ済み（詳細の「プレイ済みにする」→ Map / Setup タブの使用済み、Pair からは除外、「プレイ済みも表示」）。
+  ヘッドレスで移行・主ごとの一覧・プレイ済みを確認済み。
 - **作業ブランチは 2026-10-15 から `claude/gaia-map-project-status-73aeld`**。段階 1 の PR #31 は 32回目の FF push で merged 扱いになり、
   段階 2（v1.9.0）は **draft PR #32**（同じブランチ。FF push のたびに PR が閉じるので、次の段階は新しい PR を作る）。旧 PR #27 / #26 は閉じた。旧 `claude/gaia-map-project-status-adrt1n`
   （PR #26）は同一コミットで引き継いだうえで閉じた（ユーザー確定 (a)）。
