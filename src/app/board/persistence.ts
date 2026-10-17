@@ -526,6 +526,18 @@ export async function setCandidatesUsedByHash(placementHash: string, used: boole
   return rows.length;
 }
 
+/** 配置ハッシュが一致する候補のピン留めを全バケツで付け外しする（Pair の「ピン解除」。v2.3.1） */
+export async function setCandidatesPinnedByHash(placementHash: string, pinned: boolean): Promise<number> {
+  const db = await openDb();
+  const all = await idbGetAllFromStore<PersistedCandidate>(db, STORE_CANDIDATES);
+  const now = Date.now();
+  const rows = all
+    .filter((c) => String(c.placementHash ?? "") === placementHash && Boolean(c.pinned) !== pinned)
+    .map((c) => ({ ...c, pinned, ...(pinned ? { pinnedAt: now } : {}), updatedAt: now } as PersistedCandidate));
+  await idbPutAll(db, STORE_CANDIDATES, rows);
+  return rows.length;
+}
+
 export function stableStringify(x: any): string {
   if (x === null || typeof x !== "object") return JSON.stringify(x);
   if (Array.isArray(x)) return "[" + x.map(stableStringify).join(",") + "]";

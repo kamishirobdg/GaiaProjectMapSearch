@@ -36,9 +36,11 @@ import {
   STORE_CANDIDATES,
   STORE_LIST_PROFILES,
   isDbUpgradeBlocked,
+  EVAL_VERSION,
   loadFromDb,
   readMapCapacity,
   SEARCH_RESULT_KEEP_MAX,
+  setCandidatesPinnedByHash,
   setCandidatesUsedByHash,
   type PersistedCandidate,
   type PersistedProfile,
@@ -224,6 +226,8 @@ const UI = {
     markPlayedTip: "マップは Map タブの使用済みに、セットアップは Setup タブの候補に記録して使用済みにする。以後 Pair には出ない（戻すのは各タブの使用済み一覧）",
     showPlayed: "プレイ済みも表示",
     playedBadge: "済",
+    unpinMap: "ピン解除",
+    unpinMapTip: "選んだマップのピン留めを外す（Map タブの候補のピンと同じ印。全バケツで外す）",
     contDirMismatch: "起点のセットアップの拡張・人数が探索プロファイルの Map の条件（テンプレート）と合いません",
     kindRanked: "連続",
     rankedRowTip: (round: number) => `連続で探索の順位表（${round} 周目に発見）`,
@@ -340,6 +344,8 @@ const UI = {
     markPlayedTip: "Marks the map used on the Map tab and records the setup as used on the Setup tab. It no longer appears in Pair (undo from each tab's used list)",
     showPlayed: "Show played",
     playedBadge: "played",
+    unpinMap: "Unpin",
+    unpinMapTip: "Removes the pin from the selected map (the same pin as on the Map tab, in every bucket)",
     contDirMismatch: "The chosen setup's expansion / player count does not match the Map conditions (template) of the search profile",
     kindRanked: "ranked",
     rankedRowTip: (round: number) => `Continuous-search ranking (found in round ${round})`,
@@ -407,7 +413,6 @@ const LS_SRC = "gaia_list_setup_source";
 const LS_SETUP = "gaia_list_pair_setup";
 const LS_TILE_MODE = "gaia_tile_mode";
 const LS_MAP = "gaia_list_pair_map";
-const LS_MAP_LABEL = "gaia_list_pair_map_label";
 const LS_CRITERION = "gaia_list_criterion";
 /** 狭い幅のタブ（Map の gaia_board_narrow_tab と同型） */
 const LS_NARROW_TAB = "gaia_pair_narrow_tab";
@@ -483,7 +488,6 @@ export default function PairView() {
 
   // --- 組の提案 ---
   const [pairMapId, setPairMapId] = React.useState<string>("");
-  const [pendingMapLabel, setPendingMapLabel] = React.useState<string>("");
   const [criterion, setCriterion] = React.useState<RecommendCriterion>("topBalance");
   const [pairDir, setPairDir] = React.useState<PairDir>("mapToSetup");
   const [setupSource, setSetupSource] = React.useState<SetupSource>("random");
@@ -640,22 +644,27 @@ export default function PairView() {
   const reloadPools = React.useCallback(async () => {
     try {
       const db = await openDb();
-      const all = await idbGetAllFromStore<PersistedCandidate>(db, STORE_CANDIDATES);
-      const pins = all.filter((c) => c.pinned).sort((a, b) => (b.pinnedAt ?? 0) - (a.pinnedAt ?? 0));
-      const top = all.slice().sort((a, b) => Number(b.score) - Number(a.score))[0] ?? null;
+      const allBuckets = await idbGetAllFromStore<PersistedCandidate>(db, STORE_CANDIDATES);
       const profilesDb = await loadProfilesFromDb(500);
       const tmap: Record<string, string> = {};
       const pmap: Record<string, PersistedProfile> = {};
+      // マップの選択肢は **いまの評価バージョンの結果バケツ** だけ（v2.3.1。旧バージョンのバケツのピン留め・上位は Pair に出さない。
+      // 旧のピン留めを使うなら Map タブの「旧バージョンの候補」からコピーする）。使用済みの判定は全バケツで行う
+      const currentKeys = new Set<string>();
       for (const p of profilesDb) {
         const tid = String(p.templateId ?? (p.params as any)?.templateId ?? "");
         if (tid) tmap[p.searchKey] = tid;
         pmap[p.searchKey] = p;
+        if (p.evalVersion === EVAL_VERSION) currentKeys.add(p.searchKey);
       }
+      const all = allBuckets.filter((c) => currentKeys.has(c.searchKey));
+      const pins = all.filter((c) => c.pinned).sort((a, b) => (b.pinnedAt ?? 0) - (a.pinnedAt ?? 0));
+      const top = all.slice().sort((a, b) => Number(b.score) - Number(a.score))[0] ?? null;
       setPinnedMaps(pins);
       setTopOverallMap(top);
       setTemplateIdBySearchKey(tmap);
       setProfilesBySearchKey(pmap);
-      setUsedHashes(new Set(all.filter((c) => c.used).map((c) => String(c.placementHash ?? ""))));
+      setUsedHashes(new Set(allBuckets.filter((c) => c.used).map((c) => String(c.placementHash ?? ""))));
       setRankedMaps(all.slice().sort((a, b) => Number(b.score) - Number(a.score)).slice(0, RANKED_MAP_CAP));
     } catch {
       // ignore
@@ -685,8 +694,8 @@ export default function PairView() {
     try {
       const savedMap = localStorage.getItem(LS_MAP);
       if (savedMap) setPairMapId(savedMap);
-      const savedMapLabel = localStorage.getItem(LS_MAP_LABEL);
-      if (savedMapLabel) setPendingMapLabel(savedMapLabel);
+      // 旧 gaia_list_pair_map_label（選択肢の文字の記憶）は読まない・書かない（v2.3.1。候補に無いマップが Pair にだけ残る原因だった）
+      try { localStorage.removeItem("gaia_list_pair_map_label"); } catch {}
       const savedCrit = localStorage.getItem(LS_CRITERION);
       if (savedCrit === "opposeMap" || savedCrit === "alignMap" || savedCrit === "topBalance" || savedCrit === "neutralBalance") setCriterion(savedCrit);
       const savedDir = localStorage.getItem(LS_DIR);
@@ -1058,6 +1067,12 @@ export default function PairView() {
     },
     [mapRowOfPairRow, reloadPools]
   );
+  /** 選んだマップのピン留めを外す（v2.3.1）。Map タブの候補のピンと同じ印なので、Map タブからも消える */
+  const handleUnpinMap = React.useCallback(() => {
+    const m = selectableMaps.find((c) => c.id === pairMapId);
+    if (!m) return;
+    void setCandidatesPinnedByHash(String(m.placementHash ?? ""), false).then(() => reloadPools());
+  }, [selectableMaps, pairMapId, reloadPools]);
   const handleRecordSetup = React.useCallback((input: BuildSetupInput) => {
     void recordSetup(input).then((rows2) => {
       setAllSetups(rows2);
@@ -1783,11 +1798,8 @@ export default function PairView() {
                             value={pairMapId}
                             onChange={(e) => {
                               setPairMapId(e.target.value);
-                              const label = e.target.options[e.target.selectedIndex]?.text ?? "";
-                              setPendingMapLabel(label);
                               try {
                                 localStorage.setItem(LS_MAP, e.target.value);
-                                localStorage.setItem(LS_MAP_LABEL, label);
                               } catch {}
                               clearPair();
                               setPairMsg(null);
@@ -1795,7 +1807,6 @@ export default function PairView() {
                             style={{ maxWidth: 260 }}
                           >
                             <option value="">{t.pairNoMap}</option>
-                            {pairMapId && pendingMapLabel && !selectableMaps.some((m) => m.id === pairMapId) ? <option value={pairMapId}>{pendingMapLabel}</option> : null}
                             {selectableMaps.map((c) => (
                               <option key={c.id} value={c.id}>
                                 {c.pinned ? "📌 " : ""}
@@ -1803,6 +1814,11 @@ export default function PairView() {
                               </option>
                             ))}
                           </select>
+                          {selectableMaps.find((m) => m.id === pairMapId)?.pinned ? (
+                            <button onClick={handleUnpinMap} style={{ fontSize: 11 }} title={t.unpinMapTip}>
+                              {t.unpinMap}
+                            </button>
+                          ) : null}
                         </label>
                       )}
                     </div>
