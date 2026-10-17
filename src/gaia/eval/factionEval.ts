@@ -537,6 +537,11 @@ export function recommendSetups(args: {
    * 組にしたマップの船接触で船のタイルの値を増減する）。返した値が基準の採点と Recommendation.setupScores に入る。
    */
   adjustSetupScores?: (result: SetupResult, scores: FactionScores) => FactionScores;
+  /**
+   * 基準の採点に使う値を差し替えるフック（Pair の「合計 T_f で測る」用。段階 2、2026-10-17）。返した値は採点にだけ使い、
+   * Recommendation.setupScores は adjustSetupScores までの Setup の値のまま。
+   */
+  criterionScores?: (result: SetupResult, setupScores: FactionScores) => FactionScores;
 }): Recommendation[] {
   const {
     criterion,
@@ -551,6 +556,7 @@ export function recommendSetups(args: {
     colorPref,
     factionPref,
     adjustSetupScores,
+    criterionScores,
   } = args;
   if (topN <= 0) return [];
   const all: Recommendation[] = [];
@@ -565,7 +571,8 @@ export function recommendSetups(args: {
     const result = buildSetupFromSeed(input);
     const raw = scoreSetupFactions(result, weights);
     const setupScores = adjustSetupScores ? adjustSetupScores(result, raw) : raw;
-    const score = criterionScore(criterion, setupScores, {
+    const basis = criterionScores ? criterionScores(result, setupScores) : setupScores;
+    const score = criterionScore(criterion, basis, {
       playerCount,
       mapTop3,
       mapTopK,

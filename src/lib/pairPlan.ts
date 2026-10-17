@@ -22,10 +22,10 @@ import {
   type RecommendCriterion,
   type Recommendation,
 } from "@/gaia/eval/factionEval";
-import type { FactionId } from "@/gaia/eval/factionWeights";
+import { FACTION_IDS, type FactionId } from "@/gaia/eval/factionWeights";
 import { mapFactionScores, mapValueByFaction } from "@/gaia/eval/mapFaction";
 import { applyShipInteraction, shipInteractionOf } from "@/gaia/eval/shipInteraction";
-import { isDefaultScoreBlend, type ScoreBlend } from "@/gaia/eval/scoreBlend";
+import { blendScores, isDefaultScoreBlend, type ScoreBlend } from "@/gaia/eval/scoreBlend";
 import type { FactionPrefByFaction, SetupWeights } from "@/gaia/eval/setupWeights";
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
 import type { SavedSetup } from "@/lib/setupHistory";
@@ -185,11 +185,39 @@ export function factionPrefArgOf(
     : undefined;
 }
 
-/** 候補マップの評価内訳（種族優遇の Map ぶんの材料）。 */
+/** 候補マップの評価内訳（種族優遇の Map ぶんと、合計 T_f の材料）。 */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function breakdownOf(c: PersistedCandidate | null): any {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (c as any)?.evaluation?.breakdown ?? null;
+}
+
+/**
+ * 基準 2（上位バランス）・3（全体バランス）は、マップの評価内訳があれば **合計 T_f ＝ blend(Map_f, Setup_f)** で測る
+ * （段階 2「Pair」、2026-10-17。それまでは Setup の値だけで測り、マップに依存しなかった）。
+ * 1（逆優位）・4（優位）はマップの上位種族を使う式のまま。内訳を持たない古い候補は従来どおり Setup の値で測る。
+ */
+export function usesTotalBasis(criterion: RecommendCriterion): boolean {
+  return criterion === "topBalance" || criterion === "neutralBalance";
+}
+
+/** 合計 T_f（Total タブの合計列と同じ合算比）。 */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function totalScoresOf(setupScores: FactionScores, mapBreakdown: any, blend?: ScoreBlend): FactionScores {
+  const mv = mapValueByFaction(mapBreakdown);
+  const out = {} as FactionScores;
+  for (const f of FACTION_IDS) out[f] = blendScores(mv[f] ?? 0, setupScores[f] ?? 0, blend);
+  return out;
+}
+
+/**
+ * 合計 T_f で測るときの種族優遇。Map ぶんは T_f に入っているので mapValueByFaction も合算比も付けず、
+ * w × 優遇 × T_f になる（従来の「Map ＋ Setup の合計に掛ける」と同じ大きさ）。
+ */
+function prefOnTotal(factionPref: FactionPrefByFaction): FactionPref | undefined {
+  return Object.keys(factionPref).length > 0
+    ? { w: LIST_FACTION_PREF_W, byFaction: factionPref as Partial<Record<FactionId, number>> }
+    : undefined;
 }
 
 function randomSeeds(n: number): string[] {
@@ -212,20 +240,25 @@ function planSetupToMap(a: PairPlanInput): PairPlan {
     return s.lf === settings.lf && (s.lf ? s.players === settings.players : true);
   });
   const scored: Array<{ c: PersistedCandidate; score: number; top: MapTop; setupScores: FactionScores }> = [];
+  let anyTotalBasis = false;
   for (const c of cands) {
     const top = mapTopOf(c, a.templateIdBySearchKey);
     if (!top) continue;
+    const bd = breakdownOf(c);
     // 船の相互作用（段階 1、2026-10-08）: 組にするマップごとに船のタイルの値を船接触で増減する
-    const setupScores = applyShipInteraction(rawSetupScores, shipInteractionOf(result, breakdownOf(c), a.evalWeights));
+    const setupScores = applyShipInteraction(rawSetupScores, shipInteractionOf(result, bd, a.evalWeights));
+    // 基準 2・3 は合計 T_f で（段階 2）。内訳が無い候補は Setup の値で
+    const totalBasis = usesTotalBasis(a.criterion) && !!bd;
+    if (totalBasis) anyTotalBasis = true;
     scored.push({
       c,
       top,
       setupScores,
-      score: criterionScore(a.criterion, setupScores, {
+      score: criterionScore(a.criterion, totalBasis ? totalScoresOf(setupScores, bd, a.blend) : setupScores, {
         playerCount: settings.players,
         lostFleet: settings.lf,
         mapTop3: top.top3,
-        factionPref: factionPrefArgOf(a.factionPref, breakdownOf(c), a.blend),
+        factionPref: totalBasis ? prefOnTotal(a.factionPref) : factionPrefArgOf(a.factionPref, bd, a.blend),
       }),
     });
   }
@@ -235,7 +268,7 @@ function planSetupToMap(a: PairPlanInput): PairPlan {
   const topN = scored.slice(0, PAIR_TOP_N);
   return {
     ok: true,
-    note: a.criterion === "opposeMap" || a.criterion === "alignMap" ? null : "mapIndependent",
+    note: usesTotalBasis(a.criterion) && !anyTotalBasis ? "mapIndependent" : null,
     settings,
     options: topN.map((x) => ({
       key: `m:${x.c.id}`,
@@ -278,8 +311,11 @@ type MapSide = {
   mapTopK?: FactionId[];
   mapTopDetail: Array<{ id: FactionId; score: number }> | null;
   settings: PairSettings;
-  /** 種族優遇（Map ぶんは起点マップの評価内訳から引く。2026-07-31）。 */
+  /** 種族優遇（Map ぶんは起点マップの評価内訳から引く。2026-07-31。合計 T_f で測るときは T_f に掛ける）。 */
   pref: FactionPref | undefined;
+  /** 基準 2・3 を合計 T_f で測るときの起点マップの内訳（内訳が無い・基準 1・4 のときは null）。段階 2 */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  totalBd: any;
 };
 
 function resolveMapSide(a: PairPlanInput): MapSide | PairPlanFailure {
@@ -301,14 +337,22 @@ function resolveMapSide(a: PairPlanInput): MapSide | PairPlanFailure {
       return "needMap";
     }
   }
+  const bd = breakdownOf(selected);
+  const totalBd = usesTotalBasis(a.criterion) && bd ? bd : null;
   return {
     selected,
     mapTop3,
     mapTopK,
     mapTopDetail,
     settings: deriveSetupSettings(tid),
-    pref: factionPrefArgOf(a.factionPref, breakdownOf(selected), a.blend),
+    pref: totalBd ? prefOnTotal(a.factionPref) : factionPrefArgOf(a.factionPref, bd, a.blend),
+    totalBd,
   };
+}
+
+/** 基準 2・3 で起点マップの内訳が無いときは従来どおり Setup の値で測る（＝マップ非依存の注記）。 */
+function noteOf(a: PairPlanInput, m: MapSide): "mapIndependent" | null {
+  return usesTotalBasis(a.criterion) && !m.totalBd ? "mapIndependent" : null;
 }
 
 /** 保存済みセットアップから選ぶ（2026-07-25 要望）。 */
@@ -325,7 +369,7 @@ function planSavedSetups(a: PairPlanInput, m: MapSide): PairPlan {
       r,
       res,
       scores,
-      score: criterionScore(a.criterion, scores, {
+      score: criterionScore(a.criterion, m.totalBd ? totalScoresOf(scores, m.totalBd, a.blend) : scores, {
         playerCount: m.settings.players,
         lostFleet: m.settings.lf,
         ...(m.mapTop3 ? { mapTop3: m.mapTop3 } : {}),
@@ -340,7 +384,7 @@ function planSavedSetups(a: PairPlanInput, m: MapSide): PairPlan {
   const topN = scored.slice(0, PAIR_TOP_N);
   return {
     ok: true,
-    note: null,
+    note: noteOf(a, m),
     settings: m.settings,
     options: topN.map((x) => ({
       key: `s:${x.r.id}`,
@@ -390,10 +434,12 @@ function planRandomSetups(a: PairPlanInput, m: MapSide): PairPlan {
     topN: PAIR_TOP_N,
     // 船の相互作用（段階 1、2026-10-08）: 起点マップの船接触で船のタイルの値を増減する
     adjustSetupScores: (res, scores) => applyShipInteraction(scores, shipInteractionOf(res, breakdownOf(m.selected), a.evalWeights)),
+    // 基準 2・3 は合計 T_f で測る（段階 2）
+    ...(m.totalBd ? { criterionScores: (_res: unknown, scores: FactionScores) => totalScoresOf(scores, m.totalBd, a.blend) } : {}),
   });
   return {
     ok: true,
-    note: null,
+    note: noteOf(a, m),
     settings: m.settings,
     options: rs.map((r) => ({
       key: `r:${r.input.seed}`,
