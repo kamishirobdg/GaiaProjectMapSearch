@@ -268,6 +268,28 @@ const ENTRIES = {
       ref: "1.6",
     },
   },
+  pairSearchContinuous: {
+    ja: {
+      title: "連続で探索",
+      what:
+        "停止するまで繰り返す: Map の検索（件数は Map タブの設定）→ 結果を Map の候補へ → 上位 K 枚のマップそれぞれに対して、Setup を「1 マップあたりの件数」（条件、既定 100000）ぶん " +
+        "**そのマップとの組として** 採点（船の相互作用、基準 2・3 は合計 T_f、1・4 はマップの上位種族、種族優遇）→ 各マップの上位 L 件を順位表へ。順位表は条件（人数・拡張・基準・評価指数）ごとに上位 50 組を端末に残し、候補一覧に「連続」として並ぶ。",
+      why:
+        "Map は制約を通る盤面が 0.1〜0.2% なので周ごとに 30000 件、Setup は 0.5ms/件（マップに合わせた採点はマップ無しの 2 倍）なので 1 マップ 10 万件で 50 秒ほど。K ＝ 20 で 1 周 17 分程度。" +
+        "Setup の候補（マップに依らない順位）には入れない（組の基準値はマップごとに違う）。基準値は探索時の値で、評価指数や合算比を変えても順位表は再計算しない。",
+      ref: "1.7",
+    },
+    en: {
+      title: "Search continuously",
+      what:
+        "Repeats until stopped: Map search (trial count from the Map tab) → results into the Map candidates → for each of the top K maps, score setups (“setups per map” in Conditions, default 100000) " +
+        "**as a pair with that map** (ship interaction, criteria 2 / 3 on the total T_f, 1 / 4 on the map's top factions, faction preference) → the top L per map into the ranking. The ranking keeps the best 50 pairs per condition (players, expansion, criterion, weights) on this device and shows as “ranked” rows.",
+      why:
+        "Only 0.1–0.2% of boards pass the constraints, so each round runs 30000 Map trials; map-aware Setup scoring costs 0.5 ms per trial (twice the plain search), so 100k per map takes about 50 s and a round with K = 20 about 17 minutes. " +
+        "Nothing goes into the Setup candidates (pair scores depend on the map). Scores are as of the search; changing weights or blend does not rescore the ranking.",
+      ref: "1.7",
+    },
+  },
   pairCriterion: {
     ja: {
       title: "基準",
