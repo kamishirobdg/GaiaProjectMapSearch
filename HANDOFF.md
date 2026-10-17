@@ -20,7 +20,12 @@
   均等に」。表示だけ）。ユーザー指示「リリースまで行って」。deployments API で Production（deployment 7112694094）の success 確認済み。
   **ユーザーの実機で表示は問題なし（2026-10-16）**。次は調整項目の検証（`docs/tuning-guide.md` 1 節末尾「本番で見る場所」）。
 - **同日、31回目の FF push ＝ v1.7.2**（マニュアルを「使い方の説明」に作り直し。5 章、設計の経緯は載せない。設計ノート 2.5 末尾。
-  tuning-guide の「本番で見る場所」も含む）。ユーザー指示「リリースして」。Production の success は deployments API で確認する。
+  tuning-guide の「本番で見る場所」も含む）。ユーザー指示「リリースして」。deployments API で Production（deployment 7125475921）の
+  success 確認済み。
+- **2026-10-17、32回目の FF push ＝ v1.8.0 · eval_v9（ea37c44。`d8c890e..ea37c44` の 12 コミット）**: 段階 1「条件の統一」（探索
+  プロファイル＋帯、優遇を種族優遇 1 つに、Map の検索の優遇項を種族ごとに＝eval_v9、Setup の 候補 / 詳細 / 条件 と検索ワーカー、
+  確認事項 7 件の確定ぶん）。ユーザー指示「リリースして段階2へ進んで」。deployments API で Production（deployment 7135465127）の
+  success 確認済み。**Map の検索結果は eval_v9 の新バケツ**（旧バケツは「旧バージョンの候補」からコピーで再評価）。
 - **2026-10-16 夜、UI の再設計（ユーザー確定 A-(a) / B-(a) / C-(a) / D-(a)）の段階 1 を作業ブランチで実装（v1.8.0、本番は未デプロイ。
   設計ノート 1.4）**: 探索プロファイル（`src/lib/searchProfiles.ts`）＋ 共通バー直下の「探索条件」の帯（`ConditionBar.tsx`、
   4 画面）、優遇を種族優遇 1 つに（Map は導出、Setup は `SETUP_FACTION_PREF_W` 0.15 仮置き、List は従来の係数）、Setup の左ペインを
