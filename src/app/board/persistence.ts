@@ -167,7 +167,8 @@ export const IDB_NAME = "gaia_map_cache";
 //     list_profiles＝条件プロファイルのキーが評価指数を含むので、既定値が動くと
 //     今日計算するキーと合わず迷子になる。setups（保存リスト）は条件キーが
 //     評価指数を含まず、スコアは表示時に計算し直すので**残す**。
-export const IDB_VERSION = 10;
+// v11: Pair の順位表・探索済み・保存した組を localStorage から移す（pair_maps / pair_rows / pair_explored / pair_saved。2026-10-17 v2.3.0）
+export const IDB_VERSION = 11;
 export const STORE_CANDIDATES = "candidates";
 export const STORE_PROFILES = "profiles";
 // Setup-side saved list shares this DB (one DB per origin keeps the version
@@ -179,6 +180,11 @@ export const STORE_SETUP_PROFILES = "setup_profiles";
 export const STORE_LIST_PROFILES = "list_profiles";
 /** Setup の一括探索ランキング（条件×基準ごと）。CRUD は src/lib/setupRanking.ts。 */
 export const STORE_SETUP_RANKING = "setup_ranking";
+/** Pair（v11）: 盤面（配置はトークンで 1 回だけ）・順位表の行（盤面は鍵で参照）・探索済みの件数・保存した組 */
+export const STORE_PAIR_MAPS = "pair_maps";
+export const STORE_PAIR_ROWS = "pair_rows";
+export const STORE_PAIR_EXPLORED = "pair_explored";
+export const STORE_PAIR_SAVED = "pair_saved";
 export const LAST_APPLIED_SEARCHKEY = "gaia_last_applied_searchKey_v1";
 
 
@@ -289,6 +295,19 @@ export function openDb(): Promise<IDBDatabase> {
           } catch {}
         }
       }
+
+      // ----- v11: Pair の順位表・探索済み・保存した組（localStorage から移行。src/lib/pairRanking.ts） -----
+      // 行は小さい（盤面はトークンで pair_maps に 1 回、行は鍵で参照）。rankKey で引くので index を持つ。
+      if (!db.objectStoreNames.contains(STORE_PAIR_MAPS)) db.createObjectStore(STORE_PAIR_MAPS, { keyPath: "key" });
+      if (!db.objectStoreNames.contains(STORE_PAIR_ROWS)) {
+        const st = db.createObjectStore(STORE_PAIR_ROWS, { keyPath: "id" });
+        st.createIndex("byRankKey", "rankKey", { unique: false });
+      }
+      if (!db.objectStoreNames.contains(STORE_PAIR_EXPLORED)) {
+        const st = db.createObjectStore(STORE_PAIR_EXPLORED, { keyPath: "key" });
+        st.createIndex("byRankKey", "rankKey", { unique: false });
+      }
+      if (!db.objectStoreNames.contains(STORE_PAIR_SAVED)) db.createObjectStore(STORE_PAIR_SAVED, { keyPath: "id" });
 
       // ----- v10: Setup の重みと評価指数の既定値を変えたので Setup/List 側だけ捨てる -----
       // Map 側（candidates / profiles）は重みを触っていないので残す。
@@ -490,6 +509,21 @@ export async function idbClearStore(db: IDBDatabase, storeName: string): Promise
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error);
   });
+}
+
+/**
+ * 配置ハッシュが一致する候補を全バケツで使用済み／未使用にする（Pair の「プレイ済みにする」。2026-10-17 v2.3.0）。
+ * Map タブの「使用済み」と同じ印（used / usedKey / usedAt）なので、Map タブの使用済み一覧に出て、そこから戻せる。
+ */
+export async function setCandidatesUsedByHash(placementHash: string, used: boolean): Promise<number> {
+  const db = await openDb();
+  const all = await idbGetAllFromStore<PersistedCandidate>(db, STORE_CANDIDATES);
+  const now = Date.now();
+  const rows = all
+    .filter((c) => String(c.placementHash ?? "") === placementHash && Boolean(c.used) !== used)
+    .map((c) => ({ ...c, used, usedKey: used ? 1 : 0, ...(used ? { usedAt: now } : {}), updatedAt: now } as PersistedCandidate));
+  await idbPutAll(db, STORE_CANDIDATES, rows);
+  return rows.length;
 }
 
 export function stableStringify(x: any): string {

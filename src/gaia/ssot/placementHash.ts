@@ -66,6 +66,11 @@ function fnv1a32(str: string): string {
   return ("00000000" + (h >>> 0).toString(16)).slice(-8);
 }
 
+/** 文字列の短いハッシュ（FNV-1a 32bit、hex 8 桁）。Pair の順位表の鍵など、長い条件文字列を短い鍵にする用途 */
+export function hashString(str: string): string {
+  return fnv1a32(str);
+}
+
 function fnv1a32Bytes(bytes: Uint8Array): string {
   let h = 0x811c9dc5;
   for (let i = 0; i < bytes.length; i++) {
