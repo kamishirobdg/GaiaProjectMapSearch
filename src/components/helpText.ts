@@ -235,7 +235,7 @@ const ENTRIES = {
   pairSuggest: {
     ja: {
       title: "組の提案（マップ＋セットアップ）",
-      what: "探索の向き（マップ → セットアップ／セットアップ → マップ）と基準を選ぶと、候補を基準の良い順に上位 5 件まで提示する。セットアップはランダム生成か保存済みから。候補の行を選ぶと「詳細」に盤面・配置・種族別の合計が出る。",
+      what: "探索の向き（マップ → セットアップ／セットアップ → マップ）と基準を選ぶと、候補を基準の良い順に上位 5 件まで提示する。セットアップはランダム生成か保存済みから。候補一覧は提案・連続で探索の順位表・保存した組・共有された組を、いまの基準・評価指数・合算比で採点し直して基準値の降順に並べる（# ＝ 順位）。行を選ぶと「詳細」に盤面・配置・種族別の合計が出る。",
       why: "Setup の値には船の相互作用（船に乗るタイルの値 × その種族の船接触の相対値、α 1）を掛けてから採点する。評価指数・種族優遇（帯）は Map / Setup と共通。保存した組は条件ごとに貯まる。",
       ref: "4 / 1.5",
     },
@@ -272,22 +272,24 @@ const ENTRIES = {
     ja: {
       title: "連続で探索",
       what:
-        "停止するまで繰り返す: Map の検索（件数は Map タブの設定）→ 結果を Map の候補へ → 上位 K 枚のマップそれぞれに対して、Setup を「1 マップあたりの件数」（条件、既定 100000）ぶん " +
-        "**そのマップとの組として** 採点（船の相互作用、基準 2・3 は合計 T_f、1・4 はマップの上位種族、種族優遇）→ 各マップの上位 L 件を順位表へ。順位表は条件（人数・拡張・基準・評価指数）ごとに上位 50 組を端末に残し、候補一覧に「連続」として並ぶ。",
+        "停止するまで繰り返す。探索の向きが マップ → セットアップ: Map の候補（探索プロファイルの Map の条件の結果バケツ）の上位 K 枚のうち未探索のマップごとに、Setup を「1 マップあたりの件数」（条件、既定 100000）ぶん " +
+        "**そのマップとの組として** 採点（船の相互作用、基準 2・3 は合計 T_f、1・4 はマップの上位種族、種族優遇）→ 上位 L 件を順位表へ → Map の検索（件数は Map タブの設定）→ 上位の更新 → 新たに上位 K に入った未探索のマップだけ探索。" +
+        "セットアップ → マップ: 起点のセットアップを固定して Map の検索を繰り返し、制約を通った盤面ごとに組の基準値を計算して順位表へ。順位表は条件（人数・拡張・基準・評価指数）ごとに上位 50 組を端末に残す。",
       why:
-        "Map は制約を通る盤面が 0.1〜0.2% なので周ごとに 30000 件、Setup は 0.5ms/件（マップに合わせた採点はマップ無しの 2 倍）なので 1 マップ 10 万件で 50 秒ほど。K ＝ 20 で 1 周 17 分程度。" +
-        "Setup の候補（マップに依らない順位）には入れない（組の基準値はマップごとに違う）。基準値は探索時の値で、評価指数や合算比を変えても順位表は再計算しない。",
-      ref: "1.7",
+        "Map は制約を通る盤面が 0.1〜0.2% なので周ごとに 30000 件、Setup は 0.5ms/件（マップに合わせた採点はマップ無しの 2 倍）なので 1 マップ 10 万件で 50 秒ほど。探索済みの件数はマップごとに記録し、同じマップを二度探索しない（件数を増やせば差分だけ）。" +
+        "セットアップ → マップは制約を通る盤面だけ採点するので Map の検索とほぼ同じ時間。Setup の候補（マップに依らない順位）には入れない（組の基準値はマップごとに違う）。",
+      ref: "1.7 / 1.8",
     },
     en: {
       title: "Search continuously",
       what:
-        "Repeats until stopped: Map search (trial count from the Map tab) → results into the Map candidates → for each of the top K maps, score setups (“setups per map” in Conditions, default 100000) " +
-        "**as a pair with that map** (ship interaction, criteria 2 / 3 on the total T_f, 1 / 4 on the map's top factions, faction preference) → the top L per map into the ranking. The ranking keeps the best 50 pairs per condition (players, expansion, criterion, weights) on this device and shows as “ranked” rows.",
+        "Repeats until stopped. Direction Map → Setup: for each unexplored map among the top K Map candidates (the search profile's Map bucket), score setups (“setups per map” in Conditions, default 100000) " +
+        "**as a pair with that map** (ship interaction, criteria 2 / 3 on the total T_f, 1 / 4 on the map's top factions, faction preference) → the top L into the ranking → Map search (trial count from the Map tab) → explore only maps newly entering the top K. " +
+        "Setup → Map: keeps the chosen setup fixed, repeats the Map search and scores every board that passes the constraints as a pair. The ranking keeps the best 50 pairs per condition (players, expansion, criterion, weights) on this device.",
       why:
-        "Only 0.1–0.2% of boards pass the constraints, so each round runs 30000 Map trials; map-aware Setup scoring costs 0.5 ms per trial (twice the plain search), so 100k per map takes about 50 s and a round with K = 20 about 17 minutes. " +
-        "Nothing goes into the Setup candidates (pair scores depend on the map). Scores are as of the search; changing weights or blend does not rescore the ranking.",
-      ref: "1.7",
+        "Only 0.1–0.2% of boards pass the constraints, so each round runs 30000 Map trials; map-aware Setup scoring costs 0.5 ms per trial (twice the plain search), so 100k per map takes about 50 s. Explored counts are kept per map so no map is searched twice (raise the count and only the shortfall runs). " +
+        "Setup → Map scores only the boards that pass, so it costs about as much as the Map search alone. Nothing goes into the Setup candidates (pair scores depend on the map).",
+      ref: "1.7 / 1.8",
     },
   },
   pairCriterion: {
@@ -331,14 +333,14 @@ const ENTRIES = {
       title: "種族別の合計",
       what:
         "選んだ組で、種族ごとに Map の評価値（Map タブの内訳表のその種族の行）と Setup の評価値（Setup タブと同じ種族スコア。船の相互作用込み）を合算比で足す。",
-      why: "Map と Setup はどちらも種族あたり 100 前後の桁の約束（足して 200 前後）。内訳を持たない古いマップ候補は Map ぶんが 0 になる（Map タブで検索し直すと付く）。",
+      why: "Map と Setup はどちらも種族あたり 100 前後の桁の約束（足して 200 前後）。Map の値は候補の条件でいまの評価に評価し直した値（Map タブで開いた値と同じ基準）。Setup ぶんは LF では船に乗るタイルの値をその種族の船接触の比で再配分するので Setup タブの総合と数点ずれる。",
       ref: "1.2 / 4",
     },
     en: {
       title: "Totals by faction",
       what:
         "For the selected pair, adds per faction the map value (that faction's row in the Map tab's breakdown) and the setup value (the same faction score as Setup, ship interaction included) using the blend ratio.",
-      why: "Map and setup are both meant to be about 100 per faction (about 200 together). Old map candidates without a breakdown get 0 for the map part (re-search on the Map tab to add it).",
+      why: "Map and setup are both meant to be about 100 per faction (about 200 together). Map values are re-evaluated with the current evaluation under the candidate's conditions (same basis as the Map tab). In LF the setup part redistributes ship-tile values by the faction's ship-contact ratio, so it differs from the Setup tab total by a few points.",
       ref: "1.2 / 4",
     },
   },

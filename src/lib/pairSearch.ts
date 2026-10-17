@@ -6,12 +6,13 @@
 // 検索そのもの（ワーカーの実行と結果バケツへの保存）は画面側（PairView）が行う。
 
 import type { PersistedCandidate } from "@/app/board/persistence";
-import { criterionScore, scoreSetupFactions, type FactionScores, type RecommendCriterion } from "@/gaia/eval/factionEval";
+import { scoreSetupFactions, type FactionScores, type RecommendCriterion } from "@/gaia/eval/factionEval";
 import { applyShipInteraction, shipInteractionOf } from "@/gaia/eval/shipInteraction";
 import type { ScoreBlend } from "@/gaia/eval/scoreBlend";
 import type { FactionPrefByFaction, SetupWeights } from "@/gaia/eval/setupWeights";
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
-import { factionPrefArgOf, mapTopOf, prefOnTotal, totalScoresOf, usesTotalBasis, type PairOption } from "@/lib/pairPlan";
+import { mapTopOf, type PairOption } from "@/lib/pairPlan";
+import { scorePairOf } from "@/lib/pairScore";
 
 /** 総当たりの上限（既定 20 × 20。Pair の「条件」で変えられる） */
 export const PAIR_SEARCH_K_DEFAULT = 20;
@@ -44,7 +45,6 @@ export function scorePairs(a: PairSearchArgs): PairOption[] {
   const topN = a.topN ?? PAIR_SEARCH_TOP_N;
   const maps = a.maps.slice(0, k);
   const setups = a.setups.slice(0, l);
-  const totalBasis = usesTotalBasis(a.criterion);
   // セットアップは組ごとに作り直さない（決定論なので 1 回）
   const built = setups.map((s) => {
     const result = buildSetupFromSeed(s.input);
@@ -57,13 +57,7 @@ export function scorePairs(a: PairSearchArgs): PairOption[] {
     const top = mapTopOf(m, a.templateIdBySearchKey, a.players);
     for (const b of built) {
       const setupScores: FactionScores = applyShipInteraction(b.raw, shipInteractionOf(b.result, bd, a.evalWeights));
-      const useTotal = totalBasis && !!bd;
-      const score = criterionScore(a.criterion, useTotal ? totalScoresOf(setupScores, bd, a.blend) : setupScores, {
-        playerCount: a.players,
-        lostFleet: a.lf,
-        ...(top ? { mapTop3: top.top3, mapTopK: top.topK } : {}),
-        factionPref: useTotal ? prefOnTotal(a.factionPref) : factionPrefArgOf(a.factionPref, bd, a.blend),
-      });
+      const score = scorePairOf({ criterion: a.criterion, setupScores, mapBreakdown: bd, blend: a.blend, factionPref: a.factionPref, players: a.players, lf: a.lf, mapTop: top });
       out.push({
         key: `b:${m.id}:${b.s.seed}`,
         mapId: m.id,

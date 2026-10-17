@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergeIntoPairRanking, mergePairRanking, pairRankId, type PairRankRow } from "./pairRanking";
+import { exploredTrials, markExplored, mergeIntoPairRanking, mergePairRanking, pairRankId, unexploredOf, type PairRankRow } from "./pairRanking";
 
 function row(mapHash: string, seed: string, score: number, extra: Partial<PairRankRow> = {}): PairRankRow {
   return {
@@ -41,5 +41,20 @@ describe("pairRanking（連続で両方を探索の順位表）", () => {
     const next = mergeIntoPairRanking(all, "c", [row("b", "2", 3)], 50);
     expect(next.filter((r) => r.conditionKey === "other")).toHaveLength(1);
     expect(next.filter((r) => r.conditionKey === "c").map((r) => r.id)).toEqual(["b:2", "b:1"]);
+  });
+});
+
+describe("探索済みのマップ（連続探索の差分）", () => {
+  it("N 件に届いていないマップだけを残りの件数つきで返し、記録は多い方を残す", () => {
+    let m = markExplored({}, "c", "a", 100000);
+    m = markExplored(m, "c", "b", 40000);
+    m = markExplored(m, "c", "b", 30000);
+    expect(exploredTrials(m, "c", "b")).toBe(40000);
+    const maps = [{ placementHash: "a" }, { placementHash: "b" }, { placementHash: "d" }];
+    expect(unexploredOf(maps, m, "c", 100000)).toEqual([
+      { map: { placementHash: "b" }, remaining: 60000 },
+      { map: { placementHash: "d" }, remaining: 100000 },
+    ]);
+    expect(unexploredOf(maps, m, "other", 10)).toHaveLength(3);
   });
 });

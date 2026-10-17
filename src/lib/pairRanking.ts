@@ -70,6 +70,53 @@ export function writePairRanking(rows: PairRankRow[]): void {
   }
 }
 
+// ---- 探索済みのマップ（v2.2.0、2026-10-17 ユーザー確定の手順）----
+// 連続探索（マップ → セットアップ）は Map の結果バケツの上位 K 枚のうち「まだ N 件探索していない」マップだけに Setup を探索する。
+// 条件（順位表と同じ鍵）× マップごとに、これまでに探索した Setup の件数を端末に持つ。N を増やせば差分だけ探索する。
+
+export const LS_PAIR_EXPLORED = "gaia_pair_explored_v1";
+/** conditionKey → mapHash → 探索した件数 */
+export type ExploredMaps = Record<string, Record<string, number>>;
+
+export function loadExplored(): ExploredMaps {
+  try {
+    const raw = localStorage.getItem(LS_PAIR_EXPLORED);
+    if (!raw) return {};
+    const o = JSON.parse(raw);
+    return o && typeof o === "object" && !Array.isArray(o) ? (o as ExploredMaps) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function writeExplored(m: ExploredMaps): void {
+  try {
+    localStorage.setItem(LS_PAIR_EXPLORED, JSON.stringify(m));
+  } catch {
+    // ignore
+  }
+}
+
+export function exploredTrials(m: ExploredMaps, conditionKey: string, mapHash: string): number {
+  return Number(m[conditionKey]?.[mapHash] ?? 0) || 0;
+}
+
+/** 純粋: 探索した件数を記録した新しい表（多い方を残す） */
+export function markExplored(m: ExploredMaps, conditionKey: string, mapHash: string, trials: number): ExploredMaps {
+  const prev = exploredTrials(m, conditionKey, mapHash);
+  return { ...m, [conditionKey]: { ...(m[conditionKey] ?? {}), [mapHash]: Math.max(prev, trials) } };
+}
+
+/** 純粋: 上位のマップのうち、まだ N 件に届いていないもの（残りの件数つき）。入力順を保つ */
+export function unexploredOf<T extends { placementHash?: string }>(maps: T[], m: ExploredMaps, conditionKey: string, n: number): Array<{ map: T; remaining: number }> {
+  const out: Array<{ map: T; remaining: number }> = [];
+  for (const map of maps) {
+    const done = exploredTrials(m, conditionKey, String(map.placementHash ?? ""));
+    if (done < n) out.push({ map, remaining: n - done });
+  }
+  return out;
+}
+
 /** 条件バケツの行だけをマージして全体を書き戻す（他の条件の行は触らない） */
 export function mergeIntoPairRanking(all: PairRankRow[], conditionKey: string, fresh: PairRankRow[], cap: number = PAIR_RANKING_CAP): PairRankRow[] {
   const mine = all.filter((r) => r.conditionKey === conditionKey);

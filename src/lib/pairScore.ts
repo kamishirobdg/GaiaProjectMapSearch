@@ -4,7 +4,7 @@
 // （src/workers/setupSearch.worker.ts → setupSearchCore.ts）からも使うため。ワーカーには localStorage が無いので、
 // sharedSettings を読む pairPlan.ts はワーカーから import しない。
 
-import { LIST_FACTION_PREF_W, type FactionPref, type FactionScores, type RecommendCriterion } from "@/gaia/eval/factionEval";
+import { criterionScore, LIST_FACTION_PREF_W, type FactionPref, type FactionScores, type RecommendCriterion } from "@/gaia/eval/factionEval";
 import { FACTION_IDS, type FactionId } from "@/gaia/eval/factionWeights";
 import { mapValueByFaction } from "@/gaia/eval/mapFaction";
 import { blendScores, isDefaultScoreBlend, type ScoreBlend } from "@/gaia/eval/scoreBlend";
@@ -47,6 +47,31 @@ export function factionPrefArgOf(
         ...(blend && !isDefaultScoreBlend(blend) ? { blend } : {}),
       }
     : undefined;
+}
+
+/**
+ * 組（マップ × セットアップ）の基準値。planPair / scorePairs / 候補一覧の順位 / 連続探索（セットアップ → マップ）で同じ式
+ * （2026-10-17 v2.2.0 で一本化）。setupScores は船の相互作用を掛けた後の Setup の値。基準 2・3 は内訳があれば合計 T_f で、
+ * 1・4 はマップの上位種族で測る。
+ */
+export function scorePairOf(a: {
+  criterion: RecommendCriterion;
+  setupScores: FactionScores;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mapBreakdown: any;
+  blend?: ScoreBlend;
+  factionPref: FactionPrefByFaction;
+  players: number;
+  lf: boolean;
+  mapTop?: { top3: FactionId[]; topK: FactionId[] } | null;
+}): number {
+  const useTotal = usesTotalBasis(a.criterion) && !!a.mapBreakdown;
+  return criterionScore(a.criterion, useTotal ? totalScoresOf(a.setupScores, a.mapBreakdown, a.blend) : a.setupScores, {
+    playerCount: a.players,
+    lostFleet: a.lf,
+    ...(a.mapTop ? { mapTop3: a.mapTop.top3, mapTopK: a.mapTop.topK } : {}),
+    factionPref: useTotal ? prefOnTotal(a.factionPref) : factionPrefArgOf(a.factionPref, a.mapBreakdown, a.blend),
+  });
 }
 
 /**

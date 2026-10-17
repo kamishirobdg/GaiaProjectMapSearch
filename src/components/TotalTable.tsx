@@ -29,10 +29,8 @@ const UI = {
     setupScore: "Setup",
     total: "合計",
     noBreakdown: "このマップは評価の内訳を持っていないため Map ぶんが 0 になる（古い候補。Map タブで検索し直すと付く）",
-    ship: "船",
-    shipTip: "船の相互作用の加点（LF）。Setup の値に含まれる。Setup タブの総合 ＋ 船 ＝ ここの Setup",
     reevaluated: "Map の値は保存された候補をいまの評価（eval_v9）で評価し直したもの（Map タブで開いた値と同じ基準）",
-    footnote: "Map ぶんは Map タブの内訳表のその種族の行の合計。Setup ぶんは評価指数を掛けた種族スコア（LF は船の相互作用込み。「船」列がその加点）で、Setup タブの総合 ＋ 船。",
+    footnote: "Map ぶんは Map タブの内訳表のその種族の行の合計（船接触・船星系込み）。Setup ぶんは評価指数を掛けた種族スコアで、LF では船に乗るタイルの値をその種族の船接触の比で再配分した値（Setup タブの総合と数点の差）。",
     blendTitle: "合算比",
     blendNote: "合計 ＝ Map × 倍率 ＋ Setup × 倍率。基準 2・3 の採点、種族優遇の掛け先、「合計の上位」にも同じ比が効く",
     blendReset: "1:1 に戻す",
@@ -45,10 +43,8 @@ const UI = {
     setupScore: "Setup",
     total: "Total",
     noBreakdown: "This map has no stored evaluation breakdown, so its map score is 0 (older candidate).",
-    ship: "Ship",
-    shipTip: "Ship interaction bonus (LF), included in the Setup value. Setup tab total + Ship = Setup here",
     reevaluated: "Map values are the stored candidate re-evaluated with the current evaluation (eval_v9), the same basis as the Map tab",
-    footnote: "The map part is that faction's row total in Map's breakdown. The setup part is the weighted faction score (ship interaction included in LF; the Ship column is that bonus): Setup tab total + Ship.",
+    footnote: "The map part is that faction's row total in Map's breakdown (ship contact and ship systems included). The setup part is the weighted faction score; in LF the values of tiles on ships are redistributed by the faction's ship-contact ratio (a few points off the Setup tab total).",
     blendTitle: "Blend",
     blendNote: "Total = Map × weight + Setup × weight. Criteria 2 / 3, the faction preference and the top-by-total line use the same ratio",
     blendReset: "Reset to 1:1",
@@ -61,10 +57,10 @@ function fmt(n: number): string {
   return Number.isInteger(r) ? String(r) : r.toFixed(1);
 }
 
-export type TotalRow = { id: FactionId; name: string; color: string; map: number; setup: number; total: number; /** 船の相互作用の加点（Setup の値に含まれる。Setup タブの総合との差） */ ship?: number };
+export type TotalRow = { id: FactionId; name: string; color: string; map: number; setup: number; total: number };
 
-/** 表の行（合計の降順）。rawSetupScores（船の相互作用を掛ける前）を渡すと「船」列の値（差）を付ける。 */
-export function totalRowsOf(mapScores: FactionScores, setupScores: FactionScores, blend: ScoreBlend, lf: boolean, lang: Lang, rawSetupScores?: FactionScores): TotalRow[] {
+/** 表の行（合計の降順）。 */
+export function totalRowsOf(mapScores: FactionScores, setupScores: FactionScores, blend: ScoreBlend, lf: boolean, lang: Lang): TotalRow[] {
   return factionsForMode(lf)
     .map((f) => ({
       id: f.id as FactionId,
@@ -73,7 +69,6 @@ export function totalRowsOf(mapScores: FactionScores, setupScores: FactionScores
       map: mapScores[f.id] ?? 0,
       setup: setupScores[f.id] ?? 0,
       total: blendScores(mapScores[f.id] ?? 0, setupScores[f.id] ?? 0, blend),
-      ...(rawSetupScores ? { ship: (setupScores[f.id] ?? 0) - (rawSetupScores[f.id] ?? 0) } : {}),
     }))
     .sort((a, b) => b.total - a.total);
 }
@@ -94,7 +89,6 @@ export function TotalTable({
   reevaluated?: boolean;
 }) {
   const t = UI[lang];
-  const showShip = rows.some((r) => Math.abs(r.ship ?? 0) >= 0.05);
   const th: React.CSSProperties = { textAlign: "right", padding: "4px 8px", borderBottom: "2px solid #ddd", fontSize: 12, whiteSpace: "nowrap" };
   const td: React.CSSProperties = { textAlign: "right", padding: "3px 8px", borderBottom: "1px solid #eee", fontSize: 13, whiteSpace: "nowrap" };
   return (
@@ -111,11 +105,6 @@ export function TotalTable({
                 {t.mapScore}
                 {blend.map !== 1 ? ` ×${blend.map}` : ""}
               </th>
-              {showShip ? (
-                <th style={th} title={t.shipTip}>
-                  {t.ship}
-                </th>
-              ) : null}
               <th style={th}>
                 {t.setupScore}
                 {blend.setup !== 1 ? ` ×${blend.setup}` : ""}
@@ -129,7 +118,6 @@ export function TotalTable({
                 <td style={{ ...td, opacity: 0.6 }}>{i + 1}</td>
                 <td style={{ ...td, textAlign: "left" }}>{r.name}</td>
                 <td style={td}>{fmt(r.map)}</td>
-                {showShip ? <td style={{ ...td, opacity: 0.75 }}>{(r.ship ?? 0) >= 0 ? "+" : ""}{fmt(r.ship ?? 0)}</td> : null}
                 <td style={td}>{fmt(r.setup)}</td>
                 <td style={{ ...td, fontWeight: 800, borderLeft: "1px solid #ddd" }}>{fmt(r.total)}</td>
               </tr>
