@@ -171,6 +171,12 @@
   N 件（既定 100000、`gaia_pair_setup_per_map`）**マップに合わせて採点**（`setupSearchCore.searchChunk` の `pairWith`。planPair と同じ式）
   → 上位 L 件を順位表（`src/lib/pairRanking.ts`、`gaia_pair_ranking_v1`、条件ごと上位 50 組）へ、を停止まで繰り返す。Setup の候補には
   入れない。順位表の基準値は探索時の値。
+- **v2.2.0（2026-10-17、設計ノート 1.8。ユーザー確定「すべて推奨」）**: 連続探索（マップ → セットアップ）は **既存の Map の候補の上位 K 枚の
+  うち未探索のマップだけ** Setup を探索 → Map の検索 → 新たに入った未探索のマップだけ、の繰り返し（探索済みの件数は
+  `gaia_pair_explored_v1`）。セットアップ → マップは起点のセットアップを固定して Map を探索し続け、制約を通った盤面を組として採点。
+  **結果バケツは配置とスコアと小さな集計だけ保存**（`persistence.slimEvaluation`、1 盤面 4KB。内訳表・マーカー・Pair の種族ごとの値は
+  盤面から再評価）、容量は Map タブの「保存数」（`gaia_map_capacity`、既定 1000）。ワーカーの返す上位は `SEARCH_RESULT_KEEP_MAX`（200）。
+  候補一覧は全行をいまの基準で採点し直して順位で並べる（`pairScore.scorePairOf` が組の基準値の唯一の式）。「船」列は廃止（脚注だけ）。
 
 ## 描画とセル座標（2026-07-30 に整理）
 
