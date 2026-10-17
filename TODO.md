@@ -64,6 +64,9 @@
   この行。アプリの動きは不変。これで `main` と作業ブランチは同一。
 - 次に出すときも上の1行のとおり `git push origin release/v1.01:main`。
   実行前に必ずユーザー確認。
+- **2026-10-17: 本番へ出した（`96269d4..ea74d69`、3 コミット。36回目の FF push）＝ v2.2.0 · eval_v9。連続探索の手順の作り直し・
+  セットアップ → マップ・保存の軽量化（容量 1000）・候補一覧を順位に**（設計ノート 1.8）。運用どおり検証のうえ FF push。Production
+  （deployment 7141345338）は success 確認済み。PR #35 は FF push で merged 扱い。
 - **2026-10-17: 本番へ出した（`34c7278..2c1e2e4`、3 コミット。35回目の FF push）＝ v2.1.0 · eval_v9。Pair の値の評価し直し・「船」列・
   「連続で両方を探索」**（設計ノート 1.7）。運用どおり検証（typecheck / lint / test ＋ ヘッドレス）のうえ FF push。Production
   （deployment 7136752203）は success 確認済み。PR #34 は FF push で merged 扱い。

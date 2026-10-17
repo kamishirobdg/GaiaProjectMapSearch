@@ -64,6 +64,9 @@
   新たに入ったマップだけ。探索済みは `gaia_pair_explored_v1`）。セットアップ → マップは固定セットアップに対する Map の連続探索。
   結果バケツは配置とスコアだけ保存（`slimEvaluation`、270KB → 4KB）、容量の既定 1000（Map タブ「保存数」）。候補一覧は全行をいまの
   基準で採点し直して順位に（由来の列は廃止）。ヘッドレスで Map の保存 4KB・内訳表の再評価・両方向の連続探索を確認済み。
+- **同日、36回目の FF push ＝ v2.2.0 · eval_v9（ea74d69。`96269d4..ea74d69` の 3 コミット）**: 上の 5 件。deployments API で Production
+  （deployment 7141345338）の success 確認済み。PR #35 は FF push で merged 扱い（次の変更は新しい PR）。次は本番での体感（保存数 1000
+  の読み込み、順位表の並び、セットアップ → マップの使い勝手）の報告待ち。
 - **作業ブランチは 2026-10-15 から `claude/gaia-map-project-status-73aeld`**。段階 1 の PR #31 は 32回目の FF push で merged 扱いになり、
   段階 2（v1.9.0）は **draft PR #32**（同じブランチ。FF push のたびに PR が閉じるので、次の段階は新しい PR を作る）。旧 PR #27 / #26 は閉じた。旧 `claude/gaia-map-project-status-adrt1n`
   （PR #26）は同一コミットで引き継いだうえで閉じた（ユーザー確定 (a)）。
