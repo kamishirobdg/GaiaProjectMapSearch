@@ -355,67 +355,66 @@ describe("色優遇/冷遇（Setup）", () => {
   });
 });
 
-// List の種族優遇（2026-07-31）。掛け先は「Map の評価値＋Setup の評価値」。
-describe("種族優遇/冷遇（List）", () => {
+// 種族優遇/冷遇（Pair・Setup の検索）。2026-10-22 から「上位 K（人数＋2、種族で数える）に届かない分だけ減点」。
+// 値 v ＝ Map の評価値×map ＋ Setup の評価値×setup（合算比）。thr ＝ 優遇した種族を除いた K 番目。
+describe("種族優遇/冷遇（上位 K に届かない分だけ減点）", () => {
   const flat = () => Object.fromEntries(FACTION_IDS.map((f) => [f, 10])) as FactionScores;
-  const opts = { playerCount: 4, lostFleet: true };
+  const opts = { playerCount: 4, lostFleet: true }; // K ＝ 6
+  const SIX = FACTION_IDS.filter((f) => f !== "terrans" && f !== "lantids").slice(0, 6);
 
-  it("掛け先は Map ぶんと Setup ぶんの合計", () => {
+  it("優遇した種族がすでに上位 K にいれば効かない（すでに強い種族を押し上げない）", () => {
     const s = flat();
-    const mapVal = Object.fromEntries(FACTION_IDS.map((f) => [f, 0])) as FactionScores;
-    mapVal.terrans = 90;
+    s.terrans = 30;
     const bare = criterionScore("neutralBalance", s, opts);
-    // terrans: Map 90 + Setup 10 = 100 に w=1 × pref=1
-    const withPref = criterionScore("neutralBalance", s, {
-      ...opts,
-      factionPref: { w: 1, byFaction: { terrans: 1 }, mapValueByFaction: mapVal },
-    });
-    expect(withPref - bare).toBeCloseTo(100, 9);
+    const withPref = criterionScore("neutralBalance", s, { ...opts, factionPref: { w: 1, byFaction: { terrans: 5 } } });
+    expect(withPref).toBe(bare);
   });
 
-  it("合算比を渡すと掛け先が Map×map＋Setup×setup になる（2026-09-19）", () => {
+  it("上位 K に届かなければ w × p × (値 − K 番目) を減点", () => {
     const s = flat();
-    const mapVal = Object.fromEntries(FACTION_IDS.map((f) => [f, 0])) as FactionScores;
-    mapVal.terrans = 90;
+    for (const f of SIX) s[f] = 50;
     const bare = criterionScore("neutralBalance", s, opts);
-    // terrans: Map 90×0.5 + Setup 10×2 = 65 に w=1 × pref=1
-    const withPref = criterionScore("neutralBalance", s, {
-      ...opts,
-      factionPref: {
-        w: 1,
-        byFaction: { terrans: 1 },
-        mapValueByFaction: mapVal,
-        blend: { map: 0.5, setup: 2 },
-      },
-    });
-    expect(withPref - bare).toBeCloseTo(65, 9);
+    const withPref = criterionScore("neutralBalance", s, { ...opts, factionPref: { w: 1, byFaction: { terrans: 2 } } });
+    expect(withPref - bare).toBeCloseTo(2 * (10 - 50), 9);
   });
 
-  it("Map ぶんを渡さなければ Setup ぶんだけで効く", () => {
+  it("Map ぶんと合算比も値に入る（2026-09-19 の合算比）", () => {
     const s = flat();
+    const mapVal = Object.fromEntries(FACTION_IDS.map((f) => [f, 0])) as FactionScores;
+    for (const f of SIX) mapVal[f] = 100;
     const bare = criterionScore("neutralBalance", s, opts);
-    const withPref = criterionScore("neutralBalance", s, {
+    // terrans 0 + 10 = 10、上位 6 種族 100 + 10 = 110
+    const p1 = criterionScore("neutralBalance", s, { ...opts, factionPref: { w: 1, byFaction: { terrans: 1 }, mapValueByFaction: mapVal } });
+    expect(p1 - bare).toBeCloseTo(10 - 110, 9);
+    // 合算比 Map 0.5 / Setup 2: terrans 20、上位 6 種族 70
+    const p2 = criterionScore("neutralBalance", s, {
       ...opts,
-      factionPref: { w: 1, byFaction: { terrans: 2 } },
+      factionPref: { w: 1, byFaction: { terrans: 1 }, mapValueByFaction: mapVal, blend: { map: 0.5, setup: 2 } },
     });
-    expect(withPref - bare).toBeCloseTo(20, 9); // 10 × 2
+    expect(p2 - bare).toBeCloseTo(20 - 70, 9);
+  });
+
+  it("冷遇は上位 K に入っているぶんだけ減点、入っていなければ効かない", () => {
+    const s = flat();
+    s.terrans = 30;
+    const bare = criterionScore("neutralBalance", s, opts);
+    expect(criterionScore("neutralBalance", s, { ...opts, factionPref: { w: 1, byFaction: { terrans: -1 } } }) - bare).toBeCloseTo(-(30 - 10), 9);
+    const weak = flat();
+    for (const f of SIX) weak[f] = 50;
+    const bareWeak = criterionScore("neutralBalance", weak, opts);
+    expect(criterionScore("neutralBalance", weak, { ...opts, factionPref: { w: 1, byFaction: { terrans: -3 } } })).toBe(bareWeak);
   });
 
   it("同じ母星色でも種族ごとに別々に効く", () => {
     const s = flat();
-    s.terrans = 30; // BLUE
+    for (const f of SIX) s[f] = 50;
+    s.terrans = 40; // BLUE
     s.lantids = 5; // BLUE
     const bare = criterionScore("neutralBalance", s, opts);
-    const onTerrans = criterionScore("neutralBalance", s, {
-      ...opts,
-      factionPref: { w: 1, byFaction: { terrans: 1 } },
-    });
-    const onLantids = criterionScore("neutralBalance", s, {
-      ...opts,
-      factionPref: { w: 1, byFaction: { lantids: 1 } },
-    });
-    expect(onTerrans - bare).toBeCloseTo(30, 9);
-    expect(onLantids - bare).toBeCloseTo(5, 9);
+    const onTerrans = criterionScore("neutralBalance", s, { ...opts, factionPref: { w: 1, byFaction: { terrans: 1 } } });
+    const onLantids = criterionScore("neutralBalance", s, { ...opts, factionPref: { w: 1, byFaction: { lantids: 1 } } });
+    expect(onTerrans - bare).toBeCloseTo(40 - 50, 9);
+    expect(onLantids - bare).toBeCloseTo(5 - 50, 9);
   });
 
   it("基本版では LF4種族の指定が効かない", () => {
@@ -429,16 +428,17 @@ describe("種族優遇/冷遇（List）", () => {
     expect(withPref).toBe(bare);
   });
 
-  it("色優遇と種族優遇は併用できる", () => {
+  it("色優遇（比例）と種族優遇は併用できる", () => {
     const s = flat();
+    for (const f of SIX) s[f] = 50;
     const opt = {
       ...opts,
       colorPref: { w: 1, byColor: { BLUE: 1 } },
       factionPref: { w: 1, byFaction: { terrans: 1 } } as const,
     };
     const bare = criterionScore("neutralBalance", s, opts);
-    // BLUE の最大10（色）＋ terrans 10（種族）
-    expect(criterionScore("neutralBalance", s, opt) - bare).toBeCloseTo(20, 9);
+    const blueBest = Math.max(s.terrans, s.lantids);
+    expect(criterionScore("neutralBalance", s, opt) - bare).toBeCloseTo(blueBest + (10 - 50), 9);
   });
 });
 

@@ -337,19 +337,21 @@ export type SetupColorPref = {
 export const SETUP_COLOR_PREF_W = 0.3;
 
 /**
- * List の種族優遇の係数（2026-07-31）。掛け先が「Map評価＋Setup評価」で
- * Setup 単体（色優遇の掛け先）のおよそ2倍の大きさになるので、目盛りを揃えるため
- * SETUP_COLOR_PREF_W の半分にしてある。
+ * 種族優遇の係数（Pair の採点と Setup の検索。2026-10-22 ユーザー「優遇を設定した種族が使う気も起きないような
+ * バランスではない、程度でよい」→ 形を「上位 K に届かない分だけ減点」に変えて実測で 0.2。`factionPrefBonus` 参照）。
+ *
+ * 実測（scripts/_probe_faction_pref.ts、SHAPE=shortfall。上位 5 件で優遇種族が上位 K ＝ 人数＋2 に入る割合 / バランスの損失）:
+ *   Pair（基準 2、合計 T_f）  4人LF 優遇なし 33% → p1 61% / 2.15、p2 68% / 3.86、p5 71% / 4.93（基準値の幅 11.4）
+ *                             基本版  43% → p1 84% / 0.78、p2 94% / 1.08（幅 3.9）
+ *   Setup の検索（基準 2）    4人LF  33% → p1 66% / 0.52、p2 81% / 0.79、p5 86% / 0.94（幅 3.2）
+ * それまでの「w × p × 値」（0.15）は p1 で 54% / 2.77（Pair 4人LF）、p5 でも 69% / 8.37 で頭打ちのまま損失だけ増えた
+ * （すでに上位にいる種族をさらに押し上げる方向に点を使うため）。
  */
-export const LIST_FACTION_PREF_W = SETUP_COLOR_PREF_W / 2;
-
-/**
- * Setup の検索（旧 一括探索）に掛ける種族優遇の係数（段階 1「条件の統一」2026-10-16。**仮置き、ユーザー確認待ち**）。
- * 優遇が色から種族ごとになった（1 つの表を Map / Setup / List で共有）。掛け先は種族ごとの Setup 評価値で、
- * 「色でまとめて」入れると同じ色の 2 種族ぶんが足されて色優遇の掛け先（その色の最強種族）の約 2 倍になるので、
- * 色優遇の半分にして目盛り（1 ＝ 基準とほぼ互角）を保つ。
- */
-export const SETUP_FACTION_PREF_W = SETUP_COLOR_PREF_W / 2;
+export const FACTION_PREF_W = 0.2;
+/** Pair（旧 List）の種族優遇の係数。掛け先は合計 T_f（基準 1・4 は Map ＋ Setup の合算） */
+export const LIST_FACTION_PREF_W = FACTION_PREF_W;
+/** Setup の検索の種族優遇の係数。掛け先は種族ごとの Setup の値 */
+export const SETUP_FACTION_PREF_W = FACTION_PREF_W;
 
 /** 母星色ごとの「その色でいちばん強い種族のスコア」。色優遇の掛け先。 */
 export function colorValueOf(
@@ -388,19 +390,34 @@ export type FactionPref = {
   blend?: ScoreBlend;
 };
 
-/** 種族優遇ぶんの加点（指定が無ければ 0）。掛け先は Map評価×map＋Setup評価×setup（合算比。省略時 1:1）。 */
+/**
+ * 種族優遇ぶんの加点（指定が無ければ 0）。値 v_f ＝ Map評価×map＋Setup評価×setup（合算比。省略時 1:1。
+ * 基準 2・3 の T_f で採点するときは setupScores がすでに T_f）。
+ *
+ * 2026-10-22 から「上位 K に届かない分だけ減点」（K ＝ 人数＋2、種族で数える。基準 2 の上位 K と同じ）:
+ *   thr_f ＝ 優遇した種族を除いた種族の値の K 番目
+ *   優遇（p > 0）: w × p × min(0, v_f − thr_f)   … 上位 K に入っていれば 0（バランスの基準がそのまま決める）
+ *   冷遇（p < 0）: w × p × max(0, v_f − thr_f)   … 上位 K に入っているぶんだけ減点
+ * 「使う気も起きないほど弱くはない」を保証する形で、すでに強い種族をさらに押し上げることはしない。
+ */
 function factionPrefBonus(
   setupScores: FactionScores,
   lostFleet: boolean,
+  playerCount: number,
   pref?: FactionPref
 ): number {
   if (!pref || !pref.w) return 0;
+  const ids = factionIdsForMode(lostFleet);
+  const valueOf = (f: FactionId) => blendScores(pref.mapValueByFaction?.[f] ?? 0, setupScores[f] ?? 0, pref.blend);
+  const k = Math.min(ids.length - 1, Math.max(2, playerCount + 2));
   let s = 0;
-  for (const f of factionIdsForMode(lostFleet)) {
+  for (const f of ids) {
     const p = pref.byFaction[f];
     if (!p) continue;
-    const value = blendScores(pref.mapValueByFaction?.[f] ?? 0, setupScores[f] ?? 0, pref.blend);
-    s += pref.w * p * value;
+    const v = valueOf(f);
+    const others = ids.filter((x) => x !== f).map(valueOf).sort((a, b) => b - a);
+    const thr = others[k - 1] ?? v;
+    s += p > 0 ? pref.w * p * Math.min(0, v - thr) : pref.w * p * Math.max(0, v - thr);
   }
   return s;
 }
@@ -455,7 +472,7 @@ export function criterionScore(
   // 基準そのものとは独立に足す（Map で偏り項に色優遇を足しているのと同じ形）。
   const bonus =
     colorPrefBonus(setupScores, lf, opts.colorPref) +
-    factionPrefBonus(setupScores, lf, opts.factionPref);
+    factionPrefBonus(setupScores, lf, opts.playerCount, opts.factionPref);
   const base = (() => {
     switch (criterion) {
       case "opposeMap": {

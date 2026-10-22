@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { planPair, totalScoresOf, usesTotalBasis, type PairPlanInput } from "./pairPlan";
 import { criterionScore, scoreSetupFactions, LIST_FACTION_PREF_W } from "@/gaia/eval/factionEval";
+import { factionIdsForMode } from "@/gaia/eval/factionWeights";
 import { FACTION_IDS } from "@/gaia/eval/factionWeights";
 import { buildSetupFromSeed } from "@/gaia/setup/buildSetup";
 import type { PersistedCandidate } from "@/app/board/persistence";
@@ -80,7 +81,9 @@ describe("pairPlan（段階 2: 基準 2・3 は合計 T_f で測る）", () => {
       const setupScores = scoreSetupFactions(buildSetupFromSeed(s.input), DEFAULT_SETUP_WEIGHTS);
       const total = totalScoresOf(setupScores, m.evaluation.breakdown);
       expect(find(p0, s.seed).rec.score).toBeCloseTo(criterionScore("topBalance", total, { playerCount: 4, lostFleet: true }), 9);
-      expect(find(p1, s.seed).rec.score - find(p0, s.seed).rec.score).toBeCloseTo(LIST_FACTION_PREF_W * 2 * total.xenos, 9);
+      // 2026-10-22 から「上位 K（人数＋2）に届かない分だけ減点」
+      const others = factionIdsForMode(true).filter((f) => f !== "xenos").map((f) => total[f]).sort((a, b) => b - a);
+      expect(find(p1, s.seed).rec.score - find(p0, s.seed).rec.score).toBeCloseTo(LIST_FACTION_PREF_W * 2 * Math.min(0, total.xenos - others[5]), 9);
     }
   });
 
