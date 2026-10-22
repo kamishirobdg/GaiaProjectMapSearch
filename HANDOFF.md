@@ -30,7 +30,7 @@
 2. 保留中の決定は TODO.md「いまの残り」の 2（合算比と Map の桁、改造種族の倍率表、Map の優遇の形、基準 1・4 など）。
 3. 要望が無ければ新しい実装はしない。
 
-## 2026-10-11〜10-22 の記録（時系列。古いものが上）
+## 2026-10-11〜10-22 の記録（時系列。古いものが上。最新は末尾の 39回目）
 
 - 本番 https://gaia-project-map-search.vercel.app は **v1.6.8 · eval_v8**（2026-10-15、27回目の FF push ＝ ddc46f5。Map の各項目の
   「?」の小窓。表示だけ、評価値は不変。設計ノート 2.5 末尾。deployments API で Production の success 確認済み）。ユーザーの実機
@@ -104,6 +104,9 @@
 - **同日、38回目の FF push ＝ v2.3.1 · eval_v9（c53614c）**: Pair にだけ出るピン留めマップの対処（選択肢はいまの評価バージョンのバケツ
   だけ、選択肢の文字の記憶 `gaia_list_pair_map_label` を廃止、「ピン解除」ボタン。設計ノート 1.9 追補）。deployments API で Production
   （deployment 7142767472）の success 確認済み。FF push が先で main と差分が無くなったため PR は作れなかった（記録はこの行）。
+- **2026-10-22、39回目の FF push ＝ v2.4.0 · eval_v9（e6bb36d。`9a32aa6..e6bb36d` の 4 コミット）**: 種族優遇を「上位 K に届かない分だけ
+  減点」0.2（Pair・Setup。Map は比例 25 のまま）、「合計の上位」を種族の上位 K に、資料の最新化（設計ノート 1.10）。deployments API で
+  Production（deployment 7240898285）の success 確認済み。PR #37 は FF push で merged 扱い。
 - **作業ブランチは 2026-10-15 から `claude/gaia-map-project-status-73aeld`**。段階 1 の PR #31 は 32回目の FF push で merged 扱いになり、
   段階 2（v1.9.0）は **draft PR #32**（同じブランチ。FF push のたびに PR が閉じるので、次の段階は新しい PR を作る）。旧 PR #27 / #26 は閉じた。旧 `claude/gaia-map-project-status-adrt1n`
   （PR #26）は同一コミットで引き継いだうえで閉じた（ユーザー確定 (a)）。
