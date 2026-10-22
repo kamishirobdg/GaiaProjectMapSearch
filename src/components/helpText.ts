@@ -212,21 +212,25 @@ const ENTRIES = {
     ja: {
       title: "種族優遇/冷遇",
       what:
-        "種族ごとの ±（1 つの表を Map / Setup / Pair が共有）。Map の検索ではその種族の盤面の値に（eval_v9）、Setup の検索ではその種族の配置の値に、" +
-        "Pair の組の提案では両方の合計に、それぞれ種族ごとにそのまま掛ける。「色でまとめて」は同じ色の 2 種族に同じ値を入れる近道。",
+        "種族ごとの ±（1 つの表を Map / Setup / Pair が共有）。Pair の組の採点と Setup の検索では、優遇した種族が上位 K（人数＋2）に届かない分だけ減点する" +
+        "（0.2 × 優遇 × 不足分。すでに上位 K にいれば何もしない＝バランスの基準がそのまま決める）。冷遇は上位 K に入っているぶんだけ減点。" +
+        "Map の検索はその種族の盤面の値に比例して加点（係数 25、eval_v9）。「色でまとめて」は同じ色の 2 種族に同じ値を入れる近道。",
       why:
-        "目盛りは従来の色優遇と同じ: 0 効かない / 1 基準とほぼ互角 / 2 優遇が主導 / 5 実質その種族だけで決まる。マイナスは逆向きに同じだけ。" +
-        "Setup 側の係数は色優遇の半分（0.15。同じ色の 2 種族に入れると従来の色優遇とほぼ同じ大きさ）。",
+        "狙いは「優遇した種族が使う気も起きないほど弱くはない」組を上位に出すこと（2026-10-22 ユーザー）。実測（上位 5 件で優遇種族が上位 K に入る割合。優遇なし 4人LF 33%）: " +
+        "Pair は 1 で 61%、2 で 68%、5 で 71%（基本版 1 で 84%、2 で 94%）、Setup の検索は 1 で 66%、2 で 81%。バランスの損失は大きくしても基準値の幅の半分以下で頭打ち。" +
+        "それまでの「値に比例」（0.15）は 5 でも 69% で、損失だけが増えた。",
       ref: "1.4 / 4",
     },
     en: {
       title: "Faction preference",
       what:
-        "Per faction, ± (one table shared by Map / Setup / Pair). Map search applies it to the faction's board value (eval_v9), Setup search to its layout value, " +
-        "Pair suggestions to the sum, each per faction. 'By colour' sets both factions of a colour at once.",
+        "Per faction, ± (one table shared by Map / Setup / Pair). Pair scoring and Setup search subtract points only for the amount the preferred faction falls short of the top K (players + 2): " +
+        "0.2 × preference × shortfall; nothing happens when it is already in the top K, so the balance criterion decides. A negative value subtracts for the amount it is inside the top K. " +
+        "Map search adds in proportion to the faction's board value (weight 25, eval_v9). 'By colour' sets both factions of a colour at once.",
       why:
-        "Same scale as the old colour preference: 0 off / 1 about even / 2 preference leads / 5 decided by this faction alone. " +
-        "On the Setup side the coefficient is half the colour one (0.15; setting both factions of a colour gives about the old colour bonus).",
+        "The aim is pairs where the preferred faction is not too weak to consider (user, 2026-10-22). Measured share of the top 5 where the preferred faction is in the top K (33% without preference, 4p LF): " +
+        "Pair 61% at 1, 68% at 2, 71% at 5 (base game 84% at 1, 94% at 2); Setup search 66% at 1, 81% at 2. The balance loss levels off below half the criterion range. " +
+        "The earlier proportional form (0.15) reached only 69% even at 5 while the loss kept growing.",
       ref: "1.4 / 4",
     },
   },
@@ -317,14 +321,14 @@ const ENTRIES = {
   pairTopColors: {
     ja: {
       title: "合計の上位",
-      what: "Map ＋ Setup の合計（合算比を掛けたもの）が高い順に、人数＋2 色。同じ色は強い方の種族だけ。",
-      why: "同色の 2 種族は卓で 1 人しか選べないため（2026-09-20）。Setup ぶんには船の相互作用が入る。",
+      what: "Map ＋ Setup の合計（合算比を掛けたもの）が高い順に、人数＋2 種族。基準 2 上位バランスが測る上位 K と同じ種族。",
+      why: "上位 K は種族で数える（2026-10-22 ユーザー確定。それまでの表示は色ごとに強い方の種族だけで、基準の上位 K と食い違っていた）。同じ色の 2 種族が並ぶことがあるが、卓で選べるのはどちらか 1 つ。Setup ぶんには船の相互作用が入る。",
       ref: "4",
     },
     en: {
       title: "Top by total",
-      what: "Players + 2 colours ranked by map + setup (after the blend ratio); for each colour only the stronger faction.",
-      why: "Two factions of one colour cannot both sit at the table (2026-09-20). The setup part includes the ship interaction.",
+      what: "Players + 2 factions ranked by map + setup (after the blend ratio): the same top K that criterion 2 (top balance) measures.",
+      why: "Top K counts factions (user decision 2026-10-22; the display used to keep only the stronger faction per colour and disagreed with the criterion). Both factions of a colour may appear, though only one can be picked. The setup part includes the ship interaction.",
       ref: "4",
     },
   },

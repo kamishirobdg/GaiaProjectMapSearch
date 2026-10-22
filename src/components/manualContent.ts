@@ -163,7 +163,7 @@ const ja: ManualText = {
         {
           ul: [
             "評価指数はカテゴリ全体の効き方を変える係数で、Pair の提案にも同じ値が使われます。変えても貯めた結果は消えません。",
-            "種族優遇 / 冷遇（帯で編集。種族ごとの ±）は検索と提案の並びに効き、評価表の値は変えません。目盛りは Map の色優遇と同じで、係数は色優遇の半分です（同じ色の 2 種族に入れると従来の色優遇とほぼ同じ大きさ）。",
+            "種族優遇 / 冷遇（帯で編集。種族ごとの ±）は検索の並びに効き、評価表の値は変えません。優遇した種族が上位（人数＋2 種族）に届かないセットアップほど下がります。すでに上位にいれば何もしません。1 で優遇した種族が上位に入る割合が約 3 割から約 6〜7 割に、2 で約 8 割になります。冷遇は上位に入っているセットアップほど下がります。",
           ],
         },
       ],
@@ -200,8 +200,8 @@ const ja: ManualText = {
         {
           ul: [
             "基準 2・3 は盤面の評価の内訳を使って合計で測ります。内訳を持たない古い盤面では配置の値だけで測り、その旨の注記が出ます。",
-            "種族優遇 / 冷遇（帯で編集。種族ごとの ±）は合計に掛かります。目盛りは Map と同じです。",
-            "「合計の上位」は合計が高い順に人数＋2 色（同じ色は強い方の種族だけ）です。",
+            "種族優遇 / 冷遇（帯で編集。種族ごとの ±）は、優遇した種族が合計で上位（人数＋2 種族）に届かない組ほど下げます。すでに上位にいれば何もせず、バランスの基準がそのまま並びを決めます。1 で優遇した種族が上位に入る組が約 3 割から約 6 割（基本版は約 8 割）に、2 で約 7 割（基本版は約 9 割）になります。冷遇は上位に入っている組ほど下げます。",
+            "「合計の上位」は合計が高い順に人数＋2 種族です。基準 2 上位バランスが測る上位と同じ種族で、同じ色の 2 種族が並ぶこともあります。",
           ],
         },
         { h3: "合算比" },
@@ -356,7 +356,7 @@ const en: ManualText = {
         {
           ul: [
             "Weights scale whole categories and are shared with Pair suggestions. Changing them does not discard stored results.",
-            "Faction preference (edited in the strip; ± per faction) affects search and suggestion ranking, not the table values. Same scale as Map's colour preference, with half the coefficient (setting both factions of a colour gives about the old colour bonus).",
+            "Faction preference (edited in the strip; ± per faction) affects the search ranking, not the table values. Setups where the preferred faction falls short of the top (players + 2 factions) rank lower; nothing changes when it is already there. At 1 the share where the preferred faction makes the top rises from about 30% to 60–70%, at 2 to about 80%. A negative value lowers setups where that faction is in the top.",
           ],
         },
       ],
@@ -393,8 +393,8 @@ const en: ManualText = {
         {
           ul: [
             "Criteria 2 and 3 use the board's evaluation breakdown to score by total. Old boards without a breakdown are scored by the layout only, with a note.",
-            "Faction preference (edited in the strip; ± per faction) applies to the total. Same scale as on Map.",
-            "\"Top by total\" lists players + 2 colours by total (only the stronger faction per colour).",
+            "Faction preference (edited in the strip; ± per faction) lowers pairs where the preferred faction falls short of the top (players + 2 factions) by total; nothing changes when it is already there, so the balance criterion decides. At 1 the share of pairs with the preferred faction in the top rises from about 30% to about 60% (base game about 80%), at 2 to about 70% (base game about 90%). A negative value lowers pairs where that faction is in the top.",
+            "\"Top by total\" lists players + 2 factions by total: the same top that criterion 2 (top balance) measures; both factions of a colour may appear.",
           ],
         },
         { h3: "Blend" },

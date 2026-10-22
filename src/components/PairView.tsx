@@ -68,7 +68,7 @@ import {
   writeSharedPlayers,
   type Expansion,
 } from "@/lib/sharedSettings";
-import { scoreSetupFactions, topFactions, topFactionsByColor, type FactionScores, type RecommendCriterion } from "@/gaia/eval/factionEval";
+import { scoreSetupFactions, topFactions, type FactionScores, type RecommendCriterion } from "@/gaia/eval/factionEval";
 import { applyShipInteraction, shipInteractionOf } from "@/gaia/eval/shipInteraction";
 import { FACTIONS, FACTION_IDS, type FactionId } from "@/gaia/eval/factionWeights";
 import { mapValueByFaction } from "@/gaia/eval/mapFaction";
@@ -178,7 +178,7 @@ const UI = {
     unknownTemplate: "テンプレート不明（プレビューなし）",
     mapStrong: "マップ優位",
     setupStrong: "セットアップ優位（上位5）",
-    totalStrong: (k: number) => `合計の上位${k}色（人数+2。同色は強い方）`,
+    totalStrong: (k: number) => `合計の上位${k}種族（人数+2）`,
     totalTable: "種族別の合計",
     openSetup: "Setupで開く",
     openMap: "Mapで開く",
@@ -296,7 +296,7 @@ const UI = {
     unknownTemplate: "Unknown template (no preview)",
     mapStrong: "Map favors",
     setupStrong: "Setup favors (top 5)",
-    totalStrong: (k: number) => `Top ${k} colors by total (players+2, stronger of each pair)`,
+    totalStrong: (k: number) => `Top ${k} factions by total (players+2)`,
     totalTable: "Totals by faction",
     openSetup: "Open in Setup",
     openMap: "Open in Map",
@@ -376,14 +376,14 @@ function topFactionText(scores: FactionScores, n: number, lang: Lang, lf: boolea
     .join(" / ");
 }
 
-/** Map ＋ Setup の合計の上位N色（人数+2。同じ色は強い方だけ。2026-09-20）。合算比は合計表と同じ。 */
+/** Map ＋ Setup の合計の上位 N 種族（人数+2。2026-10-22 ユーザー確定「上位 K は種族で決める」。それまでは色ごとに強い方だけ）。合算比は合計表と同じ。 */
 function totalScoresOfPair(mapScores: FactionScores, setupScores: FactionScores, blend: ScoreBlend): FactionScores {
   const total = {} as FactionScores;
   for (const f of FACTION_IDS) total[f] = blendScores(mapScores[f] ?? 0, setupScores[f] ?? 0, blend);
   return total;
 }
 function topTotalText(total: FactionScores, n: number, lang: Lang, lf: boolean): string {
-  return topFactionsByColor(total, n, lf)
+  return topFactions(total, n, lf)
     .map((f) => `${factionLabel(f, lang)} ${Math.round(total[f])}`)
     .join(" / ");
 }
@@ -1555,7 +1555,7 @@ export default function PairView() {
                   const sToken = encodeSetupToken(r.setupInput);
                   const bToken = mapToken(r.mapPlacement);
                   const pairPath = bToken && r.tid ? `/?h=${bToken}&t=${r.tid}&s=${sToken}` : `/setup?s=${sToken}`;
-                  const topColors = r.players + 2;
+                  const topK = r.players + 2;
                   return (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 12 }}>
                       {r.kind === "shared" ? <div style={{ fontWeight: 700, color: "#2733cc" }}>{t.sharedPairTitle}</div> : null}
@@ -1610,10 +1610,10 @@ export default function PairView() {
                       {detail.hasBreakdown ? (
                         <div>
                           <span style={{ opacity: 0.7 }}>
-                            {t.totalStrong(topColors)}
+                            {t.totalStrong(topK)}
                             <SharedHelp k="pairTopColors" lang={lang} />:
                           </span>{" "}
-                          {topTotalText(detail.total, topColors, lang, r.lf)}
+                          {topTotalText(detail.total, topK, lang, r.lf)}
                         </div>
                       ) : null}
                       <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-start" }}>
