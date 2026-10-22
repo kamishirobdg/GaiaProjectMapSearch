@@ -37,7 +37,7 @@
 | 1-5 ★ | `UNIFIED_VALUE` | `src/gaia/eval/reachCost.ts` | BASE **10** / OWN **1** / OTHER **0.25** / GAIA **0.5** / TRANSDIM **0.25** / GAIA_FACTION_TRANSDIM **0.5** / EXTRA **0.1** / TERRA_BOOST **1.2** | eval_v7「全惑星を同一の式で」の係数。種族の値 ＝ Σ 全惑星 係数(種別) × (固有値 BASE ＋ 船接触 ＋ 船星系 ＋ 端の罰点) × 到達係数。**係数は「その種別をどれだけ削るか」**（1 が母星色＝削らない）。BASE は「惑星が 1 つあること自体の値」で船接触 10 と同じ桁 | 他色 0.25 で他色の寄与が全体の 1/4 前後、ガイア 0.5 で全種族に届く惑星、次元横断はガイア種族だけ 0.5。TERRA_BOOST 1.5 だとジオデン人が突出する（2026-10-07 の実測） | `W=OTHER:0.35,GAIA:0.4 npx tsx scripts/_probe_map_values.ts 60`（`W` 環境変数で差し替え） |
 | 1-6 ★ | `GAIA_FACTIONS` / `TERRAFORM_FACTIONS` | `src/gaia/eval/reachCost.ts` | ガイア種族 地球人・バルタック人・イタル人・モウェイド人 ／ 改造種族 **暫定** ジオデン人・タクロン族・ネヴラ人 | 次元横断の係数を 0.5 にする種族 ／ 他色の係数に × 1.2 を掛ける種族 | 改造種族の分類は暫定のままリリースした。**将来は種族ごとの倍率表にする**（ユーザー決定。他の種族が等価ではない） | 同上 |
 | 1-7 | `wRimGap`（評価指数「欠けマス罰点」） | `src/app/board/page.tsx` の既定条件（UI で変更可） | **0.5**（入力欄は 10 倍の整数 **5**） | 惑星から距離 2 以内の 18 マスのうち盤面に無いマス 1 つにつき w 点を固有値から引く。内側 0、外周 3 前後、最外周 辺 7〜角 10 | 影響は基本版 9.9% ≫ LF 1%。**「基本版で端が有利」は測り方の誤り**だった（3 節）。既定値を変えると式は同じでも既定条件の結果バケツが新しくなる（検索キーに入る） | `npx tsx scripts/_probe_rim.ts`、`_probe_map_values.ts` の「値 × 欠けマス数」の相関 |
-| 1-8 | Map : Setup の合算比 | `src/lib/pairPlan.ts` / Pair | **1:1**（未決） | Pair の合計表、基準 2・3 の採点（合計 T_f。2026-10-17）、種族優遇の掛け先、「合計の上位」が同じ比を使う | Map の桁は評価値の調整が終わってから決め直す（2026-10-08 ユーザー）。基本版の Map 最上位 55 に対し LF は 135〜149 なので一律倍率は LF で Map が支配する（設計ノート 4 節） | `_probe_ship_interaction.ts` の「合計の上位」が 1:1 で測っている |
+| 1-8 | Map : Setup の合算比 | `src/gaia/eval/scoreBlend.ts`（`DEFAULT_SCORE_BLEND`）/ Pair の「条件」 | **1:1**（未決） | Pair の合計表、基準 2・3 の採点（合計 T_f。2026-10-17）、種族優遇の掛け先、「合計の上位」が同じ比を使う | Map の桁は評価値の調整が終わってから決め直す（2026-10-08 ユーザー）。基本版の Map 最上位 55 に対し LF は 135〜149 なので一律倍率は LF で Map が支配する（設計ノート 4 節） | `_probe_ship_interaction.ts` の「合計の上位」が 1:1 で測っている |
 
 ### 本番で見る場所と、違和感があるときの動かし方（2026-10-16 ユーザー依頼）
 
@@ -58,6 +58,7 @@
 | 1-2 | 「届かない船のタイルが 0」「全船に等しく届く種族は加点 0」が妥当か。種族ごとの船接触は未表示（尺度が落ち着いたらホバーに） | 届くが入植したくない惑星が数えられて不自然 → 到達係数に種別の係数も掛ける。遠い船まで効きすぎ → 半径 3 → 2 |
 | 1-3 | 種別セルのタップのマーカー数（他色で種族平均 9 個） | 多すぎ → 2（2.7 個）、少なすぎ → 4（16.9 個）。表示だけ |
 | 1-8 | Pair の合計表。Map 最上位 LF4 205 / LF3 186 / 基本 73、Setup LF4 170 前後 / 基本 115 前後 | Pair の「条件」の合算比の欄で試す（保存され提案にも効く）。既定値は 1-4〜1-7 のあとで |
+| 1-9 | 帯で種族を優遇したときの Pair の候補一覧と Setup の検索結果。優遇した種族が「合計の上位」（人数＋2 種族）に入っている行の割合 | 優遇が効かない → 帯の値を 2〜5 に（上限は頭打ち）。効きすぎ → 係数 `FACTION_PREF_W` を 0.1 に（4人LF で優遇 1 の上位 K 入り 61% → 47%） |
 
 ### 1-1 / 1-2 の式（いまの実装）
 
@@ -82,11 +83,13 @@ byFaction を持たない古い候補（eval_v6 以前）は全種族共通の C
 | 入植の歩数 ★ | `reachCost.ts` `STONE_COST_*` | 同色 0 / 改造の輪で隣 1・2 つ先 2・反対 3 / ガイア 1 / 次元横断 2（ガイア Lv1 開始 1、イタル人 1.5）/ 原始 3 / 小惑星 2 | 踏み台と到着した惑星の両方に払う。改造の輪は テラ→酸化→火山→砂漠→沼沢→チタン→氷 |
 | `BASIC_REACH_PROFILES` / `LF_REACH_PROFILES` ★ | `reachCost.ts` | 開始建物 2（ゼノ族 3、ダー・シュワーム人と LF 4 種族 1）、グリーン人 ガイア 0.5、ジオデン人 改造の歩数 × 2/3 など | 初期研究の差。LF 4 種族は母星種別が無く同じ種別にも原始 3・小惑星 2 を払う。`reachCost.test.ts` が値を固定している |
 | 色の代表値（案 A） ★ | `evaluateSoft.ts` | その色の 2 種族のうち大きい方 | 検索の偏り項はこの代表値で 7 色のばらつきを測る（種族優遇は eval_v9 から種族ごとの値に掛ける）。種族の値を変えると代表が入れ替わることがある（3 節） |
-| 評価指数の既定値（UI で変更可） | `page.tsx` の既定条件 | `wScout` 10 / `wScoutCore` 4（船別 10 / 3）/ `scoutRadius` 3 / `wFactionPref` 25（eval_v8 までの `wColorPref`）/ `keepTop` 20 | 船接触・船星系は「状況の値」として固有値 10 に足される。`wFactionPref` 25 は色ごとだった頃に「1 ＝ 基準とほぼ互角」に実測で合わせた目盛り（設計ノート 4 節）。eval_v9 で種族ごとの値に掛けるようになったが据え置き（同じ色の 2 種族に入れると約 2 倍）。Setup 側の `SETUP_FACTION_PREF_W` 0.15 と Pair の 0.15 も据え置き（2026-10-17 ユーザー確定 2-(a)。再実測は評価値の調整後） |
+| 評価指数の既定値（UI で変更可） | `page.tsx` の既定条件 | `wScout` 10 / `wScoutCore` 4（船別 10 / 3）/ `scoutRadius` 3 / `wFactionPref` 25（eval_v8 までの `wColorPref`）/ `keepTop` 20 / 保存数 1000（`gaia_map_capacity`） | 船接触・船星系は「状況の値」として固有値 10 に足される。`wFactionPref` 25 は Map の検索の優遇（比例）。2026-10-22 の実測（`_probe_faction_pref.ts MODE=map SHAPE=linear`）で優遇 1 のとき優遇種族の上位 K 入り 4人LF 34% → 63%、偏り項の幅の 15% を失う。Pair / Setup と同じ「届かない分だけ減点」に揃えるなら `EVAL_VERSION` を上げる（未決） |
+| `FACTION_PREF_W` | `src/gaia/eval/factionEval.ts` | **0.2** | Pair の採点と Setup の検索の種族優遇。2026-10-22 から w × 優遇 × min(0, 値 − 優遇種族を除いた上位 K 番目)（冷遇は max）。上位 K ＝ 人数＋2 を種族で数える。実測は設計ノート 1.10（4人LF Pair: 優遇 1 で上位 K 入り 33% → 61%、損失は基準値の幅の 19%。5 でも 71% / 43% で頭打ち） |
 | `wImbalance` | `page.tsx` | 100（固定） | 7 色の代表値のばらつき（偏り項）の係数。planetTypeTotals に掛けるので Map の桁を変えても触らない |
 | Setup の重み | `data/weights/*.csv`（正本）、`setupWeights.ts` | `SETUP_WEIGHT_BASE` 9（ブースター・最終得点・同盟・LF 船）、基本技術 9、上級技術 6、ラウンド得点 6、追加上級 2、`SETUP_SCORE_DIVISOR` 28、`SETUP_COLOR_PREF_W` 0.3 | 値は VP 換算。生成物（`*Weights.ts`）は手で編集しない。値を変えたら `_probe_category_influence.ts` で影響力を測り直す（順の目安 技術 > LF 船 > 上級 > ブースター > ラウンド > 最終 > 追加上級 > 同盟。順を守るための微調整はしない） |
-| Pair の 4 基準の添え物の係数 | `pairPlan.ts` | 0.2 / 0.3 | 「主項が同じ候補の順番を決める」程度の目分量。据え置き。基準 2・3 は 2026-10-17 から合計 T_f で測る |
-| 「合計の上位」の数 | `factionEval.ts` `topFactionsByColor` | 人数 + 2 色、同じ色は強い方の種族だけ | 同色の 2 種族は卓で 1 人しか選べない |
+| Pair の 4 基準の添え物の係数 | `factionEval.ts` `criterionScore`（組の基準値の入口は `src/lib/pairScore.ts` `scorePairOf`） | 0.2 / 0.3 | 「主項が同じ候補の順番を決める」程度の目分量。据え置き。基準 2・3 は 2026-10-17 から合計 T_f で測る。基準 2 で「Map と Setup を合わせて最もバランスの取れた組が 1 位」になることを 2026-10-22 にユーザーが確認 |
+| 「合計の上位」・上位 K の数 | `factionEval.ts` `topFactions`（Pair の表示）と `criterionScore` | 人数 + 2 **種族** | 2026-10-22 ユーザー確定「上位 K は種族で決める」。表示は 2026-09-20〜10-22 の間だけ色ごとに強い方（`topFactionsByColor`）で、基準と食い違っていた |
+| 連続探索・順位表 | `PairView.tsx` / `src/lib/pairRanking.ts` | 1 マップあたりの Setup 10 万件、K 20 / L 20、主ごと上位 10 組・主 50 件、Map の保存数 1000 | 10 万 → 30 万件で最良の基準値は 0〜1.3 点しか伸びない（2026-10-18 実測）。順位表を広げるなら Map の周回を増やす方が効く |
 
 ---
 
@@ -128,5 +131,6 @@ byFaction を持たない古い候補（eval_v6 以前）は全種族共通の C
 | `scripts/_probe_unified.ts` | eval_v7 の自己検算（式を素朴に書き直して一致を見る） | — |
 | `scripts/_probe_rim.ts` | 端の罰点の影響（基本版 ≫ LF） | — |
 | `scripts/_probe_category_influence.ts` | Setup のカテゴリごとの影響力 | — |
+| `scripts/_probe_faction_pref.ts [盤面数] [セットアップ数] [Map 用の盤面数]` | 種族優遇の効き（上位 5 件で優遇種族が上位 K に入る割合・バランスの損失）を Pair / Setup / Map で | `MODE=pair\|setup\|map`、`SHAPE=shortfall\|linear` |
 | `npm run snapshot:update` | 回帰スナップショット（LF 150 盤面） | — |
 | `/board?t=<templateId>&h=<placementToken>` | 盤面を直接復元して内訳表・マーカーを見る | トークンは `encodePlacementToken(makeSearchPlacementFromSeed(...).placement)` |

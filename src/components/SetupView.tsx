@@ -102,7 +102,7 @@ const PLANET_COLOR_STYLE: Record<PlanetColorKey, { bg: string; ja: string; en: s
 
 /**
  * 一括探索（2026-07-31）。いまの条件で大量に生成して基準の良い順に並べる。
- * 基準はマップ非依存のものだけ（マップ依存の逆優位・優位は List タブの担当）。
+ * 基準はマップ非依存のものだけ（マップ依存の逆優位・優位は Pair の担当）。
  */
 const BULK_CRITERIA = ["topBalance", "neutralBalance"] as const;
 type BulkCriterion = (typeof BULK_CRITERIA)[number];
@@ -618,7 +618,7 @@ function lsSet(key: string, value: string): void {
 // layout effect で行う（SSRでは useEffect にフォールバック）。2026-07-24。
 const useIsoLayoutEffect = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
 
-// --- 縮小セットアップ盤面（List の提案プレビュー用・読み取り専用）。2026-07-24 ---
+// --- 縮小セットアップ盤面（Pair の詳細用・読み取り専用）。2026-07-24 ---
 function SmallTile({ id, lang, lf, size }: { id: string; lang: Lang; lf: boolean; size: number }) {
   const [failed, setFailed] = React.useState(false);
   if (!id) return null;
@@ -892,10 +892,10 @@ export default function SetupView() {
 
   const result = React.useMemo(() => buildSetupFromSeed(buildInput(seed)), [seed, buildInput]);
 
-  // 評価指数（カテゴリ別係数）。List タブと localStorage を共有する。
+  // 評価指数（カテゴリ別係数）。Pair と localStorage を共有する。
   const [evalWeights, changeEvalWeight, resetEvalWeights, setAllEvalWeights] = useSetupWeights();
   // 種族優遇/冷遇（段階 1「条件の統一」2026-10-16）。色ごとの入力（useColorPref、localStorage gaia_setup_color_pref）は
-  // 廃止し、探索プロファイルの種族優遇（Map / List と共有）を読む。検索の並びにだけ効く（評価表の値は変わらない）。
+  // 廃止し、探索プロファイルの種族優遇（Map / Pair と共有）を読む。検索の並びにだけ効く（評価表の値は変わらない）。
   const { active: activeSearchProfile } = useSearchProfiles();
   /** criterionScore へ渡す形。指定が無ければ undefined＝素通り。 */
   const factionPrefArg = React.useMemo<FactionPref | undefined>(() => {

@@ -45,10 +45,10 @@
   **基本14種族のプロファイル（`BASIC_REACH_PROFILES`。開始建物の数、航行・改造・ガイアの初期研究の差。
   2026-10-05、eval_v5）**は**ユーザーが決めた定数**。変えるときは選択肢を提示して確定してから。
   `reachCost.test.ts` が値を固定している。色の値はその色の2種族のうち大きい方（代表値、案A）で、
-  検索の偏り項と色優遇は代表値で7色のばらつきを測る。内訳表は種族の行（色でまとめない）。画面の列名は
+  検索の偏り項は代表値で7色のばらつきを測る（種族優遇は eval_v9 から種族ごとの値に掛ける）。内訳表は種族の行（色でまとめない）。画面の列名は
   母星 / 他色 / 緑 / 紫 / 拡張星（2026-10-10 ユーザー指定）だが、コードとドキュメントの種別名は own / other / gaia /
   transdim / extra（母星色 / 他色 / ガイア / 次元横断 / 原始・小惑星）のまま。
-- **eval_v7（2026-10-07、「全惑星を同一の式で」。本実装済み、v1.5.0。本番は未デプロイ）**: 種族の値 ＝
+- **eval_v7（2026-10-07、「全惑星を同一の式で」。v1.5.0 で本番へ）**: 種族の値 ＝
   Σ 全惑星 係数(種別) × (固有値 10 ＋ 船接触 ＋ 船星系 ＋ 端の罰点) × 到達係数。係数は `reachCost.ts` の
   `UNIFIED_VALUE`（母星色 1 / 他色 0.25（改造種族 ×1.2）/ ガイア 0.5 / 次元横断 0.25（ガイア種族 0.5）/
   原始・小惑星 0.1）で、**すべて調整必須のマジックナンバー**（設計ノート 2.10 の表。変えるときはユーザー判断＋
@@ -60,7 +60,7 @@
   「大きく削る」の取り違えが一度起きた箇所）。端の罰点 w は 0.5 のまま（「基本版で端が有利」は測り方の誤り
   だった。種族の平均を引いて欠けマス数で測ると端は一貫して不利。設計ノート 2.10）。改造種族の分類は暫定のまま
   リリースし、将来は種族ごとの倍率表にする（ユーザー決定）。
-- **eval_v8（2026-10-08、v1.6.0。作業ブランチ、本番は v1.5.0）**: ダー・シュワーム人の開始地点（惑星首府 1 つ）の
+- **eval_v8（2026-10-08、v1.6.0 で本番へ）**: ダー・シュワーム人の開始地点（惑星首府 1 つ）の
   値 × 1.5（`BASIC_REACH_PROFILES.ivits.startValueScale`、`planStarts` の開始地点の重みに入る。調整必須の
   マジックナンバー）。内訳表の種別セルのマーカーは到達コスト ≦ 3 の惑星だけ（`MARKER_MAX_REACH_COST`。2026-10-09 に 2 → 3）。
   **船の相互作用**（`src/gaia/eval/shipInteraction.ts`、α 1 ＝ 掛け算、**種族ごとの船接触 (ii-f)**。2026-10-09）: Pair（旧 List ＋ Total）の組の提案の
@@ -105,7 +105,10 @@
 
 ## 検証環境
 
-- devサーバは launch.json の `gaia-map-search`（port 3000）。/board=マップ、/setup=セットアップ。
+- devサーバは launch.json の `gaia-map-search`（port 3000）。`/`=Pair、/board=マップ、/setup=セットアップ、/manual=マニュアル。
+- クラウドの作業環境では `npm run dev -- --port 3000` をバックグラウンドで起動し、Playwright（`node_modules` の `playwright`、
+  実行ファイル `/opt/pw-browsers/chromium`）でヘッドレス確認する。スクリプトはリポジトリ直下に一時ファイルで置く
+  （scratchpad からは `playwright` を解決できない）。
 - 埋め込みブラウザで検索を動かすには rAFシム注入が必要:
   `window.requestAnimationFrame = cb => setTimeout(() => cb(performance.now()), 16)`
   スクリーンショットはタイムアウトするため read_page / JS評価で検証する。
@@ -127,12 +130,14 @@
   待っても Etag が変わらないのに、バンドルは差し替わっている。ブラウザで実際の DOM を
   見て判定すること。
 
-## Setup / Pair の構造（2026-07-30 に整理。List ＋ Total は 2026-10-17 に Pair へ）
+## Setup / Pair の構造（2026-07-30 に整理。List ＋ Total は 2026-10-17 に Pair へ。2026-10-22 に最新化）
 
+- **画面**: `/` ＝ Pair（`src/components/PairView.tsx`）、`/board` ＝ Map、`/setup` ＝ Setup、`/manual` ＝ マニュアル。
+  タブ順 Pair / Map / Setup / Manual。`/pair` `/list` `/total` は `/` へリダイレクト（共有 URL の引数は保持）。
 - **3タブとも「条件プロファイル ＋ 条件ごとの結果バケツ」**で揃えてある。
-  Map=`profiles`/`candidates`、Setup=`setup_profiles`/`setups`、
-  Pair（旧 List）=`list_profiles`＋localStorage。共通部品は `src/lib/conditionProfiles.ts` と
-  `src/components/ConditionProfilesPanel.tsx`。
+  Map=`profiles`/`candidates`、Setup=`setup_profiles`/`setups`（＋順位 `setup_ranking`）、
+  Pair=`list_profiles`＋ `pair_maps` / `pair_rows` / `pair_explored` / `pair_saved`（v2.3.0 で localStorage から移した）。
+  共通部品は `src/lib/conditionProfiles.ts` と `src/components/ConditionProfilesPanel.tsx`。
 - **条件プロファイルのキーは評価指数まで含む**が、**結果バケツのキーは
   セットアップの設定だけ**。生成される中身は評価指数に依存しないので、
   指数をいじっただけで貯めた結果が見えなくならないようにしてある。
@@ -141,23 +146,24 @@
   （シードを引き直す探索はしない）。既定の除外は `defaultAdvancedTileRules()`。
 - **SETUP_CATALOG の配列順はシャッフルの入力**。並べ替えると全シードの出目が変わり、
   `buildSetup.test` の golden 値も変わる。順番は「似た挙動」でまとめてある。
-- IndexedDB は v6。**別タブが古い接続を握ると upgrade が止まる**ので、
-  `openDb` に `onversionchange`（接続を手放す）と `onblocked`（即失敗）を入れてある。
+- IndexedDB（`gaia_map_cache`）は **v11**（v11 で Pair の 4 ストアを追加）。**別タブが古い接続を握ると upgrade が止まる**ので、
+  `openDb` に `onversionchange`（接続を手放す）と `onblocked`（即失敗）を入れてある。版を上げるときは移行の判定を必ず
+  `oldVersion` で行う（`db.version` は upgrade 中「新しい方」を返す）。
 - **探索プロファイル（2026-10-16、v1.8.0。段階 1「条件の統一」、設計ノート 1.4）**: `src/lib/searchProfiles.ts`（localStorage）が
   種族優遇＋Map の searchKey＋Setup の conditionKey を束ねる索引。**結果バケツの鍵は変えない**。共通バー直下の帯は
   `src/components/ConditionBar.tsx`（Map / Setup / Pair）。検索の実行でその側の条件を自動登録（`bindMapToActiveProfile` /
   `bindSetupToActiveProfile`）。優遇は種族優遇 1 つ: **Map は eval_v9（2026-10-17 ユーザー確定 3-(b)）から種族ごとの値に掛ける**
   （検索キーは `soft.wFactionPref` / `soft.factionPref`。eval_v8 までの色ごと `wColorPref` / `colorPrefByType` は廃止、既存の結果は
-  保持しない）、Setup の検索は `SETUP_FACTION_PREF_W`（0.15）、Pair は `LIST_FACTION_PREF_W`（0.15）。3 つの係数は据え置き
-  （2026-10-17 ユーザー確定 2-(a)。再実測は評価値の調整後）。旧 `gaia_setup_color_pref` / `gaia_list_faction_pref` は読まない。Setup の左ペインは Map と同じ 候補 / 詳細 / 条件（`gaia_setup_narrow_tab`）で、検索は
+  保持しない）。Setup の検索と Pair は **2026-10-22（v2.4.0）から「上位 K（人数＋2、種族で数える）に届かない分だけ減点」**、
+  係数 `FACTION_PREF_W` 0.2（`SETUP_FACTION_PREF_W` / `LIST_FACTION_PREF_W` は同じ値。`factionEval.factionPrefBonus`、実測は
+  `scripts/_probe_faction_pref.ts`、設計ノート 1.10）。Map の検索は比例のまま（`wFactionPref` 25。同じ形にすると `EVAL_VERSION`）。旧 `gaia_setup_color_pref` / `gaia_list_faction_pref` は読まない。Setup の左ペインは Map と同じ 候補 / 詳細 / 条件（`gaia_setup_narrow_tab`）で、検索は
   `src/workers/setupSearch.worker.ts` ＋ `src/lib/setupSearchRunner.ts`（採点は `setupSearchCore.searchChunk` で共通）。
   確認事項 7 件は 2026-10-17 に全件確定（設計ノート 1.4 末尾）。
 - **Pair タブ（2026-10-17、v1.9.0。段階 2、設計ノート 1.5）**: `src/components/PairView.tsx`（`/pair`）が旧 List ＋ Total。
   候補（組の提案＋候補一覧: 提案・保存した組・共有された組を 1 表に）/ 詳細（盤面・配置・`TotalTable.tsx` の種族別合計表）/ 条件
   （保存済み条件・評価指数・合算比）。狭い幅はタブ `gaia_pair_narrow_tab`。**基準 2・3 はマップの内訳があれば合計 T_f で測る**
   （`pairPlan.ts` `usesTotalBasis` / `totalScoresOf`、`recommendSetups` の `criterionScores`。内訳の無い旧候補は Setup の値）。既定の
-  基準は 2 上位バランス。旧 List の提案ログは廃止、保存した組は旧キー `gaia_list_proposals_v2` を継承。`/list` `/total` は `/pair` へ
-  リダイレクト（共有 URL の引数は保持）。
+  基準は 2 上位バランス。旧 List の提案ログは廃止、保存した組は旧キー `gaia_list_proposals_v2` を継承（v2.3.0 で IndexedDB へ移行）。
 - **Pair がトップ、「両方を探索」（2026-10-17、v2.0.0。段階 3、設計ノート 1.6）**: `/` が Pair（`/pair` `/list` `/total` は `/` へ）。タブ順
   Pair / Map / Setup / Manual。「両方を探索」は探索プロファイルの Map 部 / Setup 部の条件で Map の検索（`runSearchOffThread`、件数は
   Map タブの `gaia_search_trials`）→ `src/lib/mapSearchSave.ts` で Map の結果バケツへ → Setup の検索（`runSetupSearch`、件数は
@@ -167,13 +173,13 @@
   （2026-10-17 ユーザー確認。作業ブランチの push と下書き PR は記録のために続ける）。
 - **Pair の値の評価し直し、「連続で両方を探索」（2026-10-17、v2.1.0、設計ノート 1.7）**: Pair の Map の値は候補の条件プロファイルの
   `evalVersion` がいまと違えば **表示時にその候補の条件で評価し直す**（`src/lib/mapEvaluate.ts`。保存データは変えない）。候補に無い盤面も
-  配置から評価する。合計表に「船」列（Setup タブの総合との差）。「連続で探索」は Map の検索 → 上位 K 枚ごとに Setup を 1 マップあたり
+  配置から評価する。合計表の「船」列（Setup タブの総合との差）は v2.2.0 で廃止。「連続で探索」は Map の検索 → 上位 K 枚ごとに Setup を 1 マップあたり
   N 件（既定 100000、`gaia_pair_setup_per_map`）**マップに合わせて採点**（`setupSearchCore.searchChunk` の `pairWith`。planPair と同じ式）
-  → 上位 L 件を順位表（`src/lib/pairRanking.ts`、`gaia_pair_ranking_v1`、条件ごと上位 50 組）へ、を停止まで繰り返す。Setup の候補には
-  入れない。順位表の基準値は探索時の値。
+  → 上位 L 件を順位表（`src/lib/pairRanking.ts`）へ、を停止まで繰り返す（手順は v2.2.0 で作り直し、保存は v2.3.0 で IndexedDB へ。下）。
+  Setup の候補には入れない。
 - **v2.2.0（2026-10-17、設計ノート 1.8。ユーザー確定「すべて推奨」）**: 連続探索（マップ → セットアップ）は **既存の Map の候補の上位 K 枚の
   うち未探索のマップだけ** Setup を探索 → Map の検索 → 新たに入った未探索のマップだけ、の繰り返し（探索済みの件数は
-  `gaia_pair_explored_v1`）。セットアップ → マップは起点のセットアップを固定して Map を探索し続け、制約を通った盤面を組として採点。
+  v2.3.0 から IndexedDB の `pair_explored`）。セットアップ → マップは起点のセットアップを固定して Map を探索し続け、制約を通った盤面を組として採点。
   **結果バケツは配置とスコアと小さな集計だけ保存**（`persistence.slimEvaluation`、1 盤面 4KB。内訳表・マーカー・Pair の種族ごとの値は
   盤面から再評価）、容量は Map タブの「保存数」（`gaia_map_capacity`、既定 1000）。ワーカーの返す上位は `SEARCH_RESULT_KEEP_MAX`（200）。
   候補一覧は全行をいまの基準で採点し直して順位で並べる（`pairScore.scorePairOf` が組の基準値の唯一の式）。「船」列は廃止（脚注だけ）。
@@ -185,6 +191,9 @@
   選択肢・一覧・提案・連続探索から除く（「プレイ済みも表示」`gaia_pair_show_played`）。戻すのは Map / Setup タブの使用済み一覧。
   **v2.3.1**: Pair のマップの選択肢は **いまの `EVAL_VERSION` の結果バケツだけ**（旧バケツのピン留めは出ない）、選択肢の文字の記憶
   `gaia_list_pair_map_label` は廃止、「ピン解除」（`setCandidatesPinnedByHash`）。
+- **v2.4.0（2026-10-22、設計ノート 1.10）**: 基準 2 上位バランスで「Map と Setup を合わせて最もバランスの取れた組が 1 位」になることを
+  ユーザーが確認。種族優遇（Pair・Setup）を「上位 K に届かない分だけ減点」0.2 に（上の探索プロファイルの項）。**上位 K は種族で数える**
+  （ユーザー確定。「合計の上位」の表示も `topFactions` に揃えた。それまでは色ごとに強い方だけ）。
 
 ## 描画とセル座標（2026-07-30 に整理）
 

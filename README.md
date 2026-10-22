@@ -5,16 +5,29 @@
 ルールブックp19の配置方法1/2/3）に対応。
 
 シード値から盤面を決定論的に組み立て、ハード制約（満たさない盤面は却下）で絞り込み、
-ソフト評価（重み付きスコア）で順位付けして上位 K 件を提示する。
+ソフト評価（重み付きスコア）で順位付けして上位 K 件を提示する。セットアップ（タイル配置）も同じくシードから組み立てて
+種族ごとに評価し、マップとセットアップの組を種族ごとの合計のバランスで順位付けする。
+
+画面は 4 つ（共通バーのタブ順）:
+
+| パス | 画面 | 中身 |
+| --- | --- | --- |
+| `/` | Pair | マップとセットアップの組の提案・連続探索・順位表・種族別の合計（`src/components/PairView.tsx`） |
+| `/board` | Map | 盤面の検索・内訳表・マーカー（`src/app/board/page.tsx`） |
+| `/setup` | Setup | セットアップの検索・評価表（`src/components/SetupView.tsx`） |
+| `/manual` | Manual | 使い方と設定項目（`src/components/manualContent.ts`） |
+
+共通バー直下の「探索条件」の帯（探索プロファイル）が、種族優遇と Map / Setup の検索条件を束ねる。
 
 Next.js 16 / React 19 / TypeScript strict。
 
-本番は **https://gaia-project-map-search.vercel.app/board** （一般公開はしていない）。
-`release/v1.01` を `main` へ push すると Vercel が自動でデプロイする
-（`git push origin release/v1.01:main`）。
+本番は **https://gaia-project-map-search.vercel.app/** （一般公開はしていない）。
+`main` へ push すると Vercel が自動でデプロイする。2026-10-17 から、実装が終わったものは検証（typecheck / lint / test ＋
+ヘッドレス確認）のうえ作業ブランチから `git push origin HEAD:release/v1.01 && git push origin HEAD:main` で出してよい
+（ユーザー確認）。push 後は GitHub の deployments API で Production の成功を確かめる。
 
 **版**（2026-10-05 から）: 正本は `package.json` の version。本番へ出すたびに上げ（版の目印は
-「chore: vX.Y.Z」のコミット。git タグは打たない、2026-10-10 から）、画面の共通バー右端に「v1.2.1 · eval_v4」
+「chore: vX.Y.Z」のコミット。git タグは打たない、2026-10-10 から）、画面の共通バー右端に「v2.4.0 · eval_v9」
 （アプリの版と Map 評価のバージョン）を出す。番号は、評価の意味が変わる変更（`EVAL_VERSION` が上がる）や
 機能追加で2桁目、表示やドキュメントだけなら3桁目を上げる。ブランチ名 `release/v1.01` は
 リリース用の線の名前で、版とは独立。
@@ -26,7 +39,7 @@ npm install
 npm run dev
 ```
 
-開いた先は **http://localhost:3000/board**。`/` にページは無く 404 になる。
+開いた先は **http://localhost:3000/**（Pair）。Map は `/board`、Setup は `/setup`。
 
 `next.config.ts` が COOP/COEP ヘッダを付けている。これは Worker の停止に使う
 `Atomics` / `SharedArrayBuffer` に `crossOriginIsolated=true` が必要なため。
@@ -87,7 +100,7 @@ isolation が効いている）ときは共有メモリのフラグで即時停�
   到達範囲）のうち盤面に無いマス1つにつき w 点（既定 0.5）を固有値から引く。評価指数「欠けマス罰点」の
   入力欄はその10倍の整数（既定 5 ＝ 最外周の角の惑星1つの罰点。内部値と保存キーは 0.5 のまま）。
   内側は 0、外周（最外周の1つ内側）は 3 前後、最外周は辺 7〜角 10。全種別の惑星に同じ罰点が掛かり、
-  加算で下限は無い。**基本版の w は eval_v7 の実測で決め直す**（設計ノート 2.10 末尾）。
+  加算で下限は無い。基本版の w は eval_v7 の実測のうえ 0.5 のままで確定（2026-10-07 ユーザー。設計ノート 2.10 末尾）。
 - **eval_v8（2026-10-08、v1.6.0）**: ダー・シュワーム人の開始地点（惑星首府 1 つ）の値を × 1.5
   （`BASIC_REACH_PROFILES.ivits.startValueScale`。開始地点が 1 つしか無いぶんの補正。ユーザー確定 案 (A)）。
   同時に、種別の列のセルをクリックしたときのマーカーは**到達コスト 2 以内（到達係数 0.5 以上）**の惑星に絞る
@@ -97,7 +110,8 @@ isolation が効いている）ときは共有メモリのフラグで即時停�
   加点は Setup の値の 2.5% 前後。マーカーの上限はコスト 3 に。調整の手引きは `docs/tuning-guide.md`。Map の評価値そのものは変えていない。
 - **経緯**: eval_v3（開始地点＋到達加重）→ eval_v4（欠けマス × w）→ eval_v5（種族ごと）→ eval_v6
   （ガイア・次元横断を入植先に、入植先の係数）→ eval_v7（全惑星を同一の式で。ガイア近接 5 / 8 / 3 と星系の軸、
-  入植先の係数 `DESTINATION_VALUE_SCALE` を廃止）→ eval_v8（ダー・シュワーム人 × 1.5）。eval_v5 / v6 は本番に出していない。評価の意味が変わる変更なので
+  入植先の係数 `DESTINATION_VALUE_SCALE` を廃止）→ eval_v8（ダー・シュワーム人 × 1.5）→ eval_v9（2026-10-17、検索の優遇項を
+  色ごとから種族ごとに）。eval_v5 / v6 は本番に出していない。評価の意味が変わる変更なので
   `EVAL_VERSION` を上げてあり、旧バージョンの結果は「コピー」で現バージョンの評価に作り直して引き継げる。
   経緯と実測は `docs/design-notes.md` 2.6〜2.10。
 
@@ -175,16 +189,24 @@ git diff scripts/__snapshots__/baseline.json   # 差分が意図どおりか必�
 1. 機能ブランチを切り、1 修正 = 1 コミットで、`release/v1.01` へ FF マージする。
 2. コミットごとに `npm run typecheck`（0 件）、`npm run lint`（エラー 0）、`npm test`（全緑）を通す。
 3. 挙動が変わる仕様は、実装前に選択肢を出して決めてから着手する。
-4. `git push` は Vercel デプロイを意味するので、指示があるまでしない。
+4. `git push` は Vercel デプロイを意味する。2026-10-17 から、検証（typecheck / lint / test ＋ ヘッドレス）が済んだものは
+   本番へ FF push してよい。評価の意味が変わる変更（`EVAL_VERSION`）と挙動が変わる仕様は、従来どおり先に選択肢を出す。
 5. 本番へ出すときは `package.json` の version を上げる（表示だけなら3桁目、評価や機能なら2桁目）。
    git タグは打たない（2026-10-10 から。版の目印は「chore: vX.Y.Z」のコミット）。
 
 ## ディレクトリ
 
 ```
-src/app/board/page.tsx        検索UI本体（条件パネル・結果一覧）
-src/app/board/uiText.ts       UI文言辞書（ja/en）
-src/app/board/persistence.ts  検索結果・保存条件のIndexedDB層
+src/app/page.tsx              `/` ＝ Pair
+src/components/PairView.tsx   Pair（組の提案・連続探索・順位表・合計表 TotalTable.tsx）
+src/components/SetupView.tsx  Setup（検索・評価表）
+src/components/ConditionBar.tsx 共通バー直下の「探索条件」の帯（探索プロファイル）
+src/components/helpText.ts, manualContent.ts  Setup / Pair の「?」の文言、アプリ内マニュアル
+src/lib/                      Pair / Setup の純粋ロジック（pairScore / pairPlan / pairSearch / pairRanking /
+                              mapEvaluate / setupSearchCore / setupRanking / searchProfiles など）
+src/app/board/page.tsx        Map の検索UI本体（条件パネル・結果一覧）
+src/app/board/uiText.ts, helpText.ts  Map の UI文言辞書・「?」の文言（ja/en）
+src/app/board/persistence.ts  IndexedDB 層（gaia_map_cache v11: Map の結果バケツ・Setup の候補・Pair の順位表）
 src/app/board/searchRunner.ts Worker検索＋メインスレッドfallback
 src/app/board/BreakdownTable.tsx 色別内訳/詳細表・惑星色定数
 src/components/MapBoardViewer.tsx  盤面描画
@@ -198,7 +220,8 @@ src/gaia/
   ssot/                       placementHash・検索設定のSSOT
   templates/, data/templates/ 評価側 slotCenters / 表示側 TemplateDef
   sectorTiles_*.ts            セクタータイル定義
-src/workers/boardSearch.worker.ts  検索の実行先
+src/workers/boardSearch.worker.ts  Map の検索の実行先
+src/workers/setupSearch.worker.ts  Setup の検索（Pair の連続探索も）の実行先
 data/weights/                 種族別評価の重み CSV（**正本**。src/gaia/eval の
                               *Weights.ts はここから自動生成する。README.md 参照）
 scripts/

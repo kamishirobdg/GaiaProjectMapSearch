@@ -243,7 +243,7 @@ const ENTRIES = {
       what: "この船の接触半径内にある惑星 1 つあたりの値。固有値 10 に足す「状況の値」で、到達係数を掛けて種族の値に入る。",
       why:
         "既定 10（船ごと）＝ 固有値と同じ桁。船のそばの惑星はそうでない惑星の約 2 倍の価値になる。" +
-        "船の中身（タイル）の価値は Setup 側にあり、List / Total の船の相互作用で結びつける。",
+        "船の中身（タイル）の価値は Setup 側にあり、Pair の船の相互作用で結びつける。",
       ref: "2.2 / 2.10",
     },
     en: {
@@ -251,7 +251,7 @@ const ENTRIES = {
       what: "Value per planet within this ship's scout radius. A situational value added to the base 10, then multiplied by the reach factor.",
       why:
         "Default 10 per ship, the same order as the base value, so a planet next to a ship is worth about twice one that is not. " +
-        "The value of the ship's tiles lives on the Setup side and is linked through the ship interaction in List / Total.",
+        "The value of the ship's tiles lives on the Setup side and is linked through the ship interaction in Pair.",
       ref: "2.2 / 2.10",
     },
   },
@@ -291,7 +291,7 @@ const ENTRIES = {
     ja: {
       title: "種族優遇/冷遇",
       what:
-        "種族ごとの ＋ で優遇、− で冷遇（値は上の「探索条件」の帯で編集。Map / Setup / List 共通）。" +
+        "種族ごとの ＋ で優遇、− で冷遇（値は上の「探索条件」の帯で編集。Map / Setup / Pair 共通）。" +
         "検索スコアに 強さ × Σ 優遇 × その種族の値（内訳表の行の合計）を足す。同じ色の 2 種族に別の値を付けられる。",
       why:
         "目盛りは盤面の実測（300 盤面・4人 LF、色ごとだった eval_v8 まで）で合わせてある: 0 効かない / 1 偏り項とほぼ互角 / 2 優遇が主導 / 3 さらに寄る / " +
@@ -302,7 +302,7 @@ const ENTRIES = {
     en: {
       title: "Faction preference",
       what:
-        "Per faction, + favours and − penalises (edited in the search-profile strip above; shared by Map / Setup / List). " +
+        "Per faction, + favours and − penalises (edited in the search-profile strip above; shared by Map / Setup / Pair). " +
         "Adds weight × Σ pref × that faction's value (the row total in the breakdown) to the search score. The two factions of a colour can differ.",
       why:
         "The scale was calibrated on 300 boards (4p LF, per colour up to eval_v8): 0 no effect / 1 about even with the imbalance term / 2 preference leads / 3 stronger / " +
@@ -315,13 +315,13 @@ const ENTRIES = {
     ja: {
       title: "種族優遇/冷遇の強さ",
       what: "優遇／冷遇 1 あたりの強さ。検索スコアに足す項の係数。",
-      why: "既定 25 は「優遇 1 ＝ 偏り項とほぼ互角」になるよう実測で合わせた（4人 LF 300 盤面: 偏り項の振れ幅 1747 に対し色の値の振れ幅 67。2026-07-31 に 3 → 25）。eval_v9 で掛け先が種族の値になったが係数は据え置き（再実測は評価値の調整後）。",
+      why: "既定 25 は「優遇 1 ＝ 偏り項とほぼ互角」になるよう実測で合わせた（4人 LF 300 盤面: 偏り項の振れ幅 1747 に対し色の値の振れ幅 67。2026-07-31 に 3 → 25）。eval_v9 で掛け先が種族の値になったが係数は据え置き。2026-10-22 の再測（4人 LF 150 盤面）: 優遇 1 で優遇種族が上位 6 種族に入る割合 34% → 63%（偏り項の幅の 15% を失う）、2 で 69%、5 で 71%。Pair と Setup の検索は同日から「上位に届かない分だけ減点」の形（係数 0.2）で、Map だけ比例のまま。",
       ref: "2.3",
     },
     en: {
       title: "Preference weight",
       what: "Strength per unit of preference: the coefficient of the term added to the search score.",
-      why: "Default 25 was calibrated so that pref 1 is about even with the imbalance term (300 boards, 4p LF: imbalance range 1747 vs colour value range 67; 3 → 25 on 2026-07-31). eval_v9 applies it per faction; the coefficient is kept until values are re-tuned.",
+      why: "Default 25 was calibrated so that pref 1 is about even with the imbalance term (300 boards, 4p LF: imbalance range 1747 vs colour value range 67; 3 → 25 on 2026-07-31). eval_v9 applies it per faction with the same coefficient. Re-measured 2026-10-22 (4p LF, 150 boards): at 1 the preferred faction makes the top 6 in 63% of the top results (34% without), costing 15% of the imbalance range; 69% at 2, 71% at 5. Pair and Setup search switched the same day to subtracting only the shortfall from the top (weight 0.2); Map stays proportional.",
       ref: "2.3",
     },
   },

@@ -1,12 +1,12 @@
 // src/components/FactionEvalPanel.tsx
 //
-// Setup/List 左ペインの評価表示（2026-07-30）。Map の「色別内訳＋評価指数」に
+// Setup / Pair（旧 List）の評価表示（2026-07-30）。Map の「色別内訳＋評価指数」に
 // 対応する Setup 側の部品:
 //   - 種族14行の評価表（行背景＝母星色。Map の惑星色テーブルと同じ配色）
 //   - カテゴリ別の内訳列と総合列（最大=青／最小=赤、Map と同じ強調規則）
 //   - 総合スコアのサマリ（平均・上位K平均・散らばり）
-//   - 評価指数（カテゴリ別係数）の入力。localStorage で Setup/List が共有し、
-//     List の「セット提案」の選定にも同じ値が効く。
+//   - 評価指数（カテゴリ別係数）の入力。localStorage で Setup / Pair が共有し、
+//     Pair の組の採点にも同じ値が効く。
 "use client";
 
 import React from "react";
@@ -46,7 +46,7 @@ import { HelpPopover, HELP_LABELS } from "@/components/ui/HelpPopover";
 import { sharedHelp, categoryHelpKey, type SharedHelpKey } from "@/components/helpText";
 
 /**
- * Setup / List / Total 共通の「?」（タップ／クリック／ホバーで説明の小窓。第 2 弾、2026-10-15）。
+ * Setup / Pair 共通の「?」（タップ／クリック／ホバーで説明の小窓。第 2 弾、2026-10-15）。
  * 文言は src/components/helpText.ts。title ツールチップはタッチ端末で出ないので項目の説明には使わない。
  */
 export function SharedHelp({ k, lang }: { k: SharedHelpKey; lang: Lang }) {
@@ -569,7 +569,7 @@ export function SetupWeightInputs({
 
 
 /**
- * Map と Setup の合算比（2026-09-19、案C）。Total タブで編集し、List も読む
+ * Map と Setup の合算比（2026-09-19、案C）。Pair の「条件」で編集する
  * （種族優遇の掛け先と「合計の上位」）。useSetupWeights と同じ作法で、書き込みは
  * ユーザー操作のハンドラだけ（復元effectと書込みeffectを併用しない）。
  */
@@ -593,7 +593,7 @@ export function useScoreBlend(): [ScoreBlend, (k: ScoreBlendKey, v: number) => v
 }
 
 /**
- * 左ペインに載せる評価パネル一式。result が null（List で提案未生成）のときは
+ * 左ペインに載せる評価パネル一式。result が null（提案未生成）のときは
  * 評価指数だけ出して表は空状態にする（幅と位置を動かさないため枠は残す）。
  */
 export default function FactionEvalPanel({
