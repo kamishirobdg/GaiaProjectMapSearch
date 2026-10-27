@@ -37,6 +37,7 @@ import {
   STORE_LIST_PROFILES,
   isDbUpgradeBlocked,
   EVAL_VERSION,
+  SEARCH_ALGO_VERSION,
   loadFromDb,
   readMapCapacity,
   SEARCH_RESULT_KEEP_MAX,
@@ -206,6 +207,7 @@ const UI = {
     phaseSetup: "Setup",
     phasePair: "組を採点",
     needMapCond: "探索プロファイルに Map の条件が未登録です（Map タブで検索を 1 回実行すると登録されます）",
+    staleMapCond: (v: string) => `探索プロファイルの Map の条件が古い評価（${v}）のものです。Map タブで検索を 1 回実行して条件を登録し直してください（旧版の結果は Map タブの「コピー」で引き継げます）`,
     needSetupCond: "探索プロファイルに Setup の条件が未登録です（Setup タブで検索を 1 回実行すると登録されます）",
     bothNoMaps: "Map の検索で制約を満たす盤面が 1 つもありませんでした（件数を増やすか制約を緩めてください）",
     klLabel: "両方を探索の総当たり",
@@ -324,6 +326,7 @@ const UI = {
     phaseSetup: "Setup",
     phasePair: "Scoring pairs",
     needMapCond: "The search profile has no Map conditions yet (run one search on the Map tab to register them)",
+    staleMapCond: (v: string) => `The search profile's Map conditions are from an older evaluation (${v}). Run one search on the Map tab to register them again (old results can be carried over with "Copy" on the Map tab)`,
     needSetupCond: "The search profile has no Setup conditions yet (run one search on the Setup tab to register them)",
     bothNoMaps: "The Map search found no board that satisfies the constraints (raise the trial count or relax the constraints)",
     klLabel: "Search-both grid",
@@ -1111,6 +1114,11 @@ export default function PairView() {
       setPairMsg(UI[lang].needMapCond);
       return;
     }
+    // 版が上がった直後の条件は旧版のキーなので、そのまま探すと Pair の選択肢（いまの版のバケツ）に出ない（v2.5.0）
+    if (mapParams.evalVersion !== EVAL_VERSION || mapParams.algoVersion !== SEARCH_ALGO_VERSION) {
+      setPairMsg(UI[lang].staleMapCond(String(mapParams.evalVersion ?? "?")));
+      return;
+    }
     const mapKey = prof.map.searchKey;
     const templateId = String(mapParams.templateId);
     const lsNum = (key: string, dflt: number, max: number) => {
@@ -1253,6 +1261,10 @@ export default function PairView() {
     }
     if (!mapParams?.templateId) {
       setPairMsg(UI[lang].needMapCond);
+      return;
+    }
+    if (mapParams.evalVersion !== EVAL_VERSION || mapParams.algoVersion !== SEARCH_ALGO_VERSION) {
+      setPairMsg(UI[lang].staleMapCond(String(mapParams.evalVersion ?? "?")));
       return;
     }
     const mapKey = prof.map.searchKey;
