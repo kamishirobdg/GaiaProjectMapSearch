@@ -159,7 +159,7 @@
   `scripts/_probe_faction_pref.ts`、設計ノート 1.10）。Map の検索は比例のまま（`wFactionPref` 25。同じ形にすると `EVAL_VERSION`）。旧 `gaia_setup_color_pref` / `gaia_list_faction_pref` は読まない。Setup の左ペインは Map と同じ 候補 / 詳細 / 条件（`gaia_setup_narrow_tab`）で、検索は
   `src/workers/setupSearch.worker.ts` ＋ `src/lib/setupSearchRunner.ts`（採点は `setupSearchCore.searchChunk` で共通）。
   確認事項 7 件は 2026-10-17 に全件確定（設計ノート 1.4 末尾）。
-- **Pair タブ（2026-10-17、v1.9.0。段階 2、設計ノート 1.5）**: `src/components/PairView.tsx`（`/pair`）が旧 List ＋ Total。
+- **Pair タブ（2026-10-17、v1.9.0。段階 2、設計ノート 1.5）**: `src/components/PairView.tsx`（当時 `/pair`、v2.0.0 から `/`）が旧 List ＋ Total。
   候補（組の提案＋候補一覧: 提案・保存した組・共有された組を 1 表に）/ 詳細（盤面・配置・`TotalTable.tsx` の種族別合計表）/ 条件
   （保存済み条件・評価指数・合算比）。狭い幅はタブ `gaia_pair_narrow_tab`。**基準 2・3 はマップの内訳があれば合計 T_f で測る**
   （`pairPlan.ts` `usesTotalBasis` / `totalScoresOf`、`recommendSetups` の `criterionScores`。内訳の無い旧候補は Setup の値）。既定の

@@ -60,8 +60,8 @@ export function mapFactionScores(templateId: string, placement: any[]): FactionS
  * 種族ごとの「Map タブの評価値」（2026-07-31）。母星色の評価値をそのまま割り当てる。
  *
  * 上の mapFactionScores（惑星数ベースの親和スコア、4〜12 程度）とは別物で、こちらは
- * Map の内訳表に出ている評価値（色ごと 100 前後）。List の種族優遇は
- * 「Map と Setup の合計スコア」を掛け先にするので、Setup 側（種族ごと 100 前後）と
+ * Map の内訳表に出ている評価値（eval_v5 から種族ごと、100 前後）。Pair の合計 T_f と
+ * 種族優遇は「Map と Setup の合計」で測るので、Setup 側（種族ごと 100 前後）と
  * 桁が揃うこちらを使う。
  *
  * breakdown は保存済み候補が持っている評価内訳。eval_v5（2026-10-05）からは18種族それぞれの値

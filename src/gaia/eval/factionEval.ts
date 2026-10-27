@@ -367,9 +367,9 @@ export function colorValueOf(
 }
 
 /**
- * List の種族優遇/冷遇（2026-07-31）。色ではなく種族ごとに ± を付ける。
- * 掛け先は **Map と Setup の合計スコア**（ユーザー確定。合算比は `blend`、省略時 1:1）。Map 側は色単位・
- * Setup 側は種族単位なので、合成は呼び出し側（List）が作って valueByFaction で渡す。
+ * 種族優遇/冷遇（2026-07-31 に List で導入。いまは Pair の採点と Setup の検索）。種族ごとに ± を付ける。
+ * 値は **Map と Setup の合計**（合算比は `blend`、省略時 1:1。基準 2・3 では setupScores がすでに T_f）。
+ * 2026-10-22 から「上位 K に届かない分だけ減点」（factionPrefBonus）。
  * 同じ母星色の2種族は Map ぶんが同じで、Setup ぶんで差がつく。
  */
 export type FactionPref = {
@@ -463,7 +463,7 @@ export function criterionScore(
     lostFleet?: boolean;
     /** 色優遇/冷遇（2026-07-31）。どの基準にも同じ形で足す。 */
     colorPref?: SetupColorPref;
-    /** 種族優遇/冷遇（List 用。2026-07-31）。色優遇と併用できる。 */
+    /** 種族優遇/冷遇（Pair・Setup の検索。上位 K に届かない分だけ減点）。色優遇（旧、いまは使っていない）と併用できる。 */
     factionPref?: FactionPref;
   }
 ): number {
@@ -547,7 +547,7 @@ export function recommendSetups(args: {
   baseInput?: Omit<BuildSetupInput, "seed">;
   /** 色優遇/冷遇（2026-07-31）。 */
   colorPref?: SetupColorPref;
-  /** 種族優遇/冷遇（List 用。2026-07-31）。 */
+  /** 種族優遇/冷遇（Pair・Setup の検索）。 */
   factionPref?: FactionPref;
   /**
    * 採点前に Setup の値を書き換えるフック（List の船の相互作用・段階 1、2026-10-08。

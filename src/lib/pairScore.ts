@@ -75,8 +75,8 @@ export function scorePairOf(a: {
 }
 
 /**
- * 合計 T_f で測るときの種族優遇。Map ぶんは T_f に入っているので mapValueByFaction も合算比も付けず、
- * w × 優遇 × T_f になる（従来の「Map ＋ Setup の合計に掛ける」と同じ大きさ）。
+ * 合計 T_f で測るときの種族優遇。Map ぶんは T_f に入っているので mapValueByFaction も合算比も付けない。
+ * 減点の形（上位 K に届かない分だけ）は factionEval.factionPrefBonus（2026-10-22）。
  */
 export function prefOnTotal(factionPref: FactionPrefByFaction): FactionPref | undefined {
   return Object.keys(factionPref).length > 0

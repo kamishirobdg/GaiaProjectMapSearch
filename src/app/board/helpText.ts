@@ -185,7 +185,7 @@ const ENTRIES = {
     ja: {
       title: "評価指数",
       what:
-        "却下されなかった盤面を順位付けする重み。検索スコア ＝ −100 × 7 色の値のばらつき（偏り項）＋ 色優遇の強さ × Σ 優遇 × 色の値。",
+        "却下されなかった盤面を順位付けする重み。検索スコア ＝ −100 × 7 色の値のばらつき（偏り項）＋ 種族優遇の強さ × Σ 優遇 × 種族の値（eval_v9。優遇を付けたときだけ）。",
       why:
         "「良い盤面 ＝ どの色にも同じくらいの価値がある盤面」という定義で、値の大きさそのものは順位に効かない。" +
         "色の値はその色の 2 種族のうち大きい方（代表値）。種族の値の式は内訳表の見出しの「?」。",
@@ -194,7 +194,7 @@ const ENTRIES = {
     en: {
       title: "Soft weights",
       what:
-        "Weights that rank the boards that passed. Search score = −100 × spread of the seven colour values (imbalance) + preference weight × Σ pref × colour value.",
+        "Weights that rank the boards that passed. Search score = −100 × spread of the seven colour values (imbalance) + preference weight × Σ pref × faction value (eval_v9; only when a preference is set).",
       why:
         "A good board is one where every colour is worth about the same; the absolute size of the values does not affect the order. " +
         "A colour's value is the larger of its two factions. The faction formula is under the breakdown table's \"?\".",

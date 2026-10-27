@@ -229,7 +229,7 @@ const DEFAULT_CONDITIONS = {
   // eval_v6 までの「ガイア距離 1〜3（5 / 8 / 3）」「星系（1）」「LF でガイア・星系を有効化」は
   // eval_v7（2026-10-07、全惑星を同一の式で）で廃止。固有値は定数（reachCost.ts の UNIFIED_VALUE）で
   // 評価指数にはしない（桁の基準なので）。
-  // 色優遇/冷遇。pref（色ごとの ±）に掛ける係数で、pref の目盛りの意味を決める。
+  // 種族優遇/冷遇の強さ（eval_v8 までは色優遇 wColorPref）。pref（±）に掛ける係数で、pref の目盛りの意味を決める。
   //
   // 2026-07-31: 3 → 25。実測（scripts/measure_color_pref.ts、4p_lostFleet 300盤面）で
   // 「偏り項スコアの振れ幅（上位10%と下位10%の差）1747」に対し
@@ -237,7 +237,9 @@ const DEFAULT_CONDITIONS = {
   // 3 のままだと pref=2 で偏り項の0.2倍しか効かず、実用域が10〜20になっていた。
   // 25 にすると pref=1 でほぼ互角、2 で優遇が主導、5 で実質その色だけで決まる
   // ―― 入力欄の目盛りと体感が一致する（helpText.ts の colorPreference / wColorPref の文言はこの実測に基づく）。
-  // eval_v9（2026-10-17）からは掛け先が種族ごとの値（wFactionPref）。係数は据え置き（再実測は評価値の調整後）
+  // eval_v9（2026-10-17）からは掛け先が種族ごとの値（wFactionPref）。係数は据え置き。2026-10-22 に再測
+  // （_probe_faction_pref.ts MODE=map SHAPE=linear: 優遇 1 で優遇種族の上位 K 入り 34% → 63%、偏り項の幅の 15%）。
+  // Pair / Setup は同日から「上位 K に届かない分だけ減点」（factionEval.factionPrefBonus）。Map を揃えるなら EVAL_VERSION
   wFactionPref: 25,
   pref: 0,
   // 保持件数

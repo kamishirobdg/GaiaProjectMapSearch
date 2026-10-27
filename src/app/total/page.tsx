@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-// 旧 Total タブは Pair（/pair）の「詳細」へ統合した（段階 2、2026-10-17）。
+// 旧 Total タブは Pair（2026-10-17 から `/`）の「詳細」へ統合した（段階 2）。
 export default async function TotalPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = await searchParams;
   const q = new URLSearchParams();

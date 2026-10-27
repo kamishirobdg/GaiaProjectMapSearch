@@ -92,7 +92,7 @@ export function overflowIds(rows: SavedSetup[], cap: number = SETUP_HISTORY_CAP)
 
 /**
  * 保存リストを返す。conditionKey を渡すとその条件バケツだけに絞る
- * （渡さなければ全件。List タブの選択肢づくりなどで使う）。
+ * （渡さなければ全件。Pair のセットアップの選択肢づくりなどで使う）。
  */
 export async function listSavedSetups(conditionKey?: string): Promise<SavedSetup[]> {
   try {

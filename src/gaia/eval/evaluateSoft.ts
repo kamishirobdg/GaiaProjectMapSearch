@@ -403,7 +403,7 @@ export const EXTRA_PREF_KINDS = ["PROTO", "ASTEROID"] as const;
  * 検索スコア本体（planetTypeTotals）には入らないが、次の2つには効くので
  * 「表示専用」ではない:
  *   - Map の色優遇（`wColorPref × pref × extraBest.total`。pref を付けたときだけ。eval_v9 で種族優遇に置き換えた）
- *   - List の種族優遇の掛け先（`mapValueByFaction` が LF4種族の Map 評価値に使う）
+ *   - Pair の合計 T_f と種族優遇（`mapValueByFaction` が LF4種族の Map 評価値に使う）
  *
  * 実測（`npx tsx scripts/_probe_extra_best_bias.ts`、LF 3p/4p 各60盤面・既定の評価指数）:
  *   最良の1惑星（4軸）の平均  PROTO 34.83 / ASTEROID 43.93 / 基本7色 37.57

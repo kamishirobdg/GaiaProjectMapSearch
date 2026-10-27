@@ -1,5 +1,5 @@
 // src/lib/pairPlan.ts
-// List タブ「セット提案」の選定ロジック（2026-08-02 に ListView.tsx から分離）。
+// Pair の「提案を生成」の選定ロジック（旧 List タブ「セット提案」。2026-08-02 に ListView.tsx から分離）。
 //
 // 元は handleGenerate という1つの巨大な useCallback に全部入っていたが、
 // 依存配列が実際に読んでいる値（mapTopOf / factionPrefArg）と食い違っていて
