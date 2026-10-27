@@ -341,14 +341,14 @@ export const SETUP_COLOR_PREF_W = 0.3;
  * バランスではない、程度でよい」→ 形を「上位 K に届かない分だけ減点」に変えて実測で 0.2。`factionPrefBonus` 参照）。
  *
  * 実測（scripts/_probe_faction_pref.ts、SHAPE=shortfall。上位 5 件で優遇種族が上位 K ＝ 人数＋2 に入る割合 / バランスの損失）:
- *   Pair（基準 2、合計 T_f）  4人LF 優遇なし 33% → p1 61% / 2.15、p2 68% / 3.86、p5 71% / 4.93（基準値の幅 11.4）
+ *   Pair（基準 1、合計 T_f）  4人LF 優遇なし 33% → p1 61% / 2.15、p2 68% / 3.86、p5 71% / 4.93（基準値の幅 11.4）
  *                             基本版  43% → p1 84% / 0.78、p2 94% / 1.08（幅 3.9）
- *   Setup の検索（基準 2）    4人LF  33% → p1 66% / 0.52、p2 81% / 0.79、p5 86% / 0.94（幅 3.2）
+ *   Setup の検索（基準 1）    4人LF  33% → p1 66% / 0.52、p2 81% / 0.79、p5 86% / 0.94（幅 3.2）
  * それまでの「w × p × 値」（0.15）は p1 で 54% / 2.77（Pair 4人LF）、p5 でも 69% / 8.37 で頭打ちのまま損失だけ増えた
  * （すでに上位にいる種族をさらに押し上げる方向に点を使うため）。
  */
 export const FACTION_PREF_W = 0.2;
-/** Pair（旧 List）の種族優遇の係数。掛け先は合計 T_f（基準 1・4 は Map ＋ Setup の合算） */
+/** Pair（旧 List）の種族優遇の係数。掛け先は合計 T_f（基準 3・4 は Map ＋ Setup の合算） */
 export const LIST_FACTION_PREF_W = FACTION_PREF_W;
 /** Setup の検索の種族優遇の係数。掛け先は種族ごとの Setup の値 */
 export const SETUP_FACTION_PREF_W = FACTION_PREF_W;
@@ -368,7 +368,7 @@ export function colorValueOf(
 
 /**
  * 種族優遇/冷遇（2026-07-31 に List で導入。いまは Pair の採点と Setup の検索）。種族ごとに ± を付ける。
- * 値は **Map と Setup の合計**（合算比は `blend`、省略時 1:1。基準 2・3 では setupScores がすでに T_f）。
+ * 値は **Map と Setup の合計**（合算比は `blend`、省略時 1:1。基準 1・2 では setupScores がすでに T_f）。
  * 2026-10-22 から「上位 K に届かない分だけ減点」（factionPrefBonus）。
  * 同じ母星色の2種族は Map ぶんが同じで、Setup ぶんで差がつく。
  */
@@ -392,9 +392,9 @@ export type FactionPref = {
 
 /**
  * 種族優遇ぶんの加点（指定が無ければ 0）。値 v_f ＝ Map評価×map＋Setup評価×setup（合算比。省略時 1:1。
- * 基準 2・3 の T_f で採点するときは setupScores がすでに T_f）。
+ * 基準 1・2 の T_f で採点するときは setupScores がすでに T_f）。
  *
- * 2026-10-22 から「上位 K に届かない分だけ減点」（K ＝ 人数＋2、種族で数える。基準 2 の上位 K と同じ）:
+ * 2026-10-22 から「上位 K に届かない分だけ減点」（K ＝ 人数＋2、種族で数える。基準 1 の上位 K と同じ）:
  *   thr_f ＝ 優遇した種族を除いた種族の値の K 番目
  *   優遇（p > 0）: w × p × min(0, v_f − thr_f)   … 上位 K に入っていれば 0（バランスの基準がそのまま決める）
  *   冷遇（p < 0）: w × p × max(0, v_f − thr_f)   … 上位 K に入っているぶんだけ減点
@@ -439,7 +439,9 @@ function colorPrefBonus(
 }
 
 /**
- * 基準ごとの「このセットアップの良さ」（大きいほど良い）。DRAFT の式:
+ * 基準ごとの「このセットアップの良さ」（大きいほど良い）。画面の番号は 2026-10-27 から 1 topBalance / 2 neutralBalance /
+ * 3 opposeMap / 4 alignMap（それまでは 2 / 3 / 1 / 4）。opposeMap / alignMap は廃止予定（バランスの基準ではない。使わないことが
+ * 確定したら消す。ユーザー 2026-10-27）。DRAFT の式:
  * - opposeMap: マップ上位3種族のセットアップスコア合計が小さいほど良い
  *   （タイブレークに全体バランス）。
  * - alignMap（優位）: マップ上位 K=プレイ人数+2 種族がセットアップでも強いほど良い

@@ -41,7 +41,7 @@ const base: Omit<PairPlanInput, "pairDir" | "setupSource" | "criterion" | "pairM
   factionPref: {},
 };
 
-describe("pairPlan（段階 2: 基準 2・3 は合計 T_f で測る）", () => {
+describe("pairPlan（段階 2: 基準 1・2 は合計 T_f で測る）", () => {
   it("usesTotalBasis は上位バランス・全体バランスだけ", () => {
     expect(usesTotalBasis("topBalance")).toBe(true);
     expect(usesTotalBasis("neutralBalance")).toBe(true);
@@ -98,7 +98,7 @@ describe("pairPlan（段階 2: 基準 2・3 は合計 T_f で測る）", () => {
     expect(plan.options[0].rec.score).toBeCloseTo(criterionScore("neutralBalance", setupScores, { playerCount: 4, lostFleet: true }), 9);
   });
 
-  it("ランダム生成でも基準 2 は T_f で測る（seeds を固定して保存済みと同じ値になる）", () => {
+  it("ランダム生成でも基準 1 は T_f で測る（seeds を固定して保存済みと同じ値になる）", () => {
     const m = mapWith("m", { ivits: 160 });
     const s1 = savedSetup("41");
     const saved = planPair({ ...base, pairDir: "mapToSetup", setupSource: "saved", criterion: "topBalance", pairMapId: "m", pairSetupId: "", selectableMaps: [m], selectableSetups: [s1] });

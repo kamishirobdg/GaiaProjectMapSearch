@@ -2,7 +2,7 @@
 //
 // Pair の「両方を探索」の組み立て（段階 3、2026-10-17 ユーザー確定 6「推奨でよい」）。
 // Map の検索結果の上位 K 件 × Setup の検索結果の上位 L 件の総当たりを Pair の基準で採点し、上位 topN 組を返す純粋関数。
-// 採点は planPair と同じ（船の相互作用、基準 2・3 は合計 T_f、種族優遇）。
+// 採点は planPair と同じ（船の相互作用、基準 1・2 は合計 T_f、種族優遇）。
 // 検索そのもの（ワーカーの実行と結果バケツへの保存）は画面側（PairView）が行う。
 
 import type { PersistedCandidate } from "@/app/board/persistence";

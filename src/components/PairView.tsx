@@ -7,7 +7,7 @@
 //   候補 … 組の提案（向き・探し方・基準・起点・生成）と候補一覧（今回の提案 ＋ 保存した組を 1 つの表に）
 //   詳細 … 選んだ組（盤面・配置・種族別の合計表＝旧 Total の表）と操作（Map / Setup で開く・共有 URL・保存・記録）
 //   条件 … 保存済み条件・評価指数・合算比（旧 Total の入力欄）・盤面表示
-// 基準 2・3 はマップの内訳があれば合計 T_f で測る（pairPlan.ts）。種族優遇は共通バー直下の帯（探索プロファイル）。
+// 基準 1・2 はマップの内訳があれば合計 T_f で測る（pairPlan.ts）。種族優遇は共通バー直下の帯（探索プロファイル）。
 // 旧 List の提案ログは廃止（保存した組に一本化）。保存した組は旧 List と同じ localStorage（gaia_list_proposals_v2）を読む。
 // 起点の選択（gaia_list_pair_map / gaia_list_pair_setup）も旧 List / Total と同じキー。
 // 段階 3（v2.0、2026-10-17）: トップ `/` が Pair。「両方を探索」＝ 探索プロファイルに登録した Map / Setup の条件で両方の検索
@@ -141,17 +141,17 @@ const UI = {
     srcSaved: "保存済みから選ぶ",
     srcDisabledHint: "セットアップ→マップの向きでは使いません",
     pairCriterion: "基準",
-    crit1: "1: 逆優位（マップ上位種族が弱い）",
-    crit2: "2: 上位バランス（合計で人数+2種族が拮抗）",
-    crit3: "3: 全体バランス（合計で全種族が拮抗）",
-    crit4: "4: 優位（マップ上位の人数+2種族が強い）",
+    crit1: "1: 上位バランス（合計で人数+2種族が拮抗）",
+    crit2: "2: 全体バランス（合計で全種族が拮抗）",
+    crit3: "3: 逆優位（廃止予定。マップ上位種族が弱い、バランスの基準ではない）",
+    crit4: "4: 優位（廃止予定。マップ上位の人数+2種族が強い、バランスの基準ではない）",
     generate: "提案を生成",
     regenerate: "再生成",
-    needMap: "基準1・4にはマップの選択が必要です",
+    needMap: "基準3・4にはマップの選択が必要です",
     needSetup: "起点にするセットアップを選んでください",
     needSetupPool: "条件に合う保存済みセットアップがありません",
     needMapPool: "条件に合うマップがありません（Map タブで検索するかピン留めが必要）",
-    mapIndependentNote: "※このマップは評価の内訳を持たないため、基準2・3はセットアップの値だけで測りました（Map タブで検索し直すと内訳が付く）",
+    mapIndependentNote: "※このマップは評価の内訳を持たないため、基準1・2はセットアップの値だけで測りました（Map タブで検索し直すと内訳が付く）",
     tileModeLabel: "盤面表示",
     tileImage: "画像",
     tileSchematic: "番号＋向き",
@@ -259,17 +259,17 @@ const UI = {
     srcSaved: "From saved",
     srcDisabledHint: "Not used in the Setup → Map direction",
     pairCriterion: "Criterion",
-    crit1: "1: Oppose map (map's top factions weak)",
-    crit2: "2: Top balance (players+2 factions close by total)",
-    crit3: "3: Overall balance (all factions close by total)",
-    crit4: "4: Align (map top players+2 factions are strong)",
+    crit1: "1: Top balance (players+2 factions close by total)",
+    crit2: "2: Overall balance (all factions close by total)",
+    crit3: "3: Oppose map (to be removed; map's top factions weak, not a balance criterion)",
+    crit4: "4: Align (to be removed; map top players+2 factions strong, not a balance criterion)",
     generate: "Generate",
     regenerate: "Regenerate",
-    needMap: "Criteria 1 and 4 require a selected map",
+    needMap: "Criteria 3 and 4 require a selected map",
     needSetup: "Pick a setup to start from",
     needSetupPool: "No saved setup matches the current players/expansion",
     needMapPool: "No map matches (search on the Map tab or pin one first)",
-    mapIndependentNote: "Note: this map has no evaluation breakdown, so criteria 2 / 3 used the setup values only (re-search on the Map tab to add it)",
+    mapIndependentNote: "Note: this map has no evaluation breakdown, so criteria 1 / 2 used the setup values only (re-search on the Map tab to add it)",
     tileModeLabel: "Board view",
     tileImage: "Images",
     tileSchematic: "Number + rotation",
@@ -360,7 +360,7 @@ const UI = {
 type TextOf = (typeof UI)["ja" | "en"];
 
 function criterionShort(c: RecommendCriterion, t: TextOf): string {
-  const full = c === "opposeMap" ? t.crit1 : c === "alignMap" ? t.crit4 : c === "topBalance" ? t.crit2 : t.crit3;
+  const full = c === "topBalance" ? t.crit1 : c === "neutralBalance" ? t.crit2 : c === "opposeMap" ? t.crit3 : t.crit4;
   return full.split("（")[0].split(" (")[0];
 }
 
@@ -1224,7 +1224,7 @@ export default function PairView() {
    * マップ → セットアップ:
    *   1. 探索プロファイルの Map の結果バケツ（Map タブの候補）の上位 K 枚を読む
    *   2. そのうち未探索（1 マップあたりの件数 N に届いていない）のマップごとに、Setup を残りの件数ぶん **そのマップとの組として** 採点
-   *      （ワーカー、pairWith: 船の相互作用・基準 2・3 は合計 T_f・1・4 はマップの上位種族・種族優遇）→ 上位 L 件を順位表へ
+   *      （ワーカー、pairWith: 船の相互作用・基準 1・2 は合計 T_f・3・4 はマップの上位種族・種族優遇）→ 上位 L 件を順位表へ
    *   3. Map の検索（件数は Map タブの設定）→ 結果バケツへ保存（上位の更新）
    *   4. 1 へ（新たに上位 K に入った未探索のマップだけ 2 を行う）
    * セットアップ → マップ:
@@ -1724,9 +1724,9 @@ export default function PairView() {
                           }}
                           style={{ width: 280 }}
                         >
-                          <option value="topBalance">{t.crit2}</option>
-                          <option value="neutralBalance">{t.crit3}</option>
-                          <option value="opposeMap">{t.crit1}</option>
+                          <option value="topBalance">{t.crit1}</option>
+                          <option value="neutralBalance">{t.crit2}</option>
+                          <option value="opposeMap">{t.crit3}</option>
                           <option value="alignMap">{t.crit4}</option>
                         </select>
                       </label>

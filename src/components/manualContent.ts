@@ -190,25 +190,25 @@ const ja: ManualText = {
           table: {
             head: ["基準", "どんな組み合わせを選ぶか"],
             rows: [
-              ["2 上位バランス", "合計（Map ＋ Setup）で上位（人数＋2）の種族が拮抗している組"],
-              ["3 全体バランス", "合計で全種族の値の散らばりが小さい組"],
-              ["1 逆優位", "盤面で強い種族ほど配置では弱くなる組（打ち消し合い）"],
-              ["4 優位", "盤面で強い種族が配置でも強い組（相乗）"],
+              ["1 上位バランス", "合計（Map ＋ Setup）で上位（人数＋2）の種族が拮抗している組（既定）"],
+              ["2 全体バランス", "合計で全種族の値の散らばりが小さい組"],
+              ["3 逆優位（廃止予定）", "盤面で強い種族ほど配置では弱くなる組（打ち消し合い）。合計のバランスは測りません。使わないことが確定したら消します"],
+              ["4 優位（廃止予定）", "盤面で強い種族が配置でも強い組（相乗）。合計のバランスは測りません。使わないことが確定したら消します"],
             ],
           },
         },
         {
           ul: [
-            "基準 2・3 は盤面の評価の内訳を使って合計で測ります。内訳を持たない古い盤面では配置の値だけで測り、その旨の注記が出ます。",
+            "基準 1・2 は盤面の評価の内訳を使って合計で測ります。内訳を持たない古い盤面では配置の値だけで測り、その旨の注記が出ます。",
             "種族優遇 / 冷遇（帯で編集。種族ごとの ±）は、優遇した種族が合計で上位（人数＋2 種族）に届かない組ほど下げます。すでに上位にいれば何もせず、バランスの基準がそのまま並びを決めます。1 で優遇した種族が上位に入る組が約 3 割から約 6 割（基本版は約 8 割）に、2 で約 7 割（基本版は約 9 割）になります。冷遇は上位に入っている組ほど下げます。",
-            "「合計の上位」は合計が高い順に人数＋2 種族です。基準 2 上位バランスが測る上位と同じ種族で、同じ色の 2 種族が並ぶこともあります。",
+            "「合計の上位」は合計が高い順に人数＋2 種族です。基準 1 上位バランスが測る上位と同じ種族で、同じ色の 2 種族が並ぶこともあります。",
           ],
         },
         { h3: "合算比" },
         {
           table: {
             head: ["項目", "既定", "意味", "変えるときの注意"],
-            rows: [["Map × / Setup ×", "1 : 1", "合計を出すときの倍率", "基準 2・3 の採点、種族優遇の掛け先、「合計の上位」にも同じ比が使われます"]],
+            rows: [["Map × / Setup ×", "1 : 1", "合計を出すときの倍率", "基準 1・2 の採点、種族優遇の掛け先、「合計の上位」にも同じ比が使われます"]],
           },
         },
       ],
@@ -383,25 +383,25 @@ const en: ManualText = {
           table: {
             head: ["Criterion", "What it picks"],
             rows: [
-              ["2 Top balance", "Pairs where the top (players + 2) factions are close by total (map + setup)"],
-              ["3 Overall balance", "Pairs with a small spread of totals across all factions"],
-              ["1 Oppose map", "Pairs where factions strong on the board are weak in the layout (cancelling out)"],
-              ["4 Align map", "Pairs where factions strong on the board are strong in the layout too"],
+              ["1 Top balance", "Pairs where the top (players + 2) factions are close by total (map + setup) (default)"],
+              ["2 Overall balance", "Pairs with a small spread of totals across all factions"],
+              ["3 Oppose map (to be removed)", "Pairs where factions strong on the board are weak in the layout (cancelling out). Does not measure the balance of the total; will be deleted once confirmed unused"],
+              ["4 Align map (to be removed)", "Pairs where factions strong on the board are strong in the layout too. Does not measure the balance of the total; will be deleted once confirmed unused"],
             ],
           },
         },
         {
           ul: [
-            "Criteria 2 and 3 use the board's evaluation breakdown to score by total. Old boards without a breakdown are scored by the layout only, with a note.",
+            "Criteria 1 and 2 use the board's evaluation breakdown to score by total. Old boards without a breakdown are scored by the layout only, with a note.",
             "Faction preference (edited in the strip; ± per faction) lowers pairs where the preferred faction falls short of the top (players + 2 factions) by total; nothing changes when it is already there, so the balance criterion decides. At 1 the share of pairs with the preferred faction in the top rises from about 30% to about 60% (base game about 80%), at 2 to about 70% (base game about 90%). A negative value lowers pairs where that faction is in the top.",
-            "\"Top by total\" lists players + 2 factions by total: the same top that criterion 2 (top balance) measures; both factions of a colour may appear.",
+            "\"Top by total\" lists players + 2 factions by total: the same top that criterion 1 (top balance) measures; both factions of a colour may appear.",
           ],
         },
         { h3: "Blend" },
         {
           table: {
             head: ["Item", "Default", "Meaning", "When changing"],
-            rows: [["Map × / Setup ×", "1 : 1", "Multipliers used for the sum", "Criteria 2 / 3, the faction preference and \"Top by total\" use the same ratio"]],
+            rows: [["Map × / Setup ×", "1 : 1", "Multipliers used for the sum", "Criteria 1 / 2, the faction preference and \"Top by total\" use the same ratio"]],
           },
         },
       ],

@@ -16,7 +16,7 @@ const BASE = { playerCount: 4, mode: "lostFleet" as const };
 const SEEDS = ["101", "102", "103", "104", "105", "106"];
 
 describe("setupSearchCore.searchChunk の pairWith（連続で両方を探索: マップに合わせた採点）", () => {
-  it("同じマップ・同じシードなら scorePairs（planPair と同じ式）と同じ基準値になる（基準 2: 合計 T_f）", () => {
+  it("同じマップ・同じシードなら scorePairs（planPair と同じ式）と同じ基準値になる（基準 1: 合計 T_f）", () => {
     const m = mapWith("a", { terrans: 160, lantids: 60 }, 3);
     const bd = m.evaluation.breakdown;
     const top = mapTopOfPlacement("4p_lostFleet", [], 4);
@@ -30,7 +30,7 @@ describe("setupSearchCore.searchChunk の pairWith（連続で両方を探索: �
     hits.forEach((h, i) => expect(h.score).toBeCloseTo(ref[i].rec.score, 9));
   });
 
-  it("種族優遇と合算比も同じ式（基準 3）。マップ無しの採点とは値が違う", () => {
+  it("種族優遇と合算比も同じ式（基準 2）。マップ無しの採点とは値が違う", () => {
     const m = mapWith("b", { xenos: 150 }, 1);
     const bd = m.evaluation.breakdown;
     const pref = { terrans: 2, xenos: -1 };

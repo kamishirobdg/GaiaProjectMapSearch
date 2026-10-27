@@ -138,7 +138,7 @@ export function deriveSetupSettings(templateId: string | null): PairSettings {
   return { players: p, lf: (readSharedExpansion() ?? "base") === "lostFleet" };
 }
 
-/** マップの上位種族。top3 は基準1（逆優位）用、topK は基準4（優位）用で K=人数+2。 */
+/** マップの上位種族。top3 は基準3（逆優位）用、topK は基準4（優位）用で K=人数+2。 */
 export type MapTop = {
   tid: string;
   top3: FactionId[];
@@ -209,7 +209,7 @@ function planSetupToMap(a: PairPlanInput): PairPlan {
     const bd = breakdownOf(c);
     // 船の相互作用（段階 1、2026-10-08）: 組にするマップごとに船のタイルの値を船接触で増減する
     const setupScores = applyShipInteraction(rawSetupScores, shipInteractionOf(result, bd, a.evalWeights));
-    // 基準 2・3 は合計 T_f で（段階 2）。内訳が無い候補は Setup の値で
+    // 基準 1・2 は合計 T_f で（段階 2）。内訳が無い候補は Setup の値で
     const totalBasis = usesTotalBasis(a.criterion) && !!bd;
     if (totalBasis) anyTotalBasis = true;
     scored.push({
@@ -275,7 +275,7 @@ type MapSide = {
   settings: PairSettings;
   /** 種族優遇（Map ぶんは起点マップの評価内訳から引く。2026-07-31。合計 T_f で測るときは T_f に掛ける）。 */
   pref: FactionPref | undefined;
-  /** 基準 2・3 を合計 T_f で測るときの起点マップの内訳（内訳が無い・基準 1・4 のときは null）。段階 2 */
+  /** 基準 1・2 を合計 T_f で測るときの起点マップの内訳（内訳が無い・基準 3・4 のときは null）。段階 2 */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   totalBd: any;
 };
@@ -312,7 +312,7 @@ function resolveMapSide(a: PairPlanInput): MapSide | PairPlanFailure {
   };
 }
 
-/** 基準 2・3 で起点マップの内訳が無いときは従来どおり Setup の値で測る（＝マップ非依存の注記）。 */
+/** 基準 1・2 で起点マップの内訳が無いときは従来どおり Setup の値で測る（＝マップ非依存の注記）。 */
 function noteOf(a: PairPlanInput, m: MapSide): "mapIndependent" | null {
   return usesTotalBasis(a.criterion) && !m.totalBd ? "mapIndependent" : null;
 }
@@ -396,7 +396,7 @@ function planRandomSetups(a: PairPlanInput, m: MapSide): PairPlan {
     topN: PAIR_TOP_N,
     // 船の相互作用（段階 1、2026-10-08）: 起点マップの船接触で船のタイルの値を増減する
     adjustSetupScores: (res, scores) => applyShipInteraction(scores, shipInteractionOf(res, breakdownOf(m.selected), a.evalWeights)),
-    // 基準 2・3 は合計 T_f で測る（段階 2）
+    // 基準 1・2 は合計 T_f で測る（段階 2）
     ...(m.totalBd ? { criterionScores: (_res: unknown, scores: FactionScores) => totalScoresOf(scores, m.totalBd, a.blend) } : {}),
   });
   return {

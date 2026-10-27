@@ -38,13 +38,13 @@ const ENTRIES = {
     ja: {
       title: "総合スコア",
       what: "表の総合列のまとめ。平均 ＝ 全種族の平均、上位 K ＝ 上位 K（人数＋2）種族の平均、散らばり ＝ 全種族の標準偏差、最強 ＝ 最大の種族。",
-      why: "Pair の基準 2〜4 が見ているのと同じ量（上位 K の拮抗、全体の散らばり、上位の強さ）を 1 行で読めるようにしたもの。",
+      why: "Pair の基準 1・2・4 が見ているのと同じ量（上位 K の拮抗、全体の散らばり、上位の強さ）を 1 行で読めるようにしたもの。",
       ref: "4",
     },
     en: {
       title: "Overall",
       what: "Summary of the total column. mean = all factions; top K = mean of the top K (players + 2); spread = standard deviation; best = the strongest faction.",
-      why: "The same quantities the Pair criteria 2–4 look at (top-K balance, overall spread, strength of the top), readable in one line.",
+      why: "The same quantities the Pair criteria 1, 2 and 4 look at (top-K balance, overall spread, strength of the top), readable in one line.",
       ref: "4",
     },
   },
@@ -277,7 +277,7 @@ const ENTRIES = {
       title: "連続で探索",
       what:
         "停止するまで繰り返す。探索の向きが マップ → セットアップ: Map の候補（探索プロファイルの Map の条件の結果バケツ）の上位 K 枚のうち未探索のマップごとに、Setup を「1 マップあたりの件数」（条件、既定 100000）ぶん " +
-        "**そのマップとの組として** 採点（船の相互作用、基準 2・3 は合計 T_f、1・4 はマップの上位種族、種族優遇）→ 上位 L 件を順位表へ → Map の検索（件数は Map タブの設定）→ 上位の更新 → 新たに上位 K に入った未探索のマップだけ探索。" +
+        "**そのマップとの組として** 採点（船の相互作用、基準 1・2 は合計 T_f、3・4 はマップの上位種族、種族優遇）→ 上位 L 件を順位表へ → Map の検索（件数は Map タブの設定）→ 上位の更新 → 新たに上位 K に入った未探索のマップだけ探索。" +
         "セットアップ → マップ: 起点のセットアップを固定して Map の検索を繰り返し、制約を通った盤面ごとに組の基準値を計算して順位表へ。順位表は条件（人数・拡張・基準・評価指数）と向きごとに、主（マップ → セットアップならマップ）1 つにつき上位 10 組、主 50 件まで端末（IndexedDB）に残す。プレイ済みのマップは探索しない。",
       why:
         "Map は制約を通る盤面が 0.1〜0.2% なので周ごとに 30000 件、Setup は 0.5ms/件（マップに合わせた採点はマップ無しの 2 倍）なので 1 マップ 10 万件で 50 秒ほど。探索済みの件数はマップごとに記録し、同じマップを二度探索しない（件数を増やせば差分だけ）。" +
@@ -288,7 +288,7 @@ const ENTRIES = {
       title: "Search continuously",
       what:
         "Repeats until stopped. Direction Map → Setup: for each unexplored map among the top K Map candidates (the search profile's Map bucket), score setups (“setups per map” in Conditions, default 100000) " +
-        "**as a pair with that map** (ship interaction, criteria 2 / 3 on the total T_f, 1 / 4 on the map's top factions, faction preference) → the top L into the ranking → Map search (trial count from the Map tab) → explore only maps newly entering the top K. " +
+        "**as a pair with that map** (ship interaction, criteria 1 / 2 on the total T_f, 3 / 4 on the map's top factions, faction preference) → the top L into the ranking → Map search (trial count from the Map tab) → explore only maps newly entering the top K. " +
         "Setup → Map: keeps the chosen setup fixed, repeats the Map search and scores every board that passes the constraints as a pair. The ranking keeps, per condition (players, expansion, criterion, weights) and direction, the top 10 pairs per primary item and up to 50 items on this device (IndexedDB). Played maps are not explored.",
       why:
         "Only 0.1–0.2% of boards pass the constraints, so each round runs 30000 Map trials; map-aware Setup scoring costs 0.5 ms per trial (twice the plain search), so 100k per map takes about 50 s. Explored counts are kept per map so no map is searched twice (raise the count and only the shortfall runs). " +
@@ -300,20 +300,22 @@ const ENTRIES = {
     ja: {
       title: "基準",
       what:
-        "2 上位バランス ＝ −(合計 T_f の上位 K ＝ 人数＋2 の散らばり) ＋ 0.3 × (上位の平均 − 残りの平均)。3 全体バランス ＝ −(合計 T_f の全種族の散らばり)。" +
-        "1 逆優位 ＝ −(Map 上位 3 種族の Setup 値の和) − 0.2 × 全種族の散らばり。4 優位 ＝ Map 上位 K 種族の Setup 値の平均 − 0.2 × その散らばり。",
+        "1 上位バランス ＝ −(合計 T_f の上位 K ＝ 人数＋2 の散らばり) ＋ 0.3 × (上位の平均 − 残りの平均)。2 全体バランス ＝ −(合計 T_f の全種族の散らばり)。" +
+        "3 逆優位 ＝ −(Map 上位 3 種族の Setup 値の和) − 0.2 × 全種族の散らばり。4 優位 ＝ Map 上位 K 種族の Setup 値の平均 − 0.2 × その散らばり。" +
+        "3・4 は廃止予定（2026-10-27）: マップの強さを打ち消す／後押しする基準で、合計のバランスは測らない。Map の値は惑星の色の数で数え、合計 T_f も使わない。使わないことが確定したら消す。",
       why:
-        "合計 T_f ＝ Map × 倍率 ＋ Setup × 倍率（合算比）。基準 2・3 は段階 2（2026-10-17）からマップの内訳があれば合計で測る（それまでは Setup の値だけ）。" +
+        "合計 T_f ＝ Map × 倍率 ＋ Setup × 倍率（合算比）。基準 1・2 は段階 2（2026-10-17）からマップの内訳があれば合計で測る（それまでは Setup の値だけ）。" +
         "添え物の係数 0.2 / 0.3 は「主項が同じ候補の順番を決める」程度の目分量（据え置き）。内訳を持たない古いマップでは従来どおり Setup の値だけで測る。",
       ref: "4 / 1.5",
     },
     en: {
       title: "Criterion",
       what:
-        "2 top balance = −(spread of the top K = players + 2 by total T_f) + 0.3 × (mean of top − mean of rest). 3 overall balance = −(spread of all factions by total T_f). " +
-        "1 oppose map = −(sum of setup values of the map's top 3) − 0.2 × spread of all. 4 align map = mean setup value of the map's top K − 0.2 × their spread.",
+        "1 top balance = −(spread of the top K = players + 2 by total T_f) + 0.3 × (mean of top − mean of rest). 2 overall balance = −(spread of all factions by total T_f). " +
+        "3 oppose map = −(sum of setup values of the map's top 3) − 0.2 × spread of all. 4 align map = mean setup value of the map's top K − 0.2 × their spread. " +
+        "3 and 4 are to be removed (2026-10-27): they cancel or amplify the map's strengths and do not measure the balance of the total; the map side counts planet colours and ignores T_f. They will be deleted once confirmed unused.",
       why:
-        "Total T_f = map × weight + setup × weight (blend). Since stage 2 (2026-10-17) criteria 2 / 3 use the total whenever the map has a breakdown (before: setup values only). " +
+        "Total T_f = map × weight + setup × weight (blend). Since stage 2 (2026-10-17) criteria 1 / 2 use the total whenever the map has a breakdown (before: setup values only). " +
         "The 0.2 / 0.3 side terms only order candidates whose main term ties (kept as is). Old maps without a breakdown fall back to setup values.",
       ref: "4 / 1.5",
     },
@@ -321,13 +323,13 @@ const ENTRIES = {
   pairTopColors: {
     ja: {
       title: "合計の上位",
-      what: "Map ＋ Setup の合計（合算比を掛けたもの）が高い順に、人数＋2 種族。基準 2 上位バランスが測る上位 K と同じ種族。",
+      what: "Map ＋ Setup の合計（合算比を掛けたもの）が高い順に、人数＋2 種族。基準 1 上位バランスが測る上位 K と同じ種族。",
       why: "上位 K は種族で数える（2026-10-22 ユーザー確定。それまでの表示は色ごとに強い方の種族だけで、基準の上位 K と食い違っていた）。同じ色の 2 種族が並ぶことがあるが、卓で選べるのはどちらか 1 つ。Setup ぶんには船の相互作用が入る。",
       ref: "4",
     },
     en: {
       title: "Top by total",
-      what: "Players + 2 factions ranked by map + setup (after the blend ratio): the same top K that criterion 2 (top balance) measures.",
+      what: "Players + 2 factions ranked by map + setup (after the blend ratio): the same top K that criterion 1 (top balance) measures.",
       why: "Top K counts factions (user decision 2026-10-22; the display used to keep only the stronger faction per colour and disagreed with the criterion). Both factions of a colour may appear, though only one can be picked. The setup part includes the ship interaction.",
       ref: "4",
     },
@@ -351,14 +353,14 @@ const ENTRIES = {
   pairBlend: {
     ja: {
       title: "合算比",
-      what: "合計 ＝ Map × 倍率 ＋ Setup × 倍率。基準 2・3 の採点、種族優遇の掛け先、「合計の上位」にも同じ比が効く。",
+      what: "合計 ＝ Map × 倍率 ＋ Setup × 倍率。基準 1・2 の採点、種族優遇の掛け先、「合計の上位」にも同じ比が効く。",
       why:
         "既定 1:1 は未決。Map の最上位は LF 4人 205 / 3人 186 / 基本版 73（eval_v7 の実測）と版で桁が違い、一律の倍率では LF で Map が支配する。評価値の調整が終わってから決め直す（tuning-guide 1-8）。",
       ref: "4",
     },
     en: {
       title: "Blend",
-      what: "Total = map × weight + setup × weight. Criteria 2 / 3, the faction preference and the top-by-total line use the same ratio.",
+      what: "Total = map × weight + setup × weight. Criteria 1 / 2, the faction preference and the top-by-total line use the same ratio.",
       why:
         "The default 1:1 is still open. Top map values differ by mode (LF 4p 205 / 3p 186 / base 73 under eval_v7), so a single multiplier lets the map dominate in Lost Fleet. To be settled once the evaluation constants are tuned (tuning-guide 1-8).",
       ref: "4",

@@ -14,7 +14,7 @@ import { factionPrefArgOf, prefOnTotal, totalScoresOf, usesTotalBasis } from "@/
 
 /**
  * マップに合わせた採点（「連続で両方を探索」、2026-10-17）。渡すと、各セットアップを **そのマップとの組** として採点する:
- * 船の相互作用を掛け、基準 2・3 は合計 T_f、1・4 はマップの上位種族、種族優遇は planPair と同じ。
+ * 船の相互作用を掛け、基準 1・2 は合計 T_f、3・4 はマップの上位種族、種族優遇は planPair と同じ。
  * 採点の値は組の基準値（Pair の順位表にそのまま入る）。0.5ms/件（マップ無しの 2 倍）。
  */
 export type PairWith = {

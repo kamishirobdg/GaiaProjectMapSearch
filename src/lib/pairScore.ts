@@ -11,9 +11,9 @@ import { blendScores, isDefaultScoreBlend, type ScoreBlend } from "@/gaia/eval/s
 import type { FactionPrefByFaction } from "@/gaia/eval/setupWeights";
 
 /**
- * 基準 2（上位バランス）・3（全体バランス）は、マップの評価内訳があれば **合計 T_f ＝ blend(Map_f, Setup_f)** で測る
+ * 基準 1（上位バランス）・2（全体バランス）は、マップの評価内訳があれば **合計 T_f ＝ blend(Map_f, Setup_f)** で測る
  * （段階 2「Pair」、2026-10-17。それまでは Setup の値だけで測り、マップに依存しなかった）。
- * 1（逆優位）・4（優位）はマップの上位種族を使う式のまま。内訳を持たない古い候補は従来どおり Setup の値で測る。
+ * 3（逆優位）・4（優位）はマップの上位種族を使う式のまま（2026-10-27 から廃止予定）。内訳を持たない古い候補は従来どおり Setup の値で測る。
  */
 export function usesTotalBasis(criterion: RecommendCriterion): boolean {
   return criterion === "topBalance" || criterion === "neutralBalance";
@@ -51,8 +51,8 @@ export function factionPrefArgOf(
 
 /**
  * 組（マップ × セットアップ）の基準値。planPair / scorePairs / 候補一覧の順位 / 連続探索（セットアップ → マップ）で同じ式
- * （2026-10-17 v2.2.0 で一本化）。setupScores は船の相互作用を掛けた後の Setup の値。基準 2・3 は内訳があれば合計 T_f で、
- * 1・4 はマップの上位種族で測る。
+ * （2026-10-17 v2.2.0 で一本化）。setupScores は船の相互作用を掛けた後の Setup の値。基準 1・2 は内訳があれば合計 T_f で、
+ * 3・4 はマップの上位種族で測る。
  */
 export function scorePairOf(a: {
   criterion: RecommendCriterion;
