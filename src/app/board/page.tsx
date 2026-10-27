@@ -24,11 +24,16 @@ import {
   writeSharedExpansion,
   writeSharedPlayers,
   type Expansion,
+  readSharedMapSize,
+  writeSharedMapSize,
+  type MapSize,
 } from "@/lib/sharedSettings";
 
 import { TEMPLATE_3P_LOSTFLEET } from "@/gaia/data/templates/3p_lostFleet";
 import { TEMPLATE_4P_LOSTFLEET } from "@/gaia/data/templates/4p_lostFleet";
 import { TEMPLATE_BASE_34P } from "@/gaia/data/templates/base_34p";
+import { TEMPLATE_BASE_3P_8, TEMPLATE_BASE_3P_9 } from "@/gaia/data/templates/base_3p_small";
+import { baseTemplateIdFor, isBaseTemplateId, mapSizeOfTemplateId, templateLabel } from "@/gaia/templates/baseVariants";
 import { topKOf } from "@/gaia/eval/factionEval";
 import { useSharedTopK } from "@/lib/useSharedTopK";
 
@@ -346,10 +351,6 @@ React.useEffect(() => {
   const t = React.useCallback((k: UiKey) => UI_TEXT[lang][k], [lang]);
 
   const [which, setWhich] = React.useState<"3p" | "4p" | "base">("3p");
-  const template = React.useMemo(
-    () => (which === "base" ? TEMPLATE_BASE_34P : which === "3p" ? TEMPLATE_3P_LOSTFLEET : TEMPLATE_4P_LOSTFLEET),
-    [which]
-  );
   const isBase = which === "base";
 
   // --- Shared players/expansion (same localStorage keys as the Setup tab) ---
@@ -359,6 +360,13 @@ React.useEffect(() => {
   const [players, setPlayers] = React.useState<number>(3);
   const [expansion, setExpansion] = React.useState<Expansion>("lostFleet");
   const mapSupported = (players === 3 || players === 4);
+  // 盤面の大きさ（基本版 3 人の縮小盤、2026-10-27。共有設定 gaia_shared_map_size）。基本版 3 人のときだけ効く
+  const [mapSize, setMapSize] = React.useState<MapSize>("full");
+  const template = React.useMemo(() => {
+    if (which !== "base") return which === "3p" ? TEMPLATE_3P_LOSTFLEET : TEMPLATE_4P_LOSTFLEET;
+    const id = baseTemplateIdFor(players, mapSize);
+    return id === "base_3p_9" ? TEMPLATE_BASE_3P_9 : id === "base_3p_8" ? TEMPLATE_BASE_3P_8 : TEMPLATE_BASE_34P;
+  }, [which, players, mapSize]);
 
   // 基本版の配置方法（p19 方法1/2/3）。検索キーに含める（base のみ）。
   // localStorage 書込みはハンドラのみ（復元effectとの併用禁止ルール）。
@@ -407,6 +415,17 @@ React.useEffect(() => {
     },
     [resetResultsForTemplateChange]
   );
+  /** 盤面の大きさの選択（共通バー。基本版 3 人の縮小盤） */
+  const applyMapSize = React.useCallback(
+    (size: MapSize) => {
+      setMapSize((prev) => {
+        if (prev !== size) resetResultsForTemplateChange();
+        return size;
+      });
+      writeSharedMapSize(size);
+    },
+    [resetResultsForTemplateChange]
+  );
 
   // Restore the shared selection on mount (results are still empty here, so
   // no reset side effects matter). paint 前に走らせてタブ遷移時のちらつきを防ぐ。
@@ -415,6 +434,7 @@ React.useEffect(() => {
     const e = readSharedExpansion();
     if (p) setPlayers(p);
     if (e) setExpansion(e);
+    setMapSize(readSharedMapSize());
     const eff = e ?? "lostFleet";
     const pp = p ?? 3;
     if (eff === "base") {
@@ -1419,11 +1439,16 @@ setSelectedSeedLabel(String(found.seed ?? ""));
       setWhich("base");
       setExpansion("base");
       writeSharedExpansion("base");
+      // 縮小盤（base_3p_9 / base_3p_8）は 3 人専用。base_34p は 3・4 人共用
+      const small = isBaseTemplateId(id) && id !== "base_34p";
       setPlayers((prev) => {
-        const p = prev === 3 || prev === 4 ? prev : 4;
+        const p = small ? 3 : prev === 3 || prev === 4 ? prev : 4;
         writeSharedPlayers(p);
         return p;
       });
+      const size = mapSizeOfTemplateId(id);
+      setMapSize(size);
+      writeSharedMapSize(size);
       setOuterSameColorMax(2);
     } else if (id.startsWith("3p")) {
       setWhich("3p");
@@ -1458,16 +1483,20 @@ setSelectedSeedLabel(String(found.seed ?? ""));
 
       // Keep the shared players/expansion selection in sync with the profile's
       // template (Lost Fleet 3p/4p, or base_34p which is shared by 3/4 players).
-      if (tmpl === "base_34p") {
+      if (isBaseTemplateId(tmpl)) {
         setWhich("base");
         setExpansion("base");
         writeSharedExpansion("base");
-        // base_34p は3・4人共用: 現在の人数が3/4ならそのまま、それ以外は4に補正
+        // base_34p は3・4人共用: 現在の人数が3/4ならそのまま、それ以外は4に補正。縮小盤は 3 人専用
+        const small = tmpl !== "base_34p";
         setPlayers((prev) => {
-          const p = prev === 3 || prev === 4 ? prev : 4;
+          const p = small ? 3 : prev === 3 || prev === 4 ? prev : 4;
           writeSharedPlayers(p);
           return p;
         });
+        const size = mapSizeOfTemplateId(tmpl);
+        setMapSize(size);
+        writeSharedMapSize(size);
       } else if (tmpl.startsWith("3p")) {
         setWhich("3p");
         setPlayers(3);
@@ -1483,7 +1512,7 @@ setSelectedSeedLabel(String(found.seed ?? ""));
       }
 
       // placementMethod はテンプレ切替とは独立の検索条件なので、?t= 優先時も復元する。
-      if (tid === "base_34p") {
+      if (isBaseTemplateId(tid)) {
         const pm = Number((params as any)?.placementMethod);
         if (pm === 1 || pm === 2 || pm === 3) setPlacementMethod(pm as 1 | 2 | 3);
       }
@@ -1593,8 +1622,7 @@ try {
   const describeSearchProfileMap = React.useCallback(
     (m: SearchProfileMap) => {
       const tid = m.templateId;
-      const tmpl = tid === "base_34p" ? (lang === "ja" ? "基本版 3〜4人" : "Base 3–4p") : tid.startsWith("3p") ? "LF 3p" : tid.startsWith("4p") ? "LF 4p" : tid;
-      return `${tmpl} · ${m.searchKey.slice(0, 8)}`;
+      return `${templateLabel(tid, lang)} · ${m.searchKey.slice(0, 8)}`;
     },
     [lang]
   );
@@ -2963,6 +2991,8 @@ const handleDeleteUsed = React.useCallback(
         onSelect={applySharedSelection}
         lang={lang}
         onLang={setLang}
+        mapSize={mapSize}
+        onMapSize={applyMapSize}
       />
       {/* 探索条件の帯（プロファイル・種族優遇・Map / Setup の登録状態。段階 1、2026-10-16） */}
       <ConditionBar
@@ -3211,13 +3241,7 @@ const handleDeleteUsed = React.useCallback(
                 {Array.from(new Set((savedProfiles ?? []).map((p) => String(((p.params as any)?.templateId ?? p.templateId ?? "")).trim()).filter(Boolean))).map(
                   (tid) => (
                     <option key={tid} value={tid}>
-                      {tid === "base_34p"
-                        ? lang === "ja" ? "基本版 3-4人" : "Base 3-4p"
-                        : tid === "3p_lostFleet"
-                          ? "Lost Fleet 3p"
-                          : tid === "4p_lostFleet"
-                            ? "Lost Fleet 4p"
-                            : tid}
+                      {templateLabel(tid, lang)}
                     </option>
                   )
                 )}
@@ -3244,14 +3268,7 @@ const handleDeleteUsed = React.useCallback(
                 const hasParams = !!params;
                 const tid = String(params?.templateId ?? p.templateId ?? "");
                 // 内部名（templateId）をそのまま出さず表示名に変換（⑤ 2026-07-24）
-                const title =
-                  tid === "base_34p"
-                    ? lang === "ja" ? "基本版 3-4人" : "Base 3-4p"
-                    : tid === "3p_lostFleet"
-                      ? "Lost Fleet 3p"
-                      : tid === "4p_lostFleet"
-                        ? "Lost Fleet 4p"
-                        : tid || "-";
+                const title = tid ? templateLabel(tid, lang) : "-";
 
                 const hardSummary = hasParams
                   ? `${t("hard")}: ${t("outerSameColorMax")}=${String(params?.hard?.outerSameColorMax ?? "-")}, ${t("centerMode")}=${String(

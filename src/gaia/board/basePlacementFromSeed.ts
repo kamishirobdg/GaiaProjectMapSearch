@@ -14,27 +14,22 @@
 
 import { mulberry32, hashSeed, shuffleSeeded } from "./rng";
 import type { SlotPlacement } from "./types";
-import {
-  BASE_34P_INNER_SLOTS,
-  BASE_34P_OUTER_SLOTS,
-} from "../templates/base_34p_slotCenters";
+import { BASE_VARIANTS, type BaseTemplateId } from "../templates/baseVariants";
 
 export type BasePlacementMethod = 1 | 2 | 3;
 
-/** 基本版で使う宙域タイル（3・4人: 05/06/07 は実線面） */
-export const BASE_34P_INNER_SECTORS = ["01", "02", "03", "04"] as const;
-export const BASE_34P_OUTER_SECTORS = ["05", "06", "07", "08", "09", "10"] as const;
-
-const SLOT_ORDER_BASE_34P: readonly string[] = [
-  ...BASE_34P_INNER_SLOTS,
-  ...BASE_34P_OUTER_SLOTS,
-];
+/** 基本版で使う宙域タイル（3・4人: 05/06/07 は実線面）。縮小盤の外側は baseVariants.ts */
+export const BASE_34P_INNER_SECTORS = BASE_VARIANTS.base_34p.innerSectors;
+export const BASE_34P_OUTER_SECTORS = BASE_VARIANTS.base_34p.outerSectors;
 
 export function basePlacementFromSeed(args: {
   seed: string | number;
   placementMethod: BasePlacementMethod;
+  /** 省略時 base_34p（10 枚）。縮小盤（2026-10-27）は外側のスロットとタイルが減るだけで RNG の消費順は同じ */
+  templateId?: BaseTemplateId;
 }): SlotPlacement[] {
   const { seed, placementMethod } = args;
+  const v = BASE_VARIANTS[args.templateId ?? "base_34p"];
 
   const seedNum = typeof seed === "number" ? seed >>> 0 : hashSeed(String(seed));
   const rng = mulberry32(seedNum);
@@ -44,28 +39,25 @@ export function basePlacementFromSeed(args: {
   let outerSectors: string[];
 
   if (placementMethod === 1) {
-    innerSectors = [...BASE_34P_INNER_SECTORS];
-    outerSectors = shuffleSeeded(BASE_34P_OUTER_SECTORS, rng);
+    innerSectors = [...v.innerSectors];
+    outerSectors = shuffleSeeded(v.outerSectors, rng);
   } else if (placementMethod === 2) {
-    innerSectors = shuffleSeeded(BASE_34P_INNER_SECTORS, rng);
-    outerSectors = shuffleSeeded(BASE_34P_OUTER_SECTORS, rng);
+    innerSectors = shuffleSeeded(v.innerSectors, rng);
+    outerSectors = shuffleSeeded(v.outerSectors, rng);
   } else if (placementMethod === 3) {
-    const all = shuffleSeeded(
-      [...BASE_34P_INNER_SECTORS, ...BASE_34P_OUTER_SECTORS],
-      rng
-    );
-    innerSectors = all.slice(0, 4);
-    outerSectors = all.slice(4);
+    const all = shuffleSeeded([...v.innerSectors, ...v.outerSectors], rng);
+    innerSectors = all.slice(0, v.innerSlots.length);
+    outerSectors = all.slice(v.innerSlots.length);
   } else {
     throw new Error(`basePlacementFromSeed: invalid placementMethod=${placementMethod}`);
   }
 
   const sectorBySlot = new Map<string, string>();
-  BASE_34P_INNER_SLOTS.forEach((slotId, i) => sectorBySlot.set(slotId, innerSectors[i]));
-  BASE_34P_OUTER_SLOTS.forEach((slotId, i) => sectorBySlot.set(slotId, outerSectors[i]));
+  v.innerSlots.forEach((slotId, i) => sectorBySlot.set(slotId, innerSectors[i]));
+  v.outerSlots.forEach((slotId, i) => sectorBySlot.set(slotId, outerSectors[i]));
 
   // 2) 回転（スロット順 L1..L10 に固定して消費）
-  return SLOT_ORDER_BASE_34P.map((slotId) => ({
+  return [...v.innerSlots, ...v.outerSlots].map((slotId) => ({
     slotId,
     sectorId: sectorBySlot.get(slotId)!,
     rot: Math.floor(rng() * 6) % 6,

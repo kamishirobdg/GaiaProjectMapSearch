@@ -74,6 +74,7 @@ import {
   type Expansion,
 } from "@/lib/sharedSettings";
 import { useSharedTopK } from "@/lib/useSharedTopK";
+import { templateLabel } from "@/gaia/templates/baseVariants";
 import { SETUP_CATALOG } from "@/gaia/setup/data";
 import { countTileRules, hasRule, setTileRule, type TileRuleMode, type TileRules } from "@/gaia/setup/tileRules";
 import {
@@ -1066,8 +1067,7 @@ export default function SetupView() {
   const describeSearchProfileMap = React.useCallback(
     (m: { templateId: string; searchKey: string }) => {
       const tid = m.templateId;
-      const tmpl = tid === "base_34p" ? (lang === "ja" ? "基本版 3〜4人" : "Base 3–4p") : tid.startsWith("3p") ? "LF 3p" : tid.startsWith("4p") ? "LF 4p" : tid;
-      return `${tmpl} · ${m.searchKey.slice(0, 8)}`;
+      return `${templateLabel(tid, lang)} · ${m.searchKey.slice(0, 8)}`;
     },
     [lang]
   );

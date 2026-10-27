@@ -21,6 +21,7 @@ import {
 import * as SlotCenters3p from "../templates/3p_lostfleet_slotCenters";
 import * as SlotCenters4p from "../templates/4p_lostfleet_slotCenters";
 import { SLOT_CENTERS_BASE_34P } from "../templates/base_34p_slotCenters";
+import { isBaseTemplateId } from "../templates/baseVariants";
 
 import { makeSearchPlacementFromSeed } from "../ssot/searchPlacementConfig";
 import { computePlacementHash } from "../ssot/placementHash";
@@ -295,8 +296,8 @@ function resolveSlotCenters(templateId: string): {
   slotCenters: SlotCenters;
   middleOffsetByRotSeed: Record<number, Axial>;
 } {
-  // 基本版: LARGE スロットのみ（Middle offset なし）
-  if (templateId === "base_34p") {
+  // 基本版: LARGE スロットのみ（Middle offset なし）。縮小盤（base_3p_9 / base_3p_8）は同じ座標の部分集合
+  if (isBaseTemplateId(templateId)) {
     return { slotCenters: SLOT_CENTERS_BASE_34P, middleOffsetByRotSeed: {} };
   }
 

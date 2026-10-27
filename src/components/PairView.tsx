@@ -68,10 +68,14 @@ import {
   writeSharedExpansion,
   writeSharedPlayers,
   type Expansion,
+  readSharedMapSize,
+  writeSharedMapSize,
+  type MapSize,
 } from "@/lib/sharedSettings";
 import { scoreSetupFactions, topFactions, topKOf, type FactionScores, type RecommendCriterion } from "@/gaia/eval/factionEval";
 import { applyShipInteraction, shipInteractionOf, shipTileValuesByShip } from "@/gaia/eval/shipInteraction";
 import { useSharedTopK } from "@/lib/useSharedTopK";
+import { templateLabel } from "@/gaia/templates/baseVariants";
 import { FACTIONS, FACTION_IDS, type FactionId } from "@/gaia/eval/factionWeights";
 import { mapValueByFaction } from "@/gaia/eval/mapFaction";
 import { blendScores, type ScoreBlend } from "@/gaia/eval/scoreBlend";
@@ -392,7 +396,7 @@ function topTotalText(total: FactionScores, n: number, lang: Lang, lf: boolean):
     .join(" / ");
 }
 
-function templateMeta(templateId: string, t: TextOf): string {
+function templateMeta(templateId: string, t: TextOf, lang: Lang): string {
   switch (templateId) {
     case "base_34p":
       return `${t.modeBase} 3-4p`;
@@ -401,7 +405,8 @@ function templateMeta(templateId: string, t: TextOf): string {
     case "4p_lostFleet":
       return `${t.modeLF} 4p`;
     default:
-      return templateId || "?";
+      // 3 人用の縮小盤（base_3p_9 / base_3p_8）など
+      return templateLabel(templateId, lang);
   }
 }
 
@@ -479,6 +484,8 @@ const td: React.CSSProperties = { border: "1px solid #eee", padding: "3px 6px", 
 export default function PairView() {
   const [lang, setLang] = React.useState<Lang>("ja");
   const [players, setPlayers] = React.useState<number>(4);
+  /** 盤面の大きさ（基本版 3 人の縮小盤、2026-10-27）。共通バーの選択肢で共有設定に書く。Map タブがテンプレートに使う */
+  const [mapSize, setMapSize] = React.useState<MapSize>("full");
   const [expansion, setExpansion] = React.useState<Expansion>("base");
   const [pinnedMaps, setPinnedMaps] = React.useState<PersistedCandidate[]>([]);
   const [topOverallMap, setTopOverallMap] = React.useState<PersistedCandidate | null>(null);
@@ -696,6 +703,7 @@ export default function PairView() {
     const sp = readSharedPlayers();
     const se = readSharedExpansion();
     if (sp) setPlayers(sp);
+    setMapSize(readSharedMapSize());
     if (se) setExpansion(se);
     try {
       const savedMap = localStorage.getItem(LS_MAP);
@@ -795,6 +803,10 @@ export default function PairView() {
     setExpansion(e);
     writeSharedPlayers(np);
     writeSharedExpansion(e);
+  }, []);
+  const onMapSize = React.useCallback((size: MapSize) => {
+    setMapSize(size);
+    writeSharedMapSize(size);
   }, []);
   const t = UI[lang];
   const setLangPersist = React.useCallback((l: Lang) => {
@@ -1545,7 +1557,7 @@ export default function PairView() {
 
   return (
     <>
-      <GlobalBar active="pair" players={players} expansion={expansion} onSelect={onGlobalSelect} lang={lang} onLang={setLangPersist} />
+      <GlobalBar active="pair" players={players} expansion={expansion} onSelect={onGlobalSelect} lang={lang} onLang={setLangPersist} mapSize={mapSize} onMapSize={onMapSize} />
       <ConditionBar page="pair" lang={lang} lf={expansion === "lostFleet"} />
       <PageBody>
         <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
@@ -1589,7 +1601,7 @@ export default function PairView() {
                         {r.tid ? (
                           <>
                             {" ・ "}
-                            {templateMeta(r.tid, t)}
+                            {templateMeta(r.tid, t, lang)}
                             {r.mapHash ? ` / ${r.mapHash.slice(0, 8)}` : ""}
                             {r.mapScore ? ` / ${Math.round(r.mapScore)}` : ""}
                           </>
@@ -1830,7 +1842,7 @@ export default function PairView() {
                             {selectableMaps.map((c) => (
                               <option key={c.id} value={c.id}>
                                 {c.pinned ? "📌 " : ""}
-                                {templateMeta(templateIdBySearchKey[c.searchKey] ?? "", t)} / {Math.round(Number(c.score))} / {String(c.placementHash ?? "").slice(0, 8)}
+                                {templateMeta(templateIdBySearchKey[c.searchKey] ?? "", t, lang)} / {Math.round(Number(c.score))} / {String(c.placementHash ?? "").slice(0, 8)}
                               </option>
                             ))}
                           </select>
@@ -1888,7 +1900,7 @@ export default function PairView() {
                               >
                                 <td style={{ ...td, textAlign: "center", opacity: 0.6 }}>{i + 1}</td>
                                 <td style={{ ...td, whiteSpace: "nowrap" }}>
-                                  {r.tid ? templateMeta(r.tid, t) : "—"}
+                                  {r.tid ? templateMeta(r.tid, t, lang) : "—"}
                                   {r.mapHash ? <span style={{ fontFamily: "monospace", opacity: 0.8 }}> {r.mapHash.slice(0, 6)}</span> : null}
                                   {r.mapScore ? <span style={{ opacity: 0.7 }}> / {Math.round(r.mapScore)}</span> : null}
                                   {pairDir === "setupToMap" && (r.alts ?? 1) > 1 ? <span style={{ opacity: 0.6 }}> {t.altCount((r.alts ?? 1) - 1)}</span> : null}

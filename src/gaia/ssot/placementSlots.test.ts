@@ -11,10 +11,13 @@ import { buildLogicalMapFromPlacement } from "../logicalMap/buildLogicalMap";
 import { TEMPLATE_3P_LOSTFLEET } from "../data/templates/3p_lostFleet";
 import { TEMPLATE_4P_LOSTFLEET } from "../data/templates/4p_lostFleet";
 import { TEMPLATE_BASE_34P } from "../data/templates/base_34p";
+import { TEMPLATE_BASE_3P_8, TEMPLATE_BASE_3P_9 } from "../data/templates/base_3p_small";
 import type { TemplateDef } from "../data/templates/types";
 
 const TEMPLATES: Array<[string, TemplateDef]> = [
   ["base_34p", TEMPLATE_BASE_34P],
+  ["base_3p_9", TEMPLATE_BASE_3P_9],
+  ["base_3p_8", TEMPLATE_BASE_3P_8],
   ["3p_lostFleet", TEMPLATE_3P_LOSTFLEET],
   ["4p_lostFleet", TEMPLATE_4P_LOSTFLEET],
 ];
@@ -30,7 +33,7 @@ describe("placement slot sets", () => {
     for (const [templateId, tmpl] of TEMPLATES) {
       const want = slotIds(tmpl.slots);
       // base_34p は placementMethod 1/2/3 で出目が変わるので全部見る
-      const methods = templateId === "base_34p" ? ([1, 2, 3] as const) : ([undefined] as const);
+      const methods = templateId.startsWith("base") ? ([1, 2, 3] as const) : ([undefined] as const);
       for (const placementMethod of methods) {
         for (const seed of SEEDS) {
           const { placement } = makeSearchPlacementFromSeed({

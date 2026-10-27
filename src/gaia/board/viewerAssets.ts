@@ -9,6 +9,7 @@ import { EXPANSION_MIDDLE, EXPANSION_LITTLE, EXPANSION_SCOUT } from "@/gaia/sect
 import { TEMPLATE_3P_LOSTFLEET } from "@/gaia/data/templates/3p_lostFleet";
 import { TEMPLATE_4P_LOSTFLEET } from "@/gaia/data/templates/4p_lostFleet";
 import { TEMPLATE_BASE_34P } from "@/gaia/data/templates/base_34p";
+import { TEMPLATE_BASE_3P_8, TEMPLATE_BASE_3P_9 } from "@/gaia/data/templates/base_3p_small";
 import type { TemplateDef } from "@/gaia/data/templates/types";
 
 /** templateId -> 定義（検索キー・プロファイルの templateId と同じ語彙）。 */
@@ -16,6 +17,8 @@ export const TEMPLATE_BY_ID: Record<string, TemplateDef> = {
   "3p_lostFleet": TEMPLATE_3P_LOSTFLEET,
   "4p_lostFleet": TEMPLATE_4P_LOSTFLEET,
   base_34p: TEMPLATE_BASE_34P,
+  base_3p_9: TEMPLATE_BASE_3P_9,
+  base_3p_8: TEMPLATE_BASE_3P_8,
 };
 
 export function normalizeSectorId(id: string) {

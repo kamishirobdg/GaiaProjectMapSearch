@@ -178,3 +178,45 @@ describe("H0 on real base_34p boards", () => {
     expect(passSeen).toBeGreaterThan(0);
   });
 });
+
+// 3 人用の縮小盤（2026-10-27）: 09 を除いた 9 枚（base_3p_9）、09・10 を除いた 8 枚（base_3p_8）
+describe("basePlacementFromSeed: 3 人用の縮小盤", () => {
+  const cases = [
+    { tid: "base_3p_9" as const, outerSlots: ["L5", "L6", "L7", "L8", "L10"], outer: ["05", "06", "07", "08", "10"] },
+    { tid: "base_3p_8" as const, outerSlots: ["L5", "L6", "L7", "L8"], outer: ["05", "06", "07", "08"] },
+  ];
+  for (const c of cases) {
+    it(`${c.tid}: 方法 1 は 01..04 を L1..L4 に固定し、外側は ${c.outer.join("/")} だけ`, () => {
+      for (let seed = 1; seed <= 20; seed++) {
+        const p = basePlacementFromSeed({ seed, placementMethod: 1, templateId: c.tid });
+        expect(p.map((x) => x.slotId)).toEqual([...BASE_34P_INNER_SLOTS, ...c.outerSlots]);
+        const m = bySlot(p);
+        expect(["L1", "L2", "L3", "L4"].map((s) => m.get(s)!.sectorId)).toEqual(INNER);
+        expect(c.outerSlots.map((s) => m.get(s)!.sectorId).sort()).toEqual(c.outer);
+      }
+    });
+    it(`${c.tid}: 方法 3 は全タイルを全スロットで入替え、09（と 10）は出ない`, () => {
+      let outerOnInner = false;
+      for (let seed = 1; seed <= 30; seed++) {
+        const p = basePlacementFromSeed({ seed, placementMethod: 3, templateId: c.tid });
+        expect(p.map((x) => x.sectorId).sort()).toEqual([...INNER, ...c.outer]);
+        const m = bySlot(p);
+        if (["L1", "L2", "L3", "L4"].some((s) => c.outer.includes(m.get(s)!.sectorId))) outerOnInner = true;
+      }
+      expect(outerOnInner).toBe(true);
+    });
+    it(`${c.tid}: 論理マップが作れて H0（同種隣接禁止）を判定できる`, () => {
+      const p = basePlacementFromSeed({ seed: 7, placementMethod: 2, templateId: c.tid });
+      const lm = buildLogicalMapFromPlacement({ templateId: c.tid, placement: p });
+      const planets = [...lm.cellsByKey.values()].filter((x: LogicalCell) => x.kind === "planet");
+      // 1 枚あたり惑星 6 個前後（seed 7 方法 2 で 9 枚 55 / 8 枚 49）
+      expect(planets.length).toBeGreaterThan(c.tid === "base_3p_9" ? 50 : 44);
+      expect(planets.length).toBeLessThan(c.tid === "base_3p_9" ? 62 : 56);
+    });
+  }
+  it("base_34p の出目は templateId 省略時と同じ（RNG の消費順は不変）", () => {
+    for (const method of [1, 2, 3] as const) {
+      expect(basePlacementFromSeed({ seed: 99, placementMethod: method, templateId: "base_34p" })).toEqual(basePlacementFromSeed({ seed: 99, placementMethod: method }));
+    }
+  });
+});

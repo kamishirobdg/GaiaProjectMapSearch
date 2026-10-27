@@ -9,7 +9,7 @@
 
 import React from "react";
 import TabNav, { type TabKey } from "@/components/TabNav";
-import type { Expansion } from "@/lib/sharedSettings";
+import type { Expansion, MapSize } from "@/lib/sharedSettings";
 import { APP_VERSION_LABEL } from "@/lib/appVersion";
 
 type Lang = "ja" | "en";
@@ -62,12 +62,22 @@ const L = {
     players: "人数",
     base: "基本版",
     lf: "LF",
+    mapSize: "盤面",
+    sizeFull: "10枚",
+    size9: "9枚（09なし）",
+    size8: "8枚（09・10なし）",
+    mapSizeTip: "基本版 3 人の縮小盤（ルールブック p19）。10枚 ＝ 通常、9枚 ＝ 09 を除く、8枚 ＝ 09・10 を除く。Map の検索条件に入る",
     versionTip: "アプリの版と、Map 評価のバージョン（評価の意味が変わると上がる。検索結果はバージョンごとに別に貯まる）",
   },
   en: {
     players: "Players",
     base: "Base game",
     lf: "LF",
+    mapSize: "Board",
+    sizeFull: "10 tiles",
+    size9: "9 tiles (no 09)",
+    size8: "8 tiles (no 09/10)",
+    mapSizeTip: "Smaller boards for 3 players in the base game (rulebook p19): 10 = standard, 9 = without 09, 8 = without 09 and 10. Part of the Map search conditions",
     versionTip: "App version and the map-evaluation version (bumped whenever the meaning of the evaluation changes; results are stored per version)",
   },
 } as const;
@@ -79,6 +89,8 @@ export default function GlobalBar({
   onSelect,
   lang,
   onLang,
+  mapSize,
+  onMapSize,
 }: {
   active: TabKey;
   players: number;
@@ -86,8 +98,12 @@ export default function GlobalBar({
   onSelect: (players: number, expansion: Expansion) => void;
   lang: Lang;
   onLang: (l: Lang) => void;
+  /** 盤面の大きさ（基本版 3 人の縮小盤、2026-10-27）。Map / Pair だけが渡す。基本版 3 人のときだけ選択肢を出す */
+  mapSize?: MapSize;
+  onMapSize?: (size: MapSize) => void;
 }) {
   const t = L[lang];
+  const showMapSize = !!onMapSize && expansion === "base" && players === 3;
   return (
     <div
       style={{
@@ -112,6 +128,17 @@ export default function GlobalBar({
           ))}
         </select>
       </label>
+
+      {showMapSize ? (
+        <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13 }} title={t.mapSizeTip} data-map-size>
+          <span>{t.mapSize}</span>
+          <select value={mapSize ?? "full"} onChange={(e) => onMapSize!(e.target.value as MapSize)}>
+            <option value="full">{t.sizeFull}</option>
+            <option value="9">{t.size9}</option>
+            <option value="8">{t.size8}</option>
+          </select>
+        </label>
+      ) : null}
 
       {/* 拡張と言語は押し込み式の 2 択ボタン（2026-10-10。ラジオ 2 組だと 375px で 2 行に割れていた）。
           版と合わせて 1 つのグループにし、狭い幅ではグループごと 2 行目へ折り返す */}

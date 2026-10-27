@@ -40,7 +40,7 @@ const ja: ManualText = {
         },
         {
           ul: [
-            "共通バーの「人数」「基本版 / LF」「日本語 / EN」は全タブで共有されます。人数と拡張は検索・生成の条件に入ります。",
+            "共通バーの「人数」「基本版 / LF」「日本語 / EN」は全タブで共有されます。人数と拡張は検索・生成の条件に入ります。基本版で 3 人のときは Map / Pair の人数の隣に「盤面」が出て、10枚（通常）/ 9枚（09 を除く）/ 8枚（09・10 を除く）の縮小盤を選べます（ルールブック p19。Map の検索条件に入り、結果は盤面ごとに別に貯まります）。",
             "共通バー右端の「vX.Y.Z · eval_vN」はアプリの版と Map の評価バージョンです。評価の意味が変わると eval_vN が上がり、Map の検索結果は新しいバージョンのものとして別に貯まります（古い結果は「コピー」で引き継げます）。",
             "検索・生成の結果は条件ごとに自動で保存され、同じ条件で再開すると前回の上位と合流します。ピン留めした盤面とタイル配置は Pair の起点に使え、容量の整理からも守られます。",
             "共通バーの下の「探索条件」の帯は探索プロファイルです。種族優遇 / 冷遇（「編集」。色でまとめて入れることもできます）と、Map・Setup それぞれの検索条件を 1 つの名前で束ねます。検索を実行するとその側の条件が自動で登録され、帯の Map / Setup に「一致」「差分あり」「未登録」が出ます。Map で検索したあと Setup へ移り、「一致」を確かめてから検索する、という流れで使います。帯の「上位 K」は「上位」と数える種族の数で、空欄なら人数＋2 です（基準 1 上位バランス、種族優遇の境目、Pair の「合計の上位」が使います）。",
@@ -238,7 +238,7 @@ const en: ManualText = {
         },
         {
           ul: [
-            "Players, Base game / LF and the language in the top bar are shared by all tabs. Players and expansion are part of the search and generation conditions.",
+            "Players, Base game / LF and the language in the top bar are shared by all tabs. Players and expansion are part of the search and generation conditions. With the base game and 3 players, Map / Pair show a \"Board\" choice next to the player count: 10 tiles (standard), 9 (without 09) or 8 (without 09 and 10), the smaller boards from rulebook p19. It is part of the Map search conditions and results are stored per board.",
             "The right end of the top bar shows the app version and the map evaluation version (\"vX.Y.Z · eval_vN\"). When the meaning of the evaluation changes, eval_vN goes up and map results are stored separately per version (older results can be carried over with \"Copy\").",
             "Search and generation results are saved automatically per condition and merge with the previous top results when you resume. Pinned boards and layouts can be used as starting points on the Pair tab and are protected from trimming.",
             "The \"Search profile\" strip under the top bar bundles the faction preference (\"Edit\"; values can be set per colour too) with the Map and Setup search conditions under one name. Running a search registers that side's conditions, and the Map / Setup badges show \"match\", \"differs\" or \"not set\". Typical flow: search on Map, move to Setup, confirm \"match\", then search. The strip's \"Top K\" is how many factions count as the top; blank means players + 2 (used by criterion 1 top balance, the faction preference threshold and Pair's \"top by total\").",

@@ -27,6 +27,7 @@
 import { TEMPLATE_3P_LOSTFLEET } from "../src/gaia/data/templates/3p_lostFleet";
 import { TEMPLATE_4P_LOSTFLEET } from "../src/gaia/data/templates/4p_lostFleet";
 import { TEMPLATE_BASE_34P } from "../src/gaia/data/templates/base_34p";
+import { TEMPLATE_BASE_3P_8, TEMPLATE_BASE_3P_9 } from "../src/gaia/data/templates/base_3p_small";
 import * as SlotCenters3p from "../src/gaia/templates/3p_lostfleet_slotCenters";
 import * as SlotCenters4p from "../src/gaia/templates/4p_lostfleet_slotCenters";
 import { SLOT_CENTERS_BASE_34P } from "../src/gaia/templates/base_34p_slotCenters";
@@ -127,6 +128,9 @@ export function checkAllCoordConsistency(): Mismatch[] {
       TEMPLATE_BASE_34P as any as TemplateLike
     )
   );
+  // 3 人用の縮小盤（2026-10-27）: base_34p と同じ座標の部分集合
+  all.push(...checkTemplate(SLOT_CENTERS_BASE_34P, TEMPLATE_BASE_3P_9 as any as TemplateLike));
+  all.push(...checkTemplate(SLOT_CENTERS_BASE_34P, TEMPLATE_BASE_3P_8 as any as TemplateLike));
   return all;
 }
 

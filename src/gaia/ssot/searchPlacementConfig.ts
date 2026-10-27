@@ -15,10 +15,7 @@ import {
   basePlacementFromSeed,
   type BasePlacementMethod,
 } from "../board/basePlacementFromSeed";
-import {
-  BASE_34P_INNER_SLOTS,
-  BASE_34P_OUTER_SLOTS,
-} from "../templates/base_34p_slotCenters";
+import { baseVariantOf } from "../templates/baseVariants";
 
 import { EXPANSION_MIDDLE_IDS, EXPANSION_SCOUT_IDS, EXPANSION_LITTLE_IDS } from "../sectorTiles_lostfleet";
 
@@ -132,20 +129,20 @@ export function makeSearchPlacementFromSeed(args: {
 }): { slots: SlotDef[]; placement: SlotPlacement[]; config: SearchPlacementConfig } {
   const { templateId, seed } = args;
 
-  if (templateId === "base_34p") {
+  const baseVariant = baseVariantOf(templateId);
+  if (baseVariant) {
     const placement = basePlacementFromSeed({
       seed,
       placementMethod: args.placementMethod ?? 1,
+      templateId: baseVariant.templateId,
     });
-    const slots = buildSlotsFromOrder([
-      ...BASE_34P_INNER_SLOTS,
-      ...BASE_34P_OUTER_SLOTS,
-    ]);
+    const slotOrder = [...baseVariant.innerSlots, ...baseVariant.outerSlots];
+    const slots = buildSlotsFromOrder(slotOrder);
     // LF用フィールドは空のダミー（base では placement 生成に使わない）
     const config: SearchPlacementConfig = {
-      templateId: "base_34p",
-      slotOrder: [...BASE_34P_INNER_SLOTS, ...BASE_34P_OUTER_SLOTS],
-      fixedLargeIds: ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10"],
+      templateId: baseVariant.templateId,
+      slotOrder,
+      fixedLargeIds: [...baseVariant.innerSectors, ...baseVariant.outerSectors],
       middleIds: [],
       scoutIds: [],
       littleIds: [],

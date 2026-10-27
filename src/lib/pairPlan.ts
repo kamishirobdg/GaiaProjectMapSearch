@@ -138,6 +138,8 @@ export function deriveSetupSettings(templateId: string | null): PairSettings {
   if (templateId === "4p_lostFleet") return { players: 4, lf: true };
   const p = readSharedPlayers() ?? 4;
   if (templateId === "base_34p") return { players: Math.min(4, Math.max(3, p)), lf: false };
+  // 3 人用の縮小盤（2026-10-27）
+  if (templateId === "base_3p_9" || templateId === "base_3p_8") return { players: 3, lf: false };
   return { players: p, lf: (readSharedExpansion() ?? "base") === "lostFleet" };
 }
 

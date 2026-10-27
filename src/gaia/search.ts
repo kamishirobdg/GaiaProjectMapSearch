@@ -7,6 +7,7 @@ import { buildLogicalMap } from "./logicalMap/buildLogicalMap";
 import { extractForEval, type HardParams } from "./eval/extractForEval";
 import { checkHardConstraints, type HardFailReason } from "./constraints";
 import { evaluateSoft, type SoftParams, type SoftEvalResult } from "./eval/evaluateSoft";
+import { isBaseTemplateId } from "./templates/baseVariants";
 
 // ★普段は必ず false
 const DEBUG_DUMP_ALL_KEYS = false;
@@ -110,7 +111,7 @@ export async function runSearch(
 
   // H0（合法性）: base テンプレでは常時有効（ユーザー設定・検索キー対象外）
   const effectiveHard: HardParams =
-    templateId === "base_34p"
+    isBaseTemplateId(templateId)
       ? { ...options.hard, banSameKindAdjacency: true }
       : options.hard;
 
