@@ -4,6 +4,9 @@
 //
 //   npx tsx scripts/_probe_ship_interaction.ts [盤面数=40] [セットアップ数=20]
 //   ALPHA=1 npx tsx ...   で α を差し替え（既定はコードの SHIP_INTERACTION_ALPHA）
+//   SHAPE=rel（既定。いまの形: 種族ごとの平均に対する相対値、ゼロサム）| abs（2026-10-27 の検討: 固定の基準 C_ref に対する
+//   比 g ＝ min(CAP, C_sf / C_ref) で船のタイルの値を g 倍。船に届かない種族は船の列を丸ごと失う＝ゼロサムでない）
+//   CAP=2（abs の上限）、REF=（abs の基準。省略時は全盤面・全種族の平均の船接触の中央値）
 //
 // ハード制約を通った LF の盤面 × ランダムなセットアップの組について、
 //   - 船ごとの船接触 C_s の相対値 (C_s − C̄) / C̄ の分布
@@ -21,11 +24,36 @@ import { buildSetupFromSeed } from "../src/gaia/setup/buildSetup";
 import { scoreSetupFactions, setupFactionBreakdown, topFactions, topFactionsByColor, type FactionScores } from "../src/gaia/eval/factionEval";
 import { mapValueByFaction } from "../src/gaia/eval/mapFaction";
 import { factionIdsForMode } from "../src/gaia/eval/factionWeights";
-import { SHIP_INTERACTION_ALPHA, applyShipInteraction, shipInteractionOf } from "../src/gaia/eval/shipInteraction";
+import { SHIP_INTERACTION_ALPHA, applyShipInteraction, shipInteractionOf, shipTileValuesByShip, type ShipInteraction } from "../src/gaia/eval/shipInteraction";
+import type { SetupResult } from "../src/gaia/setup/types";
+
+/** abs の形: 船 s のタイルの値 × (min(CAP, C_sf / C_ref) − 1) を足す。C_sf ＝ 0 なら −T（船の列を失う） */
+function applyAbs(raw: FactionScores, si: ShipInteraction, s: SetupResult, cRef: number, ids: readonly string[]): { adj: FactionScores; lost: number; gained: number } {
+  const tiles = shipTileValuesByShip(s);
+  const adj = { ...raw } as FactionScores;
+  let lost = 0, gained = 0;
+  for (const f of ids as Array<keyof FactionScores>) {
+    const e = si.byFaction?.[f];
+    let b = 0, gmin = Infinity, gmax = 0;
+    for (const r of si.ships) {
+      const c = e ? e.contact[r.ship] ?? 0 : r.contact;
+      const g = Math.min(CAP, c / cRef);
+      gmin = Math.min(gmin, g); gmax = Math.max(gmax, g);
+      b += (g - 1) * (tiles[r.ship]?.[f] ?? 0);
+    }
+    adj[f] = (raw[f] ?? 0) + b;
+    if (gmax < 0.5) lost++;
+    if (gmin > 1.5) gained++;
+  }
+  return { adj, lost, gained };
+}
 
 const N_MAPS = Number(process.argv[2] ?? 40) || 40;
 const N_SETUPS = Number(process.argv[3] ?? 20) || 20;
 const ALPHA = process.env.ALPHA != null && process.env.ALPHA !== "" ? Number(process.env.ALPHA) : SHIP_INTERACTION_ALPHA;
+const SHAPE = process.env.SHAPE === "abs" ? "abs" : "rel";
+const CAP = Number(process.env.CAP ?? 2) || 2;
+const REF_ENV = process.env.REF != null && process.env.REF !== "" ? Number(process.env.REF) : null;
 
 const soft = {
   wRimGap: 0.5,
@@ -47,7 +75,7 @@ const f1 = (v: number) => v.toFixed(1);
 const f2 = (v: number) => v.toFixed(2);
 const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
 
-console.log(`α ${ALPHA}（コードの既定 ${SHIP_INTERACTION_ALPHA}）。盤面 ${N_MAPS} × セットアップ ${N_SETUPS}`);
+console.log(`α ${ALPHA}（コードの既定 ${SHIP_INTERACTION_ALPHA}）、形 ${SHAPE}${SHAPE === "abs" ? `（上限 ${CAP}）` : ""}。盤面 ${N_MAPS} × セットアップ ${N_SETUPS}`);
 
 for (const [templateId, players] of [["4p_lostFleet", 4], ["3p_lostFleet", 3]] as Array<[string, number]>) {
   const hard = { minSameColorDist: 3, outerSameColorMax: 1, centerMode: "NONE", maxConnectedPlanets: 0, h5IncludeScouts: false } as any;
@@ -63,6 +91,16 @@ for (const [templateId, players] of [["4p_lostFleet", 4], ["3p_lostFleet", 3]] a
   }
   const setups = Array.from({ length: N_SETUPS }, (_, i) => buildSetupFromSeed({ seed: `ship-${i + 1}`, playerCount: players, mode: "lostFleet" }));
   const ids = factionIdsForMode(true);
+
+  // abs の基準 C_ref: 全盤面 × 全種族の「平均の船接触 C̄_f」の中央値（REF で上書き可）
+  const meansAll: number[] = [];
+  for (const bd of maps) {
+    const si0 = shipInteractionOf(setups[0], bd, undefined, 1);
+    if (!si0?.byFaction) continue;
+    for (const f of ids) { const e = si0.byFaction[f]; if (e && e.mean > 0) meansAll.push(e.mean); }
+  }
+  const cRef = REF_ENV ?? stat(meansAll).med;
+  let absLost = 0, absGained = 0, absN = 0;
 
   const rels: number[] = [];
   const absBonus: number[] = [];
@@ -91,7 +129,11 @@ for (const [templateId, players] of [["4p_lostFleet", 4], ["3p_lostFleet", 3]] a
           for (const r of si.ships) { relsF.push(e.rel[r.ship] ?? 0); fsSeen++; if (!((e.contact[r.ship] ?? 0) > 0)) fsZero++; }
         }
       }
-      const adj = applyShipInteraction(raw, si);
+      let adj: FactionScores;
+      if (SHAPE === "abs") {
+        const r = applyAbs(raw, si, s, cRef, ids);
+        adj = r.adj; absLost += r.lost; absGained += r.gained; absN += ids.length;
+      } else adj = applyShipInteraction(raw, si);
       let maxAbs = 0;
       for (const f of ids) {
         const b = adj[f] - raw[f];
@@ -120,6 +162,7 @@ for (const [templateId, players] of [["4p_lostFleet", 4], ["3p_lostFleet", 3]] a
   console.log(`\n################ ${templateId}  盤面 ${maps.length} × セットアップ ${setups.length} ＝ ${pairs} 組（相互作用なし ${noInteraction}）`);
   console.log(`  船接触の相対値 (C_s − C̄)/C̄: 平均 ${f2(r.mean)}  10%〜90% ${f2(r.p10)}〜${f2(r.p90)}  最小 ${f2(r.min)} / 最大 ${f2(r.max)}   船接触 0 の船 ${pct(zeroContact / Math.max(1, shipsSeen))}`);
   if (modeFaction > 0) console.log(`  種族ごとの船接触（案 (ii-f)、組 ${modeFaction}）: 相対値 (C_sf − C̄_f)/C̄_f 10%〜90% ${f2(rf.p10)}〜${f2(rf.p90)}  最小 ${f2(rf.min)} / 最大 ${f2(rf.max)}   届かない船（C_sf ＝ 0） ${pct(fsZero / Math.max(1, fsSeen))}   共通へ後退した種族 ${fsFallback}`);
+  if (SHAPE === "abs") console.log(`  abs: 基準 C_ref ${f1(cRef)}（平均の船接触の中央値、10%〜90% ${f1(stat(meansAll).p10)}〜${f1(stat(meansAll).p90)}）。船の列をほぼ失う種族（全船 g < 0.5）${pct(absLost / Math.max(1, absN))} / 全船 g > 1.5 の種族 ${pct(absGained / Math.max(1, absN))}`);
   console.log(`  加点 |b_f|: 平均 ${f1(ab.mean)}  中央 ${f1(ab.med)}  90% ${f1(ab.p90)}  最大 ${f1(ab.max)}   組ごとの最大 |b|: 平均 ${f1(mx.mean)}  90% ${f1(mx.p90)}`);
   console.log(`  |b_f| / Setup の値: 平均 ${pct(bs.mean)}  90% ${pct(bs.p90)}   |b_f| / lfShip の列: 平均 ${pct(bh.mean)}  90% ${pct(bh.p90)}`);
   console.log(`  Setup 単独の上位 5 種族の並びが変わる組 ${pct(setupTopChanged / Math.max(1, pairs - noInteraction))}`);
