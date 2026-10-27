@@ -31,6 +31,9 @@ import { factionsForMode, type FactionDef } from "@/gaia/eval/factionWeights";
 import { COLOR_PREF_MAX, COLOR_PREF_MIN } from "@/gaia/eval/setupWeights";
 import { EXTRA_INPUT_BG, EXTRA_LABEL_JA, PLANET_INPUT_BG, PLANET_LABEL_JA, type PlanetTypeKey } from "@/app/board/BreakdownTable";
 import { SharedHelp } from "@/components/FactionEvalPanel";
+import { TOP_K_MAX, TOP_K_MIN } from "@/gaia/eval/factionEval";
+import { writeSharedTopK } from "@/lib/sharedSettings";
+import { useSharedTopK } from "@/lib/useSharedTopK";
 
 type Lang = "ja" | "en";
 export type ConditionBarPage = "map" | "setup" | "pair";
@@ -46,6 +49,9 @@ const UI = {
     newName: "プロファイル名",
     pref: "種族優遇",
     prefNone: "指定なし",
+    topK: "上位 K",
+    topKDefault: "人数+2",
+    topKReset: "既定に戻す",
     edit: "編集",
     close: "閉じる",
     byColor: "色でまとめて",
@@ -78,6 +84,9 @@ const UI = {
     newName: "Profile name",
     pref: "Faction pref.",
     prefNone: "none",
+    topK: "Top K",
+    topKDefault: "players+2",
+    topKReset: "Reset",
     edit: "Edit",
     close: "Close",
     byColor: "By colour",
@@ -242,6 +251,16 @@ export default function ConditionBar({
   const t = UI[lang];
   const { profiles, active, setActive, rename, remove, setFactionPref, bindMap, bindSetup } = useSearchProfiles();
   const [editing, setEditing] = React.useState(false);
+  // 上位 K（共有設定、2026-10-27）。空欄 ＝ 既定（人数＋2）。書き込みは onChange（ユーザー操作）だけ
+  const sharedTopK = useSharedTopK();
+  const [topKText, setTopKText] = React.useState<string | null>(null);
+  const topKShown = topKText ?? (sharedTopK == null ? "" : String(sharedTopK));
+  const commitTopK = React.useCallback((raw: string) => {
+    const n = Number(raw);
+    if (raw.trim() === "") writeSharedTopK(null);
+    else if (Number.isInteger(n) && n >= TOP_K_MIN && n <= TOP_K_MAX) writeSharedTopK(n);
+    setTopKText(null);
+  }, []);
 
   /** 操作の中で使う「対象プロファイル」。無ければ「既定」を作る（ユーザー操作のハンドラからだけ呼ぶ） */
   const ensureActive = React.useCallback((): SearchProfile => {
@@ -370,6 +389,33 @@ export default function ConditionBar({
           {editing ? t.close : t.edit}
         </button>
       </span>
+
+      {/* 上位 K（基準 1 上位バランスの「上位」、種族優遇の境目、「合計の上位」。2026-10-27） */}
+      <label style={{ display: "inline-flex", gap: 4, alignItems: "center" }} data-top-k>
+        <span style={{ fontWeight: 700, display: "inline-flex", alignItems: "center" }}>
+          {t.topK}
+          <SharedHelp k="topK" lang={lang} />
+        </span>
+        <input
+          type="number"
+          min={TOP_K_MIN}
+          max={TOP_K_MAX}
+          step={1}
+          value={topKShown}
+          placeholder={t.topKDefault}
+          onChange={(e) => setTopKText(e.target.value)}
+          onBlur={(e) => commitTopK(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitTopK((e.target as HTMLInputElement).value);
+          }}
+          style={{ width: 52, fontSize: 12, padding: "1px 4px" }}
+        />
+        {sharedTopK != null ? (
+          <button type="button" onClick={() => commitTopK("")} style={smallBtn} title={t.topKReset}>
+            {t.topKDefault}
+          </button>
+        ) : null}
+      </label>
 
       {/* Map 部・Setup 部の登録状態 */}
       <span style={{ display: "inline-flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginLeft: "auto" }}>

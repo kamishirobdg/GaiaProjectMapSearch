@@ -99,11 +99,11 @@ export type SoftParams = {
   // 「上位 K（人数＋2、種族で数える）に届かない分だけ減点」。thr_f ＝ 他の種族の値 byFaction[·].total の K 番目、
   //   優遇 p > 0: wFactionPref × p × min(0, v_f − thr_f)、冷遇 p < 0: wFactionPref × p × max(0, v_f − thr_f)。
   // eval_v9 は比例（wFactionPref × Σ pref[f] × byFaction[f].total）、eval_v8 までは色ごとだった。
-  // 0 の種族はキーを持たない（無効時フィールド省略）。factionPrefPlayers は K を決める人数で、優遇があるときだけ
-  // 検索キーに入る（省略時 4）。
+  // 0 の種族はキーを持たない（無効時フィールド省略）。factionPrefTopK は上位 K そのもの（共有設定、既定 人数＋2）で、
+  // 優遇があるときだけ検索キーに入る（省略時 6 ＝ 4 人＋2）。
   wFactionPref?: number;
   factionPref?: Partial<Record<string, number>>;
-  factionPrefPlayers?: number;
+  factionPrefTopK?: number;
 
   // eval_v6 までの基本版の軸「ガイア近接（wGaiaDist1〜3）」「星系（wClusterSize）」は eval_v7 で廃止した。
   // 検索キーにも入らない（新バケツなので互換の問題なし）。古い保存結果の表示は page.tsx が再評価する。
@@ -533,7 +533,7 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
 
   const wFactionPref = num((params as any).wFactionPref, 0);
   const factionPrefRaw = ((params as any).factionPref ?? null) as Record<string, unknown> | null;
-  const factionPrefPlayers = clampInt((params as any).factionPrefPlayers, 4, 1, 7);
+  const factionPrefTopK = clampInt((params as any).factionPrefTopK, 6, 2, 18);
 
   const metric: "std" | "range" =
     params.imbalanceMetric === "range" || params.imbalanceMetric === "std" ? params.imbalanceMetric : "std";
@@ -1161,7 +1161,7 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
   const thrByFaction: Record<string, number> = {};
   const scoreByFaction: Record<string, number> = {};
   const factionIds = Object.keys(byFaction);
-  const topK = Math.min(Math.max(1, factionIds.length - 1), Math.max(2, factionPrefPlayers + 2));
+  const topK = Math.min(Math.max(1, factionIds.length - 1), factionPrefTopK);
   let factionPrefScore = 0;
   if (wFactionPref !== 0) {
     for (const [f, p] of Object.entries(prefByFaction)) {

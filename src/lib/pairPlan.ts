@@ -16,6 +16,7 @@ import {
   recommendSetups,
   scoreSetupFactions,
   topFactions,
+  topKOf,
   type FactionPref,
   type FactionScores,
   type RecommendCriterion,
@@ -118,6 +119,8 @@ export type PairPlanInput = {
   blend?: ScoreBlend;
   /** ランダム生成で試すシード。省略時はその場で作る（テストでは固定値を渡す）。 */
   seeds?: string[];
+  /** 上位 K（共有設定。省略時 人数＋2） */
+  topK?: number | null;
 };
 
 /** セットアップ保存レコードの人数/拡張。 */
@@ -148,13 +151,13 @@ export type MapTop = {
 
 /** 配置だけからマップの上位種族を出す（候補に無い盤面＝保存した組・連続探索の順位表の行も同じ式。2026-10-17）。 */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function mapTopOfPlacement(tid: string, placement: any[], playersForK?: number): MapTop | null {
+export function mapTopOfPlacement(tid: string, placement: any[], playersForK?: number, topKSetting?: number | null): MapTop | null {
   if (!tid) return null;
   try {
     const derived = deriveSetupSettings(tid);
     const ms = mapFactionScores(tid, placement ?? []);
     const top3 = topFactions(ms, 3, derived.lf);
-    const topK = topFactions(ms, Math.max(2, (playersForK ?? derived.players) + 2), derived.lf);
+    const topK = topFactions(ms, topKOf(playersForK ?? derived.players, topKSetting), derived.lf);
     return { tid, top3, topK, detail: top3.map((f) => ({ id: f, score: ms[f] })) };
   } catch {
     return null;
@@ -165,11 +168,12 @@ export function mapTopOfPlacement(tid: string, placement: any[], playersForK?: n
 export function mapTopOf(
   c: PersistedCandidate,
   templateIdBySearchKey: Record<string, string>,
-  playersForK?: number
+  playersForK?: number,
+  topKSetting?: number | null
 ): MapTop | null {
   const tid = templateIdBySearchKey[c.searchKey] ?? null;
   if (!tid) return null;
-  return mapTopOfPlacement(tid, c.placement ?? [], playersForK);
+  return mapTopOfPlacement(tid, c.placement ?? [], playersForK, topKSetting);
 }
 
 
@@ -204,7 +208,7 @@ function planSetupToMap(a: PairPlanInput): PairPlan {
   const scored: Array<{ c: PersistedCandidate; score: number; top: MapTop; setupScores: FactionScores }> = [];
   let anyTotalBasis = false;
   for (const c of cands) {
-    const top = mapTopOf(c, a.templateIdBySearchKey);
+    const top = mapTopOf(c, a.templateIdBySearchKey, undefined, a.topK);
     if (!top) continue;
     const bd = breakdownOf(c);
     // 船の相互作用（段階 1、2026-10-08）: 組にするマップごとに船のタイルの値を船接触で増減する
@@ -221,6 +225,7 @@ function planSetupToMap(a: PairPlanInput): PairPlan {
         lostFleet: settings.lf,
         mapTop3: top.top3,
         factionPref: totalBasis ? prefOnTotal(a.factionPref) : factionPrefArgOf(a.factionPref, bd, a.blend),
+        topK: a.topK,
       }),
     });
   }
@@ -290,7 +295,7 @@ function resolveMapSide(a: PairPlanInput): MapSide | PairPlanFailure {
   let mapTopK: FactionId[] | undefined;
   let mapTopDetail: Array<{ id: FactionId; score: number }> | null = null;
   if (selected && tid) {
-    const top = mapTopOf(selected, a.templateIdBySearchKey);
+    const top = mapTopOf(selected, a.templateIdBySearchKey, undefined, a.topK);
     if (top) {
       mapTop3 = top.top3;
       mapTopK = top.topK;
@@ -337,6 +342,7 @@ function planSavedSetups(a: PairPlanInput, m: MapSide): PairPlan {
         ...(m.mapTop3 ? { mapTop3: m.mapTop3 } : {}),
         ...(m.mapTopK ? { mapTopK: m.mapTopK } : {}),
         factionPref: m.pref,
+        topK: a.topK,
       }),
     };
   });
@@ -393,6 +399,7 @@ function planRandomSetups(a: PairPlanInput, m: MapSide): PairPlan {
     ...(m.mapTopK ? { mapTopK: m.mapTopK } : {}),
     weights: a.evalWeights,
     factionPref: m.pref,
+    topK: a.topK,
     topN: PAIR_TOP_N,
     // 船の相互作用（段階 1、2026-10-08）: 起点マップの船接触で船のタイルの値を増減する
     adjustSetupScores: (res, scores) => applyShipInteraction(scores, shipInteractionOf(res, breakdownOf(m.selected), a.evalWeights)),

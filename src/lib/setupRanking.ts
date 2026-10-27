@@ -62,11 +62,12 @@ export function scoreOf(
   lostFleet: boolean,
   weights?: SetupWeights,
   colorPref?: SetupColorPref,
-  factionPref?: FactionPref
+  factionPref?: FactionPref,
+  topK?: number | null
 ): number {
   const result = buildSetupFromSeed(input);
   const setupScores = scoreSetupFactions(result, weights);
-  return criterionScore(criterion, setupScores, { playerCount, lostFleet, colorPref, factionPref });
+  return criterionScore(criterion, setupScores, { playerCount, lostFleet, colorPref, factionPref, topK });
 }
 
 function sortDesc(rows: ScoredSetup[]): ScoredSetup[] {
@@ -128,8 +129,10 @@ export async function listRanking(args: {
   weights?: SetupWeights;
   colorPref?: SetupColorPref;
   factionPref?: FactionPref;
+  /** 上位 K（共有設定。省略時 人数＋2） */
+  topK?: number | null;
 }): Promise<ScoredSetup[]> {
-  const { conditionKey, criterion, playerCount, lostFleet, weights, colorPref, factionPref } = args;
+  const { conditionKey, criterion, playerCount, lostFleet, weights, colorPref, factionPref, topK } = args;
   try {
     const db = await openDb();
     const rows = await idbGetAllFromStore<RankedSetup>(db, STORE_SETUP_RANKING);
@@ -137,7 +140,7 @@ export async function listRanking(args: {
     return sortDesc(
       mine.map((r) => ({
         ...r,
-        score: scoreOf(r.input, criterion, playerCount, lostFleet, weights, colorPref, factionPref),
+        score: scoreOf(r.input, criterion, playerCount, lostFleet, weights, colorPref, factionPref, topK),
       }))
     );
   } catch {
@@ -158,10 +161,12 @@ export async function mergeRanking(args: {
   weights?: SetupWeights;
   colorPref?: SetupColorPref;
   factionPref?: FactionPref;
+  /** 上位 K（共有設定。省略時 人数＋2） */
+  topK?: number | null;
   fresh: Array<{ seed: string; input: BuildSetupInput; score: number }>;
   cap?: number;
 }): Promise<ScoredSetup[]> {
-  const { conditionKey, criterion, playerCount, lostFleet, weights, colorPref, factionPref, fresh } = args;
+  const { conditionKey, criterion, playerCount, lostFleet, weights, colorPref, factionPref, topK, fresh } = args;
   const cap = args.cap ?? SETUP_RANKING_CAP;
 
   const db = await openDb();
@@ -171,7 +176,7 @@ export async function mergeRanking(args: {
     // 保存済みのスコアは信用せず、いまの評価指数で採点し直してから比べる。
     .map((r) => ({
       ...r,
-      score: scoreOf(r.input, criterion, playerCount, lostFleet, weights, colorPref, factionPref),
+      score: scoreOf(r.input, criterion, playerCount, lostFleet, weights, colorPref, factionPref, topK),
     }));
 
   const { keep, drop } = mergeRankingRows({

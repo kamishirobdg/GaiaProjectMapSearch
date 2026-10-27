@@ -37,13 +37,13 @@ const ENTRIES = {
   setupSummary: {
     ja: {
       title: "総合スコア",
-      what: "表の総合列のまとめ。平均 ＝ 全種族の平均、上位 K ＝ 上位 K（人数＋2）種族の平均、散らばり ＝ 全種族の標準偏差、最強 ＝ 最大の種族。",
+      what: "表の総合列のまとめ。平均 ＝ 全種族の平均、上位 K ＝ 上位 K 種族（帯の「上位 K」、既定 人数＋2）の平均、散らばり ＝ 全種族の標準偏差、最強 ＝ 最大の種族。",
       why: "Pair の基準 1・2・4 が見ているのと同じ量（上位 K の拮抗、全体の散らばり、上位の強さ）を 1 行で読めるようにしたもの。",
       ref: "4",
     },
     en: {
       title: "Overall",
-      what: "Summary of the total column. mean = all factions; top K = mean of the top K (players + 2); spread = standard deviation; best = the strongest faction.",
+      what: "Summary of the total column. mean = all factions; top K = mean of the top K (strip's 'Top K', default players + 2); spread = standard deviation; best = the strongest faction.",
       why: "The same quantities the Pair criteria 1, 2 and 4 look at (top-K balance, overall spread, strength of the top), readable in one line.",
       ref: "4",
     },
@@ -186,6 +186,28 @@ const ENTRIES = {
   },
 
   // ---------- 探索条件の帯（ConditionBar。段階 1「条件の統一」2026-10-16） ----------
+  topK: {
+    ja: {
+      title: "上位 K",
+      what:
+        "「上位」と数える種族の数。空欄なら 人数＋2（3 人で 5、4 人で 6）。Map / Setup / Pair で共通。" +
+        "基準 1 上位バランスが拮抗を測る種族の数、種族優遇の「上位に届かない」の境目、Pair の「合計の上位」、基準 4 のマップ上位がこの K を使う。",
+      why:
+        "卓に着く人数ぶんの種族に、選ぶ余地として 2 を足したのが既定（2026-10-27 に入力欄を追加。それまでは 人数＋2 固定）。" +
+        "Map の検索では優遇を付けたときだけ検索キーに入る（変えると別のバケツ）。Setup の候補と Pair の一覧は表示時に採点し直す。",
+      ref: "1.13",
+    },
+    en: {
+      title: "Top K",
+      what:
+        "How many factions count as the top. Blank = players + 2 (5 for 3 players, 6 for 4). Shared by Map / Setup / Pair. " +
+        "Used by criterion 1 (top balance), the faction preference's shortfall threshold, Pair's 'top by total' and criterion 4's map top.",
+      why:
+        "The default is one faction per seat plus two to choose from (input added 2026-10-27; fixed at players + 2 before). " +
+        "On Map it enters the search key only when a preference is set (changing it starts a new bucket). Setup candidates and the Pair list are rescored on display.",
+      ref: "1.13",
+    },
+  },
   searchProfile: {
     ja: {
       title: "探索プロファイル",
@@ -300,36 +322,38 @@ const ENTRIES = {
     ja: {
       title: "基準",
       what:
-        "1 上位バランス ＝ −(合計 T_f の上位 K ＝ 人数＋2 の散らばり) ＋ 0.3 × (上位の平均 − 残りの平均)。2 全体バランス ＝ −(合計 T_f の全種族の散らばり)。" +
+        "1 上位バランス ＝ −(合計 T_f の上位 K 種族の散らばり)。K は帯の「上位 K」（既定 人数＋2）。残りの種族は見ない。2 全体バランス ＝ −(合計 T_f の全種族の散らばり)。" +
         "3 逆優位 ＝ −(Map 上位 3 種族の Setup 値の和) − 0.2 × 全種族の散らばり。4 優位 ＝ Map 上位 K 種族の Setup 値の平均 − 0.2 × その散らばり。" +
         "3・4 は廃止予定（2026-10-27）: マップの強さを打ち消す／後押しする基準で、合計のバランスは測らない。Map の値は惑星の色の数で数え、合計 T_f も使わない。使わないことが確定したら消す。",
       why:
         "合計 T_f ＝ Map × 倍率 ＋ Setup × 倍率（合算比）。基準 1・2 は段階 2（2026-10-17）からマップの内訳があれば合計で測る（それまでは Setup の値だけ）。" +
-        "添え物の係数 0.2 / 0.3 は「主項が同じ候補の順番を決める」程度の目分量（据え置き）。内訳を持たない古いマップでは従来どおり Setup の値だけで測る。",
+        "基準 1 は 2026-10-27 まで「＋ 0.3 × (上位の平均 − 残りの平均)」を足していたが、意図（上位 K がそろっていればよく、残りは無視）に反するので外した（ユーザー確定）。" +
+        "3・4 の添え物 0.2 は「主項が同じ候補の順番を決める」程度の目分量（据え置き）。内訳を持たない古いマップでは従来どおり Setup の値だけで測る。",
       ref: "4 / 1.5",
     },
     en: {
       title: "Criterion",
       what:
-        "1 top balance = −(spread of the top K = players + 2 by total T_f) + 0.3 × (mean of top − mean of rest). 2 overall balance = −(spread of all factions by total T_f). " +
+        "1 top balance = −(spread of the top K factions by total T_f); K is the strip's 'Top K' (default players + 2); the rest are ignored. 2 overall balance = −(spread of all factions by total T_f). " +
         "3 oppose map = −(sum of setup values of the map's top 3) − 0.2 × spread of all. 4 align map = mean setup value of the map's top K − 0.2 × their spread. " +
         "3 and 4 are to be removed (2026-10-27): they cancel or amplify the map's strengths and do not measure the balance of the total; the map side counts planet colours and ignores T_f. They will be deleted once confirmed unused.",
       why:
         "Total T_f = map × weight + setup × weight (blend). Since stage 2 (2026-10-17) criteria 1 / 2 use the total whenever the map has a breakdown (before: setup values only). " +
-        "The 0.2 / 0.3 side terms only order candidates whose main term ties (kept as is). Old maps without a breakdown fall back to setup values.",
+        "Until 2026-10-27 criterion 1 added 0.3 × (mean of top − mean of rest); it was removed because the intent is only that the top K are even (user decision). " +
+        "The 0.2 side terms of 3 / 4 only order candidates whose main term ties (kept as is). Old maps without a breakdown fall back to setup values.",
       ref: "4 / 1.5",
     },
   },
   pairTopColors: {
     ja: {
       title: "合計の上位",
-      what: "Map ＋ Setup の合計（合算比を掛けたもの）が高い順に、人数＋2 種族。基準 1 上位バランスが測る上位 K と同じ種族。",
+      what: "Map ＋ Setup の合計（合算比を掛けたもの）が高い順に、上位 K 種族（帯の「上位 K」、既定 人数＋2）。基準 1 上位バランスが測る上位 K と同じ種族。",
       why: "上位 K は種族で数える（2026-10-22 ユーザー確定。それまでの表示は色ごとに強い方の種族だけで、基準の上位 K と食い違っていた）。同じ色の 2 種族が並ぶことがあるが、卓で選べるのはどちらか 1 つ。Setup ぶんには船の相互作用が入る。",
       ref: "4",
     },
     en: {
       title: "Top by total",
-      what: "Players + 2 factions ranked by map + setup (after the blend ratio): the same top K that criterion 1 (top balance) measures.",
+      what: "The top K factions by map + setup (after the blend ratio; K from the strip's 'Top K', default players + 2): the same top K that criterion 1 (top balance) measures.",
       why: "Top K counts factions (user decision 2026-10-22; the display used to keep only the stronger faction per colour and disagreed with the criterion). Both factions of a colour may appear, though only one can be picked. The setup part includes the ship interaction.",
       ref: "4",
     },

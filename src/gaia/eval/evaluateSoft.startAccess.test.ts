@@ -377,11 +377,11 @@ describe("開始地点の選び方（eval_v3〜v6 の性質を保つ）", () => 
       cell({ q: 4, r: 0, color: "BLUE" }),
       cell({ q: 0, r: 4, color: "YELLOW" }),
     ];
-    // 人数 1 → K ＝ 3。値: ダー・シュワーム人 16 / モウェイド人 14 / スペースジャイアント 12 / 地球人・ランティダ・ハッシュ 11 / ゼノ・グリーン 10
+    // K ＝ 3。値: ダー・シュワーム人 16 / モウェイド人 14 / スペースジャイアント 12 / 地球人・ランティダ・ハッシュ 11 / ゼノ・グリーン 10
     const r = evaluateSoft(extractedOf(cells), {
       ...BASE_SOFT,
       wFactionPref: 2,
-      factionPrefPlayers: 1,
+      factionPrefTopK: 3,
       factionPref: { terrans: 1, ivits: 1, moweyds: -1 },
     });
     expect(factionOf(r, "ivits").total).toBe(16);

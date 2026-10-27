@@ -43,7 +43,7 @@ const ja: ManualText = {
             "共通バーの「人数」「基本版 / LF」「日本語 / EN」は全タブで共有されます。人数と拡張は検索・生成の条件に入ります。",
             "共通バー右端の「vX.Y.Z · eval_vN」はアプリの版と Map の評価バージョンです。評価の意味が変わると eval_vN が上がり、Map の検索結果は新しいバージョンのものとして別に貯まります（古い結果は「コピー」で引き継げます）。",
             "検索・生成の結果は条件ごとに自動で保存され、同じ条件で再開すると前回の上位と合流します。ピン留めした盤面とタイル配置は Pair の起点に使え、容量の整理からも守られます。",
-            "共通バーの下の「探索条件」の帯は探索プロファイルです。種族優遇 / 冷遇（「編集」。色でまとめて入れることもできます）と、Map・Setup それぞれの検索条件を 1 つの名前で束ねます。検索を実行するとその側の条件が自動で登録され、帯の Map / Setup に「一致」「差分あり」「未登録」が出ます。Map で検索したあと Setup へ移り、「一致」を確かめてから検索する、という流れで使います。",
+            "共通バーの下の「探索条件」の帯は探索プロファイルです。種族優遇 / 冷遇（「編集」。色でまとめて入れることもできます）と、Map・Setup それぞれの検索条件を 1 つの名前で束ねます。検索を実行するとその側の条件が自動で登録され、帯の Map / Setup に「一致」「差分あり」「未登録」が出ます。Map で検索したあと Setup へ移り、「一致」を確かめてから検索する、という流れで使います。帯の「上位 K」は「上位」と数える種族の数で、空欄なら人数＋2 です（基準 1 上位バランス、種族優遇の境目、Pair の「合計の上位」が使います）。",
           ],
         },
       ],
@@ -98,7 +98,7 @@ const ja: ManualText = {
               ["船接触（LF、船ごと）", "10", "船の近くの惑星 1 つあたりの加点", "惑星の基本の値が 10 なので、10 で「船の近くは約 2 倍」"],
               ["船星系（LF、船ごと）", "3", "船の星系の中にある惑星への加点", "船接触より小さく保つのが目安"],
               ["船星系: 最大寄与に帰属", "オフ", "複数の船の圏内の惑星を 1 隻だけに数える", "船どうしが近い盤面で加点が膨らむときに"],
-              ["種族優遇 / 冷遇", "指定なし", "種族ごとの ＋ / −（帯で編集）。優遇した種族が上位（人数＋2 種族）に届かない盤面ほど下げます。すでに上位にいれば何もしません", "1 で優遇した種族が上位に入る盤面が LF で約 3 割から約 6 割に（基本版は約 5 割から約 7 割に）、2 で約 7 割（基本版は約 8 割）になります。冷遇は上位に入っている盤面ほど下げます。変えると結果は別に貯まります"],
+              ["種族優遇 / 冷遇", "指定なし", "種族ごとの ＋ / −（帯で編集）。優遇した種族が上位（上位 K、既定 人数＋2 種族）に届かない盤面ほど下げます。すでに上位にいれば何もしません", "1 で優遇した種族が上位に入る盤面が LF で約 3 割から約 6 割に（基本版は約 5 割から約 7 割に）、2 で約 7 割（基本版は約 8 割）になります。冷遇は上位に入っている盤面ほど下げます。変えると結果は別に貯まります"],
               ["種族優遇 / 冷遇の強さ", "50", "優遇 1 あたりの強さ", "通常は変えません。優遇を付けていないときは効かず、変えても結果は分かれません"],
             ],
           },
@@ -163,7 +163,7 @@ const ja: ManualText = {
         {
           ul: [
             "評価指数はカテゴリ全体の効き方を変える係数で、Pair の提案にも同じ値が使われます。変えても貯めた結果は消えません。",
-            "種族優遇 / 冷遇（帯で編集。種族ごとの ±）は検索の並びに効き、評価表の値は変えません。優遇した種族が上位（人数＋2 種族）に届かないセットアップほど下がります。すでに上位にいれば何もしません。1 で優遇した種族が上位に入る割合が約 3 割から約 6〜7 割に、2 で約 8 割になります。冷遇は上位に入っているセットアップほど下がります。",
+            "種族優遇 / 冷遇（帯で編集。種族ごとの ±）は検索の並びに効き、評価表の値は変えません。優遇した種族が上位（上位 K、既定 人数＋2 種族）に届かないセットアップほど下がります。すでに上位にいれば何もしません。1 で優遇した種族が上位に入る割合が約 3 割から約 6〜7 割に、2 で約 8 割になります。冷遇は上位に入っているセットアップほど下がります。",
           ],
         },
       ],
@@ -191,7 +191,7 @@ const ja: ManualText = {
           table: {
             head: ["基準", "どんな組み合わせを選ぶか"],
             rows: [
-              ["1 上位バランス", "合計（Map ＋ Setup）で上位（人数＋2）の種族が拮抗している組（既定）"],
+              ["1 上位バランス", "合計（Map ＋ Setup）で上位 K（既定 人数＋2）の種族が拮抗している組（既定）。残りの種族は見ません"],
               ["2 全体バランス", "合計で全種族の値の散らばりが小さい組"],
               ["3 逆優位（廃止予定）", "盤面で強い種族ほど配置では弱くなる組（打ち消し合い）。合計のバランスは測りません。使わないことが確定したら消します"],
               ["4 優位（廃止予定）", "盤面で強い種族が配置でも強い組（相乗）。合計のバランスは測りません。使わないことが確定したら消します"],
@@ -201,8 +201,8 @@ const ja: ManualText = {
         {
           ul: [
             "基準 1・2 は盤面の評価の内訳を使って合計で測ります。内訳を持たない古い盤面では配置の値だけで測り、その旨の注記が出ます。",
-            "種族優遇 / 冷遇（帯で編集。種族ごとの ±）は、優遇した種族が合計で上位（人数＋2 種族）に届かない組ほど下げます。すでに上位にいれば何もせず、バランスの基準がそのまま並びを決めます。1 で優遇した種族が上位に入る組が約 3 割から約 6 割（基本版は約 8 割）に、2 で約 7 割（基本版は約 9 割）になります。冷遇は上位に入っている組ほど下げます。",
-            "「合計の上位」は合計が高い順に人数＋2 種族です。基準 1 上位バランスが測る上位と同じ種族で、同じ色の 2 種族が並ぶこともあります。",
+            "種族優遇 / 冷遇（帯で編集。種族ごとの ±）は、優遇した種族が合計で上位（上位 K、既定 人数＋2 種族）に届かない組ほど下げます。すでに上位にいれば何もせず、バランスの基準がそのまま並びを決めます。1 で優遇した種族が上位に入る組が約 3 割から約 6 割（基本版は約 8 割）に、2 で約 7 割（基本版は約 9 割）になります。冷遇は上位に入っている組ほど下げます。",
+            "「合計の上位」は合計が高い順に上位 K 種族（既定 人数＋2）です。基準 1 上位バランスが測る上位と同じ種族で、同じ色の 2 種族が並ぶこともあります。",
           ],
         },
         { h3: "合算比" },
@@ -241,7 +241,7 @@ const en: ManualText = {
             "Players, Base game / LF and the language in the top bar are shared by all tabs. Players and expansion are part of the search and generation conditions.",
             "The right end of the top bar shows the app version and the map evaluation version (\"vX.Y.Z · eval_vN\"). When the meaning of the evaluation changes, eval_vN goes up and map results are stored separately per version (older results can be carried over with \"Copy\").",
             "Search and generation results are saved automatically per condition and merge with the previous top results when you resume. Pinned boards and layouts can be used as starting points on the Pair tab and are protected from trimming.",
-            "The \"Search profile\" strip under the top bar bundles the faction preference (\"Edit\"; values can be set per colour too) with the Map and Setup search conditions under one name. Running a search registers that side's conditions, and the Map / Setup badges show \"match\", \"differs\" or \"not set\". Typical flow: search on Map, move to Setup, confirm \"match\", then search.",
+            "The \"Search profile\" strip under the top bar bundles the faction preference (\"Edit\"; values can be set per colour too) with the Map and Setup search conditions under one name. Running a search registers that side's conditions, and the Map / Setup badges show \"match\", \"differs\" or \"not set\". Typical flow: search on Map, move to Setup, confirm \"match\", then search. The strip's \"Top K\" is how many factions count as the top; blank means players + 2 (used by criterion 1 top balance, the faction preference threshold and Pair's \"top by total\").",
           ],
         },
       ],
@@ -296,7 +296,7 @@ const en: ManualText = {
               ["Scout (LF, per ship)", "10", "Bonus per planet near the ship", "The base value of a planet is 10, so 10 means \"about double near a ship\""],
               ["Scout core (LF, per ship)", "3", "Bonus for planets inside the ship's cluster", "Keep it below scout"],
               ["Scout core: best ship only", "Off", "Credit a planet in several ships' range to one ship only", "When ships sit close together and the bonus inflates"],
-              ["Faction preference", "none", "± per faction (edited in the strip). Boards where the preferred faction falls short of the top (players + 2 factions) rank lower; nothing changes when it is already there", "At 1 the share of boards with the preferred faction in the top rises from about 30% to about 60% on LF (base game from about 50% to about 70%), at 2 to about 70% (base game about 80%). A negative value lowers boards where that faction is in the top. Changing it starts a new result bucket"],
+              ["Faction preference", "none", "± per faction (edited in the strip). Boards where the preferred faction falls short of the top (top K, default players + 2 factions) rank lower; nothing changes when it is already there", "At 1 the share of boards with the preferred faction in the top rises from about 30% to about 60% on LF (base game from about 50% to about 70%), at 2 to about 70% (base game about 80%). A negative value lowers boards where that faction is in the top. Changing it starts a new result bucket"],
               ["Preference weight", "50", "Strength per unit of preference", "Usually left as is. It has no effect without a preference and changing it then does not split results"],
             ],
           },
@@ -357,7 +357,7 @@ const en: ManualText = {
         {
           ul: [
             "Weights scale whole categories and are shared with Pair suggestions. Changing them does not discard stored results.",
-            "Faction preference (edited in the strip; ± per faction) affects the search ranking, not the table values. Setups where the preferred faction falls short of the top (players + 2 factions) rank lower; nothing changes when it is already there. At 1 the share where the preferred faction makes the top rises from about 30% to 60–70%, at 2 to about 80%. A negative value lowers setups where that faction is in the top.",
+            "Faction preference (edited in the strip; ± per faction) affects the search ranking, not the table values. Setups where the preferred faction falls short of the top (top K, default players + 2 factions) rank lower; nothing changes when it is already there. At 1 the share where the preferred faction makes the top rises from about 30% to 60–70%, at 2 to about 80%. A negative value lowers setups where that faction is in the top.",
           ],
         },
       ],
@@ -385,7 +385,7 @@ const en: ManualText = {
           table: {
             head: ["Criterion", "What it picks"],
             rows: [
-              ["1 Top balance", "Pairs where the top (players + 2) factions are close by total (map + setup) (default)"],
+              ["1 Top balance", "Pairs where the top K (default players + 2) factions are close by total (map + setup) (default); the rest are ignored"],
               ["2 Overall balance", "Pairs with a small spread of totals across all factions"],
               ["3 Oppose map (to be removed)", "Pairs where factions strong on the board are weak in the layout (cancelling out). Does not measure the balance of the total; will be deleted once confirmed unused"],
               ["4 Align map (to be removed)", "Pairs where factions strong on the board are strong in the layout too. Does not measure the balance of the total; will be deleted once confirmed unused"],
@@ -395,8 +395,8 @@ const en: ManualText = {
         {
           ul: [
             "Criteria 1 and 2 use the board's evaluation breakdown to score by total. Old boards without a breakdown are scored by the layout only, with a note.",
-            "Faction preference (edited in the strip; ± per faction) lowers pairs where the preferred faction falls short of the top (players + 2 factions) by total; nothing changes when it is already there, so the balance criterion decides. At 1 the share of pairs with the preferred faction in the top rises from about 30% to about 60% (base game about 80%), at 2 to about 70% (base game about 90%). A negative value lowers pairs where that faction is in the top.",
-            "\"Top by total\" lists players + 2 factions by total: the same top that criterion 1 (top balance) measures; both factions of a colour may appear.",
+            "Faction preference (edited in the strip; ± per faction) lowers pairs where the preferred faction falls short of the top (top K, default players + 2 factions) by total; nothing changes when it is already there, so the balance criterion decides. At 1 the share of pairs with the preferred faction in the top rises from about 30% to about 60% (base game about 80%), at 2 to about 70% (base game about 90%). A negative value lowers pairs where that faction is in the top.",
+            "\"Top by total\" lists the top K factions (default players + 2) by total: the same top that criterion 1 (top balance) measures; both factions of a colour may appear.",
           ],
         },
         { h3: "Blend" },

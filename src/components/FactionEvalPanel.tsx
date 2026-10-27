@@ -17,7 +17,7 @@ import {
   PLANET_LABEL_JA,
   type PlanetTypeKey,
 } from "@/app/board/BreakdownTable";
-import { setupFactionBreakdown, setupFactionTileHits, type FactionScores } from "@/gaia/eval/factionEval";
+import { setupFactionBreakdown, setupFactionTileHits, topKOf, type FactionScores } from "@/gaia/eval/factionEval";
 import { factionsForMode, type FactionId } from "@/gaia/eval/factionWeights";
 import {
   DEFAULT_SETUP_WEIGHTS,
@@ -448,11 +448,14 @@ ${m.title}` : "")}
 function ScoreSummary({
   total,
   players,
+  topK,
   lang,
   lf,
 }: {
   total: FactionScores;
   players: number;
+  /** 上位 K（共有設定。未設定なら 人数＋2） */
+  topK?: number | null;
   lang: Lang;
   lf: boolean;
 }) {
@@ -461,7 +464,7 @@ function ScoreSummary({
   const shown = factionsForMode(lf);
   const ids = shown.map((f) => f.id) as FactionId[];
   const values = ids.map((id) => total[id]);
-  const k = Math.min(values.length, Math.max(2, players + 2));
+  const k = Math.min(values.length, topKOf(players, topK));
   const desc = [...values].sort((a, b) => b - a);
   const bestId = ids.reduce((a, b) => (total[b] > total[a] ? b : a), ids[0]);
   const best = shown.find((f) => f.id === bestId);
@@ -604,6 +607,7 @@ export default function FactionEvalPanel({
   lang,
   lf,
   players,
+  topK,
   onMark,
   activeSources,
   hideWeights,
@@ -615,6 +619,8 @@ export default function FactionEvalPanel({
   lang: Lang;
   lf: boolean;
   players: number;
+  /** 上位 K（共有設定。未設定なら 人数＋2） */
+  topK?: number | null;
   onMark?: (sourceId: string, req: SetupMarkRequest, additive: boolean) => void;
   activeSources?: Set<string>;
   /** 評価指数の入力欄を出さない（Setup の「条件」節に別置きするとき。2026-10-16） */
@@ -636,7 +642,7 @@ export default function FactionEvalPanel({
       </div>
       {result && total ? (
         <>
-          <ScoreSummary total={total} players={players} lang={lang} lf={lf} />
+          <ScoreSummary total={total} players={players} topK={topK} lang={lang} lf={lf} />
           <FactionScoreTable
             result={result}
             weights={weights}

@@ -353,6 +353,18 @@ export const LIST_FACTION_PREF_W = FACTION_PREF_W;
 /** Setup の検索の種族優遇の係数。掛け先は種族ごとの Setup の値 */
 export const SETUP_FACTION_PREF_W = FACTION_PREF_W;
 
+/**
+ * 上位 K（2026-10-27 から画面で入力できる共有設定。未指定なら 人数＋2）。基準 1 上位バランスの「上位」、種族優遇の境目、
+ * 「合計の上位」、基準 4 のマップ上位がすべてこの K を使う。
+ */
+export const TOP_K_MIN = 2;
+export const TOP_K_MAX = 18;
+export function topKOf(playerCount: number, topK?: number | null): number {
+  const k = Number(topK);
+  if (Number.isInteger(k) && k >= TOP_K_MIN && k <= TOP_K_MAX) return k;
+  return Math.max(TOP_K_MIN, playerCount + 2);
+}
+
 /** 母星色ごとの「その色でいちばん強い種族のスコア」。色優遇の掛け先。 */
 export function colorValueOf(
   scores: FactionScores,
@@ -404,12 +416,13 @@ function factionPrefBonus(
   setupScores: FactionScores,
   lostFleet: boolean,
   playerCount: number,
-  pref?: FactionPref
+  pref?: FactionPref,
+  topK?: number | null
 ): number {
   if (!pref || !pref.w) return 0;
   const ids = factionIdsForMode(lostFleet);
   const valueOf = (f: FactionId) => blendScores(pref.mapValueByFaction?.[f] ?? 0, setupScores[f] ?? 0, pref.blend);
-  const k = Math.min(ids.length - 1, Math.max(2, playerCount + 2));
+  const k = Math.min(ids.length - 1, topKOf(playerCount, topK));
   let s = 0;
   for (const f of ids) {
     const p = pref.byFaction[f];
@@ -447,8 +460,8 @@ function colorPrefBonus(
  * - alignMap（優位）: マップ上位 K=プレイ人数+2 種族がセットアップでも強いほど良い
  *   （順張り。opposeMap の逆で、マップで強い種族をさらに後押しする）。
  *   K種族の平均を主項、K内の散らばりを軽い減点にして1種族だけ突出するのを避ける。
- * - topBalance: 上位 K=プレイ人数+2 種族が拮抗して強いほど良い
- *   （上位Kの散らばりを罰し、上位Kと残りの差を少し好む）。
+ * - topBalance: 上位 K 種族（K は共有設定、既定 人数＋2）が拮抗しているほど良い（上位 K の散らばりだけを罰する。
+ *   残りの種族は見ない。2026-10-27 まであった「上位と残りの差を少し好む」0.3 は廃止）。
  * - neutralBalance: 全種族の散らばりが小さいほど良い（マップ非依存）。
  *
  * 散らばり系（topBalance / neutralBalance）が見る母集団は、その拡張で選べる種族だけ。
@@ -467,6 +480,8 @@ export function criterionScore(
     colorPref?: SetupColorPref;
     /** 種族優遇/冷遇（Pair・Setup の検索。上位 K に届かない分だけ減点）。色優遇（旧、いまは使っていない）と併用できる。 */
     factionPref?: FactionPref;
+    /** 上位 K（共有設定。省略時 人数＋2。topKOf） */
+    topK?: number | null;
   }
 ): number {
   const lf = opts.lostFleet !== false;
@@ -474,7 +489,7 @@ export function criterionScore(
   // 基準そのものとは独立に足す（Map で偏り項に色優遇を足しているのと同じ形）。
   const bonus =
     colorPrefBonus(setupScores, lf, opts.colorPref) +
-    factionPrefBonus(setupScores, lf, opts.playerCount, opts.factionPref);
+    factionPrefBonus(setupScores, lf, opts.playerCount, opts.factionPref, opts.topK);
   const base = (() => {
     switch (criterion) {
       case "opposeMap": {
@@ -490,10 +505,10 @@ export function criterionScore(
         return mean(vals) - 0.2 * std(vals);
       }
       case "topBalance": {
-        const k = Math.min(all.length, Math.max(2, opts.playerCount + 2));
-        const topK = all.slice(0, k);
-        const rest = all.slice(k);
-        return -std(topK) + 0.3 * (mean(topK) - mean(rest));
+        // 上位 K 種族の値がそろっているほど良い。それ以外の種族は見ない（2026-10-27 ユーザー確定。
+        // それまでの「＋ 0.3 × (上位の平均 − 残りの平均)」は意図（残りは無視）に反するので外した）
+        const k = Math.min(all.length, topKOf(opts.playerCount, opts.topK));
+        return -std(all.slice(0, k));
       }
       case "neutralBalance":
         return -std(all);
@@ -551,6 +566,8 @@ export function recommendSetups(args: {
   colorPref?: SetupColorPref;
   /** 種族優遇/冷遇（Pair・Setup の検索）。 */
   factionPref?: FactionPref;
+  /** 上位 K（共有設定。省略時 人数＋2） */
+  topK?: number | null;
   /**
    * 採点前に Setup の値を書き換えるフック（List の船の相互作用・段階 1、2026-10-08。
    * 組にしたマップの船接触で船のタイルの値を増減する）。返した値が基準の採点と Recommendation.setupScores に入る。
@@ -574,6 +591,7 @@ export function recommendSetups(args: {
     baseInput,
     colorPref,
     factionPref,
+    topK,
     adjustSetupScores,
     criterionScores,
   } = args;
@@ -598,6 +616,7 @@ export function recommendSetups(args: {
       lostFleet,
       colorPref,
       factionPref,
+      topK,
     });
     all.push({ input, result, setupScores, criterion, score, trials: seeds.length });
   }

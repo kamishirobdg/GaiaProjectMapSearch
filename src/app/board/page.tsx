@@ -29,6 +29,8 @@ import {
 import { TEMPLATE_3P_LOSTFLEET } from "@/gaia/data/templates/3p_lostFleet";
 import { TEMPLATE_4P_LOSTFLEET } from "@/gaia/data/templates/4p_lostFleet";
 import { TEMPLATE_BASE_34P } from "@/gaia/data/templates/base_34p";
+import { topKOf } from "@/gaia/eval/factionEval";
+import { useSharedTopK } from "@/lib/useSharedTopK";
 
 import {
   buildSectorImgById,
@@ -1163,6 +1165,7 @@ return (savedProfiles ?? []).filter((p) => {
    * 「上位 K に届かない分だけ減点」（evaluateSoft の種族優遇）。
    */
   const { active: activeSearchProfile } = useSearchProfiles();
+  const sharedTopK = useSharedTopK();
   /** 検索キー／実行時に渡す種族優遇（種族 id → ±。0 はキーを持たない）。 */
   const factionPref = React.useMemo(
     () => sanitizeFactionPref(activeSearchProfile?.factionPref ?? {}),
@@ -1678,12 +1681,13 @@ try {
         };
   }, [isBase, outerSameColorMax, centerMode, maxConnectedPlanets, h5IncludeScouts]);
 
-  // 種族優遇の上位 K を決める人数（eval_v10）。LF はテンプレートで決まり、基本版（3/4 人共用）は共有の人数
+  // 種族優遇の上位 K（eval_v10）。共有設定（帯の「上位 K」）、未設定なら人数＋2（LF はテンプレートの人数、基本版は共有の人数）
   const prefPlayers = templateId.startsWith("3p") ? 3 : templateId.startsWith("4p") ? 4 : players;
-  // 種族優遇の検索キー（eval_v10 から、優遇が無いときはフィールドごと省く ＝ 係数を変えてもバケツが割れない）
+  const prefTopK = topKOf(prefPlayers, sharedTopK);
+  // 種族優遇の検索キー（eval_v10 から、優遇が無いときはフィールドごと省く ＝ 係数や K を変えてもバケツが割れない）
   const prefSoft = React.useMemo(
-    () => (Object.keys(factionPref).length > 0 ? { wFactionPref, factionPref, factionPrefPlayers: prefPlayers } : {}),
-    [wFactionPref, factionPref, prefPlayers]
+    () => (Object.keys(factionPref).length > 0 ? { wFactionPref, factionPref, factionPrefTopK: prefTopK } : {}),
+    [wFactionPref, factionPref, prefTopK]
   );
 
   const keySoft = React.useMemo(() => {

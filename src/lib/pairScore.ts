@@ -64,6 +64,8 @@ export function scorePairOf(a: {
   players: number;
   lf: boolean;
   mapTop?: { top3: FactionId[]; topK: FactionId[] } | null;
+  /** 上位 K（共有設定。省略時 人数＋2） */
+  topK?: number | null;
 }): number {
   const useTotal = usesTotalBasis(a.criterion) && !!a.mapBreakdown;
   return criterionScore(a.criterion, useTotal ? totalScoresOf(a.setupScores, a.mapBreakdown, a.blend) : a.setupScores, {
@@ -71,6 +73,7 @@ export function scorePairOf(a: {
     lostFleet: a.lf,
     ...(a.mapTop ? { mapTop3: a.mapTop.top3, mapTopK: a.mapTop.topK } : {}),
     factionPref: useTotal ? prefOnTotal(a.factionPref) : factionPrefArgOf(a.factionPref, a.mapBreakdown, a.blend),
+    topK: a.topK,
   });
 }
 

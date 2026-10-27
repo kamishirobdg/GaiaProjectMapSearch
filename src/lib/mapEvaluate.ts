@@ -36,9 +36,9 @@ export function evaluatePlacement(templateId: string, placement: any[], hard?: a
   try {
     const lm = buildLogicalMapFromPlacement({ templateId, placement });
     const extracted = extractForEval(lm as any, { ...DEFAULT_MAP_HARD, ...(hard ?? {}) } as any);
-    // 種族優遇の上位 K の人数（eval_v10）。条件に無ければテンプレートから（基本版は 4 人）
-    const prefPlayers = templateId.startsWith("3p") ? 3 : 4;
-    const r = evaluateSoft(extracted, { ...DEFAULT_MAP_SOFT, factionPrefPlayers: prefPlayers, ...(soft ?? {}) } as any);
+    // 種族優遇の上位 K（eval_v10）。条件に無ければテンプレートの人数＋2（基本版は 4 人）
+    const prefTopK = (templateId.startsWith("3p") ? 3 : 4) + 2;
+    const r = evaluateSoft(extracted, { ...DEFAULT_MAP_SOFT, factionPrefTopK: prefTopK, ...(soft ?? {}) } as any);
     return { score: r.score, breakdown: r.breakdown, reevaluated: true };
   } catch {
     return null;

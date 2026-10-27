@@ -73,6 +73,7 @@ import {
   writeSharedPlayers,
   type Expansion,
 } from "@/lib/sharedSettings";
+import { useSharedTopK } from "@/lib/useSharedTopK";
 import { SETUP_CATALOG } from "@/gaia/setup/data";
 import { countTileRules, hasRule, setTileRule, type TileRuleMode, type TileRules } from "@/gaia/setup/tileRules";
 import {
@@ -897,6 +898,8 @@ export default function SetupView() {
   // 種族優遇/冷遇（段階 1「条件の統一」2026-10-16）。色ごとの入力（useColorPref、localStorage gaia_setup_color_pref）は
   // 廃止し、探索プロファイルの種族優遇（Map / Pair と共有）を読む。検索の並びにだけ効く（評価表の値は変わらない）。
   const { active: activeSearchProfile } = useSearchProfiles();
+  /** 上位 K（共有設定、帯の入力欄。未設定なら 人数＋2） */
+  const sharedTopK = useSharedTopK();
   /** criterionScore へ渡す形。指定が無ければ undefined＝素通り。 */
   const factionPrefArg = React.useMemo<FactionPref | undefined>(() => {
     const pref = activeSearchProfile?.factionPref ?? {};
@@ -1125,13 +1128,14 @@ export default function SetupView() {
       lostFleet: lf,
       weights: evalWeights,
       factionPref: factionPrefArg,
+      topK: sharedTopK,
     }).then((rows) => {
       if (alive) setBulkRows(rows);
     });
     return () => {
       alive = false;
     };
-  }, [bucketKey, bulkCriterion, players, lf, evalWeights, factionPrefArg]);
+  }, [bucketKey, bulkCriterion, players, lf, evalWeights, factionPrefArg, sharedTopK]);
 
   const handleBulkSearch = React.useCallback(() => {
     if (bulkBusy) {
@@ -1166,6 +1170,7 @@ export default function SetupView() {
         factionPref: factionPrefArg,
         topN: BULK_TOP_N,
         baseInput,
+        topK: sharedTopK,
       },
       {
         onProgress: (done) => setBulkDone(done),
@@ -1183,6 +1188,7 @@ export default function SetupView() {
           lostFleet: lf,
           weights: evalWeights,
           factionPref: factionPrefArg,
+          topK: sharedTopK,
           fresh: run.results.map((r) => ({ seed: r.seed, input: r.input, score: r.score })),
           cap: BULK_TOP_N,
         })
@@ -1211,7 +1217,7 @@ export default function SetupView() {
         bulkStopFnRef.current = null;
         setBulkBusy(false);
       });
-  }, [bulkBusy, bulkTrials, buildInput, bucketKey, bulkCriterion, players, lf, evalWeights, factionPrefArg, conditionKey, conditionParams, lang]);
+  }, [bulkBusy, bulkTrials, buildInput, bucketKey, bulkCriterion, players, lf, evalWeights, factionPrefArg, conditionKey, conditionParams, lang, sharedTopK]);
 
   const handleBulkClear = React.useCallback(() => {
     bulkGenRef.current += 1;
@@ -2185,6 +2191,7 @@ ${pickHint}`}
               lang={lang}
               lf={lf}
               players={players}
+              topK={sharedTopK}
               onMark={onMark}
               activeSources={activeSources}
               hideWeights

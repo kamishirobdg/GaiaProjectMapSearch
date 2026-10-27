@@ -36,6 +36,8 @@ export type PairSearchArgs = {
   k?: number;
   l?: number;
   topN?: number;
+  /** 上位 K（共有設定。省略時 人数＋2） */
+  topK?: number | null;
 };
 
 /** 上位 K × L の総当たりを採点して上位 topN 組（PairOption の形。候補一覧と詳細がそのまま使える） */
@@ -54,10 +56,10 @@ export function scorePairs(a: PairSearchArgs): PairOption[] {
   for (const m of maps) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const bd = (m as any)?.evaluation?.breakdown ?? null;
-    const top = mapTopOf(m, a.templateIdBySearchKey, a.players);
+    const top = mapTopOf(m, a.templateIdBySearchKey, a.players, a.topK);
     for (const b of built) {
       const setupScores: FactionScores = applyShipInteraction(b.raw, shipInteractionOf(b.result, bd, a.evalWeights));
-      const score = scorePairOf({ criterion: a.criterion, setupScores, mapBreakdown: bd, blend: a.blend, factionPref: a.factionPref, players: a.players, lf: a.lf, mapTop: top });
+      const score = scorePairOf({ criterion: a.criterion, setupScores, mapBreakdown: bd, blend: a.blend, factionPref: a.factionPref, players: a.players, lf: a.lf, mapTop: top, topK: a.topK });
       out.push({
         key: `b:${m.id}:${b.s.seed}`,
         mapId: m.id,

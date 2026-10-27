@@ -38,6 +38,8 @@ export type SetupSearchArgs = {
   topN: number;
   baseInput: Omit<BuildSetupInput, "seed">;
   pairWith?: PairWith;
+  /** 上位 K（共有設定。省略時 人数＋2） */
+  topK?: number | null;
 };
 
 /** ワーカーが返す 1 件（Recommendation から入力とスコアだけ。result は表示側で再構築する） */
@@ -59,6 +61,7 @@ export function searchChunk(args: SetupSearchArgs, slice: string[], acc: SetupSe
     factionPref: pw ? (totalBasis ? prefOnTotal(pref) : factionPrefArgOf(pref, pw.mapBreakdown, pw.blend)) : args.factionPref,
     topN: args.topN,
     baseInput: args.baseInput,
+    topK: args.topK,
     ...(pw
       ? {
           ...(pw.mapTop3 ? { mapTop3: pw.mapTop3 } : {}),

@@ -69,8 +69,9 @@ import {
   writeSharedPlayers,
   type Expansion,
 } from "@/lib/sharedSettings";
-import { scoreSetupFactions, topFactions, type FactionScores, type RecommendCriterion } from "@/gaia/eval/factionEval";
+import { scoreSetupFactions, topFactions, topKOf, type FactionScores, type RecommendCriterion } from "@/gaia/eval/factionEval";
 import { applyShipInteraction, shipInteractionOf, shipTileValuesByShip } from "@/gaia/eval/shipInteraction";
+import { useSharedTopK } from "@/lib/useSharedTopK";
 import { FACTIONS, FACTION_IDS, type FactionId } from "@/gaia/eval/factionWeights";
 import { mapValueByFaction } from "@/gaia/eval/mapFaction";
 import { blendScores, type ScoreBlend } from "@/gaia/eval/scoreBlend";
@@ -179,7 +180,7 @@ const UI = {
     unknownTemplate: "テンプレート不明（プレビューなし）",
     mapStrong: "マップ優位",
     setupStrong: "セットアップ優位（上位5）",
-    totalStrong: (k: number) => `合計の上位${k}種族（人数+2）`,
+    totalStrong: (k: number) => `合計の上位${k}種族`,
     totalTable: "種族別の合計",
     openSetup: "Setupで開く",
     openMap: "Mapで開く",
@@ -298,7 +299,7 @@ const UI = {
     unknownTemplate: "Unknown template (no preview)",
     mapStrong: "Map favors",
     setupStrong: "Setup favors (top 5)",
-    totalStrong: (k: number) => `Top ${k} factions by total (players+2)`,
+    totalStrong: (k: number) => `Top ${k} factions by total`,
     totalTable: "Totals by faction",
     openSetup: "Open in Setup",
     openMap: "Open in Map",
@@ -499,6 +500,8 @@ export default function PairView() {
   const [recSettings, setRecSettings] = React.useState<{ players: number; lf: boolean } | null>(null);
   const [evalWeights, changeEvalWeight, resetEvalWeights, setAllEvalWeights] = useSetupWeights();
   const { active: activeSearchProfile } = useSearchProfiles();
+  /** 上位 K（共有設定、帯の入力欄。未設定なら 人数＋2） */
+  const sharedTopK = useSharedTopK();
   const factionPref = React.useMemo(() => activeSearchProfile?.factionPref ?? {}, [activeSearchProfile]);
   const [scoreBlend, changeBlend, resetBlend] = useScoreBlend();
   /** 候補一覧で選んだ行（詳細に出す）。null は未選択 */
@@ -823,7 +826,7 @@ export default function PairView() {
 
   /** 提案の生成（上位 PAIR_TOP_N 件を候補に並べ、先頭を詳細に出す）。選定は pairPlan.ts の純粋関数。 */
   const handleGenerate = React.useCallback(() => {
-    const plan = planPair({ pairDir, setupSource, criterion, pairMapId, pairSetupId, selectableMaps, selectableSetups, templateIdBySearchKey, evalWeights, factionPref, blend: scoreBlend });
+    const plan = planPair({ pairDir, setupSource, criterion, pairMapId, pairSetupId, selectableMaps, selectableSetups, templateIdBySearchKey, evalWeights, factionPref, blend: scoreBlend, topK: sharedTopK });
     if (!plan.ok) {
       setPairMsg(UI[lang][plan.failure]);
       clearPair();
@@ -833,7 +836,7 @@ export default function PairView() {
     setPairOptions(plan.options);
     setRecSettings(plan.settings);
     setSelectedKey(null);
-  }, [selectableMaps, selectableSetups, pairMapId, pairSetupId, pairDir, setupSource, criterion, templateIdBySearchKey, clearPair, lang, evalWeights, factionPref, scoreBlend]);
+  }, [selectableMaps, selectableSetups, pairMapId, pairSetupId, pairDir, setupSource, criterion, templateIdBySearchKey, clearPair, lang, evalWeights, factionPref, scoreBlend, sharedTopK]);
 
   // ---------- 候補一覧（提案 ＋ 保存した組 ＋ 共有された組） ----------
   const baseRows = React.useMemo<PairRow[]>(() => {
@@ -960,12 +963,12 @@ export default function PairView() {
       const bd = mapEvalOfRow(r)?.breakdown ?? null;
       const res = buildSetupFromSeed(r.setupInput);
       const ss = applyShipInteraction(scoreSetupFactions(res, evalWeights), shipInteractionOf(res, bd, evalWeights));
-      const top = mapTopOfPlacement(r.tid, r.mapPlacement, r.players);
-      const score = scorePairOf({ criterion, setupScores: ss, mapBreakdown: bd, blend: scoreBlend, factionPref, players: r.players, lf: r.lf, mapTop: top });
-      const topTotal = topTotalText(totalScoresOfPair(mapValueByFaction(bd), ss, scoreBlend), r.players + 2, lang, r.lf);
+      const top = mapTopOfPlacement(r.tid, r.mapPlacement, r.players, sharedTopK);
+      const score = scorePairOf({ criterion, setupScores: ss, mapBreakdown: bd, blend: scoreBlend, factionPref, players: r.players, lf: r.lf, mapTop: top, topK: sharedTopK });
+      const topTotal = topTotalText(totalScoresOfPair(mapValueByFaction(bd), ss, scoreBlend), topKOf(r.players, sharedTopK), lang, r.lf);
       return { ...r, criterion, score, topTotal };
     });
-  }, [baseRows, mapEvalOfRow, evalWeights, criterion, scoreBlend, factionPref, lang]);
+  }, [baseRows, mapEvalOfRow, evalWeights, criterion, scoreBlend, factionPref, lang, sharedTopK]);
 
   /** 主（探索の向きで マップ か セットアップ）ごとにまとめ、主の中は基準値の降順、主どうしは最良の降順（v2.3.0） */
   const groups = React.useMemo(
@@ -1006,7 +1009,7 @@ export default function PairView() {
     const setupScores = applyShipInteraction(scoreSetupFactions(setupResult, evalWeights), si);
     const mapScores = mapValueByFaction(bd);
     const total = totalScoresOfPair(mapScores, setupScores, scoreBlend);
-    const mapTop = mapTopOfPlacement(selectedRow.tid, selectedRow.mapPlacement, selectedRow.players)?.detail ?? null;
+    const mapTop = mapTopOfPlacement(selectedRow.tid, selectedRow.mapPlacement, selectedRow.players, sharedTopK)?.detail ?? null;
     return {
       bd,
       setupResult,
@@ -1019,7 +1022,7 @@ export default function PairView() {
       hasBreakdown: !!bd,
       reevaluated: !!ev?.reevaluated,
     };
-  }, [selectedRow, mapEvalOfRow, evalWeights, scoreBlend, lang]);
+  }, [selectedRow, mapEvalOfRow, evalWeights, scoreBlend, lang, sharedTopK]);
 
   const mapRowOfPairRow = React.useCallback(
     (r: PairRow): PairMapRow | null =>
@@ -1144,6 +1147,7 @@ export default function PairView() {
     const forPref = factionPref;
     const forBlend = scoreBlend;
     const forWeights = evalWeights;
+    const forTopK = sharedTopK;
 
     setBothBusy(true);
     setPairMsg(null);
@@ -1185,7 +1189,7 @@ export default function PairView() {
         setBothMode(null);
         const prefArg = Object.keys(forPref).length > 0 ? { w: SETUP_FACTION_PREF_W, byFaction: forPref as Partial<Record<FactionId, number>> } : undefined;
         const sr = await runSetupSearch(
-          { seeds: Array.from({ length: setupTrials }, randSeed), criterion: setupCriterion, playerCount: sPlayers, lostFleet: sLf, weights: forWeights, factionPref: prefArg, topN: SETUP_RANKING_CAP, baseInput: setupBase },
+          { seeds: Array.from({ length: setupTrials }, randSeed), criterion: setupCriterion, playerCount: sPlayers, lostFleet: sLf, weights: forWeights, factionPref: prefArg, topN: SETUP_RANKING_CAP, baseInput: setupBase, topK: forTopK },
           {
             onProgress: (done) => setBothDone(done),
             onMode: (m) => setBothMode(m),
@@ -1198,7 +1202,7 @@ export default function PairView() {
         const setupKey = setupConditionKey({ ...setupBase, seed: "" } as BuildSetupInput);
         let setupRows: Array<{ seed: string; input: BuildSetupInput }> = sr.results.map((r) => ({ seed: r.seed, input: r.input }));
         try {
-          const merged = await mergeRanking({ conditionKey: setupKey, criterion: setupCriterion, playerCount: sPlayers, lostFleet: sLf, weights: forWeights, factionPref: prefArg, fresh: sr.results.map((r) => ({ seed: r.seed, input: r.input, score: r.score })), cap: SETUP_RANKING_CAP });
+          const merged = await mergeRanking({ conditionKey: setupKey, criterion: setupCriterion, playerCount: sPlayers, lostFleet: sLf, weights: forWeights, factionPref: prefArg, topK: forTopK, fresh: sr.results.map((r) => ({ seed: r.seed, input: r.input, score: r.score })), cap: SETUP_RANKING_CAP });
           setupRows = merged.map((r) => ({ seed: r.seed, input: r.input }));
         } catch {
           // DB が使えないときは今回ぶんだけで組む
@@ -1210,7 +1214,7 @@ export default function PairView() {
           const ev = evaluatePlacement(templateId, m.placement ?? [], mapParams.hard, mapParams.soft);
           return ev ? { ...m, score: ev.score, evaluation: { total: ev.score, breakdown: ev.breakdown } } : m;
         });
-        const options = scorePairs({ maps: topMaps.filter((m) => !!(m as any)?.evaluation?.breakdown), setups: setupRows, templateIdBySearchKey: tmap, criterion: forCriterion, players: sPlayers, lf: sLf, evalWeights: forWeights, factionPref: forPref, blend: forBlend, k: forK, l: forL, topN: PAIR_SEARCH_TOP_N });
+        const options = scorePairs({ maps: topMaps.filter((m) => !!(m as any)?.evaluation?.breakdown), setups: setupRows, templateIdBySearchKey: tmap, criterion: forCriterion, players: sPlayers, lf: sLf, evalWeights: forWeights, factionPref: forPref, blend: forBlend, k: forK, l: forL, topN: PAIR_SEARCH_TOP_N, topK: forTopK });
         await reloadPools();
         setTemplateIdBySearchKey((prev) => ({ ...prev, [mapKey]: templateId }));
         setAllSetups(await listSavedSetups());
@@ -1226,7 +1230,7 @@ export default function PairView() {
         setBothPhase(null);
       }
     })();
-  }, [bothBusy, activeSearchProfile, lang, criterion, pairK, pairL, factionPref, scoreBlend, evalWeights, templateIdBySearchKey, reloadPools, isNarrow, selectNarrowTab]);
+  }, [bothBusy, activeSearchProfile, lang, criterion, pairK, pairL, factionPref, scoreBlend, evalWeights, templateIdBySearchKey, reloadPools, isNarrow, selectNarrowTab, sharedTopK]);
 
   /**
    * 連続で探索（v2.2.0、2026-10-17 ユーザー確定の手順）。停止するまで繰り返す。
@@ -1286,6 +1290,7 @@ export default function PairView() {
     const forK = pairK;
     const forL = pairL;
     const forPref = factionPref;
+    const forTopK = sharedTopK;
     const forBlend = scoreBlend;
     const forWeights = evalWeights;
     const forRankKey = rankingKey;
@@ -1383,9 +1388,9 @@ export default function PairView() {
               if (!bd || placement.length === 0) continue;
               const mapHash = String(r.placementHash ?? computePlacementHash(placement as any));
               const mk = pairMapKey(templateId, mapHash);
-              const top = mapTopOfPlacement(templateId, placement, sPlayers);
+              const top = mapTopOfPlacement(templateId, placement, sPlayers, forTopK);
               const ss = applyShipInteraction(raw, shipInteractionOf(setupResult, bd, forWeights));
-              const score = scorePairOf({ criterion: forCriterion, setupScores: ss, mapBreakdown: bd, blend: forBlend, factionPref: forPref, players: sPlayers, lf: sLf, mapTop: top });
+              const score = scorePairOf({ criterion: forCriterion, setupScores: ss, mapBreakdown: bd, blend: forBlend, factionPref: forPref, players: sPlayers, lf: sLf, mapTop: top, topK: forTopK });
               maps.push(pairMapRowOf(templateId, mapHash, placement, mapKey, Number(r.score ?? 0)));
               fresh.push({ id: pairRowId(forRankKey, mk, seed), rankKey: forRankKey, mapKey: mk, seed, input: fixedSetup.input, score, criterion: forCriterion, players: sPlayers, lf: sLf, createdAt: now, round });
             }
@@ -1415,7 +1420,7 @@ export default function PairView() {
             if (!ev) continue;
             const bd = ev.breakdown;
             const mapHash = String(m.placementHash ?? computePlacementHash(placement as any));
-            const top = mapTopOfPlacement(templateId, placement, sPlayers);
+            const top = mapTopOfPlacement(templateId, placement, sPlayers, forTopK);
             const want = todo[i].remaining;
             setContPhase("setup");
             setContMapIdx(i + 1);
@@ -1437,6 +1442,7 @@ export default function PairView() {
                   weights: forWeights,
                   topN: forL,
                   baseInput: setupBase!,
+                  topK: forTopK,
                   pairWith: { mapBreakdown: bd, blend: forBlend, ...(top ? { mapTop3: top.top3, mapTopK: top.topK } : {}), factionPrefByFaction: forPref },
                 },
                 {
@@ -1477,7 +1483,7 @@ export default function PairView() {
         setContPhase(null);
       }
     })();
-  }, [contBusy, activeSearchProfile, lang, criterion, pairK, pairL, factionPref, scoreBlend, evalWeights, setupPerMap, rankingKey, reloadPools, reloadPairData, pairDir, selectableSetups, pairSetupId]);
+  }, [contBusy, activeSearchProfile, lang, criterion, pairK, pairL, factionPref, scoreBlend, evalWeights, setupPerMap, rankingKey, reloadPools, reloadPairData, pairDir, selectableSetups, pairSetupId, sharedTopK]);
 
   const handleClearRanking = React.useCallback(() => {
     void clearPairRanking(rankingKey).then(reloadPairData);
@@ -1569,7 +1575,7 @@ export default function PairView() {
                   const sToken = encodeSetupToken(r.setupInput);
                   const bToken = mapToken(r.mapPlacement);
                   const pairPath = bToken && r.tid ? `/?h=${bToken}&t=${r.tid}&s=${sToken}` : `/setup?s=${sToken}`;
-                  const topK = r.players + 2;
+                  const topK = topKOf(r.players, sharedTopK);
                   return (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 12 }}>
                       {r.kind === "shared" ? <div style={{ fontWeight: 700, color: "#2733cc" }}>{t.sharedPairTitle}</div> : null}

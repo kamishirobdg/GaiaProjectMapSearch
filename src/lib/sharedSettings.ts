@@ -51,6 +51,43 @@ export function writeSharedExpansion(expansion: Expansion): void {
   lsSet(KEY_EXPANSION, expansion);
 }
 
+// --- 上位 K（2026-10-27 ユーザー指示「K の値を画面から入力できるのが望ましい」）---
+// 基準 1 上位バランスの「上位 K 種族」、種族優遇の境目、「合計の上位」、Map の検索の優遇の境目が共有する。
+// 未設定（null）は 人数＋2（factionEval.topKOf）。書き込みは探索条件の帯の入力欄（ユーザー操作）だけ。
+const KEY_TOP_K = "gaia_shared_top_k";
+export const SHARED_TOP_K_EVENT = "gaia-shared-top-k";
+
+/** 2..18、または未設定なら null */
+export function readSharedTopK(): number | null {
+  const v = Number(lsGet(KEY_TOP_K));
+  return Number.isInteger(v) && v >= 2 && v <= 18 ? v : null;
+}
+
+export function writeSharedTopK(topK: number | null): void {
+  try {
+    if (topK == null) localStorage.removeItem(KEY_TOP_K);
+    else localStorage.setItem(KEY_TOP_K, String(topK));
+    window.dispatchEvent(new Event(SHARED_TOP_K_EVENT));
+  } catch {
+    // ignore
+  }
+}
+
+// --- 盤面の大きさ（2026-10-27 ユーザー指示。基本版 3 人の縮小盤）---
+// "full" ＝ 10 枚（base_34p）、"9" ＝ 09 を除いた 9 枚（base_3p_9）、"8" ＝ 09・10 を除いた 8 枚（base_3p_8）。
+// 基本版で 3 人のときだけ意味を持つ（それ以外の組み合わせでは無視して base_34p / LF）。
+export type MapSize = "full" | "9" | "8";
+const KEY_MAP_SIZE = "gaia_shared_map_size";
+
+export function readSharedMapSize(): MapSize {
+  const v = lsGet(KEY_MAP_SIZE);
+  return v === "9" || v === "8" ? v : "full";
+}
+
+export function writeSharedMapSize(size: MapSize): void {
+  lsSet(KEY_MAP_SIZE, size);
+}
+
 // --- 重みのスケール変更にともなう localStorage の一度きりの掃除（2026-07-31）---
 //
 // 評価値の重みを Map 10倍 / Setup 100倍にしたので、localStorage に残っている
