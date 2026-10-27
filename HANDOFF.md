@@ -31,7 +31,7 @@
 3. 中: 合算比の既定値と Map の桁、改造種族の倍率表、基準 1・4 の扱い。
 4. 要望が無ければ新しい実装はしない。
 
-## 2026-10-11〜10-22 の記録（時系列。古いものが上。最新は末尾の 39回目）
+## 2026-10-11〜10-27 の記録（時系列。古いものが上。最新は末尾の 40回目）
 
 - 本番 https://gaia-project-map-search.vercel.app は **v1.6.8 · eval_v8**（2026-10-15、27回目の FF push ＝ ddc46f5。Map の各項目の
   「?」の小窓。表示だけ、評価値は不変。設計ノート 2.5 末尾。deployments API で Production の success 確認済み）。ユーザーの実機
@@ -108,6 +108,9 @@
 - **2026-10-22、39回目の FF push ＝ v2.4.0 · eval_v9（e6bb36d。`9a32aa6..e6bb36d` の 4 コミット）**: 種族優遇を「上位 K に届かない分だけ
   減点」0.2（Pair・Setup。Map は比例 25 のまま）、「合計の上位」を種族の上位 K に、資料の最新化（設計ノート 1.10）。deployments API で
   Production（deployment 7240898285）の success 確認済み。PR #37 は FF push で merged 扱い。
+- **2026-10-27、40回目の FF push ＝ v2.4.1 · eval_v9（c1c74ce。`bf407f6..c1c74ce` の 3 コミット）**: Map の評価指数の「?」が廃止済みの
+  色優遇の式を説明していたのを種族優遇に、コメントの List / Total・色優遇を現状に、TODO「いまの残り」を優先度付きに。deployments API で
+  Production（deployment 7356724723）の success 確認済み。PR #38 は FF push で merged 扱い。
 - **作業ブランチは 2026-10-15 から `claude/gaia-map-project-status-73aeld`**。段階 1 の PR #31 は 32回目の FF push で merged 扱いになり、
   段階 2（v1.9.0）は **draft PR #32**（同じブランチ。FF push のたびに PR が閉じるので、次の段階は新しい PR を作る）。旧 PR #27 / #26 は閉じた。旧 `claude/gaia-map-project-status-adrt1n`
   （PR #26）は同一コミットで引き継いだうえで閉じた（ユーザー確定 (a)）。

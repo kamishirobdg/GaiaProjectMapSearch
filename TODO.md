@@ -73,6 +73,9 @@
 - **2026-10-17: 本番へ出した（`ef93c15..3fd9a43`、3 コミット。37回目の FF push）＝ v2.3.0 · eval_v9。主ごとの一覧・IndexedDB v11・
   プレイ済み**（設計ノート 1.9）。運用どおり検証のうえ FF push。Production（deployment 7141964245）は success 確認済み。PR #36 は
   FF push で merged 扱い。
+- **2026-10-27: 本番へ出した（`bf407f6..c1c74ce`、3 コミット。40回目の FF push）＝ v2.4.1 · eval_v9。Map の評価指数の「?」の文言、
+  資料とコメントの最新化、優先度付きの残タスク**。表示と資料だけ。Production（deployment 7356724723）は success 確認済み。
+  PR #38 は FF push で merged 扱い。
 - **2026-10-22: 本番へ出した（`9a32aa6..e6bb36d`、4 コミット。39回目の FF push）＝ v2.4.0 · eval_v9。種族優遇を「上位 K に届かない
   分だけ減点」0.2 に（Pair・Setup）、上位 K は種族、資料の最新化**（設計ノート 1.10）。運用どおり検証のうえ FF push。Production
   （deployment 7240898285）は success 確認済み。PR #37 は FF push で merged 扱い。（38回目＝v2.3.1 は `857f7d2..c53614c`、10-17）
