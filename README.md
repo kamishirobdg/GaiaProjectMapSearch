@@ -27,7 +27,7 @@ Next.js 16 / React 19 / TypeScript strict。
 （ユーザー確認）。push 後は GitHub の deployments API で Production の成功を確かめる。
 
 **版**（2026-10-05 から）: 正本は `package.json` の version。本番へ出すたびに上げ（版の目印は
-「chore: vX.Y.Z」のコミット。git タグは打たない、2026-10-10 から）、画面の共通バー右端に「v2.4.1 · eval_v10」
+「chore: vX.Y.Z」のコミット。git タグは打たない、2026-10-10 から）、画面の共通バー右端に「v2.5.0 · eval_v10」
 （アプリの版と Map 評価のバージョン）を出す。番号は、評価の意味が変わる変更（`EVAL_VERSION` が上がる）や
 機能追加で2桁目、表示やドキュメントだけなら3桁目を上げる。ブランチ名 `release/v1.01` は
 リリース用の線の名前で、版とは独立。
