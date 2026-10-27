@@ -95,11 +95,15 @@ export type SoftParams = {
   wImbalance: number;
   imbalanceMetric?: "std" | "range";
 
-  // 種族優遇/冷遇（任意。eval_v9、2026-10-17 ユーザー確定 3-(b)）: score += wFactionPref × Σ_f pref[f] × byFaction[f].total
-  // eval_v8 までは色ごと（wColorPref × Σ pref[色] × 代表値 planetTypeTotals[色]、原始・小惑星は extraStart）だった。
-  // 0 の種族はキーを持たない（無効時フィールド省略）。
+  // 種族優遇/冷遇（任意。eval_v10、2026-10-27 ユーザー指示「優遇の意味をそろえる」）: Pair・Setup と同じ
+  // 「上位 K（人数＋2、種族で数える）に届かない分だけ減点」。thr_f ＝ 他の種族の値 byFaction[·].total の K 番目、
+  //   優遇 p > 0: wFactionPref × p × min(0, v_f − thr_f)、冷遇 p < 0: wFactionPref × p × max(0, v_f − thr_f)。
+  // eval_v9 は比例（wFactionPref × Σ pref[f] × byFaction[f].total）、eval_v8 までは色ごとだった。
+  // 0 の種族はキーを持たない（無効時フィールド省略）。factionPrefPlayers は K を決める人数で、優遇があるときだけ
+  // 検索キーに入る（省略時 4）。
   wFactionPref?: number;
   factionPref?: Partial<Record<string, number>>;
+  factionPrefPlayers?: number;
 
   // eval_v6 までの基本版の軸「ガイア近接（wGaiaDist1〜3）」「星系（wClusterSize）」は eval_v7 で廃止した。
   // 検索キーにも入らない（新バケツなので互換の問題なし）。古い保存結果の表示は page.tsx が再評価する。
@@ -169,14 +173,16 @@ export type SoftBreakdown = {
   };
 
   /**
-   * 種族優遇/冷遇の記録（eval_v9。pref を付けたときだけ）。掛け先は種族ごとの値（byFaction[f].total。
-   * LF4種族は原始・小惑星からの開始なので、その惑星が無い盤面では 0）。
+   * 種族優遇/冷遇の記録（pref を付けたときだけ）。値は種族ごとの値（byFaction[f].total。LF4種族は原始・小惑星からの
+   * 開始なので、その惑星が無い盤面では 0）、thrByFaction は上位 K の境目（eval_v10 から。他の種族の値の K 番目）。
    * eval_v8 までの colorPreference（色ごと・代表値）は廃止。
    */
   factionPreference?: {
     wFactionPref: number;
     prefByFaction: Record<string, number>;
     valueByFaction: Record<string, number>;
+    thrByFaction?: Record<string, number>;
+    topK?: number;
     scoreByFaction: Record<string, number>;
     score: number;
   };
@@ -527,6 +533,7 @@ export function evaluateSoft(extracted: ExtractedForEval, params: SoftParams): S
 
   const wFactionPref = num((params as any).wFactionPref, 0);
   const factionPrefRaw = ((params as any).factionPref ?? null) as Record<string, unknown> | null;
+  const factionPrefPlayers = clampInt((params as any).factionPrefPlayers, 4, 1, 7);
 
   const metric: "std" | "range" =
     params.imbalanceMetric === "range" || params.imbalanceMetric === "std" ? params.imbalanceMetric : "std";
@@ -1140,22 +1147,30 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
   const imbalanceValue = metric === "range" ? range(values) : std(values);
     const imbalanceScore = -wImbalance * imbalanceValue;
 
-  // ===== 種族優遇/冷遇（任意。eval_v9） =====
-  // 掛け先は種族ごとの値 byFaction[f].total（内訳表の行の合計と同じ）。色の代表値ではなく種族そのものに掛けるので、
-  // 同じ色の 2 種族に別の値を付けられる。指定が無ければ完全に素通り。
+  // ===== 種族優遇/冷遇（任意。eval_v10） =====
+  // 値は種族ごとの値 byFaction[f].total（内訳表の行の合計と同じ）。Pair・Setup の factionPrefBonus と同じ
+  // 「上位 K（人数＋2、種族で数える）に届かない分だけ減点」で、すでに上位 K にいる種族はさらに押し上げない。
+  // 比べる相手は盤面に開始地点がある種族（LF4種族は原始・小惑星が無い盤面では居ない ＝ 値 0 で上位に入らない）。
+  // 指定が無ければ完全に素通り。
   const prefByFaction: Record<string, number> = {};
   for (const [f, p] of Object.entries(factionPrefRaw ?? {})) {
     const n = num(p, 0);
     if (n !== 0) prefByFaction[f] = n;
   }
   const valueByFaction: Record<string, number> = {};
+  const thrByFaction: Record<string, number> = {};
   const scoreByFaction: Record<string, number> = {};
+  const factionIds = Object.keys(byFaction);
+  const topK = Math.min(Math.max(1, factionIds.length - 1), Math.max(2, factionPrefPlayers + 2));
   let factionPrefScore = 0;
   if (wFactionPref !== 0) {
     for (const [f, p] of Object.entries(prefByFaction)) {
       const value = byFaction[f]?.total ?? 0;
-      const v = wFactionPref * p * value;
+      const others = factionIds.filter((x) => x !== f).map((x) => byFaction[x].total).sort((a, b) => b - a);
+      const thr = others[topK - 1] ?? value;
+      const v = p > 0 ? wFactionPref * p * Math.min(0, value - thr) : wFactionPref * p * Math.max(0, value - thr);
       valueByFaction[f] = value;
+      thrByFaction[f] = thr;
       scoreByFaction[f] = v;
       factionPrefScore += v;
     }
@@ -1174,7 +1189,7 @@ if (scoutPlanetKeySetByScoutKey.size > 0) {
       imbalance: { metric, value: imbalanceValue, score: imbalanceScore },
       factionPreference:
         Object.keys(prefByFaction).length > 0
-          ? { wFactionPref, prefByFaction, valueByFaction, scoreByFaction, score: factionPrefScore }
+          ? { wFactionPref, prefByFaction, valueByFaction, thrByFaction, topK, scoreByFaction, score: factionPrefScore }
           : undefined,
       audit: {
         outerCountByType,

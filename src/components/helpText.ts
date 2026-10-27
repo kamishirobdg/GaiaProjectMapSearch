@@ -212,24 +212,24 @@ const ENTRIES = {
     ja: {
       title: "種族優遇/冷遇",
       what:
-        "種族ごとの ±（1 つの表を Map / Setup / Pair が共有）。Pair の組の採点と Setup の検索では、優遇した種族が上位 K（人数＋2）に届かない分だけ減点する" +
-        "（0.2 × 優遇 × 不足分。すでに上位 K にいれば何もしない＝バランスの基準がそのまま決める）。冷遇は上位 K に入っているぶんだけ減点。" +
-        "Map の検索はその種族の盤面の値に比例して加点（係数 25、eval_v9）。「色でまとめて」は同じ色の 2 種族に同じ値を入れる近道。",
+        "種族ごとの ±（1 つの表を Map / Setup / Pair が共有）。Pair の組の採点・Setup の検索・Map の検索のどれも、優遇した種族が上位 K（人数＋2）に届かない分だけ減点する" +
+        "（係数 × 優遇 × 不足分。すでに上位 K にいれば何もしない＝バランスの基準がそのまま決める）。冷遇は上位 K に入っているぶんだけ減点。" +
+        "係数は Pair・Setup 0.2、Map 50（偏り項と同じ点の単位。Map は eval_v10 から同じ形）。「色でまとめて」は同じ色の 2 種族に同じ値を入れる近道。",
       why:
         "狙いは「優遇した種族が使う気も起きないほど弱くはない」組を上位に出すこと（2026-10-22 ユーザー）。実測（上位 5 件で優遇種族が上位 K に入る割合。優遇なし 4人LF 33%）: " +
-        "Pair は 1 で 61%、2 で 68%、5 で 71%（基本版 1 で 84%、2 で 94%）、Setup の検索は 1 で 66%、2 で 81%。バランスの損失は大きくしても基準値の幅の半分以下で頭打ち。" +
+        "Pair は 1 で 61%、2 で 68%、5 で 71%（基本版 1 で 84%、2 で 94%）、Setup の検索は 1 で 66%、2 で 81%、Map の検索は 1 で 62%、2 で 67%。バランスの損失は大きくしても基準値の幅の半分以下で頭打ち。" +
         "それまでの「値に比例」（0.15）は 5 でも 69% で、損失だけが増えた。",
       ref: "1.4 / 4",
     },
     en: {
       title: "Faction preference",
       what:
-        "Per faction, ± (one table shared by Map / Setup / Pair). Pair scoring and Setup search subtract points only for the amount the preferred faction falls short of the top K (players + 2): " +
-        "0.2 × preference × shortfall; nothing happens when it is already in the top K, so the balance criterion decides. A negative value subtracts for the amount it is inside the top K. " +
-        "Map search adds in proportion to the faction's board value (weight 25, eval_v9). 'By colour' sets both factions of a colour at once.",
+        "Per faction, ± (one table shared by Map / Setup / Pair). Pair scoring, Setup search and Map search all subtract points only for the amount the preferred faction falls short of the top K (players + 2): " +
+        "weight × preference × shortfall; nothing happens when it is already in the top K, so the balance criterion decides. A negative value subtracts for the amount it is inside the top K. " +
+        "The weight is 0.2 for Pair / Setup and 50 for Map (same units as the imbalance term; Map uses this form from eval_v10). 'By colour' sets both factions of a colour at once.",
       why:
         "The aim is pairs where the preferred faction is not too weak to consider (user, 2026-10-22). Measured share of the top 5 where the preferred faction is in the top K (33% without preference, 4p LF): " +
-        "Pair 61% at 1, 68% at 2, 71% at 5 (base game 84% at 1, 94% at 2); Setup search 66% at 1, 81% at 2. The balance loss levels off below half the criterion range. " +
+        "Pair 61% at 1, 68% at 2, 71% at 5 (base game 84% at 1, 94% at 2); Setup search 66% at 1, 81% at 2; Map search 62% at 1, 67% at 2. The balance loss levels off below half the criterion range. " +
         "The earlier proportional form (0.15) reached only 69% even at 5 while the loss kept growing.",
       ref: "1.4 / 4",
     },

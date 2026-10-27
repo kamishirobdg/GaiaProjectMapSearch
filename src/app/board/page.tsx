@@ -239,8 +239,10 @@ const DEFAULT_CONDITIONS = {
   // ―― 入力欄の目盛りと体感が一致する（helpText.ts の colorPreference / wColorPref の文言はこの実測に基づく）。
   // eval_v9（2026-10-17）からは掛け先が種族ごとの値（wFactionPref）。係数は据え置き。2026-10-22 に再測
   // （_probe_faction_pref.ts MODE=map SHAPE=linear: 優遇 1 で優遇種族の上位 K 入り 34% → 63%、偏り項の幅の 15%）。
-  // Pair / Setup は同日から「上位 K に届かない分だけ減点」（factionEval.factionPrefBonus）。Map を揃えるなら EVAL_VERSION
-  wFactionPref: 25,
+  // eval_v10（2026-10-27 ユーザー指示「優遇の意味をそろえる」）から Pair / Setup と同じ「上位 K（人数＋2、種族で数える）に
+  // 届かない分だけ減点」。係数は 25 → 50（_probe_faction_pref.ts MODE=map: 優遇 1 で上位 K 入り 4人LF 62%・3人LF 54%・
+  // 基本版 70%、偏り項の幅に対する損失 12% / 8% / 6%。Pair の 0.2 × 1 の 61% と揃う）。
+  wFactionPref: 50,
   pref: 0,
   // 保持件数
   keepTop: 20,
@@ -1157,7 +1159,8 @@ return (savedProfiles ?? []).filter((p) => {
   /**
    * 探索プロファイル（段階 1「条件の統一」2026-10-16）。色ごとの入力欄（prefBLACK … prefASTEROID、
    * 原始・小惑星は 2026-07-31 から）は廃止し、優遇はプロファイルの種族優遇（Map / Setup / List 共有）。
-   * eval_v9（2026-10-17 ユーザー確定 3-(b)）からは色に導かず、種族ごとの値にそのまま掛ける。
+   * eval_v9（2026-10-17 ユーザー確定 3-(b)）からは色に導かず種族ごと、eval_v10（2026-10-27）からは Pair・Setup と同じ
+   * 「上位 K に届かない分だけ減点」（evaluateSoft の種族優遇）。
    */
   const { active: activeSearchProfile } = useSearchProfiles();
   /** 検索キー／実行時に渡す種族優遇（種族 id → ±。0 はキーを持たない）。 */
@@ -1675,6 +1678,14 @@ try {
         };
   }, [isBase, outerSameColorMax, centerMode, maxConnectedPlanets, h5IncludeScouts]);
 
+  // 種族優遇の上位 K を決める人数（eval_v10）。LF はテンプレートで決まり、基本版（3/4 人共用）は共有の人数
+  const prefPlayers = templateId.startsWith("3p") ? 3 : templateId.startsWith("4p") ? 4 : players;
+  // 種族優遇の検索キー（eval_v10 から、優遇が無いときはフィールドごと省く ＝ 係数を変えてもバケツが割れない）
+  const prefSoft = React.useMemo(
+    () => (Object.keys(factionPref).length > 0 ? { wFactionPref, factionPref, factionPrefPlayers: prefPlayers } : {}),
+    [wFactionPref, factionPref, prefPlayers]
+  );
+
   const keySoft = React.useMemo(() => {
     // ガイア近接・星系（wGaiaDist1〜3 / wClusterSize）は eval_v7 で廃止（新バケツなので互換の問題なし）。
     // 欠けマス罰点（eval_v4）: 0 のときはフィールドごと省く（互換の鉄則）。
@@ -1684,8 +1695,7 @@ try {
           ...rimGap,
           wImbalance,
           imbalanceMetric,
-          wFactionPref,
-          factionPref,
+          ...prefSoft,
         }
       : {
           ...rimGap,
@@ -1697,10 +1707,9 @@ try {
           wScoutByScoutKey: { twilight: wScoutS1, eclipse: wScoutS2, rebellion: wScoutS3, tfmars: wScoutS4 },
           wScoutCoreByScoutKey: { twilight: wScoutCoreS1, eclipse: wScoutCoreS2, rebellion: wScoutCoreS3, tfmars: wScoutCoreS4 },
           scoutCoreAttributionMode: scoutCoreAttribBest ? "best" : "all",
-          wFactionPref,
-          factionPref,
+          ...prefSoft,
         };
-  }, [isBase, wRimGap, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, wFactionPref, factionPref]);
+  }, [isBase, wRimGap, wScout, wScoutCore, wScoutS1, wScoutS2, wScoutS3, wScoutS4, wScoutCoreS1, wScoutCoreS2, wScoutCoreS3, wScoutCoreS4, scoutCoreAttribBest, scoutRadius, wImbalance, imbalanceMetric, prefSoft]);
 
   const searchKeyParams = React.useMemo(() => {
     return {
@@ -1787,6 +1796,12 @@ try {
         setBaseKeyRaw(baseRaw);
         try {
           const sameBase = await loadProfilesByBaseKeyRaw(baseRaw);
+          // eval_v9 までのキーは優遇が無くても wFactionPref と空の factionPref を持っていた（既定 25）。優遇の無い条件では
+          // その形の旧プロファイルも「コピー」の対象に出す（eval_v10 で省くようにしたため、そのままでは一致しない）
+          if (!("factionPref" in baseKeyParams.soft)) {
+            const legacyRaw = stableStringify({ ...baseKeyParams, soft: { ...baseKeyParams.soft, wFactionPref: 25, factionPref: {} } });
+            if (legacyRaw !== baseRaw) sameBase.push(...(await loadProfilesByBaseKeyRaw(legacyRaw)));
+          }
           const db = await openDb();
           const currentProfile = await idbGetByKey<PersistedProfile>(db, STORE_PROFILES, key);
           const copiedSet = new Set((currentProfile?.copiedFromKeys ?? []).map((k) => String(k)));
@@ -2325,8 +2340,7 @@ async function handleGenerateRank() {
         wScoutByScoutKey: { twilight: wScoutS1, eclipse: wScoutS2, rebellion: wScoutS3, tfmars: wScoutS4 },
         wScoutCoreByScoutKey: { twilight: wScoutCoreS1, eclipse: wScoutCoreS2, rebellion: wScoutCoreS3, tfmars: wScoutCoreS4 },
         scoutCoreAttributionMode: scoutCoreAttribBest ? "best" : "all",
-        wFactionPref,
-        factionPref,
+        ...prefSoft,
       },
     };
 

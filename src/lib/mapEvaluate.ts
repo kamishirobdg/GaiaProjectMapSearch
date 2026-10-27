@@ -24,7 +24,7 @@ export const DEFAULT_MAP_SOFT = {
   scoutCoreAttributionMode: "all",
   wImbalance: 100,
   imbalanceMetric: "std",
-  wFactionPref: 25,
+  wFactionPref: 50,
 } as const;
 
 export type MapEvaluation = { score: number; breakdown: any; reevaluated: boolean }; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -36,7 +36,9 @@ export function evaluatePlacement(templateId: string, placement: any[], hard?: a
   try {
     const lm = buildLogicalMapFromPlacement({ templateId, placement });
     const extracted = extractForEval(lm as any, { ...DEFAULT_MAP_HARD, ...(hard ?? {}) } as any);
-    const r = evaluateSoft(extracted, { ...DEFAULT_MAP_SOFT, ...(soft ?? {}) } as any);
+    // 種族優遇の上位 K の人数（eval_v10）。条件に無ければテンプレートから（基本版は 4 人）
+    const prefPlayers = templateId.startsWith("3p") ? 3 : 4;
+    const r = evaluateSoft(extracted, { ...DEFAULT_MAP_SOFT, factionPrefPlayers: prefPlayers, ...(soft ?? {}) } as any);
     return { score: r.score, breakdown: r.breakdown, reevaluated: true };
   } catch {
     return null;

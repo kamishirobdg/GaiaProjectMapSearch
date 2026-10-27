@@ -3,7 +3,7 @@
 // 種族優遇の係数の実測（2026-10-22。ユーザー「優遇を設定した種族が使う気も起きないようなバランスではない、程度でよい」）。
 //
 //   npx tsx scripts/_probe_faction_pref.ts [盤面数=30] [セットアップ数=1500] [Map 用の盤面数=120]
-//   MODE=pair|setup|map で絞る。SHAPE=shortfall（既定。2026-10-22 からの Pair / Setup の形）| linear（それまでの形、Map はいまも）
+//   MODE=pair|setup|map で絞る。SHAPE=shortfall（既定。Pair / Setup は 2026-10-22、Map は 2026-10-27 の eval_v10 から）| linear（それまでの形）
 //
 // 3 か所の優遇（Pair: w × p × 合計 T_f、Setup の検索: w × p × Setup の値、Map の検索: w × p × 種族の盤面の値）について、
 // 係数 w と優遇 p を振り、順位の上位 5 件（Pair はマップごとの最良の組を並べた上位 5 行）で
@@ -153,6 +153,6 @@ for (const [templateId, players, lf] of [["4p_lostFleet", 4, true], ["3p_lostFle
   }
   if (MODE === "all" || MODE === "map") {
     const cands: Cand[] = maps.map((m) => ({ base: m.score, values: mapValueByFaction(m.bd) }));
-    report(`Map の検索（偏り項、掛け先 種族の盤面の値、${SHAPE}）`, [cands], ids, K, SHAPE === "linear" ? [25, 10, 5, 3, 2] : [10, 25, 50, 100], spreadOf(cands.map((c) => c.base)));
+    report(`Map の検索（偏り項、掛け先 種族の盤面の値、${SHAPE}）`, [cands], ids, K, SHAPE === "linear" ? [25, 10, 5, 3, 2] : [25, 50], spreadOf(cands.map((c) => c.base)));
   }
 }

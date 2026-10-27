@@ -47,7 +47,10 @@ export const SEARCH_ALGO_VERSION = "search_v1";
 // 首府であること・全体の最後に入植地を選べることの評価。ユーザー確定 案 (A)。docs/design-notes.md 2.10）。
 // eval_v9 (2026-10-17): 検索スコアの優遇項を種族ごとに（wFactionPref × Σ 種族優遇 × その種族の値。ユーザー確定 3-(b)）。
 // 検索キーの colorPrefByType / wColorPref は factionPref / wFactionPref に置き換え（既存の結果は保持しない。docs/design-notes.md 1.4）。
-export const EVAL_VERSION = "eval_v9";
+// eval_v10 (2026-10-27): 種族優遇を Pair・Setup と同じ「上位 K（人数＋2、種族で数える）に届かない分だけ減点」に
+// （ユーザー指示「優遇の意味をそろえる」。係数 25 → 50、K の人数は factionPrefPlayers）。優遇が無いときは検索キーから
+// wFactionPref / factionPref を省く（評価値そのものは eval_v9 と同じ。docs/design-notes.md 1.11）。
+export const EVAL_VERSION = "eval_v10";
 
 export type PersistedCandidate = {
   id: string; // `${searchKey}:${placementHash}`

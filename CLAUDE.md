@@ -45,7 +45,7 @@
   **基本14種族のプロファイル（`BASIC_REACH_PROFILES`。開始建物の数、航行・改造・ガイアの初期研究の差。
   2026-10-05、eval_v5）**は**ユーザーが決めた定数**。変えるときは選択肢を提示して確定してから。
   `reachCost.test.ts` が値を固定している。色の値はその色の2種族のうち大きい方（代表値、案A）で、
-  検索の偏り項は代表値で7色のばらつきを測る（種族優遇は eval_v9 から種族ごとの値に掛ける）。内訳表は種族の行（色でまとめない）。画面の列名は
+  検索の偏り項は代表値で7色のばらつきを測る（種族優遇は eval_v9 から種族ごと、eval_v10 から上位 K に届かない分だけ減点）。内訳表は種族の行（色でまとめない）。画面の列名は
   母星 / 他色 / 緑 / 紫 / 拡張星（2026-10-10 ユーザー指定）だが、コードとドキュメントの種別名は own / other / gaia /
   transdim / extra（母星色 / 他色 / ガイア / 次元横断 / 原始・小惑星）のまま。
 - **eval_v7（2026-10-07、「全惑星を同一の式で」。v1.5.0 で本番へ）**: 種族の値 ＝
@@ -152,11 +152,11 @@
 - **探索プロファイル（2026-10-16、v1.8.0。段階 1「条件の統一」、設計ノート 1.4）**: `src/lib/searchProfiles.ts`（localStorage）が
   種族優遇＋Map の searchKey＋Setup の conditionKey を束ねる索引。**結果バケツの鍵は変えない**。共通バー直下の帯は
   `src/components/ConditionBar.tsx`（Map / Setup / Pair）。検索の実行でその側の条件を自動登録（`bindMapToActiveProfile` /
-  `bindSetupToActiveProfile`）。優遇は種族優遇 1 つ: **Map は eval_v9（2026-10-17 ユーザー確定 3-(b)）から種族ごとの値に掛ける**
-  （検索キーは `soft.wFactionPref` / `soft.factionPref`。eval_v8 までの色ごと `wColorPref` / `colorPrefByType` は廃止、既存の結果は
-  保持しない）。Setup の検索と Pair は **2026-10-22（v2.4.0）から「上位 K（人数＋2、種族で数える）に届かない分だけ減点」**、
-  係数 `FACTION_PREF_W` 0.2（`SETUP_FACTION_PREF_W` / `LIST_FACTION_PREF_W` は同じ値。`factionEval.factionPrefBonus`、実測は
-  `scripts/_probe_faction_pref.ts`、設計ノート 1.10）。Map の検索は比例のまま（`wFactionPref` 25。同じ形にすると `EVAL_VERSION`）。旧 `gaia_setup_color_pref` / `gaia_list_faction_pref` は読まない。Setup の左ペインは Map と同じ 候補 / 詳細 / 条件（`gaia_setup_narrow_tab`）で、検索は
+  `bindSetupToActiveProfile`）。優遇は種族優遇 1 つで、**Map・Setup・Pair とも「上位 K（人数＋2、種族で数える）に届かない分だけ減点」**:
+  Setup の検索と Pair は 2026-10-22（v2.4.0）から係数 `FACTION_PREF_W` 0.2（`SETUP_FACTION_PREF_W` / `LIST_FACTION_PREF_W` は同じ値。
+  `factionEval.factionPrefBonus`、設計ノート 1.10）、**Map は eval_v10（2026-10-27、v2.5.0）から** `evaluateSoft` で係数 `wFactionPref` 50
+  （偏り項と同じ点の単位。設計ノート 1.11）。Map の検索キーは優遇があるときだけ `soft.wFactionPref` / `soft.factionPref` /
+  `soft.factionPrefPlayers`（K の人数）を持つ。実測は `scripts/_probe_faction_pref.ts`。eval_v8 までの色ごと `wColorPref` / `colorPrefByType` は廃止。旧 `gaia_setup_color_pref` / `gaia_list_faction_pref` は読まない。Setup の左ペインは Map と同じ 候補 / 詳細 / 条件（`gaia_setup_narrow_tab`）で、検索は
   `src/workers/setupSearch.worker.ts` ＋ `src/lib/setupSearchRunner.ts`（採点は `setupSearchCore.searchChunk` で共通）。
   確認事項 7 件は 2026-10-17 に全件確定（設計ノート 1.4 末尾）。
 - **Pair タブ（2026-10-17、v1.9.0。段階 2、設計ノート 1.5）**: `src/components/PairView.tsx`（当時 `/pair`、v2.0.0 から `/`）が旧 List ＋ Total。

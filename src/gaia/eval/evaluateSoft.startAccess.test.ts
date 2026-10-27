@@ -370,14 +370,35 @@ describe("開始地点の選び方（eval_v3〜v6 の性質を保つ）", () => 
     expect(auditOf(r).scout.scoutPlanetCount).toBe(2);
   });
 
-  it("種族優遇の掛け先は種族ごとの値（eval_v9。LF4種族は原始・小惑星からの開始の値）", () => {
-    const r = evaluateSoft(extractedOf([cell({ q: 1, r: 0, kind: "PROTO" })], [scout(0, 0, "twilight")]), { ...BASE_SOFT, wScout: 10, wFactionPref: 2, factionPref: { moweyds: 1, spaceGiants: -1 } });
-    expect(extraStartOf(r, "PROTO").total).toBe(20);
-    expect(r.breakdown.factionPreference?.valueByFaction.moweyds).toBe(20);
-    expect(r.breakdown.factionPreference?.scoreByFaction.moweyds).toBe(40);
-    expect(r.breakdown.factionPreference?.scoreByFaction.spaceGiants).toBe(-2 * factionOf(r, "spaceGiants").total);
-    expect(r.breakdown.factionPreference?.score).toBe(40 - 2 * factionOf(r, "spaceGiants").total);
-    expect(r.score).toBe(r.breakdown.imbalance.score + (r.breakdown.factionPreference?.score ?? 0));
+  it("種族優遇は上位 K（人数＋2）に届かない分だけ減点（eval_v10。Pair・Setup と同じ形）", () => {
+    const cells = [
+      cell({ q: 0, r: 0, color: "RED" }),
+      cell({ q: 1, r: 0, kind: "PROTO" }),
+      cell({ q: 4, r: 0, color: "BLUE" }),
+      cell({ q: 0, r: 4, color: "YELLOW" }),
+    ];
+    // 人数 1 → K ＝ 3。値: ダー・シュワーム人 16 / モウェイド人 14 / スペースジャイアント 12 / 地球人・ランティダ・ハッシュ 11 / ゼノ・グリーン 10
+    const r = evaluateSoft(extractedOf(cells), {
+      ...BASE_SOFT,
+      wFactionPref: 2,
+      factionPrefPlayers: 1,
+      factionPref: { terrans: 1, ivits: 1, moweyds: -1 },
+    });
+    expect(factionOf(r, "ivits").total).toBe(16);
+    expect(factionOf(r, "moweyds").total).toBe(14);
+    expect(factionOf(r, "spaceGiants").total).toBe(12);
+    expect(factionOf(r, "terrans").total).toBe(11);
+    const fp = r.breakdown.factionPreference!;
+    expect(fp.topK).toBe(3);
+    // 優遇: 他の種族の 3 番目（12）に届かない 1 点ぶん減点。すでに上位にいる種族は 0
+    expect(fp.thrByFaction?.terrans).toBe(12);
+    expect(fp.scoreByFaction.terrans).toBe(-2);
+    expect(fp.scoreByFaction.ivits).toBe(0);
+    // 冷遇: 他の種族の 3 番目（11）を超えている 3 点ぶん減点
+    expect(fp.thrByFaction?.moweyds).toBe(11);
+    expect(fp.scoreByFaction.moweyds).toBe(-6);
+    expect(fp.score).toBe(-8);
+    expect(r.score).toBe(r.breakdown.imbalance.score + fp.score);
   });
 
   it("原始・小惑星が無い盤面では extraStart も LF4種族の行も出さない", () => {

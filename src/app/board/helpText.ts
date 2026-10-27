@@ -185,7 +185,7 @@ const ENTRIES = {
     ja: {
       title: "評価指数",
       what:
-        "却下されなかった盤面を順位付けする重み。検索スコア ＝ −100 × 7 色の値のばらつき（偏り項）＋ 種族優遇の強さ × Σ 優遇 × 種族の値（eval_v9。優遇を付けたときだけ）。",
+        "却下されなかった盤面を順位付けする重み。検索スコア ＝ −100 × 7 色の値のばらつき（偏り項）− 種族優遇の強さ × Σ 優遇 × 上位に届かない分（eval_v10。優遇を付けたときだけ）。",
       why:
         "「良い盤面 ＝ どの色にも同じくらいの価値がある盤面」という定義で、値の大きさそのものは順位に効かない。" +
         "色の値はその色の 2 種族のうち大きい方（代表値）。種族の値の式は内訳表の見出しの「?」。",
@@ -194,7 +194,7 @@ const ENTRIES = {
     en: {
       title: "Soft weights",
       what:
-        "Weights that rank the boards that passed. Search score = −100 × spread of the seven colour values (imbalance) + preference weight × Σ pref × faction value (eval_v9; only when a preference is set).",
+        "Weights that rank the boards that passed. Search score = −100 × spread of the seven colour values (imbalance) − preference weight × Σ pref × shortfall from the top (eval_v10; only when a preference is set).",
       why:
         "A good board is one where every colour is worth about the same; the absolute size of the values does not affect the order. " +
         "A colour's value is the larger of its two factions. The faction formula is under the breakdown table's \"?\".",
@@ -292,22 +292,24 @@ const ENTRIES = {
       title: "種族優遇/冷遇",
       what:
         "種族ごとの ＋ で優遇、− で冷遇（値は上の「探索条件」の帯で編集。Map / Setup / Pair 共通）。" +
-        "検索スコアに 強さ × Σ 優遇 × その種族の値（内訳表の行の合計）を足す。同じ色の 2 種族に別の値を付けられる。",
+        "優遇した種族の値（内訳表の行の合計）が上位 K（人数＋2 種族）に届かない盤面ほど、強さ × 優遇 × 不足分だけ検索スコアを下げる。" +
+        "すでに上位 K にいれば何もしない（偏り項がそのまま決める）。冷遇は上位 K に入っているぶんだけ下げる。Pair・Setup と同じ形（eval_v10）。",
       why:
-        "目盛りは盤面の実測（300 盤面・4人 LF、色ごとだった eval_v8 まで）で合わせてある: 0 効かない / 1 偏り項とほぼ互角 / 2 優遇が主導 / 3 さらに寄る / " +
-        "5 実質その種族だけで決まる。マイナスは逆向きに同じだけ効く。種族ごとに掛けるので、同じ色の 2 種族に同じ値を入れると色 1 つに入れた旧来の約 2 倍。" +
-        "種族優遇は検索キーに入るので、変えると結果は別のバケツに貯まる。",
+        "狙いは「優遇した種族が使う気も起きないほど弱くはない」盤面を上位に出すこと。実測（上位 5 件で優遇種族が上位 K に入る割合、強さ 50）: " +
+        "4人 LF 優遇なし 34% → 1 で 62%、2 で 67%、5 で 71%（3人 LF 29% → 54% / 63%、基本版 49% → 70% / 81%）。偏り項の幅に対する損失は 1 で 4人 LF 12%、基本版 6%。" +
+        "eval_v9 までの「値に比例」はすでに強い種族をさらに押し上げる方向に点を使っていた。種族優遇は検索キーに入るので、変えると結果は別のバケツに貯まる。",
       ref: "2.3 / 1.4",
     },
     en: {
       title: "Faction preference",
       what:
         "Per faction, + favours and − penalises (edited in the search-profile strip above; shared by Map / Setup / Pair). " +
-        "Adds weight × Σ pref × that faction's value (the row total in the breakdown) to the search score. The two factions of a colour can differ.",
+        "Boards where the preferred faction's value (the row total in the breakdown) falls short of the top K (players + 2 factions) lose weight × pref × shortfall. " +
+        "Nothing happens when it is already in the top K (the imbalance term decides). A negative value subtracts for the amount it is inside the top K. Same form as Pair and Setup (eval_v10).",
       why:
-        "The scale was calibrated on 300 boards (4p LF, per colour up to eval_v8): 0 no effect / 1 about even with the imbalance term / 2 preference leads / 3 stronger / " +
-        "5 effectively decides by that faction alone. Negative values work the same way in reverse. Setting both factions of a colour gives about twice the old per-colour effect. " +
-        "The preference is part of the search key, so changing it starts a new result bucket.",
+        "The aim is boards where the preferred faction is not too weak to consider. Measured share of the top 5 with the preferred faction in the top K (weight 50): " +
+        "4p LF 34% without → 62% at 1, 67% at 2, 71% at 5 (3p LF 29% → 54% / 63%, base game 49% → 70% / 81%). The loss is 12% of the imbalance range at 1 (4p LF), 6% in the base game. " +
+        "Up to eval_v9 the term was proportional and spent points pushing already strong factions further. The preference is part of the search key, so changing it starts a new result bucket.",
       ref: "2.3 / 1.4",
     },
   },
@@ -315,13 +317,13 @@ const ENTRIES = {
     ja: {
       title: "種族優遇/冷遇の強さ",
       what: "優遇／冷遇 1 あたりの強さ。検索スコアに足す項の係数。",
-      why: "既定 25 は「優遇 1 ＝ 偏り項とほぼ互角」になるよう実測で合わせた（4人 LF 300 盤面: 偏り項の振れ幅 1747 に対し色の値の振れ幅 67。2026-07-31 に 3 → 25）。eval_v9 で掛け先が種族の値になったが係数は据え置き。2026-10-22 の再測（4人 LF 150 盤面）: 優遇 1 で優遇種族が上位 6 種族に入る割合 34% → 63%（偏り項の幅の 15% を失う）、2 で 69%、5 で 71%。Pair と Setup の検索は同日から「上位に届かない分だけ減点」の形（係数 0.2）で、Map だけ比例のまま。",
+      why: "既定 50（eval_v10、2026-10-27）。優遇 1 で優遇種族が上位 K に入る割合が Pair の 0.2 × 1（61%）と揃う値（4人 LF 62%、偏り項の幅の 12% を失う）。25 だと 48%、100 だと 67%（損失 17%）。偏り項（種族の値のばらつき × 100）と同じ点の単位なので、Pair・Setup の 0.2 とは数字が違う。",
       ref: "2.3",
     },
     en: {
       title: "Preference weight",
       what: "Strength per unit of preference: the coefficient of the term added to the search score.",
-      why: "Default 25 was calibrated so that pref 1 is about even with the imbalance term (300 boards, 4p LF: imbalance range 1747 vs colour value range 67; 3 → 25 on 2026-07-31). eval_v9 applies it per faction with the same coefficient. Re-measured 2026-10-22 (4p LF, 150 boards): at 1 the preferred faction makes the top 6 in 63% of the top results (34% without), costing 15% of the imbalance range; 69% at 2, 71% at 5. Pair and Setup search switched the same day to subtracting only the shortfall from the top (weight 0.2); Map stays proportional.",
+      why: "Default 50 (eval_v10, 2026-10-27): at pref 1 the share with the preferred faction in the top K matches Pair's 0.2 × 1 (61%): 62% on 4p LF, costing 12% of the imbalance range. 25 gives 48%, 100 gives 67% (17% loss). It is in the same units as the imbalance term (spread × 100), so the number differs from Pair / Setup's 0.2.",
       ref: "2.3",
     },
   },
