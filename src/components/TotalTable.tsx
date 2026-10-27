@@ -9,6 +9,8 @@ import React from "react";
 import { factionHomeBg, SharedHelp } from "@/components/FactionEvalPanel";
 import { type FactionScores } from "@/gaia/eval/factionEval";
 import { factionsForMode, type FactionId } from "@/gaia/eval/factionWeights";
+import type { ShipInteraction } from "@/gaia/eval/shipInteraction";
+import { SHIP_LABEL, type ShipId } from "@/gaia/setup/types";
 import {
   blendScores,
   isDefaultScoreBlend,
@@ -30,7 +32,7 @@ const UI = {
     total: "合計",
     noBreakdown: "このマップは評価の内訳を持っていないため Map ぶんが 0 になる（古い候補。Map タブで検索し直すと付く）",
     reevaluated: "Map の値は保存された候補をいまの評価（eval_v10）で評価し直したもの（Map タブで開いた値と同じ基準）",
-    footnote: "Map ぶんは Map タブの内訳表のその種族の行の合計（船接触・船星系込み）。Setup ぶんは評価指数を掛けた種族スコアで、LF では船に乗るタイルの値をその種族の船接触の比で再配分した値（Setup タブの総合と数点の差）。",
+    footnote: "Map ぶんは Map タブの内訳表のその種族の行の合計（船接触・船星系込み）。Setup ぶんは評価指数を掛けた種族スコアで、LF では船に乗るタイルの値をその種族の船接触の比で再配分した値（Setup タブの総合と数点の差）。点線の付いた Setup の値にカーソルを合わせると、船ごとの船接触と加点が出る。",
     blendTitle: "合算比",
     blendNote: "合計 ＝ Map × 倍率 ＋ Setup × 倍率。基準 1・2 の採点、種族優遇の掛け先、「合計の上位」にも同じ比が効く",
     blendReset: "1:1 に戻す",
@@ -44,7 +46,7 @@ const UI = {
     total: "Total",
     noBreakdown: "This map has no stored evaluation breakdown, so its map score is 0 (older candidate).",
     reevaluated: "Map values are the stored candidate re-evaluated with the current evaluation (eval_v10), the same basis as the Map tab",
-    footnote: "The map part is that faction's row total in Map's breakdown (ship contact and ship systems included). The setup part is the weighted faction score; in LF the values of tiles on ships are redistributed by the faction's ship-contact ratio (a few points off the Setup tab total).",
+    footnote: "The map part is that faction's row total in Map's breakdown (ship contact and ship systems included). The setup part is the weighted faction score; in LF the values of tiles on ships are redistributed by the faction's ship-contact ratio (a few points off the Setup tab total). Hover a dotted Setup value for the per-ship contact and bonus.",
     blendTitle: "Blend",
     blendNote: "Total = Map × weight + Setup × weight. Criteria 1 / 2, the faction preference and the top-by-total line use the same ratio",
     blendReset: "Reset to 1:1",
@@ -58,6 +60,45 @@ function fmt(n: number): string {
 }
 
 export type TotalRow = { id: FactionId; name: string; color: string; map: number; setup: number; total: number };
+
+/**
+ * Setup のセルのホバー（2026-10-27 ユーザー「簡単にできそうなら」）: 種族ごとの船接触と船の相互作用の加点。
+ * 船ごとに 船接触 C_{s,f}（平均 C̄_f との比）・その船に乗るタイルの値 T_{s,f}・加点 α × rel × T。
+ * tiles は shipTileValuesByShip。相互作用が無い（基本版・内訳の無い盤面）ときは空。
+ */
+export function shipInteractionTitles(
+  si: ShipInteraction | null,
+  tiles: Partial<Record<ShipId, FactionScores>>,
+  lang: Lang
+): Partial<Record<FactionId, string>> {
+  const out: Partial<Record<FactionId, string>> = {};
+  if (!si) return out;
+  const ja = lang === "ja";
+  const pct = (r: number) => `${r >= 0 ? "+" : "−"}${Math.round(Math.abs(r) * 100)}%`;
+  const sgn = (n: number) => `${n >= 0 ? "+" : "−"}${fmt(Math.abs(n))}`;
+  for (const f of Object.keys(si.bonus) as FactionId[]) {
+    const own = si.byFaction?.[f];
+    const perFaction = si.mode === "faction" && !!own && own.mean > 0;
+    const lines = [
+      ja
+        ? `船の相互作用 ${sgn(si.bonus[f] ?? 0)}（${perFaction ? "この種族の船接触" : "全種族共通の船接触"}、平均 ${fmt(perFaction ? own!.mean : si.mean)}）`
+        : `Ship interaction ${sgn(si.bonus[f] ?? 0)} (${perFaction ? "this faction's ship contact" : "ship contact shared by all factions"}, mean ${fmt(perFaction ? own!.mean : si.mean)})`,
+    ];
+    for (const row of si.ships) {
+      const c = perFaction ? own!.contact[row.ship] ?? 0 : row.contact;
+      const rel = perFaction ? own!.rel[row.ship] ?? 0 : row.rel;
+      const t = tiles[row.ship]?.[f] ?? 0;
+      const label = ja ? SHIP_LABEL[row.ship].ja : SHIP_LABEL[row.ship].en;
+      lines.push(
+        ja
+          ? `${label}: 船接触 ${fmt(c)}（平均比 ${pct(rel)}）× タイル ${fmt(t)} → ${sgn(si.alpha * rel * t)}`
+          : `${label}: contact ${fmt(c)} (${pct(rel)} vs mean) × tiles ${fmt(t)} → ${sgn(si.alpha * rel * t)}`
+      );
+    }
+    out[f] = lines.join("\n");
+  }
+  return out;
+}
 
 /** 表の行（合計の降順）。 */
 export function totalRowsOf(mapScores: FactionScores, setupScores: FactionScores, blend: ScoreBlend, lf: boolean, lang: Lang): TotalRow[] {
@@ -79,6 +120,7 @@ export function TotalTable({
   lang,
   mapHasBreakdown,
   reevaluated,
+  setupTitles,
 }: {
   rows: TotalRow[];
   blend: ScoreBlend;
@@ -87,6 +129,8 @@ export function TotalTable({
   mapHasBreakdown: boolean;
   /** true なら「いまの評価で評価し直した」の注記を出す */
   reevaluated?: boolean;
+  /** Setup のセルのホバー（種族ごとの船接触。shipInteractionTitles） */
+  setupTitles?: Partial<Record<FactionId, string>>;
 }) {
   const t = UI[lang];
   const th: React.CSSProperties = { textAlign: "right", padding: "4px 8px", borderBottom: "2px solid #ddd", fontSize: 12, whiteSpace: "nowrap" };
@@ -118,7 +162,13 @@ export function TotalTable({
                 <td style={{ ...td, opacity: 0.6 }}>{i + 1}</td>
                 <td style={{ ...td, textAlign: "left" }}>{r.name}</td>
                 <td style={td}>{fmt(r.map)}</td>
-                <td style={td}>{fmt(r.setup)}</td>
+                {setupTitles?.[r.id] ? (
+                  <td style={{ ...td, cursor: "help", textDecoration: "underline dotted", textUnderlineOffset: 3 }} title={setupTitles[r.id]}>
+                    {fmt(r.setup)}
+                  </td>
+                ) : (
+                  <td style={td}>{fmt(r.setup)}</td>
+                )}
                 <td style={{ ...td, fontWeight: 800, borderLeft: "1px solid #ddd" }}>{fmt(r.total)}</td>
               </tr>
             ))}

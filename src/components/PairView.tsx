@@ -69,14 +69,14 @@ import {
   type Expansion,
 } from "@/lib/sharedSettings";
 import { scoreSetupFactions, topFactions, type FactionScores, type RecommendCriterion } from "@/gaia/eval/factionEval";
-import { applyShipInteraction, shipInteractionOf } from "@/gaia/eval/shipInteraction";
+import { applyShipInteraction, shipInteractionOf, shipTileValuesByShip } from "@/gaia/eval/shipInteraction";
 import { FACTIONS, FACTION_IDS, type FactionId } from "@/gaia/eval/factionWeights";
 import { mapValueByFaction } from "@/gaia/eval/mapFaction";
 import { blendScores, type ScoreBlend } from "@/gaia/eval/scoreBlend";
 import { buildSetupFromSeed, type BuildSetupInput } from "@/gaia/setup/buildSetup";
 import { SetupBoard } from "@/components/SetupView";
 import { SetupWeightInputs, SharedHelp, useScoreBlend, useSetupWeights } from "@/components/FactionEvalPanel";
-import { BlendInputs, TotalTable, totalRowsOf } from "@/components/TotalTable";
+import { BlendInputs, shipInteractionTitles, TotalTable, totalRowsOf } from "@/components/TotalTable";
 import ConditionProfilesPanel from "@/components/ConditionProfilesPanel";
 import { conditionKeyOf, deleteConditionProfile, listConditionProfiles, upsertConditionProfile, type ConditionProfile } from "@/lib/conditionProfiles";
 import { DEFAULT_SETUP_WEIGHTS, isDefaultWeights, type SetupWeights } from "@/gaia/eval/setupWeights";
@@ -999,7 +999,8 @@ export default function PairView() {
     const ev = mapEvalOfRow(selectedRow);
     const bd = ev?.breakdown ?? null;
     const setupResult = buildSetupFromSeed(selectedRow.setupInput);
-    const setupScores = applyShipInteraction(scoreSetupFactions(setupResult, evalWeights), shipInteractionOf(setupResult, bd, evalWeights));
+    const si = shipInteractionOf(setupResult, bd, evalWeights);
+    const setupScores = applyShipInteraction(scoreSetupFactions(setupResult, evalWeights), si);
     const mapScores = mapValueByFaction(bd);
     const total = totalScoresOfPair(mapScores, setupScores, scoreBlend);
     const mapTop = mapTopOfPlacement(selectedRow.tid, selectedRow.mapPlacement, selectedRow.players)?.detail ?? null;
@@ -1011,6 +1012,7 @@ export default function PairView() {
       total,
       mapTop,
       rows: totalRowsOf(mapScores, setupScores, scoreBlend, selectedRow.lf, lang),
+      setupTitles: shipInteractionTitles(si, si ? shipTileValuesByShip(setupResult, evalWeights) : {}, lang),
       hasBreakdown: !!bd,
       reevaluated: !!ev?.reevaluated,
     };
@@ -1654,7 +1656,7 @@ export default function PairView() {
                         {t.totalTable}
                         <SharedHelp k="pairTotal" lang={lang} />
                       </div>
-                      <TotalTable rows={detail.rows} blend={scoreBlend} lang={lang} mapHasBreakdown={detail.hasBreakdown} reevaluated={detail.reevaluated} />
+                      <TotalTable rows={detail.rows} blend={scoreBlend} lang={lang} mapHasBreakdown={detail.hasBreakdown} reevaluated={detail.reevaluated} setupTitles={detail.setupTitles} />
                     </div>
                   );
                 })()
