@@ -152,18 +152,18 @@
 - **探索プロファイル（2026-10-16、v1.8.0。段階 1「条件の統一」、設計ノート 1.4）**: `src/lib/searchProfiles.ts`（localStorage）が
   種族優遇＋Map の searchKey＋Setup の conditionKey を束ねる索引。**結果バケツの鍵は変えない**。共通バー直下の帯は
   `src/components/ConditionBar.tsx`（Map / Setup / Pair）。検索の実行でその側の条件を自動登録（`bindMapToActiveProfile` /
-  `bindSetupToActiveProfile`）。優遇は種族優遇 1 つで、**Map・Setup・Pair とも「上位 K（人数＋2、種族で数える）に届かない分だけ減点」**:
+  `bindSetupToActiveProfile`）。優遇は種族優遇 1 つで、**Map・Setup・Pair とも「上位 K（共有設定、既定 人数＋2、種族で数える）に届かない分だけ減点」**:
   Setup の検索と Pair は 2026-10-22（v2.4.0）から係数 `FACTION_PREF_W` 0.2（`SETUP_FACTION_PREF_W` / `LIST_FACTION_PREF_W` は同じ値。
   `factionEval.factionPrefBonus`、設計ノート 1.10）、**Map は eval_v10（2026-10-27、v2.5.0）から** `evaluateSoft` で係数 `wFactionPref` 50
   （偏り項と同じ点の単位。設計ノート 1.11）。Map の検索キーは優遇があるときだけ `soft.wFactionPref` / `soft.factionPref` /
-  `soft.factionPrefPlayers`（K の人数）を持つ。実測は `scripts/_probe_faction_pref.ts`。eval_v8 までの色ごと `wColorPref` / `colorPrefByType` は廃止。旧 `gaia_setup_color_pref` / `gaia_list_faction_pref` は読まない。Setup の左ペインは Map と同じ 候補 / 詳細 / 条件（`gaia_setup_narrow_tab`）で、検索は
+  `soft.factionPrefTopK`（上位 K そのもの。v2.6.0 で `factionPrefPlayers` から変更）を持つ。実測は `scripts/_probe_faction_pref.ts`。eval_v8 までの色ごと `wColorPref` / `colorPrefByType` は廃止。旧 `gaia_setup_color_pref` / `gaia_list_faction_pref` は読まない。Setup の左ペインは Map と同じ 候補 / 詳細 / 条件（`gaia_setup_narrow_tab`）で、検索は
   `src/workers/setupSearch.worker.ts` ＋ `src/lib/setupSearchRunner.ts`（採点は `setupSearchCore.searchChunk` で共通）。
   確認事項 7 件は 2026-10-17 に全件確定（設計ノート 1.4 末尾）。
 - **Pair タブ（2026-10-17、v1.9.0。段階 2、設計ノート 1.5）**: `src/components/PairView.tsx`（当時 `/pair`、v2.0.0 から `/`）が旧 List ＋ Total。
   候補（組の提案＋候補一覧: 提案・保存した組・共有された組を 1 表に）/ 詳細（盤面・配置・`TotalTable.tsx` の種族別合計表）/ 条件
   （保存済み条件・評価指数・合算比）。狭い幅はタブ `gaia_pair_narrow_tab`。**基準 1・2 はマップの内訳があれば合計 T_f で測る**
   （`pairPlan.ts` `usesTotalBasis` / `totalScoresOf`、`recommendSetups` の `criterionScores`。内訳の無い旧候補は Setup の値）。既定の
-  基準は 2 上位バランス。旧 List の提案ログは廃止、保存した組は旧キー `gaia_list_proposals_v2` を継承（v2.3.0 で IndexedDB へ移行）。
+  基準は上位バランス（2026-10-27 から番号 1）。旧 List の提案ログは廃止、保存した組は旧キー `gaia_list_proposals_v2` を継承（v2.3.0 で IndexedDB へ移行）。
 - **Pair がトップ、「両方を探索」（2026-10-17、v2.0.0。段階 3、設計ノート 1.6）**: `/` が Pair（`/pair` `/list` `/total` は `/` へ）。タブ順
   Pair / Map / Setup / Manual。「両方を探索」は探索プロファイルの Map 部 / Setup 部の条件で Map の検索（`runSearchOffThread`、件数は
   Map タブの `gaia_search_trials`）→ `src/lib/mapSearchSave.ts` で Map の結果バケツへ → Setup の検索（`runSetupSearch`、件数は
@@ -194,14 +194,14 @@
 - **v2.4.0（2026-10-22、設計ノート 1.10）**: 上位バランス（いまの基準 1）で「Map と Setup を合わせて最もバランスの取れた組が 1 位」になることを
   ユーザーが確認。種族優遇（Pair・Setup）を「上位 K に届かない分だけ減点」0.2 に（上の探索プロファイルの項）。**上位 K は種族で数える**
   （ユーザー確定。「合計の上位」の表示も `topFactions` に揃えた。それまでは色ごとに強い方だけ）。
+- **v2.5.0（2026-10-27、設計ノート 1.11 / 1.12）**: Map の種族優遇も「上位 K に届かない分だけ減点」（eval_v10、`wFactionPref` 50）。
+  Pair の基準の番号を **1 上位バランス / 2 全体バランス / 3 逆優位 / 4 優位** に付け替え（内部 id は不変）。**3・4 は廃止予定**
+  （バランスの基準ではない。使わないことが確定したら消す。ユーザー方針）。
 - **v2.6.0（2026-10-27、設計ノート 1.13 / 1.14）**: 基準 1 上位バランスは **−std(上位 K)** だけ（0.3 の添え物を廃止）。**上位 K は共有設定**
   `gaia_shared_top_k`（帯の入力欄、未設定 ＝ 人数＋2、`factionEval.topKOf`）で、基準 1・種族優遇の境目（Map の検索キーは
   `factionPrefTopK`）・「合計の上位」・基準 4 が同じ K を使う。**3 人用の縮小盤** `base_3p_9`（09 なし）/ `base_3p_8`（09・10 なし）:
   `src/gaia/templates/baseVariants.ts` が正本（スロット・タイル・表示名 `templateLabel`）、共通バーの人数の隣「盤面」（共有設定
   `gaia_shared_map_size`、基本版 3 人のときだけ）。docs/map-base-spec.md §7。
-- **v2.5.0（2026-10-27、設計ノート 1.11 / 1.12）**: Map の種族優遇も「上位 K に届かない分だけ減点」（eval_v10、`wFactionPref` 50）。
-  Pair の基準の番号を **1 上位バランス / 2 全体バランス / 3 逆優位 / 4 優位** に付け替え（内部 id は不変）。**3・4 は廃止予定**
-  （バランスの基準ではない。使わないことが確定したら消す。ユーザー方針）。
 
 ## 描画とセル座標（2026-07-30 に整理）
 
