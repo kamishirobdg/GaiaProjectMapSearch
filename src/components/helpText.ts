@@ -172,7 +172,7 @@ const ENTRIES = {
       what: "船に乗る基本技術・金枠同盟・アーティファクトの値。どの船に乗ったかで値を上書きできる（船に到達しないと取れない。0 は基準値へフォールバック）。",
       why:
         "既定 9（基準）。影響力 17.5%（2 位）。Pair の組の提案と合計表の Setup 列では、船 s に乗るタイルの値をその種族の船接触（Map 側）の相対値で増減する" +
-        "船の相互作用（α 1。加点は Setup の値の 2.5%、合計の上位の顔ぶれが変わる組 23%）。",
+        "船の相互作用（α 3。係数 1 ＋ α × 相対値、負になる船は 0。加点は Setup の値の 10% 前後、合計の上位の顔ぶれが変わる組 7 割）。",
       ref: "3.1 / 2.10",
     },
     en: {
@@ -180,7 +180,7 @@ const ENTRIES = {
       what: "Values of the ship tech, gold federations and artifacts carried by the ships; can be overridden per ship (you must reach the ship; 0 falls back to the base value).",
       why:
         "Default 9 (base). Influence 17.5% (2nd). In the Pair suggestions and the totals table's Setup column, tiles on ship s are scaled by the faction's relative scout contact on the map " +
-        "(ship interaction, α 1; adds 2.5% of the setup value and changes the top-by-total line in 23% of pairs).",
+        "(ship interaction, α 3; factor 1 + α × relative contact, clamped at 0; about 10% of the setup value, changes the top-by-total line in ~70% of pairs).",
       ref: "3.1 / 2.10",
     },
   },
@@ -262,13 +262,13 @@ const ENTRIES = {
     ja: {
       title: "組の提案（マップ＋セットアップ）",
       what: "探索の向き（マップ → セットアップ／セットアップ → マップ）と基準を選ぶと、候補を基準の良い順に上位 5 件まで提示する。セットアップはランダム生成か保存済みから。候補一覧は提案・連続で探索の順位表・保存した組・共有された組を、いまの基準・評価指数・合算比で採点し直し、主（マップ → セットアップならマップ、逆ならセットアップ）ごとに 1 行（最良の相手。「+n」は同じ主の別の組の数）で基準値の降順に並べる（# ＝ 順位）。行を選ぶと「詳細」に盤面・配置・種族別の合計が出て、別の相手を選べる。プレイ済み（Map / Setup タブの使用済み、または「プレイ済みにする」）のマップ・セットアップは既定で出ない。マップの選択肢はいまの評価バージョンの結果バケツの候補だけ（旧バージョンのピン留めは Map タブの「旧バージョンの候補」からコピーすると出る）。「ピン解除」で選んだマップのピンを外せる。",
-      why: "Setup の値には船の相互作用（船に乗るタイルの値 × その種族の船接触の相対値、α 1）を掛けてから採点する。評価指数・種族優遇（帯）は Map / Setup と共通。保存した組は条件ごとに貯まる。",
+      why: "Setup の値には船の相互作用（船に乗るタイルの値 × (1 ＋ α × その種族の船接触の相対値)、α 3、負になる船は 0）を掛けてから採点する。評価指数・種族優遇（帯）は Map / Setup と共通。保存した組は条件ごとに貯まる。",
       ref: "4 / 1.5",
     },
     en: {
       title: "Pair suggestion (map + setup)",
       what: "Pick a direction (map → setup / setup → map) and a criterion to get up to 5 candidates ranked by the criterion. Setups come from random generation or the saved list. The list groups by the primary item (the map in Map → Setup, the setup in Setup → Map), one row each with its best partner (“+n” = other pairs of the same item), rescored and sorted by the current criterion; the detail lets you pick another partner. Played maps and setups (used on the Map / Setup tab, or “Mark as played”) are hidden by default. The map choices come only from the current evaluation version's buckets (copy old-version pins on the Map tab to bring them in); “Unpin” removes the selected map's pin.",
-      why: "Setup values include the ship interaction (tiles on a ship × the faction's relative scout contact, α 1) before scoring. Weights and the faction preference (strip) are shared with Map / Setup. Saved pairs are kept per condition.",
+      why: "Setup values include the ship interaction (tiles on a ship × (1 + α × the faction's relative scout contact), α 3, clamped at 0) before scoring. Weights and the faction preference (strip) are shared with Map / Setup. Saved pairs are kept per condition.",
       ref: "4 / 1.5",
     },
   },

@@ -9,7 +9,7 @@ import React from "react";
 import { factionHomeBg, SharedHelp } from "@/components/FactionEvalPanel";
 import { type FactionScores } from "@/gaia/eval/factionEval";
 import { factionsForMode, type FactionId } from "@/gaia/eval/factionWeights";
-import type { ShipInteraction } from "@/gaia/eval/shipInteraction";
+import { shipFactorOf, type ShipInteraction } from "@/gaia/eval/shipInteraction";
 import { SHIP_LABEL, type ShipId } from "@/gaia/setup/types";
 import {
   blendScores,
@@ -91,8 +91,8 @@ export function shipInteractionTitles(
       const label = ja ? SHIP_LABEL[row.ship].ja : SHIP_LABEL[row.ship].en;
       lines.push(
         ja
-          ? `${label}: 船接触 ${fmt(c)}（平均比 ${pct(rel)}）× タイル ${fmt(t)} → ${sgn(si.alpha * rel * t)}`
-          : `${label}: contact ${fmt(c)} (${pct(rel)} vs mean) × tiles ${fmt(t)} → ${sgn(si.alpha * rel * t)}`
+          ? `${label}: 船接触 ${fmt(c)}（平均比 ${pct(rel)}）× タイル ${fmt(t)} → ${sgn((shipFactorOf(si.alpha, rel) - 1) * t)}`
+          : `${label}: contact ${fmt(c)} (${pct(rel)} vs mean) × tiles ${fmt(t)} → ${sgn((shipFactorOf(si.alpha, rel) - 1) * t)}`
       );
     }
     out[f] = lines.join("\n");

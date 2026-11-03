@@ -14,6 +14,7 @@ import { shipTileCell, tileValueCell } from "./tileWeights";
 import {
   SHIP_INTERACTION_ALPHA,
   applyShipInteraction,
+  shipFactorOf,
   factionReachOf,
   shipContactByFaction,
   shipContactOf,
@@ -197,12 +198,28 @@ describe("shipInteractionOf: 加点 Σ_s α × (C_s − C̄) / C̄ × T_{s,f}（
     ]);
     const byShip = shipTileValuesByShip(s);
     for (const f of FACTION_IDS) {
-      const expected = SHIP_INTERACTION_ALPHA * ((byShip.twilight?.[f] ?? 0) - (byShip.tfmars?.[f] ?? 0));
+      // トワイライト rel +1 → 係数 1 ＋ α、T.F.マーズ rel −1 → 係数 max(0, 1 − α) ＝ 0（α ≧ 1）＝ そのタイルの値を失う
+      const expected = SHIP_INTERACTION_ALPHA * (byShip.twilight?.[f] ?? 0) - Math.min(1, SHIP_INTERACTION_ALPHA) * (byShip.tfmars?.[f] ?? 0);
       expect(si.bonus[f]).toBeCloseTo(expected, 9);
     }
     // α 1 なら「船接触の比で再配分」＝トワイライトのタイルが 2 倍、T.F.マーズのタイルが 0
     const full = shipInteractionOf(s, breakdownWithContact({ twilight: [20], eclipse: [10], rebellion: [10] }), undefined, 1)!;
     for (const f of FACTION_IDS) expect(full.bonus[f]).toBeCloseTo((byShip.twilight?.[f] ?? 0) - (byShip.tfmars?.[f] ?? 0), 9);
+  });
+
+  it("α > 1 では係数 (1 ＋ α × rel) が負になる船を 0 で止める（タイルの値を失うだけで負にはならない）", () => {
+    expect(shipFactorOf(3, 0.5)).toBe(2.5);
+    expect(shipFactorOf(3, -0.2)).toBeCloseTo(0.4, 9);
+    expect(shipFactorOf(3, -1)).toBe(0);
+    expect(shipFactorOf(1, -1)).toBe(0);
+    const s = lfSetup();
+    // トワイライト 20 / エクリプス 10 / リベリオン 10 / T.F.マーズ 0 → rel ＝ +1 / 0 / 0 / −1
+    const si = shipInteractionOf(s, breakdownWithContact({ twilight: [20], eclipse: [10], rebellion: [10] }), undefined, 3)!;
+    const byShip = shipTileValuesByShip(s);
+    for (const f of FACTION_IDS) {
+      // トワイライトは (1 ＋ 3) − 1 ＝ 3 倍の加点、T.F.マーズは max(0, 1 − 3) − 1 ＝ −1（−3 ではない）
+      expect(si.bonus[f]).toBeCloseTo(3 * (byShip.twilight?.[f] ?? 0) - (byShip.tfmars?.[f] ?? 0), 9);
+    }
   });
 
   it("使う船は result.ships（2人でリベリオン無し）。船接触の無い船は 0 として平均に入る", () => {

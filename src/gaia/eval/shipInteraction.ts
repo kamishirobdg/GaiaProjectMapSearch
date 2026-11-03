@@ -18,6 +18,8 @@
 //     重く、遠い船のタイルが軽くなるだけ。
 //   - α 0 で現状どおり、α 1 で「船接触の比で再配分」（掛け算。ユーザーの懸念どおり極端）。
 //     α ≦ 1 なら係数 (1 ＋ α × rel) ≧ 1 − α ≧ 0 で、届かない船のタイルも (1 − α) は残る。
+//     α > 1（2026-11-03 から 3）は相対値を強める。係数が負になる船（平均よりずっと遠い船）は 0 で止める
+//     （`shipFactorOf`）ので、そのタイルの値は失うだけで負にはならない。
 //   - 検索（Map の評価）には入れない。船ごとの内訳（scoutHits の scoutId）を持たない古い候補や
 //     基本版（船なし）は加点 0 ＝ 現状どおり。
 //   - α は調整必須のマジックナンバー（実測は scripts/_probe_ship_interaction.ts）。
@@ -34,10 +36,21 @@ import { DEFAULT_SETUP_WEIGHTS, SETUP_SCORE_DIVISOR, type SetupWeights } from ".
 import { SHIP_IDS, type SetupResult, type ShipId } from "@/gaia/setup/types";
 
 /**
- * 船接触の相対値に掛ける係数（0 ＝ 無効、1 ＝ 船接触の比 C_s / C̄ で掛け算＝案 (i)、0 < α < 1 ＝ 加重和＝案 (ii)）。
- * 2026-10-08: 0.5（案 (ii)）で実測したところ効きがごく小さく、ユーザー指示で 1（掛け算）に。調整必須のマジックナンバー。
+ * 船接触の相対値に掛ける係数（0 ＝ 無効、1 ＝ 船接触の比 C_s / C̄ で掛け算＝案 (i)、0 < α < 1 ＝ 加重和＝案 (ii)、
+ * α > 1 ＝ 相対値を α 倍に強める。係数 (1 ＋ α × rel) が負になる船は 0 で止める＝`shipFactorOf`）。
+ * 2026-10-08: 0.5（案 (ii)）で実測したところ効きがごく小さく、ユーザー指示で 1（掛け算）に。
+ * 2026-11-03: ユーザー確定「大きな影響を持つ値とする」で 3（相対のまま。設計ノート 2.10 末尾の実測: 加点は Setup の値の
+ * 7% 前後、合計の上位の顔ぶれが変わる組 6 割）。調整必須のマジックナンバー。
  */
-export const SHIP_INTERACTION_ALPHA = 1;
+export const SHIP_INTERACTION_ALPHA = 3;
+
+/**
+ * 船 s のタイルの値に掛ける係数 (1 ＋ α × rel_{s,f})。負になる（α > 1 で届かない船）ときは 0 で止める。
+ * 加点は (係数 − 1) × T_{s,f}。
+ */
+export function shipFactorOf(alpha: number, rel: number): number {
+  return Math.max(0, 1 + alpha * rel);
+}
 
 export type ShipContact = Partial<Record<ShipId, number>>;
 
@@ -180,7 +193,7 @@ export type ShipInteraction = {
  * 加点を計算する。材料（船接触・船のタイル）が無い、または船接触の平均が 0 なら null。
  * 使う船は result.ships（無ければ 4 隻）。船接触の無い船は C_s ＝ 0 として平均に入れる。
  *
- *   加点_f ＝ Σ_s α × rel_{s,f} × T_{s,f}
+ *   加点_f ＝ Σ_s (max(0, 1 ＋ α × rel_{s,f}) − 1) × T_{s,f}      （α ≦ 1 なら Σ_s α × rel_{s,f} × T_{s,f} と同じ）
  *   rel_{s,f} ＝ (C_{s,f} − C̄_f) / C̄_f（mode faction）、(C_s − C̄) / C̄（mode pooled）
  */
 export function shipInteractionOf(
@@ -233,7 +246,7 @@ export function shipInteractionOf(
     for (const s of ships) {
       const t = tiles[s]?.[f] ?? 0;
       if (t === 0) continue;
-      b += alpha * (rel[s] ?? 0) * t;
+      b += (shipFactorOf(alpha, rel[s] ?? 0) - 1) * t;
     }
     bonus[f] = b;
   }
