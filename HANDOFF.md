@@ -1,14 +1,33 @@
 # HANDOFF
 
-最終更新: 2026-11-03（21回目。v2.7.0 船の相互作用 α 3 のリリース記録と、ユーザー確定 3 件の反映。冒頭の 2 節が正本。その下は時系列の記録で、当時の「未デプロイ」「List / Total」などの書き方が
-残っている。2026-10-17 までの版はすべて本番へ出ており、List / Total は 2026-10-17 に Pair へ統合した）。
+最終更新: 2026-11-06（22回目。次はローカルセッションという前提で「始めかた」を追加。冒頭の 3 節が正本。その下は時系列の記録で、当時の
+「未デプロイ」「List / Total」などの書き方が残っている。2026-10-17 までの版はすべて本番へ出ており、List / Total は 2026-10-17 に Pair へ統合した）。
 次セッションはここから読む（残タスクは TODO.md「残タスク」冒頭の「いまの残り」、調整は docs/tuning-guide.md、経緯は docs/design-notes.md）。
 
-## いまの状態（2026-11-03）
+## 次のセッション（ローカル、Windows）での始めかた（2026-11-06）
+
+- **リポジトリを揃える**: `cd /c/work/GaiaProjectMapSearch && pwd` で CWD を確認してから
+  `git fetch origin && git checkout release/v1.01 && git merge --ff-only origin/release/v1.01`（`origin/main` ＝ `origin/release/v1.01` ＝ 5e6c19c）。
+  ローカルの `release/v1.01` が 5654792 以前で止まっていれば、このコマンドで早送りされる。衝突する未コミットの変更が無いことを先に `git status` で見る。
+  `npm ci` で依存を揃える（2026-11-03 のクラウド環境では node_modules が無く、`npm ci` から始めた）。
+- **ブランチ**: 以後の変更は `release/v1.01` から機能ブランチを切って 1 修正 = 1 コミット → 検証 → `release/v1.01` へ FF → `git push origin release/v1.01 && git push origin release/v1.01:main`
+  （push ＝ 本番デプロイ。push 後は deployments API で Production の success を確認）。クラウドの作業ブランチ 3 本（`claude/eager-rubin-860whr`、
+  `claude/gaia-map-project-status-73aeld`、`claude/gaia-map-project-status-adrt1n`）は**すべて main に取り込み済み**で、残す理由は無い。
+  消すならローカルから `git push origin --delete <ブランチ名>`（クラウド環境からは拒否された。ユーザー判断）。下書き PR はクラウド運用の記録用だった
+  ので、ローカルでは作らなくてよい。
+- **ローカルでできるようになること**: 本番（https://gaia-project-map-search.vercel.app ）と実機のブラウザに**ピン留めマップ・保存セットアップ・Pair の順位表が
+  ある**ので、クラウドでは頼めなかった実データの確認（α 3 の体感、合計表の Setup 列のホバーの船ごとの加点、eval_v10 への移行）が自分でできる。
+  dev サーバは launch.json の `gaia-map-search`（port 3000）。ヘッドレス確認は `node_modules/playwright`（Chromium は `npx playwright install chromium` が
+  要るかもしれない。クラウドの `/opt/pw-browsers/chromium` の記述はローカルには当てはまらない）。「クラウドの作業環境」「埋め込みブラウザ」と書いてある
+  注意（本番へ 403、rAF シム、375px の幅の食い違い）はローカルでは読み替える。狭い幅の見た目は本番を実機で見るのが確実。
+- **最初にやること**: (1) 上の同期、(2) `npm run typecheck` / `npm run lint` / `npm test`（2026-11-03 時点で 0 件 / エラー 0 / 35 ファイル 403 件全緑）、
+  (3) TODO.md「いまの残り」の 1（eval_v10 への移行はユーザー作業、α 3 の体感）から。実装待ちのタスクは無い。
+
+## いまの状態（2026-11-06）
 
 - **本番** https://gaia-project-map-search.vercel.app は **v2.7.0 · eval_v10**（共通バー右端で判定）。`/` ＝ Pair、タブ順 Pair / Map /
-  Setup / Manual。`main` ＝ `release/v1.01` ＝ 作業ブランチ `claude/eager-rubin-860whr`（2026-11-03 から。それまでは
-  `claude/gaia-map-project-status-73aeld`）。
+  Setup / Manual。`main` ＝ `release/v1.01` ＝ クラウドの作業ブランチ `claude/eager-rubin-860whr`（2026-11-03。それまでは
+  `claude/gaia-map-project-status-73aeld`）。次のセッションはローカル（上の「始めかた」）。
 - **画面の流れ**: 共通バー直下の「探索条件」の帯（探索プロファイル、`searchProfiles.ts`）に種族優遇と Map / Setup の検索条件を束ねる。
   Pair は「提案を生成」「両方を探索」「連続で探索」で組を作り、候補一覧は主（マップ → セットアップならマップ）ごとに 1 行、
   全行をいまの基準・評価指数・合算比で採点し直して順位で並べる（`pairScore.scorePairOf` が唯一の式）。詳細で別の相手を選べ、

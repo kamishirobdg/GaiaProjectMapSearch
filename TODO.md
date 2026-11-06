@@ -490,8 +490,9 @@
 7. ~~`criterionScore` の添え物 0.3~~ → 2026-10-27 に廃止（基準 1）。3・4 の 0.2 は廃止予定の基準なので触らない。
 8. ~~3 人用の縮小盤~~ → 2026-10-27 に実装（v2.6.0）。船とスカウトの相互作用の段階 2（Map の検索に入れる）は **やらない**
    （ユーザー 2026-10-27「マップとセットアップ両方が必要な情報なので Pair でのみ評価する」）。「周辺の多色の惑星」（見送り済み）。
-9. 保守: 本番で進捗の末尾に `[main]` が出たら COOP/COEP が効いていない問題として調べる。リモートの古い作業ブランチ
-   `claude/gaia-map-project-status-adrt1n`（PR #26 は閉じ済み）は消すならユーザー確認のうえ。大きいファイル
+9. 保守: 本番で進捗の末尾に `[main]` が出たら COOP/COEP が効いていない問題として調べる。リモートのクラウド作業ブランチ 3 本
+   （`claude/gaia-map-project-status-adrt1n` / `claude/gaia-map-project-status-73aeld` / `claude/eager-rubin-860whr`）は 2026-11-06 時点で
+   すべて main に取り込み済み。消すならローカルから `git push origin --delete <名前>`（ユーザー判断。クラウド環境からは拒否された）。大きいファイル
    （`src/app/board/page.tsx` 約 3990 行、`SetupView.tsx` 2263 行、`PairView.tsx` 約 2030 行）の分割は手を入れる機会に合わせて。
 
 **運用**: 実装が終わったものは検証（typecheck / lint / test ＋ ヘッドレス）のうえ FF push してよい（2026-10-17）。
